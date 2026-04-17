@@ -180,6 +180,7 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          image_url: string | null
           main_category_id: string
           name: string
           slug: string
@@ -189,6 +190,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          image_url?: string | null
           main_category_id: string
           name: string
           slug: string
@@ -198,6 +200,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          image_url?: string | null
           main_category_id?: string
           name?: string
           slug?: string
