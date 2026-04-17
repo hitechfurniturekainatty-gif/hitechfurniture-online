@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ImageUploader, type UploadedImage } from "@/components/admin/ImageUploader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-type MainCat = { id: string; name: string; slug: string; display_order: number };
+type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number };
 
 const slugify = (s: string) =>
@@ -21,6 +22,7 @@ const AdminCategories = () => {
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [newMain, setNewMain] = useState("");
+  const [newMainImg, setNewMainImg] = useState<UploadedImage[]>([]);
   const [newSub, setNewSub] = useState("");
   const [newSubParent, setNewSubParent] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -43,10 +45,12 @@ const AdminCategories = () => {
       name: newMain.trim(),
       slug: slugify(newMain),
       display_order: mainCats.length,
+      image_url: newMainImg[0]?.url ?? null,
     });
     setBusy(false);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
     setNewMain("");
+    setNewMainImg([]);
     toast({ title: "Category added" });
     load();
   };
@@ -89,24 +93,37 @@ const AdminCategories = () => {
             <CardTitle className="font-display">Main categories</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g. Sofa, Bed, Wardrobe"
-                value={newMain}
-                onChange={(e) => setNewMain(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addMain()}
-              />
-              <Button onClick={addMain} disabled={busy || !newMain.trim()}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              </Button>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Sofa, Bed, Wardrobe"
+                  value={newMain}
+                  onChange={(e) => setNewMain(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addMain()}
+                />
+                <Button onClick={addMain} disabled={busy || !newMain.trim()}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cover image (optional)</Label>
+                <div className="mt-1.5">
+                  <ImageUploader value={newMainImg} onChange={setNewMainImg} />
+                </div>
+              </div>
             </div>
             <ul className="divide-y divide-border rounded-lg border border-border bg-background">
               {mainCats.length === 0 && <li className="p-4 text-sm text-muted-foreground">No categories yet.</li>}
               {mainCats.map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 p-3">
-                  <div>
-                    <p className="font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.slug}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {c.image_url && <img src={c.image_url} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">{c.slug}</p>
+                    </div>
                   </div>
                   {isAdmin && (
                     <Button size="icon" variant="ghost" onClick={() => remove("main_categories", c.id)}>
