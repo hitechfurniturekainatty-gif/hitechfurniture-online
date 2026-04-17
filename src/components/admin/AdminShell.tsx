@@ -3,11 +3,11 @@ import { Link, NavLink as RRNavLink, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
-  const { user, loading, isStaff, isAdmin, signOut } = useAuth();
+  const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, signOut } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -34,10 +34,14 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   }
 
   const links = [
-    { to: "/admin", end: true, label: "Overview", icon: LayoutDashboard },
-    { to: "/admin/categories", label: "Categories", icon: FolderTree },
-    { to: "/admin/products", label: "Products", icon: Package },
-  ];
+    { to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: true },
+    { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
+    { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
+    { to: "/admin/workers", label: "Workers", icon: HardHat, show: isOfficeStaff },
+    { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isOfficeStaff },
+    { to: "/admin/products", label: "Products", icon: Package, show: isOfficeStaff },
+    { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
+  ].filter((l) => l.show);
 
   return (
     <div className="min-h-screen bg-secondary/30">
@@ -77,7 +81,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
             ))}
           </nav>
           <p className="mt-3 px-2 text-xs text-muted-foreground">
-            Role: <span className="font-semibold text-foreground">{isAdmin ? "Admin" : "Staff"}</span>
+            Role: <span className="font-semibold text-foreground">{isAdmin ? "Admin" : isMeasurementStaff && !isOfficeStaff ? "Measurement Staff" : "Staff"}</span>
           </p>
         </aside>
         <main className="min-w-0">{children}</main>
