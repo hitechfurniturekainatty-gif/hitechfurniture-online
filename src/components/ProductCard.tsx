@@ -25,7 +25,8 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
             src={cover}
             alt={product.product_name}
             loading="lazy"
-            className="h-full w-full object-cover transition-smooth group-hover:scale-105"
+            decoding="async"
+            className="h-full w-full object-contain p-3 transition-smooth group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
