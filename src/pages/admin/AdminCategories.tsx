@@ -184,7 +184,7 @@ const AdminCategories = () => {
                 >
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                     {c.image_url ? (
-                      <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={c.image_url} alt={c.name} className="h-full w-full object-contain p-1" loading="lazy" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
@@ -263,7 +263,7 @@ const AdminCategories = () => {
                   >
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                       {s.image_url ? (
-                        <img src={s.image_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" />
+                        <img src={s.image_url} alt={s.name} className="h-full w-full object-contain p-1" loading="lazy" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
                           <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
