@@ -2,41 +2,65 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, Layers, AlertTriangle } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminOverview = () => {
-  const [stats, setStats] = useState({ products: 0, categories: 0, subCategories: 0, lowStock: 0 });
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, user } = useAuth();
+  const [stats, setStats] = useState({
+    products: 0, categories: 0, lowStock: 0,
+    quotations: 0, drafts: 0, myTasks: 0, workers: 0,
+  });
 
   useEffect(() => {
-    Promise.all([
-      supabase.from("products").select("id", { count: "exact", head: true }),
-      supabase.from("main_categories").select("id", { count: "exact", head: true }),
-      supabase.from("sub_categories").select("id", { count: "exact", head: true }),
-      supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 5),
-    ]).then(([p, c, s, l]) =>
+    const run = async () => {
+      const queries = [
+        supabase.from("products").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("main_categories").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 5).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", "draft").then((r) => r),
+        supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true).then((r) => r),
+      ];
+      if (user?.id && isMeasurementStaff) {
+        queries.push(
+          supabase.from("measurement_tasks").select("id", { count: "exact", head: true })
+            .eq("assigned_to", user.id).neq("status", "completed").then((r) => r)
+        );
+      }
+      const r = await Promise.all(queries);
       setStats({
-        products: p.count ?? 0,
-        categories: c.count ?? 0,
-        subCategories: s.count ?? 0,
-        lowStock: l.count ?? 0,
-      })
-    );
-  }, []);
+        products: r[0].count ?? 0,
+        categories: r[1].count ?? 0,
+        lowStock: r[2].count ?? 0,
+        quotations: r[3].count ?? 0,
+        drafts: r[4].count ?? 0,
+        workers: r[5].count ?? 0,
+        myTasks: r[6]?.count ?? 0,
+      });
+    };
+    run();
+  }, [user?.id, isMeasurementStaff]);
 
   const cards = [
-    { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
-    { label: "Main categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
-    { label: "Sub-categories", value: stats.subCategories, icon: Layers, to: "/admin/categories" },
-    { label: "Low stock (≤5)", value: stats.lowStock, icon: AlertTriangle, to: "/admin/products" },
-  ];
+    isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
+    isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
+    isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations" },
+    isOfficeStaff && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
+    isOfficeStaff && { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
+    isOfficeStaff && { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
+    isOfficeStaff && { label: "Low stock (≤5)", value: stats.lowStock, icon: AlertTriangle, to: "/admin/products" },
+  ].filter(Boolean) as { label: string; value: number; icon: any; to: string }[];
 
   return (
     <AdminShell>
       <div className="mb-8">
         <h1 className="font-display text-3xl">Overview</h1>
-        <p className="mt-1 text-muted-foreground">Quick snapshot of your live catalog.</p>
+        <p className="mt-1 text-muted-foreground">
+          {isMeasurementStaff && !isOfficeStaff ? "Your assigned measurement tasks." : "Quick snapshot of your business."}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -57,22 +81,17 @@ const AdminOverview = () => {
         ))}
       </div>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Get started</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            1. Create your main categories (e.g. Sofa, Bed, Wardrobe).<br />
-            2. Add sub-categories under each (e.g. L-Shape, 3-Seater).<br />
-            3. Add products with images, MRP and stock — they'll appear instantly on the public catalog.
-          </p>
-          <div className="flex gap-2">
-            <Button asChild><Link to="/admin/categories">Manage categories</Link></Button>
-            <Button asChild variant="outline"><Link to="/admin/products">Add a product</Link></Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isOfficeStaff && (
+        <Card className="mt-8">
+          <CardHeader><CardTitle className="font-display text-xl">Quick actions</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild><Link to="/admin/quotations"><FileText className="mr-2 h-4 w-4" />New quotation</Link></Button>
+            <Button asChild variant="outline"><Link to="/admin/measurement-tasks"><Ruler className="mr-2 h-4 w-4" />Assign measurement</Link></Button>
+            <Button asChild variant="outline"><Link to="/admin/workers"><HardHat className="mr-2 h-4 w-4" />Manage workers</Link></Button>
+            {isAdmin && <Button asChild variant="outline"><Link to="/admin/staff"><Users className="mr-2 h-4 w-4" />Staff management</Link></Button>}
+          </CardContent>
+        </Card>
+      )}
     </AdminShell>
   );
 };
