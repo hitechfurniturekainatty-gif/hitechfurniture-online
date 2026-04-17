@@ -335,7 +335,7 @@ const AdminQuotationEditor = () => {
     if (!worker) return;
     const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
     if (chosenItems.length === 0) {
-      toast({ title: "Save items before assigning", description: "Save your changes first.", variant: "destructive" });
+      toast({ title: "No saved items selected", description: "Save the quotation, then re-tick the items.", variant: "destructive" });
       return;
     }
     setGeneratingJob(true);
