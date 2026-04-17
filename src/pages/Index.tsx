@@ -101,17 +101,17 @@ const Index = () => {
               <Link
                 key={c.id}
                 to={`/catalog?cat=${c.slug}`}
-                className="group relative aspect-square overflow-hidden rounded-2xl bg-secondary transition-smooth hover:shadow-product"
+                className="img-frame group relative aspect-square transition-smooth hover:shadow-product"
               >
                 {c.image_url ? (
-                  <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-3 transition-smooth group-hover:scale-105" />
+                  <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
                     <span className="font-display text-2xl text-primary">{c.name[0]}</span>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
-                <span className="absolute bottom-3 left-3 right-3 font-display text-base font-semibold text-background">
+                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
+                <span className="absolute bottom-3 left-3 right-3 z-10 font-display text-base font-semibold text-background">
                   {c.name}
                 </span>
               </Link>
