@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus, Loader2, ImageIcon } from "lucide-react";
+import { Trash2, Plus, Loader2, ImageIcon, Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
@@ -16,6 +17,9 @@ type SubCat = { id: string; main_category_id: string; name: string; slug: string
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+type EditMainState = { id: string; name: string; image: UploadedImage[] } | null;
+type EditSubState = { id: string; name: string; main_category_id: string; image: UploadedImage[] } | null;
 
 const AdminCategories = () => {
   const { isAdmin } = useAuth();
@@ -27,6 +31,10 @@ const AdminCategories = () => {
   const [newSubParent, setNewSubParent] = useState<string>("");
   const [newSubImg, setNewSubImg] = useState<UploadedImage[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const [editMain, setEditMain] = useState<EditMainState>(null);
+  const [editSub, setEditSub] = useState<EditSubState>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     const [{ data: m }, { data: s }] = await Promise.all([
@@ -80,6 +88,54 @@ const AdminCategories = () => {
     const { error } = await supabase.from(table).delete().eq("id", id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
     toast({ title: "Deleted" });
+    load();
+  };
+
+  const startEditMain = (c: MainCat) => {
+    setEditMain({
+      id: c.id,
+      name: c.name,
+      image: c.image_url ? [{ url: c.image_url, path: c.image_url }] : [],
+    });
+  };
+
+  const saveEditMain = async () => {
+    if (!editMain || !editMain.name.trim()) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from("main_categories").update({
+      name: editMain.name.trim(),
+      slug: slugify(editMain.name),
+      image_url: editMain.image[0]?.url ?? null,
+    }).eq("id", editMain.id);
+    setSavingEdit(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Category updated" });
+    setEditMain(null);
+    load();
+  };
+
+  const startEditSub = (s: SubCat) => {
+    setEditSub({
+      id: s.id,
+      name: s.name,
+      main_category_id: s.main_category_id,
+      image: s.image_url ? [{ url: s.image_url, path: s.image_url }] : [],
+    });
+  };
+
+  const saveEditSub = async () => {
+    if (!editSub || !editSub.name.trim() || !editSub.main_category_id) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from("sub_categories").update({
+      name: editSub.name.trim(),
+      slug: slugify(editSub.name),
+      main_category_id: editSub.main_category_id,
+      image_url: editSub.image[0]?.url ?? null,
+    }).eq("id", editSub.id);
+    setSavingEdit(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Sub-category updated" });
+    setEditSub(null);
     load();
   };
 
@@ -142,6 +198,9 @@ const AdminCategories = () => {
                       {subCats.filter((s) => s.main_category_id === c.id).length} sub-categories
                     </p>
                   </div>
+                  <Button size="icon" variant="ghost" onClick={() => startEditMain(c)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   {isAdmin && (
                     <Button size="icon" variant="ghost" onClick={() => remove("main_categories", c.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -215,6 +274,9 @@ const AdminCategories = () => {
                       <p className="truncate font-medium">{s.name}</p>
                       <p className="truncate text-xs text-muted-foreground">{parent?.name ?? "—"} · /{s.slug}</p>
                     </div>
+                    <Button size="icon" variant="ghost" onClick={() => startEditSub(s)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {isAdmin && (
                       <Button size="icon" variant="ghost" onClick={() => remove("sub_categories", s.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -227,6 +289,88 @@ const AdminCategories = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Main Category Dialog */}
+      <Dialog open={!!editMain} onOpenChange={(o) => !o && setEditMain(null)}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Edit main category</DialogTitle>
+          </DialogHeader>
+          {editMain && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
+                <Input
+                  value={editMain.name}
+                  onChange={(e) => setEditMain({ ...editMain, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cover image</Label>
+                <ImageUploader
+                  value={editMain.image}
+                  onChange={(image) => setEditMain({ ...editMain, image })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMain(null)}>Cancel</Button>
+            <Button onClick={saveEditMain} disabled={savingEdit || !editMain?.name.trim()}>
+              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sub Category Dialog */}
+      <Dialog open={!!editSub} onOpenChange={(o) => !o && setEditSub(null)}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Edit sub-category</DialogTitle>
+          </DialogHeader>
+          {editSub && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Parent category</Label>
+                <Select
+                  value={editSub.main_category_id}
+                  onValueChange={(v) => setEditSub({ ...editSub, main_category_id: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {mainCats.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
+                <Input
+                  value={editSub.name}
+                  onChange={(e) => setEditSub({ ...editSub, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cover image</Label>
+                <ImageUploader
+                  value={editSub.image}
+                  onChange={(image) => setEditSub({ ...editSub, image })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSub(null)}>Cancel</Button>
+            <Button onClick={saveEditSub} disabled={savingEdit || !editSub?.name.trim()}>
+              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
