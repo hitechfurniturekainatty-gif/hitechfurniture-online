@@ -16,16 +16,19 @@ const AdminOverview = () => {
 
   useEffect(() => {
     const run = async () => {
-      const queries: Promise<any>[] = [
-        supabase.from("products").select("id", { count: "exact", head: true }),
-        supabase.from("main_categories").select("id", { count: "exact", head: true }),
-        supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 5),
-        supabase.from("quotations").select("id", { count: "exact", head: true }),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", "draft"),
-        supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
+      const queries = [
+        supabase.from("products").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("main_categories").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 5).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", "draft").then((r) => r),
+        supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true).then((r) => r),
       ];
       if (user?.id && isMeasurementStaff) {
-        queries.push(supabase.from("measurement_tasks").select("id", { count: "exact", head: true }).eq("assigned_to", user.id).neq("status", "completed"));
+        queries.push(
+          supabase.from("measurement_tasks").select("id", { count: "exact", head: true })
+            .eq("assigned_to", user.id).neq("status", "completed").then((r) => r)
+        );
       }
       const r = await Promise.all(queries);
       setStats({
