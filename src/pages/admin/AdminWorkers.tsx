@@ -112,7 +112,7 @@ const AdminWorkers = () => {
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{w.name}</p>
                     {w.trade && <p className="text-xs text-muted-foreground">{w.trade}</p>}
-                    <p className="mt-1 text-sm flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-green-600" /> {w.whatsapp_number}</p>
+                    <p className="mt-1 text-sm flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-primary" /> {w.whatsapp_number}</p>
                     {w.phone && w.phone !== w.whatsapp_number && <p className="text-xs text-muted-foreground">Call: {w.phone}</p>}
                     {!w.is_active && <Badge variant="outline" className="mt-1">Inactive</Badge>}
                   </div>
