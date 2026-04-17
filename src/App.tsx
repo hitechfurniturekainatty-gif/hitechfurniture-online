@@ -10,6 +10,11 @@ import Auth from "./pages/Auth.tsx";
 import AdminOverview from "./pages/admin/AdminOverview.tsx";
 import AdminCategories from "./pages/admin/AdminCategories.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
+import AdminStaff from "./pages/admin/AdminStaff.tsx";
+import AdminWorkers from "./pages/admin/AdminWorkers.tsx";
+import AdminMeasurementTasks from "./pages/admin/AdminMeasurementTasks.tsx";
+import AdminQuotations from "./pages/admin/AdminQuotations.tsx";
+import AdminQuotationEditor from "./pages/admin/AdminQuotationEditor.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,6 +33,11 @@ const App = () => (
           <Route path="/admin" element={<AdminOverview />} />
           <Route path="/admin/categories" element={<AdminCategories />} />
           <Route path="/admin/products" element={<AdminProducts />} />
+          <Route path="/admin/staff" element={<AdminStaff />} />
+          <Route path="/admin/workers" element={<AdminWorkers />} />
+          <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
+          <Route path="/admin/quotations" element={<AdminQuotations />} />
+          <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

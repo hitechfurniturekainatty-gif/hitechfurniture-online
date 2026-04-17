@@ -393,7 +393,7 @@ const AdminQuotationEditor = () => {
           {canEditPrice && (
             <>
               <Button variant="outline" onClick={downloadPdf}><Download className="mr-2 h-4 w-4" />PDF</Button>
-              <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-green-600" />WhatsApp</Button>
+              <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
               <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
             </>
           )}
