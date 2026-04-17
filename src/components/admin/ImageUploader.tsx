@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Upload, X, Link as LinkIcon } from "lucide-react";
+import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export type UploadedImage = { url: string; path: string };
@@ -18,6 +18,7 @@ export const ImageUploader = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const addUrl = () => {
     const u = urlInput.trim();
@@ -31,7 +32,7 @@ export const ImageUploader = ({
     setUrlInput("");
   };
 
-  const onDrop = useCallback(
+  const uploadFiles = useCallback(
     async (files: File[]) => {
       setUploading(true);
       const uploaded: UploadedImage[] = [];
@@ -52,6 +53,15 @@ export const ImageUploader = ({
     [value, onChange]
   );
 
+  const onDrop = useCallback((files: File[]) => uploadFiles(files), [uploadFiles]);
+
+  const onCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) uploadFiles(files);
+    // reset so picking the same file again still triggers change
+    e.target.value = "";
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "image/*": [] },
@@ -67,9 +77,10 @@ export const ImageUploader = ({
   return (
     <div className="space-y-3">
       <Tabs defaultValue="upload">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="upload"><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload</TabsTrigger>
-          <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-3.5 w-3.5" /> Paste URL</TabsTrigger>
+          <TabsTrigger value="camera"><Camera className="mr-1.5 h-3.5 w-3.5" /> Camera</TabsTrigger>
+          <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-3.5 w-3.5" /> URL</TabsTrigger>
         </TabsList>
         <TabsContent value="upload">
           <div
@@ -88,6 +99,36 @@ export const ImageUploader = ({
                   {isDragActive ? "Drop images here" : "Drag & drop or click to upload"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WebP. Multiple allowed.</p>
+              </>
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="camera">
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-6 text-center">
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={onCameraCapture}
+            />
+            {uploading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            ) : (
+              <>
+                <Camera className="mb-2 h-7 w-7 text-primary" />
+                <p className="text-sm font-medium">Take a photo with your camera</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Opens camera on mobile · falls back to file picker on desktop.
+                </p>
+                <Button
+                  type="button"
+                  className="mt-3"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <Camera className="mr-1.5 h-4 w-4" /> Open camera
+                </Button>
               </>
             )}
           </div>
