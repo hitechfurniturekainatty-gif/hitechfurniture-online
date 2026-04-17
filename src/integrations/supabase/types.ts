@@ -175,6 +175,144 @@ export type Database = {
         }
         Relationships: []
       }
+      quotation_counters: {
+        Row: {
+          last_serial: number
+          scope: string
+        }
+        Insert: {
+          last_serial?: number
+          scope: string
+        }
+        Update: {
+          last_serial?: number
+          scope?: string
+        }
+        Relationships: []
+      }
+      quotation_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          display_order: number
+          id: string
+          item_image_url: string | null
+          measurement: string | null
+          measurement_image_url: string | null
+          product_id: string | null
+          quantity: number
+          quotation_id: string
+          unit_price: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          display_order?: number
+          id?: string
+          item_image_url?: string | null
+          measurement?: string | null
+          measurement_image_url?: string | null
+          product_id?: string | null
+          quantity?: number
+          quotation_id: string
+          unit_price?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          display_order?: number
+          id?: string
+          item_image_url?: string | null
+          measurement?: string | null
+          measurement_image_url?: string | null
+          product_id?: string | null
+          quantity?: number
+          quotation_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expected_delivery_date: string | null
+          gst_amount: number
+          gst_percent: number
+          id: string
+          notes: string | null
+          party_address: string | null
+          party_name: string
+          party_phone: string | null
+          party_place: string
+          quotation_date: string
+          quotation_id: string
+          source_task_id: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          notes?: string | null
+          party_address?: string | null
+          party_name: string
+          party_phone?: string | null
+          party_place: string
+          quotation_date?: string
+          quotation_id: string
+          source_task_id?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          notes?: string | null
+          party_address?: string | null
+          party_name?: string
+          party_phone?: string | null
+          party_place?: string
+          quotation_date?: string
+          quotation_id?: string
+          source_task_id?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sub_categories: {
         Row: {
           created_at: string
@@ -287,6 +425,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      next_quotation_id: {
+        Args: { _party: string; _place: string }
+        Returns: string
       }
     }
     Enums: {
