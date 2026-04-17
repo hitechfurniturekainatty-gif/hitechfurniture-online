@@ -296,6 +296,11 @@ const AdminQuotationEditor = () => {
       toast({ title: "Select items first", description: "Tick the checkbox next to items to assign.", variant: "destructive" });
       return;
     }
+    // Auto-save any pending changes so newly added items get real IDs
+    const hasPending = headerDirty || items.some((i) => i._dirty || i._isNew);
+    if (hasPending) {
+      await saveAll();
+    }
     const { data } = await supabase.from("workers").select("id, name, whatsapp_number, trade").eq("is_active", true).order("name");
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
