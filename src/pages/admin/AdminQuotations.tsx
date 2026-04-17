@@ -102,8 +102,8 @@ const AdminQuotations = () => {
   const statusColor = (s: string) =>
     s === "accepted" ? "default" : s === "sent" ? "secondary" : s === "rejected" ? "destructive" : "outline";
 
-  const Row = ({ q }: { q: Q }) => (
-    <Card>
+  const renderRow = (q: Q) => (
+    <Card key={q.id}>
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
