@@ -114,8 +114,8 @@ const AdminStaff = () => {
                 <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
               <div className="space-y-1.5">
-                <Label>Temporary password *</Label>
-                <Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="min 6 chars" required />
+                <Label>Temporary password * (min 8 characters)</Label>
+                <Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" minLength={8} required />
               </div>
               <div className="space-y-1.5">
                 <Label>Role *</Label>
