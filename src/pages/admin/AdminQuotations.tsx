@@ -165,7 +165,7 @@ const AdminQuotations = () => {
           </TabsList>
           {(["all", "draft", "sent", "accepted"] as const).map((k) => (
             <TabsContent key={k} value={k} className="mt-4 grid gap-3">
-              {groups[k].map((q) => <Row key={q.id} q={q} />)}
+              {groups[k].map(renderRow)}
               {groups[k].length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
             </TabsContent>
           ))}
