@@ -286,9 +286,11 @@ const AdminQuotationEditor = () => {
   };
 
   const downloadPdf = async () => {
+    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
+    const saved = await ensureSaved();
+    if (!saved) return;
     const data = buildPdfData();
     if (!data) return;
-    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
     const blob = await generateQuotationPdf(data);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -296,6 +298,7 @@ const AdminQuotationEditor = () => {
     a.download = `${data.quotation_id}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+    toast({ title: "PDF downloaded", description: "Attach it in WhatsApp using the paperclip icon." });
   };
 
   const shareWhatsApp = async () => {
@@ -317,10 +320,8 @@ const AdminQuotationEditor = () => {
       return;
     }
     // Auto-save any pending changes so newly added items get real IDs
-    const hasPending = headerDirty || items.some((i) => i._dirty || i._isNew);
-    if (hasPending) {
-      await saveAll();
-    }
+    const saved = await ensureSaved();
+    if (!saved) return;
     const { data } = await supabase.from("workers").select("id, name, whatsapp_number, trade").eq("is_active", true).order("name");
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
