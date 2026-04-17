@@ -102,8 +102,8 @@ const AdminQuotations = () => {
   const statusColor = (s: string) =>
     s === "accepted" ? "default" : s === "sent" ? "secondary" : s === "rejected" ? "destructive" : "outline";
 
-  const Row = ({ q }: { q: Q }) => (
-    <Card>
+  const renderRow = (q: Q) => (
+    <Card key={q.id}>
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ const AdminQuotations = () => {
           </TabsList>
           {(["all", "draft", "sent", "accepted"] as const).map((k) => (
             <TabsContent key={k} value={k} className="mt-4 grid gap-3">
-              {groups[k].map((q) => <Row key={q.id} q={q} />)}
+              {groups[k].map(renderRow)}
               {groups[k].length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
             </TabsContent>
           ))}

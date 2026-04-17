@@ -184,10 +184,10 @@ const AdminQuotationEditor = () => {
     toast({ title: "Item added" });
   };
 
-  const saveAll = async () => {
-    if (!q) return;
+  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections
+  const saveAll = async (): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
+    if (!q) return null;
     setSaving(true);
-    // 1. update header if dirty
     if (headerDirty) {
       const { error } = await supabase.from("quotations").update({
         party_name: q.party_name,
@@ -203,11 +203,13 @@ const AdminQuotationEditor = () => {
       if (error) {
         setSaving(false);
         toast({ title: "Save failed", description: error.message, variant: "destructive" });
-        return;
+        return null;
       }
     }
-    // 2. items
-    for (const it of items) {
+    const idMap: Record<string, string> = {};
+    const updated: QItem[] = [...items];
+    for (let i = 0; i < updated.length; i++) {
+      const it = updated[i];
       if (!it._dirty) continue;
       if (!it.description.trim()) continue;
       const payload = {
@@ -223,17 +225,35 @@ const AdminQuotationEditor = () => {
       };
       if (it._isNew) {
         const { data, error } = await supabase.from("quotation_items").insert(payload).select("id").single();
-        if (error) { setSaving(false); toast({ title: "Item save failed", description: error.message, variant: "destructive" }); return; }
-        // map tmp id -> real
-        setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, id: data!.id, _isNew: false, _dirty: false } : p)));
+        if (error) { setSaving(false); toast({ title: "Item save failed", description: error.message, variant: "destructive" }); return null; }
+        idMap[it.id] = data!.id;
+        updated[i] = { ...it, id: data!.id, _isNew: false, _dirty: false };
       } else {
         const { error } = await supabase.from("quotation_items").update(payload).eq("id", it.id);
-        if (error) { setSaving(false); toast({ title: "Item update failed", description: error.message, variant: "destructive" }); return; }
+        if (error) { setSaving(false); toast({ title: "Item update failed", description: error.message, variant: "destructive" }); return null; }
+        updated[i] = { ...it, _dirty: false };
       }
     }
+    setItems(updated);
+    setHeaderDirty(false);
     setSaving(false);
     toast({ title: "Saved" });
-    load();
+    return { idMap, savedItems: updated };
+  };
+
+  const ensureSaved = async (): Promise<QItem[] | null> => {
+    const hasPending = headerDirty || items.some((i) => i._dirty || i._isNew);
+    if (!hasPending) return items;
+    const result = await saveAll();
+    if (!result) return null;
+    if (Object.keys(result.idMap).length > 0) {
+      setSelectedItemIds((prev) => {
+        const next = new Set<string>();
+        prev.forEach((id) => next.add(result.idMap[id] ?? id));
+        return next;
+      });
+    }
+    return result.savedItems;
   };
 
   // ---- PDF & WhatsApp ----
@@ -266,9 +286,11 @@ const AdminQuotationEditor = () => {
   };
 
   const downloadPdf = async () => {
+    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
+    const saved = await ensureSaved();
+    if (!saved) return;
     const data = buildPdfData();
     if (!data) return;
-    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
     const blob = await generateQuotationPdf(data);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -276,6 +298,7 @@ const AdminQuotationEditor = () => {
     a.download = `${data.quotation_id}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+    toast({ title: "PDF downloaded", description: "Attach it in WhatsApp using the paperclip icon." });
   };
 
   const shareWhatsApp = async () => {
@@ -296,6 +319,9 @@ const AdminQuotationEditor = () => {
       toast({ title: "Select items first", description: "Tick the checkbox next to items to assign.", variant: "destructive" });
       return;
     }
+    // Auto-save any pending changes so newly added items get real IDs
+    const saved = await ensureSaved();
+    if (!saved) return;
     const { data } = await supabase.from("workers").select("id, name, whatsapp_number, trade").eq("is_active", true).order("name");
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
@@ -309,7 +335,7 @@ const AdminQuotationEditor = () => {
     if (!worker) return;
     const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
     if (chosenItems.length === 0) {
-      toast({ title: "Save items before assigning", description: "Save your changes first.", variant: "destructive" });
+      toast({ title: "No saved items selected", description: "Save the quotation, then re-tick the items.", variant: "destructive" });
       return;
     }
     setGeneratingJob(true);
