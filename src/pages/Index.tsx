@@ -104,7 +104,7 @@ const Index = () => {
                 className="group relative aspect-square overflow-hidden rounded-2xl bg-secondary transition-smooth hover:shadow-product"
               >
                 {c.image_url ? (
-                  <img src={c.image_url} alt={c.name} loading="lazy" className="h-full w-full object-cover transition-smooth group-hover:scale-105" />
+                  <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-3 transition-smooth group-hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
                     <span className="font-display text-2xl text-primary">{c.name[0]}</span>

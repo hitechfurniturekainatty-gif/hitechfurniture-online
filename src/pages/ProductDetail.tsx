@@ -122,7 +122,12 @@ Please share more details.`;
         <div>
           <div className="aspect-square overflow-hidden rounded-3xl bg-muted shadow-card-soft">
             {cover ? (
-              <img src={cover} alt={product.product_name} className="h-full w-full object-cover" />
+              <img
+                src={cover}
+                alt={product.product_name}
+                decoding="async"
+                className="h-full w-full object-contain p-2"
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">No image</div>
             )}
@@ -133,11 +138,11 @@ Please share more details.`;
                 <button
                   key={i}
                   onClick={() => setActiveImg(i)}
-                  className={`aspect-square overflow-hidden rounded-xl border-2 transition-smooth ${
+                  className={`aspect-square overflow-hidden rounded-xl border-2 bg-muted transition-smooth ${
                     activeImg === i ? "border-primary" : "border-transparent"
                   }`}
                 >
-                  <img src={img.image_url} alt="" className="h-full w-full object-cover" />
+                  <img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1" />
                 </button>
               ))}
             </div>
