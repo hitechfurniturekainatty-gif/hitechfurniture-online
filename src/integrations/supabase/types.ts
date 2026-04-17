@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      job_work_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_ids: string[]
+          notes: string | null
+          quotation_id: string
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_ids?: string[]
+          notes?: string | null
+          quotation_id: string
+          status?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_ids?: string[]
+          notes?: string | null
+          quotation_id?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_work_orders_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_orders_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       main_categories: {
         Row: {
           created_at: string
@@ -43,6 +94,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      measurement_tasks: {
+        Row: {
+          assigned_to: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_name: string
+          customer_phone: string | null
+          customer_place: string
+          draft_quotation_id: string | null
+          id: string
+          requirement: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          customer_place: string
+          draft_quotation_id?: string | null
+          id?: string
+          requirement?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          customer_place?: string
+          draft_quotation_id?: string | null
+          id?: string
+          requirement?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "measurement_tasks_draft_quotation_id_fkey"
+            columns: ["draft_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_images: {
         Row: {
