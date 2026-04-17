@@ -27,14 +27,27 @@ Deno.serve(async (req) => {
     (roles || []).forEach((r: { user_id: string; role: string }) => {
       (rolesByUser[r.user_id] ||= []).push(r.role);
     });
-    const users = list.users.map((u) => ({
-      id: u.id,
-      email: u.email,
-      display_name: (u.user_metadata as Record<string, unknown>)?.display_name || u.email?.split('@')[0],
-      created_at: u.created_at,
-      last_sign_in_at: u.last_sign_in_at,
-      roles: rolesByUser[u.id] || [],
-    }));
+    const users = list.users.map((u) => {
+      const userRoles = rolesByUser[u.id] || [];
+      // Pick the highest-privilege role for the UI (admin > staff > measurement_staff)
+      const role = userRoles.includes('admin')
+        ? 'admin'
+        : userRoles.includes('staff')
+          ? 'staff'
+          : userRoles.includes('measurement_staff')
+            ? 'measurement_staff'
+            : null;
+      return {
+        user_id: u.id,
+        id: u.id,
+        email: u.email,
+        display_name: (u.user_metadata as Record<string, unknown>)?.display_name || u.email?.split('@')[0],
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at,
+        role,
+        roles: userRoles,
+      };
+    });
     return new Response(JSON.stringify({ users }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown';
