@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Trash2, Plus, Loader2, ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
-type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number };
+type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number; image_url: string | null };
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -25,6 +25,7 @@ const AdminCategories = () => {
   const [newMainImg, setNewMainImg] = useState<UploadedImage[]>([]);
   const [newSub, setNewSub] = useState("");
   const [newSubParent, setNewSubParent] = useState<string>("");
+  const [newSubImg, setNewSubImg] = useState<UploadedImage[]>([]);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -64,10 +65,12 @@ const AdminCategories = () => {
       name: newSub.trim(),
       slug: slugify(newSub),
       display_order: siblings.length,
+      image_url: newSubImg[0]?.url ?? null,
     });
     setBusy(false);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
     setNewSub("");
+    setNewSubImg([]);
     toast({ title: "Sub-category added" });
     load();
   };
@@ -112,18 +115,32 @@ const AdminCategories = () => {
                 </div>
               </div>
             </div>
-            <ul className="divide-y divide-border rounded-lg border border-border bg-background">
-              {mainCats.length === 0 && <li className="p-4 text-sm text-muted-foreground">No categories yet.</li>}
+            <ul className="space-y-2">
+              {mainCats.length === 0 && (
+                <li className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
+                  No categories yet.
+                </li>
+              )}
               {mainCats.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {c.image_url && <img src={c.image_url} alt="" className="h-full w-full object-cover" />}
-                    </div>
-                    <div>
-                      <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.slug}</p>
-                    </div>
+                <li
+                  key={c.id}
+                  className="flex items-center gap-4 rounded-lg border border-border bg-background p-3"
+                >
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                    {c.image_url ? (
+                      <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{c.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">/{c.slug}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {subCats.filter((s) => s.main_category_id === c.id).length} sub-categories
+                    </p>
                   </div>
                   {isAdmin && (
                     <Button size="icon" variant="ghost" onClick={() => remove("main_categories", c.id)}>
@@ -141,17 +158,19 @@ const AdminCategories = () => {
             <CardTitle className="font-display">Sub-categories</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Parent category</Label>
-              <Select value={newSubParent} onValueChange={setNewSubParent}>
-                <SelectTrigger><SelectValue placeholder="Choose main category" /></SelectTrigger>
-                <SelectContent>
-                  {mainCats.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2 pt-1">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Parent category</Label>
+                <Select value={newSubParent} onValueChange={setNewSubParent}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose main category" /></SelectTrigger>
+                  <SelectContent>
+                    {mainCats.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
                 <Input
                   placeholder="e.g. L-Shape, 3-Seater"
                   value={newSub}
@@ -160,19 +179,41 @@ const AdminCategories = () => {
                   disabled={!newSubParent}
                 />
                 <Button onClick={addSub} disabled={busy || !newSub.trim() || !newSubParent}>
-                  <Plus className="h-4 w-4" />
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 </Button>
               </div>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cover image (optional)</Label>
+                <div className="mt-1.5">
+                  <ImageUploader value={newSubImg} onChange={setNewSubImg} />
+                </div>
+              </div>
             </div>
-            <ul className="divide-y divide-border rounded-lg border border-border bg-background">
-              {subCats.length === 0 && <li className="p-4 text-sm text-muted-foreground">No sub-categories yet.</li>}
+            <ul className="space-y-2">
+              {subCats.length === 0 && (
+                <li className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
+                  No sub-categories yet.
+                </li>
+              )}
               {subCats.map((s) => {
                 const parent = mainCats.find((m) => m.id === s.main_category_id);
                 return (
-                  <li key={s.id} className="flex items-center justify-between gap-3 p-3">
-                    <div>
-                      <p className="font-medium">{s.name}</p>
-                      <p className="text-xs text-muted-foreground">{parent?.name ?? "—"}</p>
+                  <li
+                    key={s.id}
+                    className="flex items-center gap-4 rounded-lg border border-border bg-background p-3"
+                  >
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                      {s.image_url ? (
+                        <img src={s.image_url} alt={s.name} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{s.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{parent?.name ?? "—"} · /{s.slug}</p>
                     </div>
                     {isAdmin && (
                       <Button size="icon" variant="ghost" onClick={() => remove("sub_categories", s.id)}>
