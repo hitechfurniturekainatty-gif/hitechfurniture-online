@@ -403,16 +403,22 @@ const AdminQuotationEditor = () => {
 
   return (
     <AdminShell>
+      {/* Top bar */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild><Link to="/admin/quotations"><ArrowLeft className="h-4 w-4" /></Link></Button>
-          <div>
-            <p className="font-mono text-sm text-muted-foreground">{q.quotation_id}</p>
-            <h1 className="font-display text-2xl">{q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span></h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link to="/admin/quotations"><ArrowLeft className="h-4 w-4" /></Link>
+          </Button>
+          <div className="min-w-0">
+            <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
+            <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
+              {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
+            </h1>
           </div>
-          <Badge variant={q.status === "draft" ? "outline" : "secondary"} className="ml-2">{q.status}</Badge>
+          <Badge variant={q.status === "draft" ? "outline" : "secondary"} className="shrink-0">{q.status}</Badge>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
+        <div className="hidden flex-wrap gap-2 sm:flex">
           <Button onClick={saveAll} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
@@ -429,18 +435,18 @@ const AdminQuotationEditor = () => {
       {/* Header form */}
       <Card className="mb-4">
         <CardHeader className="pb-3"><CardTitle className="text-base">Party & Quotation Details</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-1.5"><Label>Party name *</Label><Input value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Place *</Label><Input value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Phone</Label><Input value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
-          <div className="space-y-1.5 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Quotation date</Label><Input type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Expected delivery</Label><Input type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
+        <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <div className="space-y-1.5"><Label>Party name *</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
+          <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Quotation date</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Expected delivery</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
           {canEditPrice && (
             <div className="space-y-1.5">
               <Label>Status</Label>
               <Select value={q.status} onValueChange={(v) => updateHeader({ status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -450,96 +456,151 @@ const AdminQuotationEditor = () => {
 
       {/* Items */}
       <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">Items</CardTitle>
+        <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-base">Items ({items.length})</CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={openProductPicker}><Package className="mr-1.5 h-3.5 w-3.5" />From catalog</Button>
-            <Button size="sm" onClick={addBlankItem}><Plus className="mr-1.5 h-3.5 w-3.5" />Blank row</Button>
+            <Button size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
+              <Package className="mr-1.5 h-4 w-4" />From catalog
+            </Button>
+            <Button size="sm" className="flex-1 sm:flex-initial" onClick={addBlankItem}>
+              <Plus className="mr-1.5 h-4 w-4" />Add item
+            </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {items.length === 0 && <p className="text-center text-sm text-muted-foreground py-6">No items yet. Add from catalog or create a blank row.</p>}
+        <CardContent className="space-y-3 px-3 sm:px-6">
+          {items.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
+          )}
           {items.map((it, idx) => (
-            <div key={it.id} className="rounded-lg border bg-card p-3">
-              <div className="mb-2 flex items-center justify-between">
+            <div key={it.id} className="rounded-lg border bg-card p-3 shadow-sm">
+              {/* Row header: SL, badges, delete */}
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {canEditPrice && !it._isNew && (
                     <Checkbox
+                      className="h-5 w-5"
                       checked={selectedItemIds.has(it.id)}
                       onCheckedChange={(v) => toggleItemSelect(it.id, !!v)}
                       aria-label="Select for job work"
                     />
                   )}
-                  <span className="text-xs font-semibold text-muted-foreground">SL {idx + 1}</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">#{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
+                  <span className="ml-auto font-mono text-sm font-semibold text-primary sm:hidden">
+                    {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
+                  </span>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => removeItem(it)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
-              <div className="grid gap-3 md:grid-cols-[1fr_140px_140px_100px_120px_120px]">
+
+              {/* Mobile-first stacked layout, with desktop grid above lg */}
+              <div className="grid gap-3 lg:grid-cols-[1fr_140px_180px_90px_120px_120px]">
+                {/* Description */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Description</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</Label>
                   <Textarea rows={2} value={it.description} onChange={(e) => updateItem(it.id, { description: e.target.value })} placeholder="Item name & details" />
                 </div>
+
+                {/* Item image */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Item image</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Item photo</Label>
                   <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" compact />
                 </div>
+
+                {/* Measurement */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Measurement</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Measurement</Label>
                   <Textarea rows={2} value={it.measurement ?? ""} onChange={(e) => updateItem(it.id, { measurement: e.target.value })} placeholder="W x H x D" />
                   <SingleImagePicker value={it.measurement_image_url} onChange={(v) => updateItem(it.id, { measurement_image_url: v })} folder="measurements" compact />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Qty</Label>
-                  <Input type="number" min={0} step="0.01" value={it.quantity}
-                    onChange={(e) => updateItem(it.id, { quantity: Number(e.target.value) })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Unit price</Label>
-                  <Input type="number" min={0} step="0.01" value={it.unit_price}
-                    onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) })}
-                    disabled={!canEditPrice} />
-                  {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Amount</Label>
-                  <div className="flex h-10 items-center justify-end rounded-md border bg-muted px-3 font-mono text-sm">
-                    {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
+
+                {/* Qty + Unit price + Amount: side-by-side row on mobile */}
+                <div className="grid grid-cols-3 gap-3 lg:contents">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</Label>
+                    <Input className="h-11" type="number" inputMode="decimal" min={0} step="0.01" value={it.quantity}
+                      onChange={(e) => updateItem(it.id, { quantity: Number(e.target.value) })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit ₹</Label>
+                    <Input className="h-11" type="number" inputMode="decimal" min={0} step="0.01" value={it.unit_price}
+                      onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) })}
+                      disabled={!canEditPrice} />
+                    {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</Label>
+                    <div className="flex h-11 items-center justify-end rounded-md border bg-muted px-3 font-mono text-sm font-semibold">
+                      {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+
+          {/* Mobile-friendly add-more button at bottom of list */}
+          {items.length > 0 && (
+            <Button variant="outline" className="h-12 w-full border-dashed" onClick={addBlankItem}>
+              <Plus className="mr-2 h-4 w-4" />Add another item
+            </Button>
+          )}
         </CardContent>
       </Card>
 
       {/* Totals */}
       <Card className="mb-4">
-        <CardContent className="grid gap-3 p-4 md:grid-cols-2">
-          <div className="space-y-3">
-            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} /></div>
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <div className="space-y-3 order-2 md:order-1">
+            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Terms, delivery info, special instructions..." /></div>
             {canEditPrice && (
               <div className="space-y-1.5">
                 <Label>GST %</Label>
                 <Select value={String(q.gst_percent)} onValueChange={(v) => updateHeader({ gst_percent: Number(v) })}>
-                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-11 w-32"><SelectValue /></SelectTrigger>
                   <SelectContent>{GST_OPTIONS.map((g) => <SelectItem key={g} value={String(g)}>{g}%</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             )}
           </div>
-          <div className="ml-auto w-full max-w-sm space-y-2 rounded-lg border bg-card p-4">
+          <div className="order-1 w-full space-y-2 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 md:order-2 md:ml-auto md:max-w-sm">
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{formatINR(subtotal)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">GST ({q.gst_percent}%)</span><span className="font-medium">{formatINR(gstAmount)}</span></div>
             <Separator />
-            <div className="flex justify-between"><span className="font-display text-base">Total</span><span className="font-display text-xl font-semibold text-primary">{formatINR(total)}</span></div>
+            <div className="flex items-baseline justify-between"><span className="font-display text-base">Total</span><span className="font-display text-2xl font-bold text-primary">{formatINR(total)}</span></div>
           </div>
         </CardContent>
       </Card>
 
       {isFieldOnly && (
-        <p className="text-center text-xs text-muted-foreground">Submit this draft and office staff will add prices and finalize.</p>
+        <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
       )}
+
+      {/* Sticky mobile action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
+        <div className="flex gap-2">
+          <Button onClick={saveAll} disabled={saving} className="h-12 flex-1">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
+          </Button>
+          {canEditPrice && (
+            <>
+              <Button variant="outline" onClick={downloadPdf} className="h-12 flex-1">
+                <Download className="mr-1.5 h-4 w-4" />PDF
+              </Button>
+              <Button variant="outline" onClick={shareWhatsApp} className="h-12 flex-1">
+                <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
+              </Button>
+              <Button variant="secondary" onClick={openJobDialog} className="h-12 px-3" aria-label="Assign job">
+                <HardHat className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      {/* Spacer so content isn't hidden behind sticky bar on mobile */}
+      <div className="h-16 sm:hidden" aria-hidden />
 
       {/* Product picker */}
       <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
