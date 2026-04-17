@@ -184,10 +184,10 @@ const AdminQuotationEditor = () => {
     toast({ title: "Item added" });
   };
 
-  const saveAll = async () => {
-    if (!q) return;
+  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections
+  const saveAll = async (): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
+    if (!q) return null;
     setSaving(true);
-    // 1. update header if dirty
     if (headerDirty) {
       const { error } = await supabase.from("quotations").update({
         party_name: q.party_name,
@@ -203,11 +203,13 @@ const AdminQuotationEditor = () => {
       if (error) {
         setSaving(false);
         toast({ title: "Save failed", description: error.message, variant: "destructive" });
-        return;
+        return null;
       }
     }
-    // 2. items
-    for (const it of items) {
+    const idMap: Record<string, string> = {};
+    const updated: QItem[] = [...items];
+    for (let i = 0; i < updated.length; i++) {
+      const it = updated[i];
       if (!it._dirty) continue;
       if (!it.description.trim()) continue;
       const payload = {
@@ -223,17 +225,35 @@ const AdminQuotationEditor = () => {
       };
       if (it._isNew) {
         const { data, error } = await supabase.from("quotation_items").insert(payload).select("id").single();
-        if (error) { setSaving(false); toast({ title: "Item save failed", description: error.message, variant: "destructive" }); return; }
-        // map tmp id -> real
-        setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, id: data!.id, _isNew: false, _dirty: false } : p)));
+        if (error) { setSaving(false); toast({ title: "Item save failed", description: error.message, variant: "destructive" }); return null; }
+        idMap[it.id] = data!.id;
+        updated[i] = { ...it, id: data!.id, _isNew: false, _dirty: false };
       } else {
         const { error } = await supabase.from("quotation_items").update(payload).eq("id", it.id);
-        if (error) { setSaving(false); toast({ title: "Item update failed", description: error.message, variant: "destructive" }); return; }
+        if (error) { setSaving(false); toast({ title: "Item update failed", description: error.message, variant: "destructive" }); return null; }
+        updated[i] = { ...it, _dirty: false };
       }
     }
+    setItems(updated);
+    setHeaderDirty(false);
     setSaving(false);
     toast({ title: "Saved" });
-    load();
+    return { idMap, savedItems: updated };
+  };
+
+  const ensureSaved = async (): Promise<QItem[] | null> => {
+    const hasPending = headerDirty || items.some((i) => i._dirty || i._isNew);
+    if (!hasPending) return items;
+    const result = await saveAll();
+    if (!result) return null;
+    if (Object.keys(result.idMap).length > 0) {
+      setSelectedItemIds((prev) => {
+        const next = new Set<string>();
+        prev.forEach((id) => next.add(result.idMap[id] ?? id));
+        return next;
+      });
+    }
+    return result.savedItems;
   };
 
   // ---- PDF & WhatsApp ----
