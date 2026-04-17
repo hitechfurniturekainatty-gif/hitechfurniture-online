@@ -2,104 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Hitech Furniture & Interiors — Design System
+   Inspired by the brand mark: deep teal + warm marigold accent on a cream canvas.
+   All colors HSL. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 40 33% 97%;
+    --foreground: 195 35% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 195 35% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 195 35% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand teal from the logo */
+    --primary: 187 65% 24%;
+    --primary-foreground: 40 33% 97%;
+    --primary-glow: 184 55% 38%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Warm marigold dot from the logo */
+    --accent: 32 92% 55%;
+    --accent-foreground: 195 40% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --secondary: 40 25% 92%;
+    --secondary-foreground: 195 35% 18%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 40 20% 93%;
+    --muted-foreground: 195 12% 38%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 48%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 195 15% 88%;
+    --input: 195 15% 88%;
+    --ring: 187 65% 24%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(187 65% 18%) 0%, hsl(187 65% 24%) 45%, hsl(184 55% 32%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(32 92% 55%), hsl(28 88% 48%));
+    --gradient-cream: linear-gradient(180deg, hsl(40 33% 97%) 0%, hsl(40 28% 94%) 100%);
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Shadows */
+    --shadow-card: 0 1px 2px hsl(195 25% 15% / 0.04), 0 8px 24px -8px hsl(195 25% 15% / 0.10);
+    --shadow-product: 0 4px 12px -4px hsl(195 25% 15% / 0.08), 0 24px 48px -16px hsl(187 50% 20% / 0.20);
+    --shadow-elegant: 0 30px 60px -20px hsl(187 65% 18% / 0.35);
+    --shadow-glow: 0 0 0 1px hsl(187 65% 24% / 0.08), 0 12px 32px -8px hsl(187 65% 24% / 0.25);
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Motion */
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --transition-smooth: all 0.4s var(--ease-out-soft);
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 40 33% 97%;
+    --sidebar-foreground: 195 35% 18%;
+    --sidebar-primary: 187 65% 24%;
+    --sidebar-primary-foreground: 40 33% 97%;
+    --sidebar-accent: 40 25% 92%;
+    --sidebar-accent-foreground: 195 35% 18%;
+    --sidebar-border: 195 15% 88%;
+    --sidebar-ring: 187 65% 24%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 195 35% 8%;
+    --foreground: 40 33% 95%;
+    --card: 195 32% 11%;
+    --card-foreground: 40 33% 95%;
+    --popover: 195 32% 11%;
+    --popover-foreground: 40 33% 95%;
+    --primary: 184 55% 48%;
+    --primary-foreground: 195 35% 8%;
+    --primary-glow: 184 60% 58%;
+    --accent: 32 92% 58%;
+    --accent-foreground: 195 35% 8%;
+    --secondary: 195 28% 16%;
+    --secondary-foreground: 40 33% 95%;
+    --muted: 195 25% 16%;
+    --muted-foreground: 195 8% 65%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 195 25% 18%;
+    --input: 195 25% 18%;
+    --ring: 184 55% 48%;
+    --sidebar-background: 195 35% 8%;
+    --sidebar-foreground: 40 33% 95%;
+    --sidebar-primary: 184 55% 48%;
+    --sidebar-primary-foreground: 195 35% 8%;
+    --sidebar-accent: 195 28% 16%;
+    --sidebar-accent-foreground: 40 33% 95%;
+    --sidebar-border: 195 25% 18%;
+    --sidebar-ring: 184 55% 48%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
+  * { @apply border-border; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .hero-bg { background: var(--gradient-hero); }
+  .accent-bg { background: var(--gradient-accent); }
+  .shadow-product { box-shadow: var(--shadow-product); }
+  .shadow-elegant { box-shadow: var(--shadow-elegant); }
+  .shadow-card-soft { box-shadow: var(--shadow-card); }
+  .transition-smooth { transition: var(--transition-smooth); }
+
+  .product-card {
+    @apply bg-card rounded-2xl overflow-hidden border border-border/60 transition-smooth;
+    box-shadow: var(--shadow-card);
+  }
+  .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-product);
   }
 }
