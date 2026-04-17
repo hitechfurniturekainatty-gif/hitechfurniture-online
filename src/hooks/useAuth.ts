@@ -10,31 +10,31 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchRoles = async (userId: string) => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      setRoles((data ?? []).map((r) => r.role as AppRole));
+      setLoading(false);
+    };
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Defer role fetch
-        setTimeout(() => {
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .then(({ data }) => setRoles((data ?? []).map((r) => r.role as AppRole)));
-        }, 0);
+        setTimeout(() => fetchRoles(session.user.id), 0);
       } else {
         setRoles([]);
+        setLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .then(({ data }) => setRoles((data ?? []).map((r) => r.role as AppRole)));
+        fetchRoles(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);

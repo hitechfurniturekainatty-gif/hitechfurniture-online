@@ -2,7 +2,9 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Upload, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Upload, X, Link as LinkIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export type UploadedImage = { url: string; path: string };
@@ -15,6 +17,19 @@ export const ImageUploader = ({
   onChange: (next: UploadedImage[]) => void;
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+
+  const addUrl = () => {
+    const u = urlInput.trim();
+    if (!u) return;
+    try {
+      new URL(u);
+    } catch {
+      return toast({ title: "Invalid URL", variant: "destructive" });
+    }
+    onChange([...value, { url: u, path: u }]);
+    setUrlInput("");
+  };
 
   const onDrop = useCallback(
     async (files: File[]) => {
@@ -51,25 +66,44 @@ export const ImageUploader = ({
 
   return (
     <div className="space-y-3">
-      <div
-        {...getRootProps()}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-smooth ${
-          isDragActive ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/50"
-        }`}
-      >
-        <input {...getInputProps()} />
-        {uploading ? (
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        ) : (
-          <>
-            <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              {isDragActive ? "Drop images here" : "Drag & drop or click to upload"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WebP. Multiple allowed.</p>
-          </>
-        )}
-      </div>
+      <Tabs defaultValue="upload">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="upload"><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload</TabsTrigger>
+          <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-3.5 w-3.5" /> Paste URL</TabsTrigger>
+        </TabsList>
+        <TabsContent value="upload">
+          <div
+            {...getRootProps()}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-smooth ${
+              isDragActive ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/50"
+            }`}
+          >
+            <input {...getInputProps()} />
+            {uploading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            ) : (
+              <>
+                <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
+                <p className="text-sm font-medium">
+                  {isDragActive ? "Drop images here" : "Drag & drop or click to upload"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WebP. Multiple allowed.</p>
+              </>
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="url">
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://example.com/image.jpg"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addUrl())}
+            />
+            <Button type="button" onClick={addUrl}>Add</Button>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {value.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
