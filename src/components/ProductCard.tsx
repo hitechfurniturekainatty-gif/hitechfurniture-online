@@ -19,14 +19,14 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
 
   return (
     <Link to={`/product/${product.id}`} className="product-card group block">
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+      <div className="img-frame relative aspect-[4/5]">
         {cover ? (
           <img
             src={cover}
             alt={product.product_name}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-contain p-3 transition-smooth group-hover:scale-105"
+            className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
@@ -34,10 +34,10 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
           </div>
         )}
         {onOffer && (
-          <Badge className="absolute left-3 top-3 bg-accent text-accent-foreground">Offer</Badge>
+          <Badge className="absolute left-3 top-3 z-10 bg-accent text-accent-foreground">Offer</Badge>
         )}
         {product.stock_quantity <= 0 && (
-          <Badge variant="secondary" className="absolute right-3 top-3">Out of stock</Badge>
+          <Badge variant="secondary" className="absolute right-3 top-3 z-10">Out of stock</Badge>
         )}
       </div>
       <div className="space-y-2 p-4">
