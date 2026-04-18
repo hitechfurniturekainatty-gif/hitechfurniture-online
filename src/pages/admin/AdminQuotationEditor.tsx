@@ -226,34 +226,57 @@ const AdminQuotationEditor = () => {
     }
     const idMap: Record<string, string> = {};
     const updated: QItem[] = [...items];
+
+    // Build the work list of dirty rows to insert/update in parallel.
+    type Job = { index: number; payload: any; isNew: boolean; tmpId: string; existingId: string };
+    const jobs: Job[] = [];
     for (let i = 0; i < updated.length; i++) {
       const it = updated[i];
       if (!it._dirty) continue;
       if (!it.description.trim()) continue;
-      const payload = {
-        quotation_id: q.id,
-        description: it.description,
-        item_image_url: it.item_image_url,
-        measurement: it.measurement,
-        measurement_image_url: it.measurement_image_url,
-        catalog_text: it.catalog_text,
-        catalog_image_url: it.catalog_image_url,
-        quantity: Number(it.quantity) || 0,
-        unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
-        display_order: it.display_order,
-        product_id: it.product_id,
-      };
-      if (it._isNew) {
-        const { data, error } = await supabase.from("quotation_items").insert(payload).select("id").single();
-        if (error) { setSaving(false); toast({ title: "Item save failed", description: error.message, variant: "destructive" }); return null; }
-        idMap[it.id] = data!.id;
-        updated[i] = { ...it, id: data!.id, _isNew: false, _dirty: false };
-      } else {
-        const { error } = await supabase.from("quotation_items").update(payload).eq("id", it.id);
-        if (error) { setSaving(false); toast({ title: "Item update failed", description: error.message, variant: "destructive" }); return null; }
-        updated[i] = { ...it, _dirty: false };
-      }
+      jobs.push({
+        index: i,
+        isNew: !!it._isNew,
+        tmpId: it.id,
+        existingId: it.id,
+        payload: {
+          quotation_id: q.id,
+          description: it.description,
+          item_image_url: it.item_image_url,
+          measurement: it.measurement,
+          measurement_image_url: it.measurement_image_url,
+          catalog_text: it.catalog_text,
+          catalog_image_url: it.catalog_image_url,
+          quantity: Number(it.quantity) || 0,
+          unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
+          display_order: it.display_order,
+          product_id: it.product_id,
+        },
+      });
     }
+
+    // Run all row writes concurrently — dramatically faster on quotations with many items.
+    const results = await Promise.all(
+      jobs.map((j) =>
+        j.isNew
+          ? supabase.from("quotation_items").insert(j.payload).select("id").single()
+          : supabase.from("quotation_items").update(j.payload).eq("id", j.existingId).select("id").single()
+      )
+    );
+
+    for (let k = 0; k < jobs.length; k++) {
+      const j = jobs[k];
+      const res: any = results[k];
+      if (res.error) {
+        setSaving(false);
+        toast({ title: "Item save failed", description: res.error.message, variant: "destructive" });
+        return null;
+      }
+      const newId = res.data?.id ?? j.existingId;
+      if (j.isNew) idMap[j.tmpId] = newId;
+      updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
+    }
+
     setItems(updated);
     setHeaderDirty(false);
     setSaving(false);
