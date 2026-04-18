@@ -245,20 +245,29 @@ async function toDataUri(url: string | null): Promise<string | null> {
 }
 
 export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
+  const splitUrls = (raw: string | null) =>
+    (raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+
   const items = await Promise.all(
     q.items.map(async (it) => {
-      const measUrls = (it.measurement_image_url ?? "")
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
-        (u): u is string => !!u
-      );
+      const measUrls = splitUrls(it.measurement_image_url);
+      const catUrls = splitUrls(it.catalog_image_url);
+      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+        Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        toDataUri(it.item_image_url),
+      ]);
       return {
         ...it,
-        item_image_url: await toDataUri(it.item_image_url),
+        item_image_url: itemUri,
         measurement_image_url: measDataUris[0] ?? null,
         measurement_images: measDataUris,
+        catalog_image_url: catDataUris[0] ?? null,
+        catalog_images: catDataUris,
       };
     })
   );
