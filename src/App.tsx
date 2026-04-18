@@ -1,24 +1,52 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import Catalog from "./pages/Catalog.tsx";
-import ProductDetail from "./pages/ProductDetail.tsx";
-import Auth from "./pages/Auth.tsx";
-import AdminOverview from "./pages/admin/AdminOverview.tsx";
-import AdminMyWork from "./pages/admin/AdminMyWork.tsx";
-import AdminCategories from "./pages/admin/AdminCategories.tsx";
-import AdminProducts from "./pages/admin/AdminProducts.tsx";
-import AdminStaff from "./pages/admin/AdminStaff.tsx";
-import AdminWorkers from "./pages/admin/AdminWorkers.tsx";
-import AdminMeasurementTasks from "./pages/admin/AdminMeasurementTasks.tsx";
-import AdminQuotations from "./pages/admin/AdminQuotations.tsx";
-import AdminQuotationEditor from "./pages/admin/AdminQuotationEditor.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Eager: home page (LCP-critical, almost always the entry point)
+import Index from "./pages/Index.tsx";
+
+// Lazy-loaded: every other route. Big wins:
+// - PDF library (@react-pdf/renderer ~600kb) only loads when admin opens the editor
+// - Public visitors never download admin code
+// - Each route becomes its own chunk → faster first paint, better caching
+const Catalog = lazy(() => import("./pages/Catalog.tsx"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
+const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
+const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminStaff = lazy(() => import("./pages/admin/AdminStaff.tsx"));
+const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
+const AdminMeasurementTasks = lazy(() => import("./pages/admin/AdminMeasurementTasks.tsx"));
+const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations.tsx"));
+const AdminQuotationEditor = lazy(() => import("./pages/admin/AdminQuotationEditor.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+
+// React Query tuned for many concurrent users:
+// - staleTime 60s avoids hammering the DB on every navigation
+// - refetchOnWindowFocus disabled to cut redundant requests
+// - 1 retry only so slow networks fail fast instead of compounding load
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+const RouteFallback = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <Loader2 className="h-7 w-7 animate-spin text-primary" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,22 +54,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/catalog" element={<Catalog />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminOverview />} />
-          <Route path="/admin/my-work" element={<AdminMyWork />} />
-          <Route path="/admin/categories" element={<AdminCategories />} />
-          <Route path="/admin/products" element={<AdminProducts />} />
-          <Route path="/admin/staff" element={<AdminStaff />} />
-          <Route path="/admin/workers" element={<AdminWorkers />} />
-          <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
-          <Route path="/admin/quotations" element={<AdminQuotations />} />
-          <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<AdminOverview />} />
+            <Route path="/admin/my-work" element={<AdminMyWork />} />
+            <Route path="/admin/categories" element={<AdminCategories />} />
+            <Route path="/admin/products" element={<AdminProducts />} />
+            <Route path="/admin/staff" element={<AdminStaff />} />
+            <Route path="/admin/workers" element={<AdminWorkers />} />
+            <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
+            <Route path="/admin/quotations" element={<AdminQuotations />} />
+            <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
