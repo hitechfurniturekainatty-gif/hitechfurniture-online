@@ -92,23 +92,23 @@ export const AiImageDialog = ({
     setMode("generate");
   };
 
-  // Upload an attached file to product-images bucket and use it as the source.
+  // Read attached file as a base64 data URL — no storage round-trip needed,
+  // the model accepts data URLs directly. Much faster than upload-then-edit.
   const handleAttachFile = async (file: File) => {
     setUploadingSource(true);
     try {
       const compressed = await compressImage(file);
-      const ext = (compressed.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `ai-source/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("product-images")
-        .upload(path, compressed, { contentType: compressed.type, upsert: false });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
-      setSourceUrl(pub.publicUrl);
-      toast({ title: "Image attached", description: "Ready to edit with AI." });
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(compressed);
+      });
+      setSourceUrl(dataUrl);
+      toast({ title: "Image attached", description: "Ready to edit instantly." });
     } catch (e) {
       toast({
-        title: "Upload failed",
+        title: "Attach failed",
         description: e instanceof Error ? e.message : String(e),
         variant: "destructive",
       });

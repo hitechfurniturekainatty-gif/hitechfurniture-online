@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const prompt: string = (body.prompt ?? "").toString().trim();
     const sourceImageUrl: string | undefined = body.source_image_url;
-    const model: string = body.model ?? "google/gemini-2.5-flash-image";
+    // Default to Nano Banana 2 (fast + pro-quality). Caller can override.
+    const model: string = body.model ?? "google/gemini-3.1-flash-image-preview";
     if (!prompt) return json({ error: "Prompt required" }, 400);
 
     // Build messages: edit mode if source image provided
