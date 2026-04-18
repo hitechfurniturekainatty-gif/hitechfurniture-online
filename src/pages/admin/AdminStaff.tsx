@@ -1,39 +1,54 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+type Role = "admin" | "staff" | "measurement_staff";
 type StaffRow = {
   user_id: string;
   email: string | null;
   display_name: string | null;
-  role: "admin" | "staff" | "measurement_staff" | null;
+  role: Role | null;
   created_at: string;
 };
 
-const roleLabel = { admin: "Admin", staff: "Office Staff", measurement_staff: "Measurement Staff" } as const;
-const roleColor = {
+const roleLabel: Record<Role, string> = { admin: "Admin", staff: "Office Staff", measurement_staff: "Measurement Staff" };
+const roleColor: Record<Role, string> = {
   admin: "bg-primary text-primary-foreground",
   staff: "bg-secondary text-secondary-foreground",
   measurement_staff: "bg-accent text-accent-foreground",
-} as const;
+};
 
 const AdminStaff = () => {
   const { isAdmin, user } = useAuth();
   const [rows, setRows] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
+
+  // Create
+  const [openCreate, setOpenCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "staff" as StaffRow["role"] });
+  const [showCreatePw, setShowCreatePw] = useState(false);
+  const [form, setForm] = useState<{ email: string; password: string; display_name: string; role: Role }>({
+    email: "", password: "", display_name: "", role: "staff",
+  });
+
+  // Edit
+  const [editing, setEditing] = useState<StaffRow | null>(null);
+  const [editForm, setEditForm] = useState<{ display_name: string; email: string; role: Role; password: string }>({
+    display_name: "", email: "", role: "staff", password: "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [showEditPw, setShowEditPw] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +70,10 @@ const AdminStaff = () => {
       toast({ title: "Missing fields", variant: "destructive" });
       return;
     }
+    if (form.password.length < 8) {
+      toast({ title: "Password too short", description: "Use at least 8 characters", variant: "destructive" });
+      return;
+    }
     setCreating(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", {
       body: { email: form.email, password: form.password, display_name: form.display_name, role: form.role },
@@ -64,22 +83,71 @@ const AdminStaff = () => {
       toast({ title: "Create failed", description: error?.message || (data as any)?.error, variant: "destructive" });
       return;
     }
-    toast({ title: "Account created", description: `${form.email} added as ${roleLabel[form.role!]}` });
-    setOpen(false);
+    toast({ title: "Account created", description: `${form.email} added as ${roleLabel[form.role]}` });
+    setOpenCreate(false);
     setForm({ email: "", password: "", display_name: "", role: "staff" });
     load();
   };
 
-  const updateRole = async (userId: string, newRole: StaffRow["role"]) => {
-    if (!newRole) return;
-    const { error } = await supabase.functions.invoke("admin-update-user-role", {
-      body: { user_id: userId, role: newRole },
+  const openEdit = (r: StaffRow) => {
+    setEditing(r);
+    setEditForm({
+      display_name: r.display_name ?? "",
+      email: r.email ?? "",
+      role: (r.role ?? "staff") as Role,
+      password: "",
     });
-    if (error) {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    setShowEditPw(false);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      // Profile (name + email)
+      if (
+        (editForm.display_name ?? "") !== (editing.display_name ?? "") ||
+        (editForm.email ?? "") !== (editing.email ?? "")
+      ) {
+        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
+          body: { user_id: editing.user_id, action: "update_profile", display_name: editForm.display_name, email: editForm.email },
+        });
+        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      }
+      // Role
+      if (editForm.role !== editing.role && editing.user_id !== user?.id) {
+        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
+          body: { user_id: editing.user_id, action: "set_role", role: editForm.role },
+        });
+        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      }
+      // Password
+      if (editForm.password) {
+        if (editForm.password.length < 8) throw new Error("Password must be at least 8 characters");
+        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
+          body: { user_id: editing.user_id, action: "set_password", password: editForm.password },
+        });
+        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
+      }
+      toast({ title: "Staff updated" });
+      setEditing(null);
+      load();
+    } catch (e: any) {
+      toast({ title: "Update failed", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const deleteUser = async (r: StaffRow) => {
+    const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
+      body: { user_id: r.user_id, action: "delete" },
+    });
+    if (error || (data as any)?.error) {
+      toast({ title: "Delete failed", description: error?.message || (data as any)?.error, variant: "destructive" });
       return;
     }
-    toast({ title: "Role updated" });
+    toast({ title: "Account deleted" });
     load();
   };
 
@@ -93,12 +161,12 @@ const AdminStaff = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl">Staff Management</h1>
-          <p className="mt-1 text-muted-foreground">Create accounts and assign roles for your team.</p>
+          <p className="mt-1 text-muted-foreground">Create accounts, reset passwords and assign roles.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={openCreate} onOpenChange={setOpenCreate}>
           <DialogTrigger asChild>
             <Button><UserPlus className="mr-2 h-4 w-4" /> Add staff</Button>
           </DialogTrigger>
@@ -115,11 +183,24 @@ const AdminStaff = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>Temporary password * (min 8 characters)</Label>
-                <Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" minLength={8} required />
+                <div className="relative">
+                  <Input
+                    type={showCreatePw ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="At least 8 characters"
+                    minLength={8}
+                    required
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => setShowCreatePw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Role *</Label>
-                <Select value={form.role ?? undefined} onValueChange={(v) => setForm({ ...form, role: v as StaffRow["role"] })}>
+                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin (full access)</SelectItem>
@@ -130,7 +211,7 @@ const AdminStaff = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setOpenCreate(false)}>Cancel</Button>
               <Button onClick={createUser} disabled={creating}>
                 {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create
               </Button>
@@ -143,39 +224,119 @@ const AdminStaff = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <div className="grid gap-3">
-          {rows.map((r) => (
-            <Card key={r.user_id}>
-              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                    {r.role === "admin" ? <ShieldCheck className="h-5 w-5 text-primary" /> :
-                      r.role === "measurement_staff" ? <Ruler className="h-5 w-5 text-primary" /> :
-                        <UserIcon className="h-5 w-5 text-primary" />}
+          {rows.map((r) => {
+            const isSelf = r.user_id === user?.id;
+            return (
+              <Card key={r.user_id}>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shrink-0">
+                      {r.role === "admin" ? <ShieldCheck className="h-5 w-5 text-primary" /> :
+                        r.role === "measurement_staff" ? <Ruler className="h-5 w-5 text-primary" /> :
+                          <UserIcon className="h-5 w-5 text-primary" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{r.display_name || r.email} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}</p>
+                      <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{r.display_name || r.email}</p>
-                    <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className={r.role ? roleColor[r.role] : "bg-muted"}>{r.role ? roleLabel[r.role] : "No role"}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                    </Button>
+                    {!isSelf && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently removes <span className="font-medium">{r.email}</span> and revokes their access. Their past data (tasks, quotations) is kept.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteUser(r)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge className={r.role ? roleColor[r.role] : "bg-muted"}>{r.role ? roleLabel[r.role] : "No role"}</Badge>
-                  {r.user_id !== user?.id && (
-                    <Select value={r.role ?? undefined} onValueChange={(v) => updateRole(r.user_id, v as StaffRow["role"])}>
-                      <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder="Change role" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="staff">Office Staff</SelectItem>
-                        <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
           {rows.length === 0 && <p className="text-center text-muted-foreground py-8">No staff accounts yet.</p>}
         </div>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit staff account</DialogTitle>
+            <DialogDescription>Update profile, change role, or reset password.</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Display name</Label>
+                <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                <p className="text-[11px] text-muted-foreground">Changing email updates the login email immediately.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Role</Label>
+                <Select
+                  value={editForm.role}
+                  onValueChange={(v) => setEditForm({ ...editForm, role: v as Role })}
+                  disabled={editing.user_id === user?.id}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="staff">Office Staff</SelectItem>
+                    <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editing.user_id === user?.id && (
+                  <p className="text-[11px] text-muted-foreground">You can't change your own role.</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> New password (optional)</Label>
+                <div className="relative">
+                  <Input
+                    type={showEditPw ? "text" : "password"}
+                    value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    placeholder="Leave blank to keep current password"
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => setShowEditPw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showEditPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Min 8 characters. Share the new password with the staff member.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
