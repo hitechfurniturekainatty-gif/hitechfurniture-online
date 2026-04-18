@@ -15,6 +15,7 @@ import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter } from "luc
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
+import { ContactPicker } from "@/components/admin/ContactPicker";
 
 type Q = {
   id: string;
