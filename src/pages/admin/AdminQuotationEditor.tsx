@@ -567,7 +567,7 @@ const AdminQuotationEditor = () => {
               </div>
 
               {/* Mobile-first stacked layout, with desktop grid above lg */}
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_120px_minmax(0,1.1fr)_minmax(0,1.1fr)_80px_110px_110px]">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_80px_110px_110px]">
                 {/* Description (medium width) */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</Label>
@@ -577,7 +577,7 @@ const AdminQuotationEditor = () => {
                 {/* Item image */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Item photo</Label>
-                  <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" compact />
+                  <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" />
                 </div>
 
                 {/* Measurement */}
