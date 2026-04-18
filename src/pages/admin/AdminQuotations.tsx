@@ -31,13 +31,27 @@ type Q = {
 const AdminQuotations = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<Q[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
   const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
+
+  // Keep state and URL ?status= in sync
+  const setStatusFilter = (v: string) => {
+    setStatusFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("status"); else next.set("status", v);
+    setSearchParams(next, { replace: true });
+  };
+  useEffect(() => {
+    const fromUrl = searchParams.get("status") ?? "all";
+    if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const load = async () => {
     setLoading(true);
