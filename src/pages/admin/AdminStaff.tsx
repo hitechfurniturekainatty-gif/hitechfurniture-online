@@ -312,13 +312,16 @@ const AdminStaff = () => {
 
       {/* Edit dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle>Edit staff account</DialogTitle>
             <DialogDescription>Update profile, change role, or reset password.</DialogDescription>
           </DialogHeader>
           {editing && (
-            <div className="space-y-3">
+            <div
+              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
+              onFocusCapture={scrollFocusedIntoView}
+            >
               <div className="space-y-1.5">
                 <Label>Display name</Label>
                 <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} />
@@ -374,9 +377,9 @@ const AdminStaff = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={saveEdit} disabled={savingEdit}>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+            <Button variant="outline" onClick={() => setEditing(null)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit} className="w-full sm:w-auto">
               {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes
             </Button>
           </DialogFooter>
