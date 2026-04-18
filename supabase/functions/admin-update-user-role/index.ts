@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
@@ -13,37 +16,70 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')!;
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response(JSON.stringify({ error: 'Missing auth' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!authHeader) return json({ error: 'Missing auth' }, 401);
 
     const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: userData } = await callerClient.auth.getUser();
-    if (!userData.user) return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!userData.user) return json({ error: 'Invalid token' }, 401);
 
     const admin = createClient(url, serviceKey);
     const { data: isAdmin } = await admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' });
-    if (!isAdmin) return new Response(JSON.stringify({ error: 'Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!isAdmin) return json({ error: 'Admin only' }, 403);
 
-    const { user_id, role, action } = await req.json();
-    if (!user_id || !action) return new Response(JSON.stringify({ error: 'user_id and action required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const body = await req.json();
+    const { user_id, role, action, password, display_name, email } = body ?? {};
+    if (!user_id) return json({ error: 'user_id required' }, 400);
 
-    if (action === 'delete') {
-      if (user_id === userData.user.id) {
-        return new Response(JSON.stringify({ error: 'You cannot delete yourself' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+    // Default action for backwards compatibility
+    const act = action || (role ? 'set_role' : null);
+    if (!act) return json({ error: 'action required' }, 400);
+
+    if (act === 'delete') {
+      if (user_id === userData.user.id) return json({ error: 'You cannot delete yourself' }, 400);
       const { error } = await admin.auth.admin.deleteUser(user_id);
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
     }
-    if (action === 'set_role') {
-      if (!['admin', 'staff', 'measurement_staff'].includes(role)) return new Response(JSON.stringify({ error: 'invalid role' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+    if (act === 'set_role') {
+      if (!['admin', 'staff', 'measurement_staff'].includes(role)) return json({ error: 'invalid role' }, 400);
       await admin.from('user_roles').delete().eq('user_id', user_id);
       const { error } = await admin.from('user_roles').insert({ user_id, role });
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
     }
-    return new Response(JSON.stringify({ error: 'unknown action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+    if (act === 'set_password') {
+      if (!password || typeof password !== 'string' || password.length < 8) {
+        return json({ error: 'Password must be at least 8 characters' }, 400);
+      }
+      const { error } = await admin.auth.admin.updateUserById(user_id, { password });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
+    if (act === 'update_profile') {
+      const updates: Record<string, unknown> = {};
+      if (typeof email === 'string' && email.trim()) updates.email = email.trim();
+      const meta: Record<string, unknown> = {};
+      if (typeof display_name === 'string') meta.display_name = display_name;
+      if (Object.keys(meta).length) updates.user_metadata = meta;
+      if (Object.keys(updates).length) {
+        const { error } = await admin.auth.admin.updateUserById(user_id, updates as any);
+        if (error) return json({ error: error.message }, 400);
+      }
+      if (typeof display_name === 'string') {
+        await admin.from('profiles').update({ display_name }).eq('user_id', user_id);
+      }
+      if (typeof email === 'string' && email.trim()) {
+        await admin.from('profiles').update({ email: email.trim() }).eq('user_id', user_id);
+      }
+      return json({ ok: true });
+    }
+
+    return json({ error: 'unknown action' }, 400);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown';
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ error: msg }, 500);
   }
 });
