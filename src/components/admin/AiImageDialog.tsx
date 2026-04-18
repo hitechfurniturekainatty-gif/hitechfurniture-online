@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Upload, Wand2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 // One-click prompt presets. Selecting a preset replaces the prompt textarea.
 const PRESETS: { label: string; description: string; prompt: string }[] = [
@@ -167,8 +168,8 @@ export const AiImageDialog = ({
           Generate with AI
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             AI image studio
@@ -177,6 +178,11 @@ export const AiImageDialog = ({
             Powered by Gemini Nano Banana. Generates a square catalog image and saves it to this product.
           </p>
         </DialogHeader>
+
+        <div
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6"
+          onFocusCapture={scrollFocusedIntoView}
+        >
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
           <TabsList className="grid w-full grid-cols-2">
@@ -292,12 +298,13 @@ export const AiImageDialog = ({
             </div>
           </TabsContent>
         </Tabs>
+        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={run} disabled={loading}>
+          <Button onClick={run} disabled={loading} className="w-full sm:w-auto">
             {loading ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
             ) : (

@@ -16,6 +16,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type Q = {
   id: string;
@@ -159,9 +160,14 @@ const AdminQuotations = () => {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create new quotation</DialogTitle></DialogHeader>
-            <div className="space-y-3">
+          <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+            <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+              <DialogTitle>Create new quotation</DialogTitle>
+            </DialogHeader>
+            <div
+              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
+              onFocusCapture={scrollFocusedIntoView}
+            >
               <div className="flex justify-end">
                 <ContactPicker
                   onPick={({ name, tel }) =>
@@ -178,9 +184,9 @@ const AdminQuotations = () => {
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
               <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={create} disabled={creating}>{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create & open</Button>
+            <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+              <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button onClick={create} disabled={creating} className="w-full sm:w-auto">{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create & open</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Plus, Loader2, ImageIcon, Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number; image_url: string | null };
@@ -292,12 +293,15 @@ const AdminCategories = () => {
 
       {/* Edit Main Category Dialog */}
       <Dialog open={!!editMain} onOpenChange={(o) => !o && setEditMain(null)}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Edit main category</DialogTitle>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="font-display text-xl sm:text-2xl">Edit main category</DialogTitle>
           </DialogHeader>
           {editMain && (
-            <div className="space-y-4">
+            <div
+              className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6"
+              onFocusCapture={scrollFocusedIntoView}
+            >
               <div className="space-y-1.5">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
                 <Input
@@ -314,9 +318,9 @@ const AdminCategories = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditMain(null)}>Cancel</Button>
-            <Button onClick={saveEditMain} disabled={savingEdit || !editMain?.name.trim()}>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+            <Button variant="outline" onClick={() => setEditMain(null)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={saveEditMain} disabled={savingEdit || !editMain?.name.trim()} className="w-full sm:w-auto">
               {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save changes
             </Button>
@@ -326,12 +330,15 @@ const AdminCategories = () => {
 
       {/* Edit Sub Category Dialog */}
       <Dialog open={!!editSub} onOpenChange={(o) => !o && setEditSub(null)}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Edit sub-category</DialogTitle>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="font-display text-xl sm:text-2xl">Edit sub-category</DialogTitle>
           </DialogHeader>
           {editSub && (
-            <div className="space-y-4">
+            <div
+              className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6"
+              onFocusCapture={scrollFocusedIntoView}
+            >
               <div className="space-y-1.5">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Parent category</Label>
                 <Select
@@ -362,9 +369,9 @@ const AdminCategories = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditSub(null)}>Cancel</Button>
-            <Button onClick={saveEditSub} disabled={savingEdit || !editSub?.name.trim()}>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+            <Button variant="outline" onClick={() => setEditSub(null)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={saveEditSub} disabled={savingEdit || !editSub?.name.trim()} className="w-full sm:w-auto">
               {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save changes
             </Button>
