@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { AiImageDialog } from "@/components/admin/AiImageDialog";
 
 export type UploadedImage = { url: string; path: string };
 
@@ -89,8 +90,21 @@ export const ImageUploader = ({
 
   const uploading = pending.length > 0;
 
+  const handleAiGenerated = (url: string) => {
+    onChangeRef.current([...valueRef.current, { url, path: url }]);
+  };
+
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Upload, capture, paste a URL — or generate one with AI.
+        </p>
+        <AiImageDialog
+          onGenerated={handleAiGenerated}
+          existingImageUrls={value.map((v) => v.url)}
+        />
+      </div>
       <Tabs defaultValue="upload">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="upload"><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload</TabsTrigger>
