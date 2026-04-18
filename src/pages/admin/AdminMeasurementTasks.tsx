@@ -180,7 +180,7 @@ const AdminMeasurementTasks = () => {
         </div>
         {isOfficeStaff && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> New task</Button></DialogTrigger>
+            <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New task</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Assign measurement task</DialogTitle></DialogHeader>
               <div className="space-y-3">
