@@ -30,37 +30,71 @@ export const MultiImagePicker = ({
   folder?: string;
   label?: string;
 }) => {
-  const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
+  // Pending = local previews (object URLs) currently uploading in background
+  const [pending, setPending] = useState<{ id: string; preview: string }[]>([]);
 
   const urls: string[] = (value ?? "")
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const commit = (next: string[]) => onChange(next.length ? next.join("\n") : null);
+  // Stable refs so async uploads always see latest urls without retriggering
+  const urlsRef = useRef(urls);
+  useEffect(() => {
+    urlsRef.current = urls;
+  });
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
-  const uploadFiles = useCallback(
-    async (files: File[]) => {
-      if (!files.length) return;
-      setUploading(true);
-      const added: string[] = [];
-      for (const f of files) {
-        const ext = f.name.split(".").pop() || "jpg";
+  // Cleanup object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      pending.forEach((p) => URL.revokeObjectURL(p.preview));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const commit = (next: string[]) =>
+    onChangeRef.current(next.length ? next.join("\n") : null);
+
+  const uploadOne = useCallback(
+    async (file: File, previewId: string, previewUrl: string) => {
+      try {
+        const compressed = await compressImage(file);
+        const ext = (compressed.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
         const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from(bucket).upload(path, f, { upsert: false });
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(path, compressed, { upsert: false, contentType: compressed.type });
         if (error) {
-          toast({ title: `Upload failed: ${f.name}`, description: error.message, variant: "destructive" });
-          continue;
+          toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+          return;
         }
         const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-        added.push(data.publicUrl);
+        commit([...urlsRef.current, data.publicUrl]);
+      } finally {
+        URL.revokeObjectURL(previewUrl);
+        setPending((prev) => prev.filter((p) => p.id !== previewId));
       }
-      if (added.length) commit([...urls, ...added]);
-      setUploading(false);
     },
-    [bucket, folder, urls]
+    [bucket, folder]
+  );
+
+  const uploadFiles = useCallback(
+    (files: File[]) => {
+      if (!files.length) return;
+      // Show previews instantly + kick off uploads in parallel (background)
+      const newPending = files.map((f) => ({ id: crypto.randomUUID(), preview: URL.createObjectURL(f), file: f }));
+      setPending((prev) => [...prev, ...newPending.map(({ id, preview }) => ({ id, preview }))]);
+      newPending.forEach(({ id, preview, file }) => {
+        void uploadOne(file, id, preview);
+      });
+    },
+    [uploadOne]
   );
 
   const onDrop = useCallback((files: File[]) => uploadFiles(files), [uploadFiles]);
@@ -90,6 +124,8 @@ export const MultiImagePicker = ({
     commit(next);
   };
 
+  const uploading = pending.length > 0;
+
   return (
     <div className="space-y-2">
       {label && <p className="text-xs font-medium text-muted-foreground">{label}</p>}
@@ -109,11 +145,9 @@ export const MultiImagePicker = ({
             }`}
           >
             <input {...getInputProps()} />
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            ) : (
-              <span className="text-muted-foreground">Click or drop images (multiple allowed)</span>
-            )}
+            <span className="text-muted-foreground">
+              {uploading ? `Uploading ${pending.length}…` : "Click or drop images (multiple allowed)"}
+            </span>
           </div>
         </TabsContent>
 
@@ -131,8 +165,8 @@ export const MultiImagePicker = ({
               e.target.value = "";
             }}
           />
-          <Button type="button" size="sm" className="w-full" onClick={() => cameraRef.current?.click()} disabled={uploading}>
-            {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Camera className="mr-1.5 h-3.5 w-3.5" />}
+          <Button type="button" size="sm" className="w-full" onClick={() => cameraRef.current?.click()}>
+            <Camera className="mr-1.5 h-3.5 w-3.5" />
             Take photo
           </Button>
         </TabsContent>
@@ -151,7 +185,7 @@ export const MultiImagePicker = ({
         </TabsContent>
       </Tabs>
 
-      {urls.length > 0 && (
+      {(urls.length > 0 || pending.length > 0) && (
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
           {urls.map((u, i) => (
             <div key={`${u}-${i}`} className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
@@ -164,6 +198,14 @@ export const MultiImagePicker = ({
               >
                 <X className="h-3 w-3" />
               </button>
+            </div>
+          ))}
+          {pending.map((p) => (
+            <div key={p.id} className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
+              <img src={p.preview} alt="uploading" className="h-full w-full object-contain p-0.5 opacity-60" />
+              <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              </div>
             </div>
           ))}
         </div>
