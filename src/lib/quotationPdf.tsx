@@ -51,6 +51,8 @@ export type QuotationItemPdf = {
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
+  /** Set internally during PDF generation: list of data-URI images to render. */
+  measurement_images?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
@@ -139,7 +141,13 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
               {it.measurement && <Text style={{ fontSize: 9 }}>{it.measurement}</Text>}
-              {it.measurement_image_url && <Image src={it.measurement_image_url} style={{ width: 70, height: 35, objectFit: "contain", marginTop: 2 }} />}
+              {(it.measurement_images ?? []).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                  {(it.measurement_images ?? []).map((src, k) => (
+                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
             <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{formatINR(it.unit_price)}</Text>
@@ -224,11 +232,21 @@ async function toDataUri(url: string | null): Promise<string | null> {
 
 export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
   const items = await Promise.all(
-    q.items.map(async (it) => ({
-      ...it,
-      item_image_url: await toDataUri(it.item_image_url),
-      measurement_image_url: await toDataUri(it.measurement_image_url),
-    }))
+    q.items.map(async (it) => {
+      const measUrls = (it.measurement_image_url ?? "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
+        (u): u is string => !!u
+      );
+      return {
+        ...it,
+        item_image_url: await toDataUri(it.item_image_url),
+        measurement_image_url: measDataUris[0] ?? null,
+        measurement_images: measDataUris,
+      };
+    })
   );
   const safe = { ...q, items };
   return await pdf(<QuotationDoc q={safe} />).toBlob();
@@ -300,6 +318,8 @@ export type JobWorkPdfData = {
     item_image_url: string | null;
     measurement: string | null;
     measurement_image_url: string | null;
+    /** Set internally during PDF generation: list of data-URI sketches/cloth refs. */
+    measurement_images?: string[];
     quantity: number;
   }[];
 };
@@ -363,13 +383,17 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               {it.measurement ? (
                 <Text style={jwStyles.measText}>{it.measurement}</Text>
               ) : (
-                !it.measurement_image_url && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
+                (it.measurement_images ?? []).length === 0 && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
               )}
-              {it.measurement_image_url && (
+              {(it.measurement_images ?? []).length > 0 && (
                 <>
-                  <Text style={jwStyles.sketchLabel}>Sketch</Text>
-                  <View style={jwStyles.sketchBox}>
-                    <Image src={it.measurement_image_url} style={jwStyles.sketchImg} />
+                  <Text style={jwStyles.sketchLabel}>Sketch / Cloth</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                    {(it.measurement_images ?? []).map((src, k) => (
+                      <View key={k} style={{ width: 86, height: 80, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
+                        <Image src={src} style={{ width: 82, height: 76, objectFit: "contain" }} />
+                      </View>
+                    ))}
                   </View>
                 </>
               )}
@@ -407,11 +431,21 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
   const items = await Promise.all(
-    d.items.map(async (it) => ({
-      ...it,
-      item_image_url: await toDataUri(it.item_image_url),
-      measurement_image_url: await toDataUri(it.measurement_image_url),
-    }))
+    d.items.map(async (it) => {
+      const measUrls = (it.measurement_image_url ?? "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
+        (u): u is string => !!u
+      );
+      return {
+        ...it,
+        item_image_url: await toDataUri(it.item_image_url),
+        measurement_image_url: measDataUris[0] ?? null,
+        measurement_images: measDataUris,
+      };
+    })
   );
   const safe = { ...d, items };
   return await pdf(<JobWorkDoc d={safe} />).toBlob();
