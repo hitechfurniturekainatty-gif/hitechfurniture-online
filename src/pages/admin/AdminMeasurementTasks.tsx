@@ -29,7 +29,7 @@ type Task = {
   draft_quotation_id: string | null;
 };
 
-type StaffOpt = { user_id: string; email: string | null; display_name: string | null; role: string | null };
+type StaffOpt = { user_id: string; email: string | null; display_name: string | null; whatsapp_number: string | null; role: string | null };
 
 const AdminMeasurementTasks = () => {
   const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
@@ -91,7 +91,32 @@ const AdminMeasurementTasks = () => {
       toast({ title: "Create failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Measurement task assigned" });
+
+    // Auto-open WhatsApp to the assignee with task details
+    const assignee = staff.find((s) => s.user_id === form.assigned_to);
+    const wa = (assignee?.whatsapp_number || "").replace(/[^0-9]/g, "");
+    if (wa) {
+      const lines = [
+        `Hi ${assignee?.display_name || "team"},`,
+        ``,
+        `New measurement task assigned:`,
+        `• Customer: ${form.customer_name.trim()}`,
+        `• Place: ${form.customer_place.trim()}`,
+      ];
+      if (form.customer_phone.trim()) lines.push(`• Phone: ${form.customer_phone.trim()}`);
+      if (form.customer_address.trim()) lines.push(`• Address: ${form.customer_address.trim()}`);
+      if (form.requirement.trim()) lines.push(`• Requirement: ${form.requirement.trim()}`);
+      lines.push(``, `Please open the app to start measurement.`, `— Hitech Furniture & Interiors`);
+      const msg = encodeURIComponent(lines.join("\n"));
+      window.open(`https://wa.me/${wa}?text=${msg}`, "_blank");
+      toast({ title: "Task assigned", description: `WhatsApp opened for ${assignee?.display_name || "assignee"}` });
+    } else {
+      toast({
+        title: "Task assigned",
+        description: assignee ? "No WhatsApp number on file for this staff. Add one in Staff Management." : "Assigned.",
+      });
+    }
+
     setOpen(false);
     setForm({ customer_name: "", customer_place: "", customer_phone: "", customer_address: "", requirement: "", assigned_to: "" });
     load();
