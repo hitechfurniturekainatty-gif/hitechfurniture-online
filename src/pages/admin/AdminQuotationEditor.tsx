@@ -52,7 +52,17 @@ type Quotation = {
   total: number;
   status: string;
   notes: string | null;
+  terms: string | null;
 };
+
+const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
+2. Delivery within 15-30 working days from advance receipt and final design approval.
+3. Prices are valid for 15 days from quotation date.
+4. GST as applicable will be charged extra (where shown).
+5. Transportation and installation charges (if any) are extra unless specified.
+6. Goods once sold will not be taken back or exchanged.
+7. Any changes after order confirmation may attract additional charges.
+8. Warranty as per manufacturer terms; does not cover misuse or natural wear.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
@@ -199,6 +209,7 @@ const AdminQuotationEditor = () => {
         gst_percent: q.gst_percent,
         status: q.status,
         notes: q.notes,
+        terms: q.terms,
       }).eq("id", q.id);
       if (error) {
         setSaving(false);
@@ -273,6 +284,7 @@ const AdminQuotationEditor = () => {
       gst_amount: gstAmount,
       total,
       notes: q.notes,
+      terms: q.terms ?? DEFAULT_TERMS,
       items: items.map((it) => ({
         description: it.description,
         item_image_url: it.item_image_url,
@@ -554,7 +566,23 @@ const AdminQuotationEditor = () => {
       <Card className="mb-4">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3 order-2 md:order-1">
-            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Terms, delivery info, special instructions..." /></div>
+            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Terms & Conditions</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => updateHeader({ terms: DEFAULT_TERMS })}>
+                  Reset to default
+                </Button>
+              </div>
+              <Textarea
+                rows={8}
+                value={q.terms ?? DEFAULT_TERMS}
+                onChange={(e) => updateHeader({ terms: e.target.value })}
+                placeholder="50% advance, delivery timeline, validity, GST, warranty..."
+                className="font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
+            </div>
             {canEditPrice && (
               <div className="space-y-1.5">
                 <Label>GST %</Label>

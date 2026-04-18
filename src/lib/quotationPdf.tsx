@@ -38,6 +38,9 @@ const styles = StyleSheet.create({
   bankBox: { marginTop: 14, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
   bankTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
   bankLine: { fontSize: 9, color: "#1F3F44", marginBottom: 1 },
+  termsBox: { marginTop: 10, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
+  termsTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
+  termsLine: { fontSize: 8.5, color: "#1F3F44", marginBottom: 2, lineHeight: 1.4 },
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
@@ -66,6 +69,7 @@ export type QuotationPdfData = {
   gst_amount: number;
   total: number;
   notes: string | null;
+  terms?: string | null;
   items: QuotationItemPdf[];
 };
 
@@ -167,6 +171,15 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         <Text style={styles.bankLine}>IFSC: {BANK_DETAILS.ifsc}</Text>
         <Text style={styles.bankLine}>Branch: {BANK_DETAILS.branch}</Text>
       </View>
+
+      {q.terms && q.terms.trim() !== "" && (
+        <View style={styles.termsBox} wrap={false}>
+          <Text style={styles.termsTitle}>Terms & Conditions</Text>
+          {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => (
+            <Text key={idx} style={styles.termsLine}>{line}</Text>
+          ))}
+        </View>
+      )}
 
       {q.notes && (
         <View style={{ marginTop: 10 }}>
