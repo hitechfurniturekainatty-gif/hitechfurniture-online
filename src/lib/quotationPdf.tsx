@@ -365,5 +365,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 );
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
-  return await pdf(<JobWorkDoc d={d} />).toBlob();
+  // Pre-fetch all remote images to avoid blank gaps in the worker PDF.
+  const items = await preloadItemImages(d.items);
+  return await pdf(<JobWorkDoc d={{ ...d, items }} />).toBlob();
 }
