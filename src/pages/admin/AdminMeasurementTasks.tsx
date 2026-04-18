@@ -218,7 +218,7 @@ const AdminMeasurementTasks = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="mine">
-          <TabsList>
+          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="mine">My tasks ({pending(myTasks).length})</TabsTrigger>
             {isOfficeStaff && <TabsTrigger value="all">All ({pending(otherTasks).length + pending(myTasks).length})</TabsTrigger>}
             <TabsTrigger value="done">Completed ({done(tasks).length})</TabsTrigger>
