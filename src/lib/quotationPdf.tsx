@@ -273,7 +273,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
           </View>
           <View style={jwStyles.itemBody}>
             {it.item_image_url ? (
-              <Image src={it.item_image_url} style={jwStyles.itemImg} />
+              <Image src={{ uri: it.item_image_url, method: "GET", headers: {}, body: "" }} style={jwStyles.itemImg} />
             ) : (
               <View style={[jwStyles.itemImg, { alignItems: "center", justifyContent: "center" }]}>
                 <Text style={{ fontSize: 8, color: "#9AA8AA" }}>No image</Text>
@@ -291,7 +291,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               {it.measurement_image_url && (
                 <>
                   <Text style={jwStyles.detailLabel}>Measurement Sketch</Text>
-                  <Image src={it.measurement_image_url} style={jwStyles.measImg} />
+                  <Image src={{ uri: it.measurement_image_url, method: "GET", headers: {}, body: "" }} style={jwStyles.measImg} />
                 </>
               )}
             </View>
