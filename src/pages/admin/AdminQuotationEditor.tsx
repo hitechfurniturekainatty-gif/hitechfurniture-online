@@ -297,39 +297,72 @@ const AdminQuotationEditor = () => {
     };
   };
 
-  const downloadPdf = async (): Promise<boolean> => {
-    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return false; }
+  const buildPdfBlob = async (): Promise<{ blob: Blob; filename: string } | null> => {
+    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return null; }
     const saved = await ensureSaved();
-    if (!saved) return false;
+    if (!saved) return null;
     const data = buildPdfData();
-    if (!data) return false;
+    if (!data) return null;
     try {
       const blob = await generateQuotationPdf(data);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${data.quotation_id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "PDF downloaded", description: "Attach it in WhatsApp using the paperclip icon." });
-      return true;
+      return { blob, filename: `${data.quotation_id}.pdf` };
     } catch (e: any) {
       console.error("PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked by CORS. Re-upload item/measurement images.", variant: "destructive" });
-      return false;
+      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
+      return null;
     }
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const downloadPdf = async (): Promise<boolean> => {
+    const r = await buildPdfBlob();
+    if (!r) return false;
+    downloadBlob(r.blob, r.filename);
+    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
+    return true;
   };
 
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
-    const ok = await downloadPdf();
-    if (!ok) return;
+    const r = await buildPdfBlob();
+    if (!r) return;
+
     const phone = q.party_phone.replace(/[^0-9]/g, "");
-    const msg = encodeURIComponent(
-      `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\nTotal: ${formatINR(total)}\n\nThank you.`
-    );
-    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\nTotal: ${formatINR(total)}\n\nThank you.`;
+
+    // Try native Web Share API with file (mobile: lets user pick WhatsApp and attaches PDF directly)
+    const file = new File([r.blob], r.filename, { type: "application/pdf" });
+    const navAny = navigator as any;
+    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+      try {
+        await navAny.share({ files: [file], title: r.filename, text: msg });
+        return;
+      } catch (e) {
+        console.warn("Web Share cancelled/failed, falling back:", e);
+      }
+    }
+
+    // Fallback: download PDF, then open WhatsApp chat with prefilled message
+    downloadBlob(r.blob, r.filename);
+    toast({
+      title: "PDF downloaded — attach it in WhatsApp",
+      description: "WhatsApp will open. Tap the paperclip icon and select the downloaded PDF.",
+      duration: 8000,
+    });
+    setTimeout(() => {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    }, 600);
   };
 
   // ---- Job Work ----
