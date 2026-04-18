@@ -238,10 +238,11 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
 
 const jwStyles = StyleSheet.create({
   page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 10, marginBottom: 14 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: "#0E5C66", paddingBottom: 10, marginBottom: 14 },
   logo: { width: 100, height: 44, objectFit: "contain" },
+  brandRight: { textAlign: "right" },
   brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 8, color: "#6E7F82" },
+  brandLine: { fontSize: 8, color: "#6E7F82", marginTop: 2 },
   hTitle: { fontSize: 18, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center" },
   metaBox: { padding: 8, backgroundColor: "#F4F7F7", borderRadius: 4, marginBottom: 12 },
   metaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
@@ -251,12 +252,16 @@ const jwStyles = StyleSheet.create({
   itemHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   itemNo: { fontSize: 11, fontWeight: 700, color: "#0E5C66" },
   itemQty: { fontSize: 11, fontWeight: 700, color: "#0F2A2E" },
-  itemBody: { flexDirection: "row", gap: 10 },
-  itemImg: { width: 110, height: 110, objectFit: "contain", borderWidth: 0.5, borderColor: "#D8DEDF" },
-  itemDetails: { flex: 1 },
+  itemBody: { flexDirection: "row", alignItems: "flex-start" },
+  // Fixed-width wrapper so layout never shifts even if image fails to load
+  imgBox: { width: 120, height: 120, marginRight: 10, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
+  itemImg: { width: 116, height: 116, objectFit: "contain" },
+  imgPlaceholder: { fontSize: 8, color: "#9AA8AA" },
+  itemDetails: { flex: 1, flexGrow: 1, flexShrink: 1 },
   detailLabel: { fontSize: 8, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 4 },
   detailValue: { fontSize: 10, color: "#0F2A2E" },
-  measImg: { width: 130, height: 70, objectFit: "contain", marginTop: 4, borderWidth: 0.5, borderColor: "#D8DEDF" },
+  measImgBox: { width: 200, height: 90, marginTop: 4, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
+  measImg: { width: 196, height: 86, objectFit: "contain" },
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
