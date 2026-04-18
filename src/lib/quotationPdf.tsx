@@ -135,11 +135,11 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
             <Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
-              {it.item_image_url ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 8, color: "#9AA8AA" }}>-</Text>}
+              {it.item_image_url ? <Image src={{ uri: it.item_image_url, method: "GET", headers: {}, body: "" }} style={styles.tdImg} /> : <Text style={{ fontSize: 8, color: "#9AA8AA" }}>-</Text>}
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
               {it.measurement && <Text style={{ fontSize: 9 }}>{it.measurement}</Text>}
-              {it.measurement_image_url && <Image src={it.measurement_image_url} style={{ width: 70, height: 35, objectFit: "contain", marginTop: 2 }} />}
+              {it.measurement_image_url && <Image src={{ uri: it.measurement_image_url, method: "GET", headers: {}, body: "" }} style={{ width: 70, height: 35, objectFit: "contain", marginTop: 2 }} />}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
             <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{formatINR(it.unit_price)}</Text>
