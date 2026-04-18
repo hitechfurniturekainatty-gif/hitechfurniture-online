@@ -227,7 +227,7 @@ const AdminMeasurementTasks = () => {
                     <SelectContent>
                       {staff.map((s) => (
                         <SelectItem key={s.user_id} value={s.user_id}>
-                          {s.display_name || s.email} {s.role === "measurement_staff" ? "(Field)" : s.role === "admin" ? "(Admin)" : "(Staff)"}
+                          {s.display_name || s.email} {s.role === "measurement_staff" ? "(Field)" : s.role === "admin" ? "(Admin)" : "(Staff)"}{!s.whatsapp_number ? " — no WhatsApp" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
