@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, MapPin, Phone, Ruler, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { ContactPicker } from "@/components/admin/ContactPicker";
 
 type Task = {
   id: string;
@@ -213,10 +214,21 @@ const AdminMeasurementTasks = () => {
             <DialogContent>
               <DialogHeader><DialogTitle>Assign measurement task</DialogTitle></DialogHeader>
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <ContactPicker
+                    onPick={({ name, tel }) =>
+                      setForm((f) => ({
+                        ...f,
+                        customer_name: name || f.customer_name,
+                        customer_phone: tel || f.customer_phone,
+                      }))
+                    }
+                  />
+                </div>
                 <div className="space-y-1.5"><Label>Customer name *</Label><Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5"><Label>Place *</Label><Input value={form.customer_place} onChange={(e) => setForm({ ...form, customer_place: e.target.value })} /></div>
-                  <div className="space-y-1.5"><Label>Phone</Label><Input value={form.customer_phone} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.customer_phone} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} /></div>
                 </div>
                 <div className="space-y-1.5"><Label>Address</Label><Textarea rows={2} value={form.customer_address} onChange={(e) => setForm({ ...form, customer_address: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Requirement / brief</Label><Textarea rows={2} value={form.requirement} onChange={(e) => setForm({ ...form, requirement: e.target.value })} placeholder="e.g. L-shape sofa for living room, modular wardrobe..." /></div>

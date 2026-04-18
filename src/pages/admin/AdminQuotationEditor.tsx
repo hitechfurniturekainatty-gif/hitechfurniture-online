@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
+import { ContactPicker } from "@/components/admin/ContactPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -605,7 +606,18 @@ const AdminQuotationEditor = () => {
 
       {/* Header form */}
       <Card className="mb-4">
-        <CardHeader className="pb-3"><CardTitle className="text-base">Party & Quotation Details</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle className="text-base">Party & Quotation Details</CardTitle>
+          <ContactPicker
+            label="From Contacts"
+            onPick={({ name, tel }) =>
+              updateHeader({
+                party_name: name || q.party_name,
+                party_phone: tel || q.party_phone || "",
+              })
+            }
+          />
+        </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           <div className="space-y-1.5"><Label>Party name *</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>

@@ -161,9 +161,20 @@ const AdminQuotations = () => {
           <DialogContent>
             <DialogHeader><DialogTitle>Create new quotation</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              <div className="flex justify-end">
+                <ContactPicker
+                  onPick={({ name, tel }) =>
+                    setForm((f) => ({
+                      ...f,
+                      party_name: name || f.party_name,
+                      party_phone: tel || f.party_phone,
+                    }))
+                  }
+                />
+              </div>
               <div className="space-y-1.5"><Label>Party name *</Label><Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
-              <div className="space-y-1.5"><Label>Phone</Label><Input value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
               <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
             </div>
             <DialogFooter>
