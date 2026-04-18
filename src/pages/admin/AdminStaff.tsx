@@ -171,14 +171,14 @@ const AdminStaff = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl">Staff Management</h1>
-          <p className="mt-1 text-muted-foreground">Create accounts, reset passwords and assign roles.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Staff Management</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create accounts, reset passwords and assign roles.</p>
         </div>
         <Dialog open={openCreate} onOpenChange={setOpenCreate}>
           <DialogTrigger asChild>
-            <Button><UserPlus className="mr-2 h-4 w-4" /> Add staff</Button>
+            <Button className="w-full sm:w-auto"><UserPlus className="mr-2 h-4 w-4" /> Add staff</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create new staff account</DialogTitle></DialogHeader>
