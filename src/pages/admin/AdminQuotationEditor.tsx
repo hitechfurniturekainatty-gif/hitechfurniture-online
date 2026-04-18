@@ -297,26 +297,34 @@ const AdminQuotationEditor = () => {
     };
   };
 
-  const downloadPdf = async () => {
-    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
+  const downloadPdf = async (): Promise<boolean> => {
+    if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return false; }
     const saved = await ensureSaved();
-    if (!saved) return;
+    if (!saved) return false;
     const data = buildPdfData();
-    if (!data) return;
-    const blob = await generateQuotationPdf(data);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${data.quotation_id}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "PDF downloaded", description: "Attach it in WhatsApp using the paperclip icon." });
+    if (!data) return false;
+    try {
+      const blob = await generateQuotationPdf(data);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${data.quotation_id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF downloaded", description: "Attach it in WhatsApp using the paperclip icon." });
+      return true;
+    } catch (e: any) {
+      console.error("PDF generation failed:", e);
+      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked by CORS. Re-upload item/measurement images.", variant: "destructive" });
+      return false;
+    }
   };
 
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
-    await downloadPdf();
+    const ok = await downloadPdf();
+    if (!ok) return;
     const phone = q.party_phone.replace(/[^0-9]/g, "");
     const msg = encodeURIComponent(
       `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\nTotal: ${formatINR(total)}\n\nThank you.`
