@@ -73,6 +73,8 @@ export type QuotationPdfData = {
   subtotal: number;
   gst_amount: number;
   total: number;
+  advance_amount?: number;
+  balance_due?: number;
   notes: string | null;
   terms?: string | null;
   items: QuotationItemPdf[];
@@ -179,9 +181,19 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <Text style={styles.totalLabel}>GST ({q.gst_percent}%)</Text>
           <Text style={styles.totalValue}>{formatINR(q.gst_amount)}</Text>
         </View>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Grand Total</Text>
+          <Text style={styles.totalValue}>{formatINR(q.total)}</Text>
+        </View>
+        {(q.advance_amount ?? 0) > 0 && (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Less: Advance Paid</Text>
+            <Text style={styles.totalValue}>- {formatINR(q.advance_amount)}</Text>
+          </View>
+        )}
         <View style={styles.grandRow}>
-          <Text style={styles.grandLabel}>GRAND TOTAL</Text>
-          <Text style={styles.grandValue}>{formatINR(q.total)}</Text>
+          <Text style={styles.grandLabel}>{(q.advance_amount ?? 0) > 0 ? "BALANCE DUE" : "GRAND TOTAL"}</Text>
+          <Text style={styles.grandValue}>{formatINR((q.advance_amount ?? 0) > 0 ? (q.balance_due ?? q.total) : q.total)}</Text>
         </View>
       </View>
 
