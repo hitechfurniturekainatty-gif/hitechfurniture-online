@@ -431,11 +431,21 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
   const items = await Promise.all(
-    d.items.map(async (it) => ({
-      ...it,
-      item_image_url: await toDataUri(it.item_image_url),
-      measurement_image_url: await toDataUri(it.measurement_image_url),
-    }))
+    d.items.map(async (it) => {
+      const measUrls = (it.measurement_image_url ?? "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
+        (u): u is string => !!u
+      );
+      return {
+        ...it,
+        item_image_url: await toDataUri(it.item_image_url),
+        measurement_image_url: measDataUris[0] ?? null,
+        measurement_images: measDataUris,
+      };
+    })
   );
   const safe = { ...d, items };
   return await pdf(<JobWorkDoc d={safe} />).toBlob();
