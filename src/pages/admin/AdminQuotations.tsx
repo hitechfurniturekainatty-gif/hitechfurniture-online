@@ -104,20 +104,22 @@ const AdminQuotations = () => {
 
   const renderRow = (q: Q) => (
     <Card key={q.id}>
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary shrink-0" />
-            <span className="font-mono text-sm font-semibold truncate">{q.quotation_id}</span>
+            <FileText className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
             <Badge variant={statusColor(q.status) as any} className="shrink-0">{q.status}</Badge>
           </div>
-          <p className="mt-1 text-sm truncate">{q.party_name} · {q.party_place}</p>
+          <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
           <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
           <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
-          <Button size="sm" asChild><Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
-          {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(q)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+          <div className="flex items-center gap-2">
+            <Button size="sm" asChild><Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
+            {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(q)} aria-label="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+          </div>
         </div>
       </CardContent>
     </Card>
