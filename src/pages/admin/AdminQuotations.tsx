@@ -127,13 +127,13 @@ const AdminQuotations = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl">Quotations</h1>
-          <p className="mt-1 text-muted-foreground">Create, manage and share customer quotations.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Quotations</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create, manage and share customer quotations.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
+          <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create new quotation</DialogTitle></DialogHeader>
             <div className="space-y-3">
