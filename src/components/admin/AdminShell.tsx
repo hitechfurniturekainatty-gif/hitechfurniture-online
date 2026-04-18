@@ -45,7 +45,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   ].filter((l) => l.show);
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="min-h-screen overflow-x-hidden bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card">
         <div className="container-page flex items-center justify-between gap-2 py-3">
           <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
