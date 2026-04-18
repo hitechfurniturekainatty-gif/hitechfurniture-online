@@ -159,7 +159,7 @@ const AdminQuotations = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="all">All ({groups.all.length})</TabsTrigger>
             <TabsTrigger value="draft">Drafts ({groups.draft.length})</TabsTrigger>
             <TabsTrigger value="sent">Sent ({groups.sent.length})</TabsTrigger>
