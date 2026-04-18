@@ -37,6 +37,9 @@ const PRESETS: { label: string; description: string; prompt: string }[] = [
   },
 ];
 
+// Default prompt that auto-fills when the dialog opens.
+const DEFAULT_PROMPT = PRESETS[0].prompt;
+
 const PresetRow = ({ onPick }: { onPick: (p: string) => void }) => (
   <div className="space-y-1.5">
     <Label className="text-xs uppercase tracking-wider text-muted-foreground">
