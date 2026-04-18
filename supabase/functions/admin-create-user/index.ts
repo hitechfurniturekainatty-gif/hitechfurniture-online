@@ -6,41 +6,36 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')!;
+    const url = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
+    if (!url || !serviceKey || !anonKey) return json({ error: 'Server not configured' }, 200);
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing auth' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (!authHeader) return json({ error: 'Missing auth' }, 200);
 
     const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: userData, error: userErr } = await callerClient.auth.getUser();
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (userErr || !userData.user) return json({ error: 'Invalid token', detail: userErr?.message }, 200);
 
     const admin = createClient(url, serviceKey);
-    const { data: isAdmin } = await admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' });
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    const { data: isAdmin, error: roleErr } = await admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' });
+    if (roleErr) return json({ error: 'Role check failed', detail: roleErr.message }, 200);
+    if (!isAdmin) return json({ error: 'Admin only' }, 200);
 
     const body = await req.json().catch(() => ({}));
     const { email, password, display_name, role, whatsapp_number } = body || {};
-    if (!email || !password || !role) {
-      return new Response(JSON.stringify({ error: 'email, password, role required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    if (!['admin', 'staff', 'measurement_staff'].includes(role)) {
-      return new Response(JSON.stringify({ error: 'invalid role' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (!email || !password || !role) return json({ error: 'email, password, role required' }, 200);
+    if (!['admin', 'staff', 'measurement_staff'].includes(role)) return json({ error: 'invalid role' }, 200);
     if (typeof password !== 'string' || password.length < 8) {
-      return new Response(JSON.stringify({ error: 'password must be at least 8 characters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ error: 'Password must be at least 8 characters' }, 200);
     }
 
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -49,25 +44,20 @@ Deno.serve(async (req) => {
       email_confirm: true,
       user_metadata: { display_name: display_name || email.split('@')[0] },
     });
-    if (createErr || !created.user) {
-      return new Response(JSON.stringify({ error: createErr?.message || 'create failed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (createErr || !created.user) return json({ error: createErr?.message || 'create failed' }, 200);
 
     const newUserId = created.user.id;
     await admin.from('user_roles').delete().eq('user_id', newUserId);
     const { error: roleInsertErr } = await admin.from('user_roles').insert({ user_id: newUserId, role });
-    if (roleInsertErr) {
-      return new Response(JSON.stringify({ error: roleInsertErr.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (roleInsertErr) return json({ error: roleInsertErr.message }, 200);
 
-    // Save WhatsApp number on profile (created automatically by handle_new_user trigger)
     if (typeof whatsapp_number === 'string' && whatsapp_number.trim()) {
       await admin.from('profiles').update({ whatsapp_number: whatsapp_number.trim() }).eq('user_id', newUserId);
     }
 
-    return new Response(JSON.stringify({ ok: true, user_id: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ ok: true, user_id: newUserId });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown';
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ error: msg }, 200);
   }
 });
