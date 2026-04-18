@@ -1,0 +1,1 @@
+ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS advance_amount numeric NOT NULL DEFAULT 0;

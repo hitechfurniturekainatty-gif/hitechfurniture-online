@@ -54,6 +54,7 @@ type Quotation = {
   subtotal: number;
   gst_amount: number;
   total: number;
+  advance_amount: number;
   status: string;
   notes: string | null;
   terms: string | null;
@@ -160,7 +161,11 @@ const AdminQuotationEditor = () => {
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
   const gstAmount = useMemo(() => Math.round(subtotal * ((q?.gst_percent ?? 0) / 100) * 100) / 100, [subtotal, q?.gst_percent]);
-  const total = subtotal + gstAmount;
+  const grandTotal = subtotal + gstAmount;
+  const advanceAmount = Math.max(0, Number(q?.advance_amount) || 0);
+  const balanceDue = Math.max(0, grandTotal - advanceAmount);
+  // Kept for legacy references / WhatsApp message — represents grand total
+  const total = grandTotal;
 
   const updateHeader = (patch: Partial<Quotation>) => {
     setQ((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -252,6 +257,7 @@ const AdminQuotationEditor = () => {
         quotation_date: q.quotation_date,
         expected_delivery_date: q.expected_delivery_date,
         gst_percent: q.gst_percent,
+        advance_amount: Math.max(0, Number(q.advance_amount) || 0),
         status: q.status,
         notes: q.notes,
         terms: q.terms,
@@ -364,7 +370,9 @@ const AdminQuotationEditor = () => {
       gst_percent: q.gst_percent,
       subtotal,
       gst_amount: gstAmount,
-      total,
+      total: grandTotal,
+      advance_amount: advanceAmount,
+      balance_due: balanceDue,
       notes: q.notes,
       terms: q.terms ?? DEFAULT_TERMS,
       items: items.map((it) => ({
@@ -435,7 +443,10 @@ const AdminQuotationEditor = () => {
     if (!r) return;
 
     const phone = q.party_phone.replace(/[^0-9]/g, "");
-    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\nTotal: ${formatINR(total)}\n\nThank you.`;
+    const balanceLine = advanceAmount > 0
+      ? `Total: ${formatINR(grandTotal)}\nAdvance Paid: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
+      : `Total: ${formatINR(grandTotal)}`;
+    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
     // Try native Web Share API with file (mobile: lets user pick WhatsApp and attaches PDF directly)
     const file = new File([r.blob], r.filename, { type: "application/pdf" });
@@ -790,7 +801,30 @@ const AdminQuotationEditor = () => {
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{formatINR(subtotal)}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">GST ({q.gst_percent}%)</span><span className="font-medium">{formatINR(gstAmount)}</span></div>
             <Separator />
-            <div className="flex items-baseline justify-between"><span className="font-display text-base">Total</span><span className="font-display text-2xl font-bold text-primary">{formatINR(total)}</span></div>
+            <div className="flex items-baseline justify-between"><span className="font-display text-sm">Grand Total</span><span className="font-display text-lg font-semibold">{formatINR(grandTotal)}</span></div>
+            {canEditPrice && (
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Paid</Label>
+                <Input
+                  id="advance-amt"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  className="h-9 w-32 text-right"
+                  value={q.advance_amount ?? 0}
+                  onChange={(e) => updateHeader({ advance_amount: Number(e.target.value) || 0 })}
+                />
+              </div>
+            )}
+            {advanceAmount > 0 && !canEditPrice && (
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Advance Paid</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
+            )}
+            {advanceAmount > 0 && canEditPrice && (
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Less: Advance</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
+            )}
+            <Separator />
+            <div className="flex items-baseline justify-between"><span className="font-display text-base">Balance Due</span><span className="font-display text-2xl font-bold text-primary">{formatINR(balanceDue)}</span></div>
           </div>
         </CardContent>
       </Card>
