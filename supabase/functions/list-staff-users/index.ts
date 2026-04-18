@@ -5,27 +5,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
-    const url = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')!;
+    const url = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
+    if (!url || !serviceKey || !anonKey) {
+      return json({ error: 'Server not configured', stage: 'env' }, 200);
+    }
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response(JSON.stringify({ error: 'Missing auth' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!authHeader) return json({ error: 'Missing auth' }, 200);
+
     const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData } = await callerClient.auth.getUser();
-    if (!userData.user) return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { data: userData, error: userErr } = await callerClient.auth.getUser();
+    if (userErr || !userData.user) return json({ error: 'Invalid token', detail: userErr?.message }, 200);
+
     const admin = createClient(url, serviceKey);
-    // Allow admin OR staff (office staff need this list to assign measurement tasks)
-    const [{ data: isAdmin }, { data: isStaff }] = await Promise.all([
-      admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' }),
-      admin.rpc('has_role', { _user_id: userData.user.id, _role: 'staff' }),
-    ]);
-    if (!isAdmin && !isStaff) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Allow any authenticated staff user (admin, office staff, or measurement staff) — they all
+    // need to see staff names/roles inside the admin shell (e.g. assigned-to labels).
+    const { data: rolesRows, error: rolesErr } = await admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userData.user.id);
+    if (rolesErr) return json({ error: 'Role lookup failed', detail: rolesErr.message }, 200);
+    const callerRoles = (rolesRows || []).map((r: { role: string }) => r.role);
+    const allowed = callerRoles.some((r) => r === 'admin' || r === 'staff' || r === 'measurement_staff');
+    if (!allowed) return json({ error: 'Forbidden', detail: 'No staff role assigned to your account.' }, 200);
 
     const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 200 });
-    if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (error) return json({ error: error.message, stage: 'listUsers' }, 200);
+
     const [{ data: roles }, { data: profiles }] = await Promise.all([
       admin.from('user_roles').select('user_id, role'),
       admin.from('profiles').select('user_id, whatsapp_number'),
@@ -59,9 +72,9 @@ Deno.serve(async (req) => {
         roles: userRoles,
       };
     });
-    return new Response(JSON.stringify({ users }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ users });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown';
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ error: msg, stage: 'exception' }, 200);
   }
 });
