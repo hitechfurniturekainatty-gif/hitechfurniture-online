@@ -173,14 +173,14 @@ const AdminMeasurementTasks = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl">Measurement Tasks</h1>
-          <p className="mt-1 text-muted-foreground">Assign field staff to capture customer measurements.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Measurement Tasks</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Assign field staff to capture customer measurements.</p>
         </div>
         {isOfficeStaff && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> New task</Button></DialogTrigger>
+            <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New task</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Assign measurement task</DialogTitle></DialogHeader>
               <div className="space-y-3">
@@ -218,7 +218,7 @@ const AdminMeasurementTasks = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="mine">
-          <TabsList>
+          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="mine">My tasks ({pending(myTasks).length})</TabsTrigger>
             {isOfficeStaff && <TabsTrigger value="all">All ({pending(otherTasks).length + pending(myTasks).length})</TabsTrigger>}
             <TabsTrigger value="done">Completed ({done(tasks).length})</TabsTrigger>

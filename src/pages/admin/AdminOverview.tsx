@@ -61,9 +61,9 @@ const AdminOverview = () => {
 
   return (
     <AdminShell>
-      <div className="mb-8">
-        <h1 className="font-display text-3xl">Overview</h1>
-        <p className="mt-1 text-muted-foreground">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="font-display text-2xl sm:text-3xl">Overview</h1>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
           {isMeasurementStaff && !isOfficeStaff ? "Your assigned measurement tasks." : "Quick snapshot of your business."}
         </p>
       </div>

@@ -104,20 +104,22 @@ const AdminQuotations = () => {
 
   const renderRow = (q: Q) => (
     <Card key={q.id}>
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary shrink-0" />
-            <span className="font-mono text-sm font-semibold truncate">{q.quotation_id}</span>
+            <FileText className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
             <Badge variant={statusColor(q.status) as any} className="shrink-0">{q.status}</Badge>
           </div>
-          <p className="mt-1 text-sm truncate">{q.party_name} · {q.party_place}</p>
+          <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
           <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
           <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
-          <Button size="sm" asChild><Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
-          {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(q)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+          <div className="flex items-center gap-2">
+            <Button size="sm" asChild><Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
+            {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(q)} aria-label="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -125,13 +127,13 @@ const AdminQuotations = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl">Quotations</h1>
-          <p className="mt-1 text-muted-foreground">Create, manage and share customer quotations.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Quotations</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create, manage and share customer quotations.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
+          <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create new quotation</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -157,7 +159,7 @@ const AdminQuotations = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="all">All ({groups.all.length})</TabsTrigger>
             <TabsTrigger value="draft">Drafts ({groups.draft.length})</TabsTrigger>
             <TabsTrigger value="sent">Sent ({groups.sent.length})</TabsTrigger>
