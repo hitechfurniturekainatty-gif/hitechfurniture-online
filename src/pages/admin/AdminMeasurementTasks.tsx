@@ -57,7 +57,11 @@ const AdminMeasurementTasks = () => {
 
   const loadStaff = async () => {
     if (!isOfficeStaff) return;
-    const { data } = await supabase.functions.invoke("list-staff-users");
+    const { data, error } = await supabase.functions.invoke("list-staff-users");
+    if (error) {
+      toast({ title: "Couldn't load staff list", description: error.message, variant: "destructive" });
+      return;
+    }
     const all = (data?.users ?? []) as StaffOpt[];
     setStaff(all.filter((u) => u.role === "measurement_staff" || u.role === "staff" || u.role === "admin"));
   };
