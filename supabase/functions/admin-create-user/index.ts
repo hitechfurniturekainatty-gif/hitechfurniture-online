@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { email, password, display_name, role } = body || {};
+    const { email, password, display_name, role, whatsapp_number } = body || {};
     if (!email || !password || !role) {
       return new Response(JSON.stringify({ error: 'email, password, role required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -58,6 +58,11 @@ Deno.serve(async (req) => {
     const { error: roleInsertErr } = await admin.from('user_roles').insert({ user_id: newUserId, role });
     if (roleInsertErr) {
       return new Response(JSON.stringify({ error: roleInsertErr.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Save WhatsApp number on profile (created automatically by handle_new_user trigger)
+    if (typeof whatsapp_number === 'string' && whatsapp_number.trim()) {
+      await admin.from('profiles').update({ whatsapp_number: whatsapp_number.trim() }).eq('user_id', newUserId);
     }
 
     return new Response(JSON.stringify({ ok: true, user_id: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
