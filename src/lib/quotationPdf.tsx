@@ -172,6 +172,15 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         <Text style={styles.bankLine}>Branch: {BANK_DETAILS.branch}</Text>
       </View>
 
+      {q.terms && q.terms.trim() !== "" && (
+        <View style={styles.termsBox} wrap={false}>
+          <Text style={styles.termsTitle}>Terms & Conditions</Text>
+          {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => (
+            <Text key={idx} style={styles.termsLine}>{line}</Text>
+          ))}
+        </View>
+      )}
+
       {q.notes && (
         <View style={{ marginTop: 10 }}>
           <Text style={{ fontSize: 9, color: "#6E7F82" }}>Notes: {q.notes}</Text>
