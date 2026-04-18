@@ -192,12 +192,12 @@ const AdminProducts = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <h1 className="font-display text-3xl">Products</h1>
-          <p className="mt-1 text-muted-foreground">{products.length} items in your catalog.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">{products.length} items in your catalog.</p>
         </div>
-        <Button onClick={openNew}><Plus className="mr-1 h-4 w-4" /> Add product</Button>
+        <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
       </div>
 
       <div className="mb-4 relative max-w-md">
