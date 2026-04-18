@@ -149,7 +149,7 @@ export const ImageUploader = ({
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {value.map((img, i) => (
             <div key={img.path} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
-              <img src={img.url} alt="" className="h-full w-full object-contain p-1" />
+              <img src={img.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1" />
               <button
                 type="button"
                 onClick={() => remove(i)}
