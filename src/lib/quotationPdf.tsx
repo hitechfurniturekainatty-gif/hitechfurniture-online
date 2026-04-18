@@ -38,6 +38,9 @@ const styles = StyleSheet.create({
   bankBox: { marginTop: 14, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
   bankTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
   bankLine: { fontSize: 9, color: "#1F3F44", marginBottom: 1 },
+  termsBox: { marginTop: 10, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
+  termsTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
+  termsLine: { fontSize: 8.5, color: "#1F3F44", marginBottom: 2, lineHeight: 1.4 },
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
