@@ -213,6 +213,16 @@ const AdminStaff = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label>WhatsApp number (with country code, e.g. 919526610404)</Label>
+                <Input
+                  value={form.whatsapp_number}
+                  onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+                  placeholder="91XXXXXXXXXX"
+                  inputMode="tel"
+                />
+                <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments via WhatsApp.</p>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Role *</Label>
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
