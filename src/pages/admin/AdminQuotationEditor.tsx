@@ -572,7 +572,12 @@ const AdminQuotationEditor = () => {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Measurement</Label>
                   <Textarea rows={2} value={it.measurement ?? ""} onChange={(e) => updateItem(it.id, { measurement: e.target.value })} placeholder="W x H x D" />
-                  <SingleImagePicker value={it.measurement_image_url} onChange={(v) => updateItem(it.id, { measurement_image_url: v })} folder="measurements" compact />
+                  <MultiImagePicker
+                    value={it.measurement_image_url}
+                    onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
+                    folder="measurements"
+                    label="Measurement & cloth catalog photos"
+                  />
                 </div>
 
                 {/* Qty + Unit price + Amount: side-by-side row on mobile */}
