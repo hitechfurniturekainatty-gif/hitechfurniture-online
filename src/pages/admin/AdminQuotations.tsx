@@ -160,27 +160,41 @@ const AdminQuotations = () => {
         </Dialog>
       </div>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-56">
+            <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map((k) => (
+              <SelectItem key={k} value={k}>
+                {k === "all" ? "All statuses" : statusLabel(k)} ({counts[k] ?? 0})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <Tabs defaultValue="all">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
-            <TabsTrigger value="all">All ({groups.all.length})</TabsTrigger>
-            <TabsTrigger value="draft">Drafts ({groups.draft.length})</TabsTrigger>
-            <TabsTrigger value="sent">Sent ({groups.sent.length})</TabsTrigger>
-            <TabsTrigger value="accepted">Accepted ({groups.accepted.length})</TabsTrigger>
+            {STATUS_FILTERS.map((k) => (
+              <TabsTrigger key={k} value={k} className="capitalize">
+                {k === "all" ? "All" : statusLabel(k)} ({counts[k] ?? 0})
+              </TabsTrigger>
+            ))}
           </TabsList>
-          {(["all", "draft", "sent", "accepted"] as const).map((k) => (
-            <TabsContent key={k} value={k} className="mt-4 grid gap-3">
-              {groups[k].map(renderRow)}
-              {groups[k].length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
-            </TabsContent>
-          ))}
+          <TabsContent value={statusFilter} className="mt-4 grid gap-3">
+            {filtered.map(renderRow)}
+            {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
+          </TabsContent>
         </Tabs>
       )}
     </AdminShell>
