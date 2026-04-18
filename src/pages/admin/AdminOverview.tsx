@@ -5,7 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
+
+const QUOTATION_STATUSES = ["draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, user, loading: authLoading } = useAuth();
@@ -13,6 +17,7 @@ const AdminOverview = () => {
     products: 0, categories: 0, lowStock: 0,
     quotations: 0, drafts: 0, myTasks: 0, workers: 0,
   });
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const run = async () => {
@@ -40,9 +45,21 @@ const AdminOverview = () => {
         workers: r[5].count ?? 0,
         myTasks: r[6]?.count ?? 0,
       });
+
+      // Status breakdown for office staff
+      if (isOfficeStaff) {
+        const statusResults = await Promise.all(
+          QUOTATION_STATUSES.map((s) =>
+            supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", s).then((r) => ({ s, count: r.count ?? 0 }))
+          )
+        );
+        const map: Record<string, number> = {};
+        statusResults.forEach((x) => { map[x.s] = x.count; });
+        setStatusCounts(map);
+      }
     };
     run();
-  }, [user?.id, isMeasurementStaff]);
+  }, [user?.id, isMeasurementStaff, isOfficeStaff]);
 
   // Measurement-only staff: redirect to personal page
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff) {
@@ -52,7 +69,7 @@ const AdminOverview = () => {
   const cards = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
-    isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations" },
+    isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=draft" },
     isOfficeStaff && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
     isOfficeStaff && { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
     isOfficeStaff && { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
@@ -85,6 +102,25 @@ const AdminOverview = () => {
           </Link>
         ))}
       </div>
+
+      {isOfficeStaff && (
+        <Card className="mt-8">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-display text-xl">Quotations by status</CardTitle>
+            <Button asChild variant="ghost" size="sm"><Link to="/admin/quotations">View all</Link></Button>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            {QUOTATION_STATUSES.map((s) => (
+              <Link key={s} to={`/admin/quotations?status=${s}`} className="block">
+                <div className="flex flex-col items-start gap-2 rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm">
+                  <Badge variant={statusBadgeVariant(s)} className="text-[10px]">{statusLabel(s)}</Badge>
+                  <p className="font-display text-2xl font-semibold text-foreground">{statusCounts[s] ?? 0}</p>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {isOfficeStaff && (
         <Card className="mt-8">
