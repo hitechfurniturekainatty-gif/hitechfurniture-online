@@ -3,12 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 const AdminOverview = () => {
-  const { isAdmin, isOfficeStaff, isMeasurementStaff, user } = useAuth();
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     products: 0, categories: 0, lowStock: 0,
     quotations: 0, drafts: 0, myTasks: 0, workers: 0,
@@ -43,6 +43,11 @@ const AdminOverview = () => {
     };
     run();
   }, [user?.id, isMeasurementStaff]);
+
+  // Measurement-only staff: redirect to personal page
+  if (!authLoading && user && isMeasurementStaff && !isOfficeStaff) {
+    return <Navigate to="/admin/my-work" replace />;
+  }
 
   const cards = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },

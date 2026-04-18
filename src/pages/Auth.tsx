@@ -35,7 +35,21 @@ const Auth = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast({ title: "Welcome back" });
-        navigate("/admin");
+        // Role-aware redirect: fetch user's roles and route accordingly
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (uid) {
+          const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+          const roles = (rolesData ?? []).map((r) => r.role as string);
+          const isAdmin = roles.includes("admin");
+          const isOffice = roles.includes("staff") || isAdmin;
+          if (isAdmin) navigate("/admin");
+          else if (isOffice) navigate("/admin/my-work");
+          else if (roles.includes("measurement_staff")) navigate("/admin/my-work");
+          else navigate("/admin");
+        } else {
+          navigate("/admin");
+        }
       }
     } catch (err: any) {
       toast({ title: "Auth error", description: err.message, variant: "destructive" });
