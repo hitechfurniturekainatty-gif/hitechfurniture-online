@@ -372,7 +372,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.photo, justifyContent: "center" }]}>
               <View style={jwStyles.photoBox}>
-                {it.item_image_url ? (
+                {it.item_image_url && it.item_image_url.startsWith("data:") ? (
                   <Image src={it.item_image_url} style={jwStyles.photoImg} />
                 ) : (
                   <Text style={jwStyles.photoEmpty}>No photo</Text>
@@ -383,13 +383,13 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               {it.measurement ? (
                 <Text style={jwStyles.measText}>{it.measurement}</Text>
               ) : (
-                (it.measurement_images ?? []).length === 0 && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
+                (it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length === 0 && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
               )}
-              {(it.measurement_images ?? []).length > 0 && (
+              {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
                 <>
                   <Text style={jwStyles.sketchLabel}>Sketch / Cloth</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
-                    {(it.measurement_images ?? []).map((src, k) => (
+                    {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
                       <View key={k} style={{ width: 86, height: 80, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
                         <Image src={src} style={{ width: 82, height: 76, objectFit: "contain" }} />
                       </View>
