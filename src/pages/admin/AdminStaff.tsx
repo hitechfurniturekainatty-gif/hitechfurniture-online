@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type Role = "admin" | "staff" | "measurement_staff";
@@ -262,6 +262,11 @@ const AdminStaff = () => {
                     <div className="min-w-0">
                       <p className="font-medium truncate">{r.display_name || r.email} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                      {r.whatsapp_number && (
+                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                          <MessageCircle className="h-3 w-3 text-primary" /> {r.whatsapp_number}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -316,6 +321,16 @@ const AdminStaff = () => {
                 <Label>Email</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
                 <p className="text-[11px] text-muted-foreground">Changing email updates the login email immediately.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp number</Label>
+                <Input
+                  value={editForm.whatsapp_number}
+                  onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value })}
+                  placeholder="91XXXXXXXXXX (with country code)"
+                  inputMode="tel"
+                />
+                <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Role</Label>
