@@ -577,7 +577,7 @@ const AdminQuotationEditor = () => {
                 {/* Item image */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Item photo</Label>
-                  <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" compact />
+                  <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" />
                 </div>
 
                 {/* Measurement */}
