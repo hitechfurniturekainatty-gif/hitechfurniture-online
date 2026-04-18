@@ -26,14 +26,20 @@ Deno.serve(async (req) => {
 
     const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 200 });
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    const { data: roles } = await admin.from('user_roles').select('user_id, role');
+    const [{ data: roles }, { data: profiles }] = await Promise.all([
+      admin.from('user_roles').select('user_id, role'),
+      admin.from('profiles').select('user_id, whatsapp_number'),
+    ]);
     const rolesByUser: Record<string, string[]> = {};
     (roles || []).forEach((r: { user_id: string; role: string }) => {
       (rolesByUser[r.user_id] ||= []).push(r.role);
     });
+    const waByUser: Record<string, string | null> = {};
+    (profiles || []).forEach((p: { user_id: string; whatsapp_number: string | null }) => {
+      waByUser[p.user_id] = p.whatsapp_number ?? null;
+    });
     const users = list.users.map((u) => {
       const userRoles = rolesByUser[u.id] || [];
-      // Pick the highest-privilege role for the UI (admin > staff > measurement_staff)
       const role = userRoles.includes('admin')
         ? 'admin'
         : userRoles.includes('staff')
@@ -46,6 +52,7 @@ Deno.serve(async (req) => {
         id: u.id,
         email: u.email,
         display_name: (u.user_metadata as Record<string, unknown>)?.display_name || u.email?.split('@')[0],
+        whatsapp_number: waByUser[u.id] ?? null,
         created_at: u.created_at,
         last_sign_in_at: u.last_sign_in_at,
         role,
