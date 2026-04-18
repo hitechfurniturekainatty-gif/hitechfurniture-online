@@ -168,8 +168,8 @@ export const AiImageDialog = ({
           Generate with AI
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
             AI image studio
@@ -178,6 +178,11 @@ export const AiImageDialog = ({
             Powered by Gemini Nano Banana. Generates a square catalog image and saves it to this product.
           </p>
         </DialogHeader>
+
+        <div
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6"
+          onFocusCapture={scrollFocusedIntoView}
+        >
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
           <TabsList className="grid w-full grid-cols-2">

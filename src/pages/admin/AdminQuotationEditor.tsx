@@ -884,38 +884,50 @@ const AdminQuotationEditor = () => {
 
       {/* Product picker */}
       <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>Add from product catalog</DialogTitle></DialogHeader>
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
-          </div>
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {products
-              .filter((p) => !productSearch || `${p.product_name} ${p.product_code}`.toLowerCase().includes(productSearch.toLowerCase()))
-              .map((p) => (
-                <button key={p.id} type="button" onClick={() => addFromProduct(p)}
-                  className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:bg-muted">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                    {p.product_images?.[0] && <img src={p.product_images[0].image_url} alt="" className="h-full w-full object-cover" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-sm">{p.product_name}</p>
-                    <p className="text-xs text-muted-foreground">{p.product_code}</p>
-                  </div>
-                  <span className="font-mono text-sm">{formatINR(p.offer_price ?? p.mrp)}</span>
-                </button>
-              ))}
-            {products.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No products in catalog yet.</p>}
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle>Add from product catalog</DialogTitle>
+          </DialogHeader>
+          <div
+            className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6"
+            onFocusCapture={scrollFocusedIntoView}
+          >
+            <div className="relative mb-3 shrink-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
+            </div>
+            <div className="flex-1 space-y-2 overflow-y-auto">
+              {products
+                .filter((p) => !productSearch || `${p.product_name} ${p.product_code}`.toLowerCase().includes(productSearch.toLowerCase()))
+                .map((p) => (
+                  <button key={p.id} type="button" onClick={() => addFromProduct(p)}
+                    className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:bg-muted">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+                      {p.product_images?.[0] && <img src={p.product_images[0].image_url} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-sm">{p.product_name}</p>
+                      <p className="text-xs text-muted-foreground">{p.product_code}</p>
+                    </div>
+                    <span className="font-mono text-sm">{formatINR(p.offer_price ?? p.mrp)}</span>
+                  </button>
+                ))}
+              {products.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No products in catalog yet.</p>}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Job Work dialog */}
       <Dialog open={jobOpen} onOpenChange={setJobOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Assign Job Work</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle>Assign Job Work</DialogTitle>
+          </DialogHeader>
+          <div
+            className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
+            onFocusCapture={scrollFocusedIntoView}
+          >
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker PDF will exclude prices, GST and customer phone.</p>
             <div className="space-y-1.5">
               <Label>Worker *</Label>
@@ -935,9 +947,9 @@ const AdminQuotationEditor = () => {
             </div>
             <div className="space-y-1.5"><Label>Notes (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. priority, finish type..." /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setJobOpen(false)}>Cancel</Button>
-            <Button onClick={generateAndSendJob} disabled={generatingJob || !selectedWorker}>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+            <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={generateAndSendJob} disabled={generatingJob || !selectedWorker} className="w-full sm:w-auto">
               {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Generate PDF + WhatsApp
             </Button>
