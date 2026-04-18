@@ -284,6 +284,7 @@ const AdminQuotationEditor = () => {
       gst_amount: gstAmount,
       total,
       notes: q.notes,
+      terms: q.terms ?? DEFAULT_TERMS,
       items: items.map((it) => ({
         description: it.description,
         item_image_url: it.item_image_url,
