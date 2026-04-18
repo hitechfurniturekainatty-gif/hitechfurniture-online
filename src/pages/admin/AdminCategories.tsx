@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "@/hooks/use-toast";
 import { Trash2, Plus, Loader2, ImageIcon, Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number; image_url: string | null };
