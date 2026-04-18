@@ -359,50 +359,55 @@ const AdminQuotationEditor = () => {
       return;
     }
     setGeneratingJob(true);
-    // create job_work_orders row
-    const { error } = await supabase.from("job_work_orders").insert({
-      quotation_id: q.id,
-      worker_id: worker.id,
-      item_ids: chosenItems.map((c) => c.id),
-      notes: jobNotes || null,
-      created_by: user?.id ?? null,
-    });
-    if (error) {
+    try {
+      // create job_work_orders row
+      const { error } = await supabase.from("job_work_orders").insert({
+        quotation_id: q.id,
+        worker_id: worker.id,
+        item_ids: chosenItems.map((c) => c.id),
+        notes: jobNotes || null,
+        created_by: user?.id ?? null,
+      });
+      if (error) {
+        toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+        return;
+      }
+      // generate worker-safe PDF
+      const blob = await generateJobWorkPdf({
+        quotation_id: q.quotation_id,
+        worker_name: worker.name,
+        date: new Date().toLocaleDateString("en-IN"),
+        notes: jobNotes || null,
+        items: chosenItems.map((it) => ({
+          description: it.description,
+          item_image_url: it.item_image_url,
+          measurement: it.measurement,
+          measurement_image_url: it.measurement_image_url,
+          quantity: it.quantity,
+        })),
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const phone = worker.whatsapp_number.replace(/[^0-9]/g, "");
+      const msg = encodeURIComponent(
+        `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\nPDF attached (please attach the downloaded file).\n\n— Hitech Furniture & Interiors`
+      );
+      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+
+      setJobOpen(false);
+      setSelectedItemIds(new Set());
+      toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+    } catch (e: any) {
+      console.error("Job PDF generation failed:", e);
+      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
+    } finally {
       setGeneratingJob(false);
-      toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
-      return;
     }
-    // generate worker-safe PDF
-    const blob = await generateJobWorkPdf({
-      quotation_id: q.quotation_id,
-      worker_name: worker.name,
-      date: new Date().toLocaleDateString("en-IN"),
-      notes: jobNotes || null,
-      items: chosenItems.map((it) => ({
-        description: it.description,
-        item_image_url: it.item_image_url,
-        measurement: it.measurement,
-        measurement_image_url: it.measurement_image_url,
-        quantity: it.quantity,
-      })),
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    const phone = worker.whatsapp_number.replace(/[^0-9]/g, "");
-    const msg = encodeURIComponent(
-      `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\nPDF attached (please attach the downloaded file).\n\n— Hitech Furniture & Interiors`
-    );
-    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
-
-    setGeneratingJob(false);
-    setJobOpen(false);
-    setSelectedItemIds(new Set());
-    toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
   };
 
   const toggleItemSelect = (id: string, checked: boolean) => {
