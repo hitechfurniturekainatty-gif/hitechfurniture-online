@@ -51,6 +51,8 @@ export type QuotationItemPdf = {
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
+  /** Set internally during PDF generation: list of data-URI images to render. */
+  measurement_images?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
