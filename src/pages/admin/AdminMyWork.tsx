@@ -75,7 +75,7 @@ const AdminMyWork = () => {
 
   const pendingTasks = tasks.filter((t) => t.status !== "completed");
   const doneTasks = tasks.filter((t) => t.status === "completed");
-  const doneThisMonth = doneTasks.filter((t) => (t.completed_at ?? t.updated_at_fallback ?? t.created_at) >= monthStartIso);
+  const doneThisMonth = doneTasks.filter((t) => (t.completed_at ?? t.created_at) >= monthStartIso);
   const quotesThisMonth = quotations.filter((q) => q.created_at >= monthStartIso);
 
   const roleLabel = isAdmin
@@ -249,7 +249,4 @@ const StatCard = ({ label, value, icon: Icon, sub }: { label: string; value: num
   </Card>
 );
 
-// satisfy ts for fictional fallback (not actually on row)
-declare module "react" {}
-type _Aug = Task & { updated_at_fallback?: string };
 export default AdminMyWork;
