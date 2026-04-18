@@ -236,33 +236,58 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
 
 // ===== Job Work PDF (worker-safe: NO prices, NO bank, NO customer phone) =====
 
+// A4 usable width with 28pt page padding = 595 - 56 = 539pt
+// Column widths sum to 539: SL(26) + Item(150) + Photo(110) + Measurement(195) + Qty(58)
+const JW_COLS = { sl: 26, item: 150, photo: 110, meas: 195, qty: 58 };
+
 const jwStyles = StyleSheet.create({
-  page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: "#0E5C66", paddingBottom: 10, marginBottom: 14 },
+  page: { paddingTop: 28, paddingBottom: 40, paddingHorizontal: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
+
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: "#0E5C66", paddingBottom: 10, marginBottom: 12 },
   logo: { width: 100, height: 44, objectFit: "contain" },
   brandRight: { textAlign: "right" },
   brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
   brandLine: { fontSize: 8, color: "#6E7F82", marginTop: 2 },
-  hTitle: { fontSize: 18, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center" },
-  metaBox: { padding: 8, backgroundColor: "#F4F7F7", borderRadius: 4, marginBottom: 12 },
-  metaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  metaLabel: { fontSize: 9, color: "#6E7F82" },
-  metaValue: { fontSize: 10, fontWeight: 600 },
-  itemCard: { borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, padding: 10, marginBottom: 10 },
-  itemHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  itemNo: { fontSize: 11, fontWeight: 700, color: "#0E5C66" },
-  itemQty: { fontSize: 11, fontWeight: 700, color: "#0F2A2E" },
-  itemBody: { flexDirection: "row", alignItems: "flex-start" },
-  // Fixed-width wrapper so layout never shifts even if image fails to load
-  imgBox: { width: 120, height: 120, marginRight: 10, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
-  itemImg: { width: 116, height: 116, objectFit: "contain" },
-  imgPlaceholder: { fontSize: 8, color: "#9AA8AA" },
-  itemDetails: { flex: 1, flexGrow: 1, flexShrink: 1 },
-  detailLabel: { fontSize: 8, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 4 },
-  detailValue: { fontSize: 10, color: "#0F2A2E" },
-  measImgBox: { width: 200, height: 90, marginTop: 4, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
-  measImg: { width: 196, height: 86, objectFit: "contain" },
+
+  hTitle: { fontSize: 17, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
+
+  metaStrip: { flexDirection: "row", borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, marginBottom: 12 },
+  metaCell: { flex: 1, padding: 8, borderRightWidth: 0.5, borderRightColor: "#0E5C66" },
+  metaCellLast: { flex: 1, padding: 8 },
+  metaLabel: { fontSize: 7.5, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 },
+  metaValue: { fontSize: 11, fontWeight: 700, color: "#0F2A2E" },
+
+  table: { borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 2, marginBottom: 10 },
+  tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
+  th: { color: "#FFFFFF", fontSize: 9, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF", textTransform: "uppercase", letterSpacing: 0.4 },
+  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#0E5C66", alignItems: "stretch" },
+  tRowAlt: { backgroundColor: "#FAFCFC" },
+  td: { padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF", justifyContent: "flex-start" },
+
+  cellSl: { fontSize: 11, fontWeight: 700, color: "#0E5C66", textAlign: "center" },
+  cellItem: { fontSize: 10, color: "#0F2A2E", lineHeight: 1.35 },
+  cellQty: { fontSize: 14, fontWeight: 700, color: "#0E5C66", textAlign: "center" },
+
+  photoBox: { width: 96, height: 96, alignSelf: "center", borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
+  photoImg: { width: 92, height: 92, objectFit: "contain" },
+  photoEmpty: { fontSize: 7.5, color: "#9AA8AA" },
+
+  measText: { fontSize: 10, color: "#0F2A2E", marginBottom: 4 },
+  sketchLabel: { fontSize: 7, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2, marginBottom: 2 },
+  sketchBox: { width: "100%", height: 80, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
+  sketchImg: { width: 178, height: 76, objectFit: "contain" },
+
+  notesBox: { marginTop: 8, padding: 8, borderWidth: 0.5, borderColor: "#D8DEDF", borderRadius: 4, backgroundColor: "#FAFCFC" },
+  notesTitle: { fontSize: 9, fontWeight: 700, color: "#0E5C66", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 },
+  notesText: { fontSize: 9.5, color: "#0F2A2E", lineHeight: 1.4 },
+
+  signRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 30 },
+  signCol: { width: 180, alignItems: "center" },
+  signLine: { borderTopWidth: 0.75, borderTopColor: "#0F2A2E", width: "100%", marginBottom: 4 },
+  signLabel: { fontSize: 8.5, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6 },
+
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
+  pageNo: { position: "absolute", bottom: 6, right: 28, fontSize: 7.5, color: "#9AA8AA" },
 });
 
 export type JobWorkPdfData = {
@@ -270,7 +295,6 @@ export type JobWorkPdfData = {
   worker_name: string;
   date: string;
   notes: string | null;
-  // Worker-safe items: NO price/amount fields
   items: {
     description: string;
     item_image_url: string | null;
@@ -288,69 +312,95 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
         <View style={jwStyles.brandRight}>
           <Text style={jwStyles.brandName}>{COMPANY.name}</Text>
           <Text style={jwStyles.brandLine}>{COMPANY.address}</Text>
+          <Text style={jwStyles.brandLine}>Phone: {COMPANY.phone}</Text>
         </View>
       </View>
 
       <Text style={jwStyles.hTitle}>JOB WORK ORDER</Text>
 
-      <View style={jwStyles.metaBox}>
-        <View style={jwStyles.metaRow}>
+      <View style={jwStyles.metaStrip}>
+        <View style={jwStyles.metaCell}>
           <Text style={jwStyles.metaLabel}>Reference</Text>
           <Text style={jwStyles.metaValue}>{d.quotation_id}</Text>
         </View>
-        <View style={jwStyles.metaRow}>
+        <View style={jwStyles.metaCell}>
           <Text style={jwStyles.metaLabel}>Worker</Text>
           <Text style={jwStyles.metaValue}>{d.worker_name}</Text>
         </View>
-        <View style={jwStyles.metaRow}>
+        <View style={jwStyles.metaCellLast}>
           <Text style={jwStyles.metaLabel}>Date</Text>
           <Text style={jwStyles.metaValue}>{d.date}</Text>
         </View>
       </View>
 
-      {d.items.map((it, i) => (
-        <View key={i} style={jwStyles.itemCard} wrap={false}>
-          <View style={jwStyles.itemHead}>
-            <Text style={jwStyles.itemNo}>Item {i + 1}</Text>
-            <Text style={jwStyles.itemQty}>Qty: {it.quantity}</Text>
-          </View>
-          <View style={jwStyles.itemBody}>
-            <View style={jwStyles.imgBox}>
-              {it.item_image_url ? (
-                <Image src={it.item_image_url} style={jwStyles.itemImg} />
-              ) : (
-                <Text style={jwStyles.imgPlaceholder}>No image</Text>
-              )}
+      <View style={jwStyles.table}>
+        <View style={jwStyles.tHead} fixed>
+          <Text style={[jwStyles.th, { width: JW_COLS.sl, textAlign: "center" }]}>SL</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.item }]}>Item Description</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.photo, textAlign: "center" }]}>Photo</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.meas }]}>Measurement</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.qty, textAlign: "center", borderRightWidth: 0 }]}>Qty</Text>
+        </View>
+
+        {d.items.map((it, i) => (
+          <View key={i} style={[jwStyles.tRow, i % 2 === 1 ? jwStyles.tRowAlt : {}]} wrap={false}>
+            <View style={[jwStyles.td, { width: JW_COLS.sl, justifyContent: "center" }]}>
+              <Text style={jwStyles.cellSl}>{i + 1}</Text>
             </View>
-            <View style={jwStyles.itemDetails}>
-              <Text style={jwStyles.detailLabel}>Item</Text>
-              <Text style={jwStyles.detailValue}>{it.description}</Text>
-              {it.measurement && (
-                <>
-                  <Text style={jwStyles.detailLabel}>Measurement</Text>
-                  <Text style={jwStyles.detailValue}>{it.measurement}</Text>
-                </>
+            <View style={[jwStyles.td, { width: JW_COLS.item }]}>
+              <Text style={jwStyles.cellItem}>{it.description || "-"}</Text>
+            </View>
+            <View style={[jwStyles.td, { width: JW_COLS.photo, justifyContent: "center" }]}>
+              <View style={jwStyles.photoBox}>
+                {it.item_image_url ? (
+                  <Image src={it.item_image_url} style={jwStyles.photoImg} />
+                ) : (
+                  <Text style={jwStyles.photoEmpty}>No photo</Text>
+                )}
+              </View>
+            </View>
+            <View style={[jwStyles.td, { width: JW_COLS.meas }]}>
+              {it.measurement ? (
+                <Text style={jwStyles.measText}>{it.measurement}</Text>
+              ) : (
+                !it.measurement_image_url && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
               )}
               {it.measurement_image_url && (
                 <>
-                  <Text style={jwStyles.detailLabel}>Measurement Sketch</Text>
-                  <View style={jwStyles.measImgBox}>
-                    <Image src={it.measurement_image_url} style={jwStyles.measImg} />
+                  <Text style={jwStyles.sketchLabel}>Sketch</Text>
+                  <View style={jwStyles.sketchBox}>
+                    <Image src={it.measurement_image_url} style={jwStyles.sketchImg} />
                   </View>
                 </>
               )}
             </View>
+            <View style={[jwStyles.td, { width: JW_COLS.qty, justifyContent: "center", borderRightWidth: 0 }]}>
+              <Text style={jwStyles.cellQty}>{it.quantity}</Text>
+            </View>
           </View>
-        </View>
-      ))}
+        ))}
+      </View>
 
-      {d.notes && (
-        <View style={{ marginTop: 6 }}>
-          <Text style={{ fontSize: 9, color: "#6E7F82" }}>Notes: {d.notes}</Text>
+      {d.notes && d.notes.trim() !== "" && (
+        <View style={jwStyles.notesBox} wrap={false}>
+          <Text style={jwStyles.notesTitle}>Instructions / Notes</Text>
+          <Text style={jwStyles.notesText}>{d.notes}</Text>
         </View>
       )}
 
-      <Text style={jwStyles.footer} fixed>{COMPANY.name} · {COMPANY.address}</Text>
+      <View style={jwStyles.signRow} wrap={false}>
+        <View style={jwStyles.signCol}>
+          <View style={jwStyles.signLine} />
+          <Text style={jwStyles.signLabel}>Worker Signature</Text>
+        </View>
+        <View style={jwStyles.signCol}>
+          <View style={jwStyles.signLine} />
+          <Text style={jwStyles.signLabel}>Authorised Signatory</Text>
+        </View>
+      </View>
+
+      <Text style={jwStyles.footer} fixed>{COMPANY.name} · {COMPANY.address} · {COMPANY.phone}</Text>
+      <Text style={jwStyles.pageNo} fixed render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
     </Page>
   </Document>
 );
