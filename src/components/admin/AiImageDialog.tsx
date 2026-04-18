@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Upload, Wand2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/imageCompression";
 
 // One-click prompt presets. Selecting a preset replaces the prompt textarea.
 const PRESETS: { label: string; description: string; prompt: string }[] = [
@@ -36,6 +37,9 @@ const PRESETS: { label: string; description: string; prompt: string }[] = [
       "A top-down flat-lay photograph of the furniture item from the input image, perfectly centered on a soft beige linen surface, evenly lit with soft daylight, subtle natural shadows, minimal styling, magazine-quality composition, 8k, photorealistic.",
   },
 ];
+
+// Default prompt that auto-fills when the dialog opens.
+const DEFAULT_PROMPT = PRESETS[0].prompt;
 
 const PresetRow = ({ onPick }: { onPick: (p: string) => void }) => (
   <div className="space-y-1.5">
@@ -76,14 +80,41 @@ export const AiImageDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"generate" | "edit">("generate");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [sourceUrl, setSourceUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingSource, setUploadingSource] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    setPrompt("");
+    setPrompt(DEFAULT_PROMPT);
     setSourceUrl("");
     setMode("generate");
+  };
+
+  // Upload an attached file to product-images bucket and use it as the source.
+  const handleAttachFile = async (file: File) => {
+    setUploadingSource(true);
+    try {
+      const compressed = await compressImage(file);
+      const ext = (compressed.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `ai-source/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, compressed, { contentType: compressed.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
+      setSourceUrl(pub.publicUrl);
+      toast({ title: "Image attached", description: "Ready to edit with AI." });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingSource(false);
+    }
   };
 
   const run = async () => {
@@ -176,7 +207,26 @@ export const AiImageDialog = ({
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Source image
               </Label>
-              {existingImageUrls.length > 0 ? (
+
+              {sourceUrl && (
+                <div className="relative inline-block">
+                  <img
+                    src={sourceUrl}
+                    alt="Source"
+                    className="h-24 w-24 rounded-md border border-border object-contain bg-muted/30 p-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSourceUrl("")}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 hover:scale-110 transition"
+                    aria-label="Clear source"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+
+              {existingImageUrls.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
                   {existingImageUrls.map((u) => (
                     <button
@@ -191,15 +241,42 @@ export const AiImageDialog = ({
                     </button>
                   ))}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Upload an image first to edit it.</p>
               )}
-              <Input
-                placeholder="Or paste an image URL"
-                value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
-                className="mt-2"
-              />
+
+              <div className="flex gap-2 mt-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleAttachFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingSource}
+                  className="gap-1.5 shrink-0"
+                >
+                  {uploadingSource ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  {uploadingSource ? "Uploading…" : "Attach image"}
+                </Button>
+                <Input
+                  placeholder="Or paste image URL"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
             </div>
             <PresetRow onPick={setPrompt} />
             <div className="space-y-1.5">
