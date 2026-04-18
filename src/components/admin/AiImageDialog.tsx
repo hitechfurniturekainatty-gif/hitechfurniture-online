@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Upload, Wand2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 // One-click prompt presets. Selecting a preset replaces the prompt textarea.
 const PRESETS: { label: string; description: string; prompt: string }[] = [

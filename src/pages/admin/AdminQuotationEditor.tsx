@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type QItem = {
   id: string;

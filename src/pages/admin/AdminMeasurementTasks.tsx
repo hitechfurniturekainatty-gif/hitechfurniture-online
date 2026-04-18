@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, MapPin, Phone, Ruler, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ContactPicker } from "@/components/admin/ContactPicker";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type Task = {
   id: string;

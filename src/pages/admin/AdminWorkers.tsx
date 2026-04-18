@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat } from "lucide-react";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type Worker = {
   id: string;

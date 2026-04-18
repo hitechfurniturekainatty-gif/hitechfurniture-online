@@ -16,6 +16,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
+import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 type Q = {
   id: string;
