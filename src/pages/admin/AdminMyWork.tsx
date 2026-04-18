@@ -52,26 +52,15 @@ const AdminMyWork = () => {
     const run = async () => {
       setLoading(true);
       const monthStart = startOfMonth();
-      const promises: Promise<any>[] = [
-        supabase.from("profiles").select("display_name,email").eq("user_id", user.id).maybeSingle(),
-      ];
-      // tasks: measurement_staff sees assigned_to=me; office sees created_by=me (tasks they assigned)
-      if (isMeasurementStaff && !isOfficeStaff) {
-        promises.push(
-          supabase.from("measurement_tasks").select("*").eq("assigned_to", user.id).order("created_at", { ascending: false })
-        );
-      } else {
-        promises.push(
-          supabase.from("measurement_tasks").select("*").eq("created_by", user.id).order("created_at", { ascending: false })
-        );
-      }
-      // quotations created by me (relevant to office staff; measurement also creates drafts via tasks)
-      promises.push(
-        supabase.from("quotations").select("id,quotation_id,party_name,party_place,status,total,created_at,created_by")
-          .eq("created_by", user.id).order("created_at", { ascending: false })
-      );
+      const profilePromise = supabase.from("profiles").select("display_name,email").eq("user_id", user.id).maybeSingle();
+      const taskPromise = (isMeasurementStaff && !isOfficeStaff)
+        ? supabase.from("measurement_tasks").select("*").eq("assigned_to", user.id).order("created_at", { ascending: false })
+        : supabase.from("measurement_tasks").select("*").eq("created_by", user.id).order("created_at", { ascending: false });
+      const quotePromise = supabase.from("quotations")
+        .select("id,quotation_id,party_name,party_place,status,total,created_at,created_by")
+        .eq("created_by", user.id).order("created_at", { ascending: false });
 
-      const [pRes, tRes, qRes] = await Promise.all(promises);
+      const [pRes, tRes, qRes] = await Promise.all([profilePromise, taskPromise, quotePromise]);
       setProfile(pRes.data ?? { display_name: user.email?.split("@")[0] ?? null, email: user.email ?? null });
       setTasks((tRes.data ?? []) as Task[]);
       setQuotations((qRes.data ?? []) as Quotation[]);
