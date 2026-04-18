@@ -150,9 +150,7 @@ export const AiImageDialog = ({
         <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generate">Generate new</TabsTrigger>
-            <TabsTrigger value="edit" disabled={existingImageUrls.length === 0}>
-              Edit existing
-            </TabsTrigger>
+            <TabsTrigger value="edit">Edit existing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="generate" className="space-y-3 pt-3">
