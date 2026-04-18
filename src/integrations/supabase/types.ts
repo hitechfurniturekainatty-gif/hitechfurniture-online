@@ -375,6 +375,7 @@ export type Database = {
           source_task_id: string | null
           status: string
           subtotal: number
+          terms: string | null
           total: number
           updated_at: string
         }
@@ -395,6 +396,7 @@ export type Database = {
           source_task_id?: string | null
           status?: string
           subtotal?: number
+          terms?: string | null
           total?: number
           updated_at?: string
         }
@@ -415,6 +417,7 @@ export type Database = {
           source_task_id?: string | null
           status?: string
           subtotal?: number
+          terms?: string | null
           total?: number
           updated_at?: string
         }
