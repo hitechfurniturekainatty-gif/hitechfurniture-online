@@ -606,7 +606,7 @@ const AdminQuotationEditor = () => {
               <Label>Status</Label>
               <Select value={q.status} onValueChange={(v) => updateHeader({ status: v })}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           )}
