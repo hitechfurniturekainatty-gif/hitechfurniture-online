@@ -317,6 +317,18 @@ const AdminQuotationEditor = () => {
     setItems(updated);
     setHeaderDirty(false);
     setSaving(false);
+
+    // Auto-advance status based on content + role
+    const hasItems = updated.length > 0 && updated.some((it) => it.description.trim());
+    const hasPricing = updated.some((it) => Number(it.unit_price) > 0);
+    let nextStatus: string | null = null;
+    if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
+    if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    if (nextStatus) {
+      const { error: stErr } = await supabase.from("quotations").update({ status: nextStatus }).eq("id", q.id);
+      if (!stErr) setQ((prev) => (prev ? { ...prev, status: nextStatus! } : prev));
+    }
+
     toast({ title: "Saved" });
     return { idMap, savedItems: updated };
   };
