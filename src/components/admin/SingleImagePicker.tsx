@@ -109,7 +109,7 @@ export const SingleImagePicker = ({
   if (displayUrl) {
     return (
       <div className={`relative overflow-hidden rounded-md border border-border bg-muted ${compact ? "h-20 w-20" : "h-32 w-full"}`}>
-        <img src={displayUrl} alt={label || "image"} className={`h-full w-full object-contain p-1 ${uploading ? "opacity-70" : ""}`} />
+        <img src={displayUrl} alt={label || "image"} loading="lazy" decoding="async" className={`h-full w-full object-contain p-1 ${uploading ? "opacity-70" : ""}`} />
         {uploading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/30">
             <Loader2 className="h-4 w-4 animate-spin text-primary" />

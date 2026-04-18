@@ -2,23 +2,26 @@ import imageCompression from "browser-image-compression";
 
 /**
  * Compress an image file on the client before upload.
- * Targets ~500KB max with up to 1920px on the longest side.
+ * Optimised for SPEED on quotation/measurement photos taken from phones:
+ *  - Skip anything already <= 500KB (fast path, no decode).
+ *  - Cap longest side at 1280px (more than enough for PDF/preview).
+ *  - Target ~300KB at quality 0.72.
+ *  - Always run inside a Web Worker so the UI stays buttery smooth.
  * Falls back to the original file if compression fails.
  */
 export async function compressImage(file: File): Promise<File> {
-  // Skip non-images and tiny files (already small)
   if (!file.type.startsWith("image/")) return file;
-  if (file.size <= 300 * 1024) return file;
+  // Fast path — phone-shrunk or already-optimised images skip the decode entirely.
+  if (file.size <= 500 * 1024) return file;
 
   try {
     const compressed = await imageCompression(file, {
-      maxSizeMB: 0.5, // ~500KB
-      maxWidthOrHeight: 1920,
+      maxSizeMB: 0.3, // ~300KB target
+      maxWidthOrHeight: 1280, // plenty for previews + A4 PDF rendering
       useWebWorker: true,
-      initialQuality: 0.8,
+      initialQuality: 0.72,
       fileType: file.type === "image/png" ? "image/jpeg" : file.type,
     });
-    // imageCompression returns a Blob in some envs; ensure it's a File
     const blob = compressed as Blob;
     if (blob instanceof File) return blob;
     return new File([blob], file.name.replace(/\.png$/i, ".jpg"), {
