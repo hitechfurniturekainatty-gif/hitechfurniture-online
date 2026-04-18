@@ -318,6 +318,8 @@ export type JobWorkPdfData = {
     item_image_url: string | null;
     measurement: string | null;
     measurement_image_url: string | null;
+    /** Set internally during PDF generation: list of data-URI sketches/cloth refs. */
+    measurement_images?: string[];
     quantity: number;
   }[];
 };
