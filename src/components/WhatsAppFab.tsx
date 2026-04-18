@@ -1,10 +1,8 @@
-import { forwardRef } from "react";
 import { MessageCircle } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/brand";
 
-export const WhatsAppFab = forwardRef<HTMLAnchorElement>((_, ref) => (
+export const WhatsAppFab = () => (
   <a
-    ref={ref}
     href={buildWhatsAppUrl("Hello Hitech Furniture, I'd like to know more about your collection.")}
     target="_blank"
     rel="noopener"
@@ -13,5 +11,4 @@ export const WhatsAppFab = forwardRef<HTMLAnchorElement>((_, ref) => (
   >
     <MessageCircle className="h-7 w-7" />
   </a>
-));
-WhatsAppFab.displayName = "WhatsAppFab";
+);
