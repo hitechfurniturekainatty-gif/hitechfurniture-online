@@ -80,14 +80,41 @@ export const AiImageDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"generate" | "edit">("generate");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [sourceUrl, setSourceUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingSource, setUploadingSource] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    setPrompt("");
+    setPrompt(DEFAULT_PROMPT);
     setSourceUrl("");
     setMode("generate");
+  };
+
+  // Upload an attached file to product-images bucket and use it as the source.
+  const handleAttachFile = async (file: File) => {
+    setUploadingSource(true);
+    try {
+      const compressed = await compressImage(file);
+      const ext = (compressed.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `ai-source/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, compressed, { contentType: compressed.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
+      setSourceUrl(pub.publicUrl);
+      toast({ title: "Image attached", description: "Ready to edit with AI." });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingSource(false);
+    }
   };
 
   const run = async () => {
