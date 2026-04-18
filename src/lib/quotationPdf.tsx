@@ -338,5 +338,13 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 );
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
-  return await pdf(<JobWorkDoc d={d} />).toBlob();
+  const items = await Promise.all(
+    d.items.map(async (it) => ({
+      ...it,
+      item_image_url: await toDataUri(it.item_image_url),
+      measurement_image_url: await toDataUri(it.measurement_image_url),
+    }))
+  );
+  const safe = { ...d, items };
+  return await pdf(<JobWorkDoc d={safe} />).toBlob();
 }
