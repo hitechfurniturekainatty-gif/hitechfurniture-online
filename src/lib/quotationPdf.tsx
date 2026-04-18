@@ -44,15 +44,18 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
-const cols = { sl: 22, desc: 150, img: 60, meas: 90, qty: 30, price: 60, amt: 70 };
+const cols = { sl: 20, desc: 110, img: 55, meas: 80, cat: 85, qty: 26, price: 55, amt: 65 };
 
 export type QuotationItemPdf = {
   description: string;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
+  catalog_text: string | null;
+  catalog_image_url: string | null;
   /** Set internally during PDF generation: list of data-URI images to render. */
   measurement_images?: string[];
+  catalog_images?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
