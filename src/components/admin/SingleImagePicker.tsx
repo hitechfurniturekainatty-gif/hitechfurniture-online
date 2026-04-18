@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/imageCompression";
 
 /**
  * Single image picker with Upload / Camera / URL tabs.
@@ -28,23 +29,51 @@ export const SingleImagePicker = ({
   compact?: boolean;
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
 
+  // When the parent commits the real URL, drop the temporary blob preview.
+  useEffect(() => {
+    if (value && preview) {
+      URL.revokeObjectURL(preview);
+      setPreview(null);
+    }
+  }, [value, preview]);
+
+  // Cleanup any leftover blob preview on unmount
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const uploadFile = useCallback(
     async (file: File) => {
+      // Instant preview
+      const localUrl = URL.createObjectURL(file);
+      setPreview(localUrl);
       setUploading(true);
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
-      if (error) {
-        toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      try {
+        const compressed = await compressImage(file);
+        const ext = (compressed.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+        const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(path, compressed, { upsert: false, contentType: compressed.type });
+        if (error) {
+          toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+          setPreview(null);
+          URL.revokeObjectURL(localUrl);
+          return;
+        }
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+        onChange(data.publicUrl);
+      } finally {
         setUploading(false);
-        return;
+        // Keep local preview until parent value updates; cleanup runs on unmount/replace
       }
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      onChange(data.publicUrl);
-      setUploading(false);
     },
     [bucket, folder, onChange]
   );
@@ -75,18 +104,33 @@ export const SingleImagePicker = ({
     setUrlInput("");
   };
 
-  if (value) {
+  // Show committed value, OR live preview while uploading in background
+  const displayUrl = value || preview;
+  if (displayUrl) {
     return (
       <div className={`relative overflow-hidden rounded-md border border-border bg-muted ${compact ? "h-20 w-20" : "h-32 w-full"}`}>
-        <img src={value} alt={label || "image"} className="h-full w-full object-contain p-1" />
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className="absolute right-1 top-1 rounded-full bg-foreground/80 p-1 text-background hover:bg-foreground"
-          aria-label="Remove image"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        <img src={displayUrl} alt={label || "image"} className={`h-full w-full object-contain p-1 ${uploading ? "opacity-70" : ""}`} />
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          </div>
+        )}
+        {!uploading && (
+          <button
+            type="button"
+            onClick={() => {
+              if (preview) {
+                URL.revokeObjectURL(preview);
+                setPreview(null);
+              }
+              onChange(null);
+            }}
+            className="absolute right-1 top-1 rounded-full bg-foreground/80 p-1 text-background hover:bg-foreground"
+            aria-label="Remove image"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
     );
   }
