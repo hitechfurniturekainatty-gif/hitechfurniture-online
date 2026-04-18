@@ -203,12 +203,13 @@ export const AiImageDialog = ({
                 className="mt-2"
               />
             </div>
+            <PresetRow onPick={setPrompt} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Editing instruction
               </Label>
               <Textarea
-                rows={3}
+                rows={4}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. Change the background to plain white, brighten the lighting, remove the wrinkles on the cushion"
