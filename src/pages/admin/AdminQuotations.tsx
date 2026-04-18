@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
+import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 
 type Q = {
   id: string;
