@@ -19,9 +19,10 @@ export async function compressImage(file: File): Promise<File> {
       fileType: file.type === "image/png" ? "image/jpeg" : file.type,
     });
     // imageCompression returns a Blob in some envs; ensure it's a File
-    if (compressed instanceof File) return compressed;
-    return new File([compressed], file.name.replace(/\.png$/i, ".jpg"), {
-      type: compressed.type || "image/jpeg",
+    const blob = compressed as Blob;
+    if (blob instanceof File) return blob;
+    return new File([blob], file.name.replace(/\.png$/i, ".jpg"), {
+      type: blob.type || "image/jpeg",
       lastModified: Date.now(),
     });
   } catch (err) {
