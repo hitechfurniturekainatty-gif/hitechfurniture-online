@@ -71,7 +71,44 @@ type Worker = { id: string; name: string; whatsapp_number: string; trade: string
 type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
 
 const GST_OPTIONS = [0, 5, 12, 18, 28];
-const STATUS_OPTIONS = ["draft", "sent", "accepted", "rejected", "expired"];
+// Full quotation lifecycle (kept lowercase to match DB defaults)
+const STATUS_OPTIONS = [
+  "draft",        // just created, no items / not measured
+  "drafted",      // measurement done, awaiting price
+  "finalized",    // price + GST added, ready to send
+  "sent",         // shared with customer (WhatsApp)
+  "accepted",     // customer confirmed
+  "completed",    // delivered / done
+  "rejected",     // not moving forward
+];
+
+export const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (s) {
+    case "accepted":
+    case "completed":
+      return "default";
+    case "sent":
+    case "finalized":
+      return "secondary";
+    case "rejected":
+      return "destructive";
+    default:
+      return "outline"; // draft, drafted
+  }
+};
+
+export const statusLabel = (s: string) => {
+  const map: Record<string, string> = {
+    draft: "Pending",
+    drafted: "Drafted",
+    finalized: "Finalized",
+    sent: "Sent",
+    accepted: "Accepted",
+    completed: "Completed",
+    rejected: "Rejected",
+  };
+  return map[s] ?? s;
+};
 
 const AdminQuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
