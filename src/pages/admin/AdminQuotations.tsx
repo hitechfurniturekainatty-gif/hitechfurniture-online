@@ -90,20 +90,27 @@ const AdminQuotations = () => {
     else { toast({ title: "Deleted" }); load(); }
   };
 
-  const filtered = rows.filter((r) => {
+  // All statuses we care about (order = lifecycle order)
+  const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+  type StatusKey = (typeof STATUS_FILTERS)[number];
+
+  const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
-  });
+    return rows.filter((r) => {
+      const matchesSearch = !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rows, search, statusFilter]);
 
-  const groups = {
-    draft: filtered.filter((r) => r.status === "draft"),
-    sent: filtered.filter((r) => r.status === "sent"),
-    accepted: filtered.filter((r) => r.status === "accepted"),
-    all: filtered,
-  };
-
-  const statusColor = (s: string) =>
-    s === "accepted" ? "default" : s === "sent" ? "secondary" : s === "rejected" ? "destructive" : "outline";
+  // Counts per status (over the search-filtered set, ignoring the status filter itself)
+  const counts = useMemo(() => {
+    const s = search.toLowerCase();
+    const base = rows.filter((r) => !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s));
+    const c: Record<string, number> = { all: base.length };
+    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = base.filter((r) => r.status === k).length;
+    return c;
+  }, [rows, search]);
 
   const renderRow = (q: Q) => (
     <Card key={q.id}>
@@ -112,7 +119,7 @@ const AdminQuotations = () => {
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
-            <Badge variant={statusColor(q.status) as any} className="shrink-0">{q.status}</Badge>
+            <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
           </div>
           <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
           <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
