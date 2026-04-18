@@ -1,7 +1,8 @@
 export const WHATSAPP_NUMBER = "919526610404"; // +91 95266 10404
-export const BRAND_NAME = "Hitech Furniture & Interiors";
+export const BRAND_NAME = "My Hitech";
+export const BRAND_FULL_NAME = "My Hitech — Furniture & Interiors";
 export const BRAND_TAGLINE = "Crafted interiors for considered living.";
-export const CONTACT_LINE = "Hitech Furniture & Interiors • +91 95266 10404";
+export const CONTACT_LINE = "My Hitech • +91 95266 10404";
 
 export const formatINR = (n: number | null | undefined) => {
   if (n == null) return "—";
