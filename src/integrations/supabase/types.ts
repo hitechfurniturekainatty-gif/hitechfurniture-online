@@ -368,6 +368,7 @@ export type Database = {
       }
       quotations: {
         Row: {
+          advance_amount: number
           created_at: string
           created_by: string | null
           expected_delivery_date: string | null
@@ -389,6 +390,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advance_amount?: number
           created_at?: string
           created_by?: string | null
           expected_delivery_date?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advance_amount?: number
           created_at?: string
           created_by?: string | null
           expected_delivery_date?: string | null
