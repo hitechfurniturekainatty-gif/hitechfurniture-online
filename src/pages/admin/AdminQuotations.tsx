@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
+import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 
 type Q = {
   id: string;
@@ -34,6 +36,7 @@ const AdminQuotations = () => {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
 
   const load = async () => {
@@ -87,20 +90,27 @@ const AdminQuotations = () => {
     else { toast({ title: "Deleted" }); load(); }
   };
 
-  const filtered = rows.filter((r) => {
+  // All statuses we care about (order = lifecycle order)
+  const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+  type StatusKey = (typeof STATUS_FILTERS)[number];
+
+  const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
-  });
+    return rows.filter((r) => {
+      const matchesSearch = !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rows, search, statusFilter]);
 
-  const groups = {
-    draft: filtered.filter((r) => r.status === "draft"),
-    sent: filtered.filter((r) => r.status === "sent"),
-    accepted: filtered.filter((r) => r.status === "accepted"),
-    all: filtered,
-  };
-
-  const statusColor = (s: string) =>
-    s === "accepted" ? "default" : s === "sent" ? "secondary" : s === "rejected" ? "destructive" : "outline";
+  // Counts per status (over the search-filtered set, ignoring the status filter itself)
+  const counts = useMemo(() => {
+    const s = search.toLowerCase();
+    const base = rows.filter((r) => !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s));
+    const c: Record<string, number> = { all: base.length };
+    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = base.filter((r) => r.status === k).length;
+    return c;
+  }, [rows, search]);
 
   const renderRow = (q: Q) => (
     <Card key={q.id}>
@@ -109,7 +119,7 @@ const AdminQuotations = () => {
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
-            <Badge variant={statusColor(q.status) as any} className="shrink-0">{q.status}</Badge>
+            <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
           </div>
           <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
           <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
@@ -150,27 +160,41 @@ const AdminQuotations = () => {
         </Dialog>
       </div>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-56">
+            <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map((k) => (
+              <SelectItem key={k} value={k}>
+                {k === "all" ? "All statuses" : statusLabel(k)} ({counts[k] ?? 0})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <Tabs defaultValue="all">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
-            <TabsTrigger value="all">All ({groups.all.length})</TabsTrigger>
-            <TabsTrigger value="draft">Drafts ({groups.draft.length})</TabsTrigger>
-            <TabsTrigger value="sent">Sent ({groups.sent.length})</TabsTrigger>
-            <TabsTrigger value="accepted">Accepted ({groups.accepted.length})</TabsTrigger>
+            {STATUS_FILTERS.map((k) => (
+              <TabsTrigger key={k} value={k} className="capitalize">
+                {k === "all" ? "All" : statusLabel(k)} ({counts[k] ?? 0})
+              </TabsTrigger>
+            ))}
           </TabsList>
-          {(["all", "draft", "sent", "accepted"] as const).map((k) => (
-            <TabsContent key={k} value={k} className="mt-4 grid gap-3">
-              {groups[k].map(renderRow)}
-              {groups[k].length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
-            </TabsContent>
-          ))}
+          <TabsContent value={statusFilter} className="mt-4 grid gap-3">
+            {filtered.map(renderRow)}
+            {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
+          </TabsContent>
         </Tabs>
       )}
     </AdminShell>

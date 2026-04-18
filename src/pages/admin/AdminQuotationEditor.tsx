@@ -71,7 +71,44 @@ type Worker = { id: string; name: string; whatsapp_number: string; trade: string
 type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
 
 const GST_OPTIONS = [0, 5, 12, 18, 28];
-const STATUS_OPTIONS = ["draft", "sent", "accepted", "rejected", "expired"];
+// Full quotation lifecycle (kept lowercase to match DB defaults)
+const STATUS_OPTIONS = [
+  "draft",        // just created, no items / not measured
+  "drafted",      // measurement done, awaiting price
+  "finalized",    // price + GST added, ready to send
+  "sent",         // shared with customer (WhatsApp)
+  "accepted",     // customer confirmed
+  "completed",    // delivered / done
+  "rejected",     // not moving forward
+];
+
+export const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (s) {
+    case "accepted":
+    case "completed":
+      return "default";
+    case "sent":
+    case "finalized":
+      return "secondary";
+    case "rejected":
+      return "destructive";
+    default:
+      return "outline"; // draft, drafted
+  }
+};
+
+export const statusLabel = (s: string) => {
+  const map: Record<string, string> = {
+    draft: "Pending",
+    drafted: "Drafted",
+    finalized: "Finalized",
+    sent: "Sent",
+    accepted: "Accepted",
+    completed: "Completed",
+    rejected: "Rejected",
+  };
+  return map[s] ?? s;
+};
 
 const AdminQuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -280,6 +317,18 @@ const AdminQuotationEditor = () => {
     setItems(updated);
     setHeaderDirty(false);
     setSaving(false);
+
+    // Auto-advance status based on content + role
+    const hasItems = updated.length > 0 && updated.some((it) => it.description.trim());
+    const hasPricing = updated.some((it) => Number(it.unit_price) > 0);
+    let nextStatus: string | null = null;
+    if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
+    if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    if (nextStatus) {
+      const { error: stErr } = await supabase.from("quotations").update({ status: nextStatus }).eq("id", q.id);
+      if (!stErr) setQ((prev) => (prev ? { ...prev, status: nextStatus! } : prev));
+    }
+
     toast({ title: "Saved" });
     return { idMap, savedItems: updated };
   };
@@ -366,6 +415,18 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
+  // Persist a status change immediately (used by quick actions and auto-transitions)
+  const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
+    if (!q || q.status === newStatus) return;
+    const { error } = await supabase.from("quotations").update({ status: newStatus }).eq("id", q.id);
+    if (error) {
+      toast({ title: "Status update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
+  };
+
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
@@ -381,6 +442,10 @@ const AdminQuotationEditor = () => {
     if (navAny.canShare && navAny.canShare({ files: [file] })) {
       try {
         await navAny.share({ files: [file], title: r.filename, text: msg });
+        // Auto-mark sent after successful share
+        if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+          await setStatus("sent", { silent: true });
+        }
         return;
       } catch (e) {
         console.warn("Web Share cancelled/failed, falling back:", e);
@@ -397,6 +462,9 @@ const AdminQuotationEditor = () => {
     setTimeout(() => {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
     }, 600);
+    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+      await setStatus("sent", { silent: true });
+    }
   };
 
   // ---- Job Work ----
@@ -509,7 +577,16 @@ const AdminQuotationEditor = () => {
               {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
           </div>
-          <Badge variant={q.status === "draft" ? "outline" : "secondary"} className="shrink-0">{q.status}</Badge>
+          <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
+          {canEditPrice && q.status === "sent" && (
+            <div className="hidden gap-1 sm:flex">
+              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("accepted")}>Mark accepted</Button>
+              <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive" onClick={() => setStatus("rejected")}>Reject</Button>
+            </div>
+          )}
+          {canEditPrice && q.status === "accepted" && (
+            <Button size="sm" variant="outline" className="hidden h-8 sm:inline-flex" onClick={() => setStatus("completed")}>Mark completed</Button>
+          )}
         </div>
         {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
         <div className="hidden flex-wrap gap-2 sm:flex">
@@ -541,7 +618,7 @@ const AdminQuotationEditor = () => {
               <Label>Status</Label>
               <Select value={q.status} onValueChange={(v) => updateHeader({ status: v })}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           )}
