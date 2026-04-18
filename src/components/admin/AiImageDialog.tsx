@@ -156,18 +156,19 @@ export const AiImageDialog = ({
           </TabsList>
 
           <TabsContent value="generate" className="space-y-3 pt-3">
+            <PresetRow onPick={setPrompt} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Describe the image
               </Label>
               <Textarea
-                rows={4}
+                rows={5}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. A modern 3-seater sofa in beige linen fabric, wooden legs, on a clean white studio background, professional product photography, soft lighting"
               />
               <p className="text-[11px] text-muted-foreground">
-                Tip: mention background ("white studio"), angle ("front 3/4 view"), and style for best results.
+                Tip: pick a preset above, then tweak the wording for your product.
               </p>
             </div>
           </TabsContent>
