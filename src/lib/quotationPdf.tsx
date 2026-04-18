@@ -1,5 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
-import logo from "@/assets/hitech-logo.jpeg";
+import { Document, Page, Text, View, StyleSheet, Image, pdf, Svg, Circle, Text as SvgText } from "@react-pdf/renderer";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 
 // PDF-safe INR formatter: Helvetica doesn't include the ₹ glyph, which can
@@ -9,6 +8,58 @@ const formatINR = (n: number | null | undefined) => {
   const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
   return `Rs. ${num}`;
 };
+
+// ---- Image pre-loading ------------------------------------------------------
+// @react-pdf/renderer fetches Image src URLs at render time. Supabase signed/public
+// URLs occasionally fail (CORS, redirects, slow CDN) which leaves blank gaps in the
+// PDF. To make this bullet-proof we pre-fetch each URL in the browser, convert to a
+// base64 data URI, and pass those to the renderer instead. If a fetch fails we
+// substitute a tiny 1x1 transparent PNG so the layout never breaks.
+
+const TRANSPARENT_PX =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+async function urlToDataUri(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  try {
+    const res = await fetch(url, { mode: "cors", cache: "force-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result as string);
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn("[quotationPdf] image fetch failed, using placeholder:", url, err);
+    return TRANSPARENT_PX;
+  }
+}
+
+async function preloadItemImages<T extends { item_image_url: string | null; measurement_image_url: string | null }>(
+  items: T[]
+): Promise<T[]> {
+  return Promise.all(
+    items.map(async (it) => ({
+      ...it,
+      item_image_url: await urlToDataUri(it.item_image_url),
+      measurement_image_url: await urlToDataUri(it.measurement_image_url),
+    }))
+  );
+}
+
+// Brand wordmark for PDF header — drawn as SVG so it always renders crisp,
+// uses brand colors, and matches the on-screen logo (orange dot over the 'i').
+const BrandMark = ({ width = 110, height = 36 }: { width?: number; height?: number }) => (
+  <Svg width={width} height={height} viewBox="0 0 220 70">
+    <SvgText x={0} y={52} style={{ fontFamily: "Helvetica-Bold", fontSize: 56, fill: "#0A1F14" }}>
+      hitech
+    </SvgText>
+    <Circle cx={36} cy={14} r={7} fill="#F59E0B" />
+  </Svg>
+);
 
 const styles = StyleSheet.create({
   page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FFFFFF", fontSize: 10 },
