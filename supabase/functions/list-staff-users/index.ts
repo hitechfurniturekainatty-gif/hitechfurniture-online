@@ -17,8 +17,12 @@ Deno.serve(async (req) => {
     const { data: userData } = await callerClient.auth.getUser();
     if (!userData.user) return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const admin = createClient(url, serviceKey);
-    const { data: isAdmin } = await admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' });
-    if (!isAdmin) return new Response(JSON.stringify({ error: 'Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Allow admin OR staff (office staff need this list to assign measurement tasks)
+    const [{ data: isAdmin }, { data: isStaff }] = await Promise.all([
+      admin.rpc('has_role', { _user_id: userData.user.id, _role: 'admin' }),
+      admin.rpc('has_role', { _user_id: userData.user.id, _role: 'staff' }),
+    ]);
+    if (!isAdmin && !isStaff) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 200 });
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
