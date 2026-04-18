@@ -43,8 +43,7 @@ const pickNative = async (): Promise<ContactInfo | null> => {
   }
 
   // Pick a single contact via the native picker (iOS + Android)
-  // @ts-expect-error - method available in plugin runtime
-  const res = await Contacts.pickContact({
+  const res = await (Contacts as any).pickContact({
     projection: { name: true, phones: true },
   });
 
