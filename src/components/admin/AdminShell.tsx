@@ -45,7 +45,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   ].filter((l) => l.show);
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="min-h-screen overflow-x-hidden bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card">
         <div className="container-page flex items-center justify-between gap-2 py-3">
           <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -69,9 +69,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
         </div>
       </header>
       <div className="container-page grid gap-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:py-6">
-        <aside className="md:sticky md:top-20 md:self-start">
+        <aside className="min-w-0 md:sticky md:top-20 md:self-start">
           <nav
-            className="flex gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Admin navigation"
           >
             {links.map((l) => (
