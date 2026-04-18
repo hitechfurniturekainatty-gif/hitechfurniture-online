@@ -36,6 +36,7 @@ const AdminQuotations = () => {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
 
   const load = async () => {
