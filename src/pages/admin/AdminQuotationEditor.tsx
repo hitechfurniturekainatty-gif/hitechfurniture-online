@@ -566,7 +566,23 @@ const AdminQuotationEditor = () => {
       <Card className="mb-4">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3 order-2 md:order-1">
-            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Terms, delivery info, special instructions..." /></div>
+            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Terms & Conditions</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => updateHeader({ terms: DEFAULT_TERMS })}>
+                  Reset to default
+                </Button>
+              </div>
+              <Textarea
+                rows={8}
+                value={q.terms ?? DEFAULT_TERMS}
+                onChange={(e) => updateHeader({ terms: e.target.value })}
+                placeholder="50% advance, delivery timeline, validity, GST, warranty..."
+                className="font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
+            </div>
             {canEditPrice && (
               <div className="space-y-1.5">
                 <Label>GST %</Label>
