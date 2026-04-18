@@ -44,15 +44,18 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
-const cols = { sl: 22, desc: 150, img: 60, meas: 90, qty: 30, price: 60, amt: 70 };
+const cols = { sl: 20, desc: 110, img: 55, meas: 80, cat: 85, qty: 26, price: 55, amt: 65 };
 
 export type QuotationItemPdf = {
   description: string;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
+  catalog_text: string | null;
+  catalog_image_url: string | null;
   /** Set internally during PDF generation: list of data-URI images to render. */
   measurement_images?: string[];
+  catalog_images?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
@@ -125,9 +128,10 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       <View style={styles.table}>
         <View style={styles.tHead}>
           <Text style={[styles.th, { width: cols.sl }]}>SL</Text>
-          <Text style={[styles.th, { width: cols.desc }]}>Description of Goods</Text>
+          <Text style={[styles.th, { width: cols.desc }]}>Description</Text>
           <Text style={[styles.th, { width: cols.img }]}>Image</Text>
           <Text style={[styles.th, { width: cols.meas }]}>Measurement</Text>
+          <Text style={[styles.th, { width: cols.cat }]}>Catalog</Text>
           <Text style={[styles.th, { width: cols.qty, textAlign: "right" }]}>Qty</Text>
           <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price</Text>
           <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount</Text>
@@ -144,7 +148,17 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
+            </View>
+            <View style={[styles.td, { width: cols.cat }]}>
+              {it.catalog_text && <Text style={{ fontSize: 9 }}>{it.catalog_text}</Text>}
+              {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                  {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
+                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
@@ -231,20 +245,29 @@ async function toDataUri(url: string | null): Promise<string | null> {
 }
 
 export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
+  const splitUrls = (raw: string | null) =>
+    (raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+
   const items = await Promise.all(
     q.items.map(async (it) => {
-      const measUrls = (it.measurement_image_url ?? "")
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
-        (u): u is string => !!u
-      );
+      const measUrls = splitUrls(it.measurement_image_url);
+      const catUrls = splitUrls(it.catalog_image_url);
+      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+        Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        toDataUri(it.item_image_url),
+      ]);
       return {
         ...it,
-        item_image_url: await toDataUri(it.item_image_url),
+        item_image_url: itemUri,
         measurement_image_url: measDataUris[0] ?? null,
         measurement_images: measDataUris,
+        catalog_image_url: catDataUris[0] ?? null,
+        catalog_images: catDataUris,
       };
     })
   );
@@ -255,8 +278,8 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
 // ===== Job Work PDF (worker-safe: NO prices, NO bank, NO customer phone) =====
 
 // A4 usable width with 28pt page padding = 595 - 56 = 539pt
-// Column widths sum to 539: SL(26) + Item(150) + Photo(110) + Measurement(195) + Qty(58)
-const JW_COLS = { sl: 26, item: 150, photo: 110, meas: 195, qty: 58 };
+// Column widths sum to 539: SL(22) + Item(110) + Photo(90) + Measurement(130) + Catalog(130) + Qty(57)
+const JW_COLS = { sl: 22, item: 110, photo: 90, meas: 130, cat: 130, qty: 57 };
 
 const jwStyles = StyleSheet.create({
   page: { paddingTop: 28, paddingBottom: 40, paddingHorizontal: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
@@ -318,8 +341,11 @@ export type JobWorkPdfData = {
     item_image_url: string | null;
     measurement: string | null;
     measurement_image_url: string | null;
+    catalog_text: string | null;
+    catalog_image_url: string | null;
     /** Set internally during PDF generation: list of data-URI sketches/cloth refs. */
     measurement_images?: string[];
+    catalog_images?: string[];
     quantity: number;
   }[];
 };
@@ -356,9 +382,10 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
       <View style={jwStyles.table}>
         <View style={jwStyles.tHead} fixed>
           <Text style={[jwStyles.th, { width: JW_COLS.sl, textAlign: "center" }]}>SL</Text>
-          <Text style={[jwStyles.th, { width: JW_COLS.item }]}>Item Description</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.item }]}>Item</Text>
           <Text style={[jwStyles.th, { width: JW_COLS.photo, textAlign: "center" }]}>Photo</Text>
           <Text style={[jwStyles.th, { width: JW_COLS.meas }]}>Measurement</Text>
+          <Text style={[jwStyles.th, { width: JW_COLS.cat }]}>Catalog</Text>
           <Text style={[jwStyles.th, { width: JW_COLS.qty, textAlign: "center", borderRightWidth: 0 }]}>Qty</Text>
         </View>
 
@@ -371,9 +398,9 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               <Text style={jwStyles.cellItem}>{it.description || "-"}</Text>
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.photo, justifyContent: "center" }]}>
-              <View style={jwStyles.photoBox}>
+              <View style={[jwStyles.photoBox, { width: 80, height: 80 }]}>
                 {it.item_image_url && it.item_image_url.startsWith("data:") ? (
-                  <Image src={it.item_image_url} style={jwStyles.photoImg} />
+                  <Image src={it.item_image_url} style={{ width: 76, height: 76, objectFit: "contain" }} />
                 ) : (
                   <Text style={jwStyles.photoEmpty}>No photo</Text>
                 )}
@@ -386,16 +413,29 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
                 (it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length === 0 && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
               )}
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
-                <>
-                  <Text style={jwStyles.sketchLabel}>Sketch / Cloth</Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
-                    {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                      <View key={k} style={{ width: 86, height: 80, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
-                        <Image src={src} style={{ width: 82, height: 76, objectFit: "contain" }} />
-                      </View>
-                    ))}
-                  </View>
-                </>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                  {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
+                    <View key={k} style={{ width: 58, height: 58, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
+                      <Image src={src} style={{ width: 54, height: 54, objectFit: "contain" }} />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+            <View style={[jwStyles.td, { width: JW_COLS.cat }]}>
+              {it.catalog_text ? (
+                <Text style={jwStyles.measText}>{it.catalog_text}</Text>
+              ) : (
+                (it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length === 0 && <Text style={[jwStyles.measText, { color: "#9AA8AA" }]}>-</Text>
+              )}
+              {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                  {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
+                    <View key={k} style={{ width: 58, height: 58, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
+                      <Image src={src} style={{ width: 54, height: 54, objectFit: "contain" }} />
+                    </View>
+                  ))}
+                </View>
               )}
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.qty, justifyContent: "center", borderRightWidth: 0 }]}>
@@ -430,20 +470,29 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 );
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
+  const splitUrls = (raw: string | null) =>
+    (raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+
   const items = await Promise.all(
     d.items.map(async (it) => {
-      const measUrls = (it.measurement_image_url ?? "")
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const measDataUris = (await Promise.all(measUrls.map((u) => toDataUri(u)))).filter(
-        (u): u is string => !!u
-      );
+      const measUrls = splitUrls(it.measurement_image_url);
+      const catUrls = splitUrls(it.catalog_image_url);
+      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+        Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
+        toDataUri(it.item_image_url),
+      ]);
       return {
         ...it,
-        item_image_url: await toDataUri(it.item_image_url),
+        item_image_url: itemUri,
         measurement_image_url: measDataUris[0] ?? null,
         measurement_images: measDataUris,
+        catalog_image_url: catDataUris[0] ?? null,
+        catalog_images: catDataUris,
       };
     })
   );

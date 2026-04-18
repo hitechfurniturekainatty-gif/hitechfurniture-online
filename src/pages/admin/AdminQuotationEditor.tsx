@@ -29,6 +29,8 @@ type QItem = {
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
+  catalog_text: string | null;
+  catalog_image_url: string | null;
   quantity: number;
   unit_price: number;
   amount: number;
@@ -134,6 +136,8 @@ const AdminQuotationEditor = () => {
       item_image_url: null,
       measurement: null,
       measurement_image_url: null,
+      catalog_text: null,
+      catalog_image_url: null,
       quantity: 1,
       unit_price: 0,
       amount: 0,
@@ -182,6 +186,8 @@ const AdminQuotationEditor = () => {
       item_image_url: p.product_images?.[0]?.image_url ?? null,
       measurement: null,
       measurement_image_url: null,
+      catalog_text: p.product_code ?? null,
+      catalog_image_url: null,
       quantity: 1,
       unit_price: Number(p.offer_price ?? p.mrp ?? 0),
       amount: Number(p.offer_price ?? p.mrp ?? 0),
@@ -230,6 +236,8 @@ const AdminQuotationEditor = () => {
         item_image_url: it.item_image_url,
         measurement: it.measurement,
         measurement_image_url: it.measurement_image_url,
+        catalog_text: it.catalog_text,
+        catalog_image_url: it.catalog_image_url,
         quantity: Number(it.quantity) || 0,
         unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
         display_order: it.display_order,
@@ -291,6 +299,8 @@ const AdminQuotationEditor = () => {
         item_image_url: it.item_image_url,
         measurement: it.measurement,
         measurement_image_url: it.measurement_image_url,
+        catalog_text: it.catalog_text,
+        catalog_image_url: it.catalog_image_url,
         quantity: it.quantity,
         unit_price: it.unit_price,
         amount: (it.quantity || 0) * (it.unit_price || 0),
@@ -417,6 +427,8 @@ const AdminQuotationEditor = () => {
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
+          catalog_text: it.catalog_text,
+          catalog_image_url: it.catalog_image_url,
           quantity: it.quantity,
         })),
       });
@@ -555,8 +567,8 @@ const AdminQuotationEditor = () => {
               </div>
 
               {/* Mobile-first stacked layout, with desktop grid above lg */}
-              <div className="grid gap-3 lg:grid-cols-[1fr_140px_180px_90px_120px_120px]">
-                {/* Description */}
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_120px_minmax(0,1.1fr)_minmax(0,1.1fr)_80px_110px_110px]">
+                {/* Description (medium width) */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</Label>
                   <Textarea rows={2} value={it.description} onChange={(e) => updateItem(it.id, { description: e.target.value })} placeholder="Item name & details" />
@@ -576,7 +588,24 @@ const AdminQuotationEditor = () => {
                     value={it.measurement_image_url}
                     onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
                     folder="measurements"
-                    label="Measurement & cloth catalog photos"
+                    label="Measurement photos"
+                  />
+                </div>
+
+                {/* Catalog (NEW) */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Catalog</Label>
+                  <Input
+                    className="h-11"
+                    value={it.catalog_text ?? ""}
+                    onChange={(e) => updateItem(it.id, { catalog_text: e.target.value })}
+                    placeholder="Catalog name / code"
+                  />
+                  <MultiImagePicker
+                    value={it.catalog_image_url}
+                    onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
+                    folder="catalog"
+                    label="Catalog / cloth photos"
                   />
                 </div>
 
