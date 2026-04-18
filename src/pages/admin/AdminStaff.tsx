@@ -50,6 +50,20 @@ const AdminStaff = () => {
   const [savingEdit, setSavingEdit] = useState(false);
   const [showEditPw, setShowEditPw] = useState(false);
 
+  // Helper: invoke an edge function and surface the JSON body's `error` even on non-2xx
+  const invokeFn = async (name: string, body: unknown) => {
+    const { data, error } = await supabase.functions.invoke(name, { body });
+    let payload: any = data;
+    if (error && (error as any).context?.json) {
+      try { payload = await (error as any).context.json(); } catch { /* ignore */ }
+    } else if (error && (error as any).context?.text) {
+      try { payload = { error: await (error as any).context.text() }; } catch { /* ignore */ }
+    }
+    if (payload?.error) throw new Error(payload.error);
+    if (error) throw new Error(error.message);
+    return payload;
+  };
+
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("list-staff-users");
@@ -109,25 +123,23 @@ const AdminStaff = () => {
         (editForm.display_name ?? "") !== (editing.display_name ?? "") ||
         (editForm.email ?? "") !== (editing.email ?? "")
       ) {
-        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
-          body: { user_id: editing.user_id, action: "update_profile", display_name: editForm.display_name, email: editForm.email },
+        await invokeFn("admin-update-user-role", {
+          user_id: editing.user_id, action: "update_profile",
+          display_name: editForm.display_name, email: editForm.email,
         });
-        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       }
       // Role
       if (editForm.role !== editing.role && editing.user_id !== user?.id) {
-        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
-          body: { user_id: editing.user_id, action: "set_role", role: editForm.role },
+        await invokeFn("admin-update-user-role", {
+          user_id: editing.user_id, action: "set_role", role: editForm.role,
         });
-        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       }
       // Password
       if (editForm.password) {
         if (editForm.password.length < 8) throw new Error("Password must be at least 8 characters");
-        const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
-          body: { user_id: editing.user_id, action: "set_password", password: editForm.password },
+        await invokeFn("admin-update-user-role", {
+          user_id: editing.user_id, action: "set_password", password: editForm.password,
         });
-        if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.error);
       }
       toast({ title: "Staff updated" });
       setEditing(null);
@@ -140,15 +152,13 @@ const AdminStaff = () => {
   };
 
   const deleteUser = async (r: StaffRow) => {
-    const { data, error } = await supabase.functions.invoke("admin-update-user-role", {
-      body: { user_id: r.user_id, action: "delete" },
-    });
-    if (error || (data as any)?.error) {
-      toast({ title: "Delete failed", description: error?.message || (data as any)?.error, variant: "destructive" });
-      return;
+    try {
+      await invokeFn("admin-update-user-role", { user_id: r.user_id, action: "delete" });
+      toast({ title: "Account deleted" });
+      load();
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
     }
-    toast({ title: "Account deleted" });
-    load();
   };
 
   if (!isAdmin) {
