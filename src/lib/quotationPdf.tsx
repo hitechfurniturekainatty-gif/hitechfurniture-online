@@ -196,17 +196,28 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 // never fails on CORS / 404 / slow networks. Returns null on failure.
 async function toDataUri(url: string | null): Promise<string | null> {
   if (!url) return null;
+  // Already a data URI - use as-is
+  if (url.startsWith("data:")) return url;
   try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return null;
+    // credentials: 'omit' avoids sending stale cookies that some CDNs reject
+    const res = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-cache" });
+    if (!res.ok) {
+      console.warn(`[PDF] image fetch ${res.status} for ${url}`);
+      return null;
+    }
     const blob = await res.blob();
+    if (!blob.type.startsWith("image/")) {
+      console.warn(`[PDF] non-image blob (${blob.type}) for ${url}`);
+      return null;
+    }
     return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (e) {
+    console.warn(`[PDF] image fetch threw for ${url}:`, e);
     return null;
   }
 }
