@@ -403,6 +403,18 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
+  // Persist a status change immediately (used by quick actions and auto-transitions)
+  const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
+    if (!q || q.status === newStatus) return;
+    const { error } = await supabase.from("quotations").update({ status: newStatus }).eq("id", q.id);
+    if (error) {
+      toast({ title: "Status update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
+  };
+
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
@@ -418,6 +430,10 @@ const AdminQuotationEditor = () => {
     if (navAny.canShare && navAny.canShare({ files: [file] })) {
       try {
         await navAny.share({ files: [file], title: r.filename, text: msg });
+        // Auto-mark sent after successful share
+        if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+          await setStatus("sent", { silent: true });
+        }
         return;
       } catch (e) {
         console.warn("Web Share cancelled/failed, falling back:", e);
@@ -434,6 +450,9 @@ const AdminQuotationEditor = () => {
     setTimeout(() => {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
     }, 600);
+    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+      await setStatus("sent", { silent: true });
+    }
   };
 
   // ---- Job Work ----
