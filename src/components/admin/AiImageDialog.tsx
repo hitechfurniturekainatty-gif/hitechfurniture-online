@@ -9,6 +9,55 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+// One-click prompt presets. Selecting a preset replaces the prompt textarea.
+const PRESETS: { label: string; description: string; prompt: string }[] = [
+  {
+    label: "Studio shot (light gray)",
+    description: "Seamless light-gray backdrop, soft contact shadow, eye-level.",
+    prompt:
+      "A professional-grade, seamless studio photograph of the furniture item from the input image. The subject is centered and placed on a perfectly smooth, uniform light gray studio backdrop that has a matte finish. The flooring subtly blends into the wall, creating an infinite, minimalist background. Soft, diffuse lighting illuminates the furniture item evenly, highlighting its texture. Crucially, a realistic, soft, natural contact shadow is cast directly beneath and slightly around the base of the furniture onto the light gray floor, anchoring it in the space. No harsh shadows or reflections. The perspective is front-on and at eye level. High resolution, 8k, photorealistic.",
+  },
+  {
+    label: "Pure white catalog",
+    description: "Clean e-commerce white background, no shadow.",
+    prompt:
+      "A high-resolution e-commerce catalog photograph of the furniture item from the input image. Pure white seamless background (#FFFFFF), evenly lit with soft diffused studio lighting from multiple angles to eliminate all shadows and reflections. Subject perfectly centered, front 3/4 view at eye level, sharp focus, true-to-life colors and material textures. 8k, photorealistic.",
+  },
+  {
+    label: "Lifestyle room",
+    description: "Furniture placed in a tasteful real-world interior.",
+    prompt:
+      "A photorealistic lifestyle interior photograph featuring the furniture item from the input image, naturally placed in a warm, modern Indian living room with neutral wall paint, hardwood flooring, soft natural daylight from a large window, a few tasteful decor elements (plant, rug, art) without overpowering the subject. Front 3/4 angle, eye-level, magazine-quality composition, 8k, photorealistic.",
+  },
+  {
+    label: "Top-down flat lay",
+    description: "Bird's-eye view on a soft neutral surface.",
+    prompt:
+      "A top-down flat-lay photograph of the furniture item from the input image, perfectly centered on a soft beige linen surface, evenly lit with soft daylight, subtle natural shadows, minimal styling, magazine-quality composition, 8k, photorealistic.",
+  },
+];
+
+const PresetRow = ({ onPick }: { onPick: (p: string) => void }) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+      Quick presets
+    </Label>
+    <div className="flex flex-wrap gap-1.5">
+      {PRESETS.map((p) => (
+        <button
+          key={p.label}
+          type="button"
+          onClick={() => onPick(p.prompt)}
+          title={p.description}
+          className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium hover:border-primary hover:bg-primary/10 hover:text-primary transition"
+        >
+          ✨ {p.label}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 /**
  * Dialog wrapping the `ai-generate-image` edge function.
  * Two modes:
@@ -107,18 +156,19 @@ export const AiImageDialog = ({
           </TabsList>
 
           <TabsContent value="generate" className="space-y-3 pt-3">
+            <PresetRow onPick={setPrompt} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Describe the image
               </Label>
               <Textarea
-                rows={4}
+                rows={5}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. A modern 3-seater sofa in beige linen fabric, wooden legs, on a clean white studio background, professional product photography, soft lighting"
               />
               <p className="text-[11px] text-muted-foreground">
-                Tip: mention background ("white studio"), angle ("front 3/4 view"), and style for best results.
+                Tip: pick a preset above, then tweak the wording for your product.
               </p>
             </div>
           </TabsContent>
@@ -153,12 +203,13 @@ export const AiImageDialog = ({
                 className="mt-2"
               />
             </div>
+            <PresetRow onPick={setPrompt} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Editing instruction
               </Label>
               <Textarea
-                rows={3}
+                rows={4}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. Change the background to plain white, brighten the lighting, remove the wrinkles on the cushion"
