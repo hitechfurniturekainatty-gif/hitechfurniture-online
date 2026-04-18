@@ -61,38 +61,39 @@ const BrandMark = ({ width = 110, height = 36 }: { width?: number; height?: numb
   </Svg>
 );
 
+// Brand palette in PDF: Deep Forest Green primary + Neon Lime accents.
 const styles = StyleSheet.create({
-  page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FFFFFF", fontSize: 10 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 10, marginBottom: 14 },
-  logo: { width: 100, height: 44, objectFit: "contain" },
+  page: { padding: 28, fontFamily: "Helvetica", color: "#0A1F14", backgroundColor: "#FFFFFF", fontSize: 10 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0A1F14", paddingBottom: 10, marginBottom: 14 },
+  logo: { width: 110, height: 36 },
   brandRight: { textAlign: "right" },
-  brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 8, color: "#6E7F82", marginTop: 2 },
-  hTitle: { fontSize: 18, fontWeight: 700, color: "#0E5C66", marginBottom: 8, textAlign: "center" },
+  brandName: { fontSize: 13, fontWeight: 700, color: "#0A1F14" },
+  brandLine: { fontSize: 8, color: "#5C6B63", marginTop: 2 },
+  hTitle: { fontSize: 18, fontWeight: 700, color: "#0A1F14", marginBottom: 8, textAlign: "center" },
   partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, gap: 12 },
-  partyBox: { flex: 1, padding: 8, backgroundColor: "#F4F7F7", borderRadius: 4 },
-  partyLabel: { fontSize: 7, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  partyValue: { fontSize: 10, fontWeight: 600, color: "#0F2A2E" },
-  table: { borderWidth: 0.75, borderColor: "#0E5C66", marginBottom: 10 },
-  tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
+  partyBox: { flex: 1, padding: 8, backgroundColor: "#F1F7F3", borderRadius: 4, borderLeftWidth: 2, borderLeftColor: "#4ADE80" },
+  partyLabel: { fontSize: 7, color: "#5C6B63", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
+  partyValue: { fontSize: 10, fontWeight: 600, color: "#0A1F14" },
+  table: { borderWidth: 0.75, borderColor: "#0A1F14", marginBottom: 10 },
+  tHead: { flexDirection: "row", backgroundColor: "#0A1F14" },
   th: { color: "#FFFFFF", fontSize: 8.5, fontWeight: 700, padding: 5, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
   tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 32 },
   td: { fontSize: 9, padding: 5, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
   tdImg: { width: 50, height: 50, objectFit: "contain" },
-  totalsBox: { marginLeft: "auto", width: 230, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
+  totalsBox: { marginLeft: "auto", width: 230, borderWidth: 0.75, borderColor: "#0A1F14", borderRadius: 4 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 6, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
-  totalLabel: { fontSize: 9, color: "#1F3F44" },
-  totalValue: { fontSize: 10, fontWeight: 600, color: "#0F2A2E" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, backgroundColor: "#0E5C66" },
-  grandLabel: { color: "#FFFFFF", fontSize: 11, fontWeight: 700 },
+  totalLabel: { fontSize: 9, color: "#1F3F2E" },
+  totalValue: { fontSize: 10, fontWeight: 600, color: "#0A1F14" },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, backgroundColor: "#0A1F14" },
+  grandLabel: { color: "#4ADE80", fontSize: 11, fontWeight: 700 },
   grandValue: { color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
-  bankBox: { marginTop: 14, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
-  bankTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
-  bankLine: { fontSize: 9, color: "#1F3F44", marginBottom: 1 },
-  termsBox: { marginTop: 10, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
-  termsTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
-  termsLine: { fontSize: 8.5, color: "#1F3F44", marginBottom: 2, lineHeight: 1.4 },
-  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
+  bankBox: { marginTop: 14, padding: 10, borderWidth: 0.75, borderColor: "#0A1F14", borderRadius: 4 },
+  bankTitle: { fontSize: 10, fontWeight: 700, color: "#0A1F14", marginBottom: 4 },
+  bankLine: { fontSize: 9, color: "#1F3F2E", marginBottom: 1 },
+  termsBox: { marginTop: 10, padding: 10, borderWidth: 0.75, borderColor: "#0A1F14", borderRadius: 4, backgroundColor: "#F8FBF9" },
+  termsTitle: { fontSize: 10, fontWeight: 700, color: "#0A1F14", marginBottom: 4 },
+  termsLine: { fontSize: 8.5, color: "#1F3F2E", marginBottom: 2, lineHeight: 1.4 },
+  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#5C6B63", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
 const cols = { sl: 22, desc: 150, img: 60, meas: 90, qty: 30, price: 60, amt: 70 };
@@ -128,7 +129,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
-        <Image src={logo} style={styles.logo} />
+        <View style={styles.logo}><BrandMark width={110} height={36} /></View>
         <View style={styles.brandRight}>
           <Text style={styles.brandName}>{COMPANY.name}</Text>
           <Text style={styles.brandLine}>{COMPANY.address}</Text>
@@ -244,33 +245,35 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 );
 
 export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
-  return await pdf(<QuotationDoc q={q} />).toBlob();
+  // Pre-fetch all remote images so the PDF never has blank gaps from CORS / slow URLs.
+  const items = await preloadItemImages(q.items);
+  return await pdf(<QuotationDoc q={{ ...q, items }} />).toBlob();
 }
 
 // ===== Job Work PDF (worker-safe: NO prices, NO bank, NO customer phone) =====
 
 const jwStyles = StyleSheet.create({
-  page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 10, marginBottom: 14 },
-  logo: { width: 100, height: 44, objectFit: "contain" },
-  brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 8, color: "#6E7F82" },
-  hTitle: { fontSize: 18, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center" },
-  metaBox: { padding: 8, backgroundColor: "#F4F7F7", borderRadius: 4, marginBottom: 12 },
+  page: { padding: 28, fontFamily: "Helvetica", color: "#0A1F14", fontSize: 10, backgroundColor: "#FFFFFF" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0A1F14", paddingBottom: 10, marginBottom: 14 },
+  logo: { width: 110, height: 36 },
+  brandName: { fontSize: 13, fontWeight: 700, color: "#0A1F14" },
+  brandLine: { fontSize: 8, color: "#5C6B63" },
+  hTitle: { fontSize: 18, fontWeight: 700, color: "#0A1F14", marginBottom: 10, textAlign: "center" },
+  metaBox: { padding: 8, backgroundColor: "#F1F7F3", borderRadius: 4, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: "#4ADE80" },
   metaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  metaLabel: { fontSize: 9, color: "#6E7F82" },
+  metaLabel: { fontSize: 9, color: "#5C6B63" },
   metaValue: { fontSize: 10, fontWeight: 600 },
-  itemCard: { borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, padding: 10, marginBottom: 10 },
-  itemHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  itemNo: { fontSize: 11, fontWeight: 700, color: "#0E5C66" },
-  itemQty: { fontSize: 11, fontWeight: 700, color: "#0F2A2E" },
+  itemCard: { borderWidth: 0.75, borderColor: "#0A1F14", borderRadius: 4, padding: 10, marginBottom: 10 },
+  itemHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6, paddingBottom: 4, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
+  itemNo: { fontSize: 11, fontWeight: 700, color: "#0A1F14" },
+  itemQty: { fontSize: 11, fontWeight: 700, color: "#0A1F14", backgroundColor: "#4ADE80", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 3 },
   itemBody: { flexDirection: "row", gap: 10 },
   itemImg: { width: 110, height: 110, objectFit: "contain", borderWidth: 0.5, borderColor: "#D8DEDF" },
   itemDetails: { flex: 1 },
-  detailLabel: { fontSize: 8, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 4 },
-  detailValue: { fontSize: 10, color: "#0F2A2E" },
+  detailLabel: { fontSize: 8, color: "#5C6B63", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 4 },
+  detailValue: { fontSize: 10, color: "#0A1F14" },
   measImg: { width: 130, height: 70, objectFit: "contain", marginTop: 4, borderWidth: 0.5, borderColor: "#D8DEDF" },
-  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
+  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#5C6B63", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
 });
 
 export type JobWorkPdfData = {
@@ -292,7 +295,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
   <Document>
     <Page size="A4" style={jwStyles.page}>
       <View style={jwStyles.header}>
-        <Image src={logo} style={jwStyles.logo} />
+        <View style={jwStyles.logo}><BrandMark width={110} height={36} /></View>
         <View style={{ textAlign: "right" }}>
           <Text style={jwStyles.brandName}>{COMPANY.name}</Text>
           <Text style={jwStyles.brandLine}>{COMPANY.address}</Text>
