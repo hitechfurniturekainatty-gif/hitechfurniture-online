@@ -283,9 +283,9 @@ export type JobWorkPdfData = {
 const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
   <Document>
     <Page size="A4" style={jwStyles.page}>
-      <View style={jwStyles.header}>
+      <View style={jwStyles.header} fixed>
         <Image src={logo} style={jwStyles.logo} />
-        <View style={{ textAlign: "right" }}>
+        <View style={jwStyles.brandRight}>
           <Text style={jwStyles.brandName}>{COMPANY.name}</Text>
           <Text style={jwStyles.brandLine}>{COMPANY.address}</Text>
         </View>
@@ -315,13 +315,13 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
             <Text style={jwStyles.itemQty}>Qty: {it.quantity}</Text>
           </View>
           <View style={jwStyles.itemBody}>
-            {it.item_image_url ? (
-              <Image src={it.item_image_url} style={jwStyles.itemImg} />
-            ) : (
-              <View style={[jwStyles.itemImg, { alignItems: "center", justifyContent: "center" }]}>
-                <Text style={{ fontSize: 8, color: "#9AA8AA" }}>No image</Text>
-              </View>
-            )}
+            <View style={jwStyles.imgBox}>
+              {it.item_image_url ? (
+                <Image src={it.item_image_url} style={jwStyles.itemImg} />
+              ) : (
+                <Text style={jwStyles.imgPlaceholder}>No image</Text>
+              )}
+            </View>
             <View style={jwStyles.itemDetails}>
               <Text style={jwStyles.detailLabel}>Item</Text>
               <Text style={jwStyles.detailValue}>{it.description}</Text>
@@ -334,7 +334,9 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               {it.measurement_image_url && (
                 <>
                   <Text style={jwStyles.detailLabel}>Measurement Sketch</Text>
-                  <Image src={it.measurement_image_url} style={jwStyles.measImg} />
+                  <View style={jwStyles.measImgBox}>
+                    <Image src={it.measurement_image_url} style={jwStyles.measImg} />
+                  </View>
                 </>
               )}
             </View>
@@ -348,7 +350,7 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
         </View>
       )}
 
-      <Text style={jwStyles.footer}>{COMPANY.name} · {COMPANY.address}</Text>
+      <Text style={jwStyles.footer} fixed>{COMPANY.name} · {COMPANY.address}</Text>
     </Page>
   </Document>
 );
