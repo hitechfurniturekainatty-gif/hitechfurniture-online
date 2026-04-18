@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/imageCompression";
 
 /**
  * Multi-image picker that stores a list of image URLs serialized into a single
