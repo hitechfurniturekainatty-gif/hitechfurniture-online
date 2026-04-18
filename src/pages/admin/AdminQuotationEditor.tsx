@@ -209,6 +209,7 @@ const AdminQuotationEditor = () => {
         gst_percent: q.gst_percent,
         status: q.status,
         notes: q.notes,
+        terms: q.terms,
       }).eq("id", q.id);
       if (error) {
         setSaving(false);
