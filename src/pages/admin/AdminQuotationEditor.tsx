@@ -680,9 +680,11 @@ const AdminQuotationEditor = () => {
                   )}
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">#{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
-                  <span className="ml-auto font-mono text-sm font-semibold text-primary sm:hidden">
-                    {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
-                  </span>
+                  {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
+                    <span className="ml-auto font-mono text-sm font-semibold text-primary sm:hidden">
+                      {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
+                    </span>
+                  )}
                 </div>
                 <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -736,20 +738,42 @@ const AdminQuotationEditor = () => {
                 <div className="grid grid-cols-3 gap-3 lg:contents">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</Label>
-                    <Input className="h-11" type="number" inputMode="decimal" min={0} step="0.01" value={it.quantity}
-                      onChange={(e) => updateItem(it.id, { quantity: Number(e.target.value) })} />
+                    <Input
+                      className="h-11"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={it.quantity || ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
+                        updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
+                      }}
+                      placeholder="1"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit ₹</Label>
-                    <Input className="h-11" type="number" inputMode="decimal" min={0} step="0.01" value={it.unit_price}
-                      onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) })}
-                      disabled={!canEditPrice} />
+                    <Input
+                      className="h-11"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
+                      value={it.unit_price || ""}
+                      onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
+                      disabled={!canEditPrice}
+                      placeholder="0"
+                    />
                     {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</Label>
                     <div className="flex h-11 items-center justify-end rounded-md border bg-muted px-3 font-mono text-sm font-semibold">
-                      {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
+                      {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
+                        ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
+                        : <span className="text-muted-foreground font-normal">—</span>}
                     </div>
                   </div>
                 </div>
