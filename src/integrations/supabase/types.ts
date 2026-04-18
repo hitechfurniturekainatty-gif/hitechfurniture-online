@@ -303,6 +303,8 @@ export type Database = {
       quotation_items: {
         Row: {
           amount: number
+          catalog_image_url: string | null
+          catalog_text: string | null
           created_at: string
           description: string
           display_order: number
@@ -317,6 +319,8 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          catalog_image_url?: string | null
+          catalog_text?: string | null
           created_at?: string
           description: string
           display_order?: number
@@ -331,6 +335,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          catalog_image_url?: string | null
+          catalog_text?: string | null
           created_at?: string
           description?: string
           display_order?: number
