@@ -66,6 +66,7 @@ export type QuotationPdfData = {
   gst_amount: number;
   total: number;
   notes: string | null;
+  terms?: string | null;
   items: QuotationItemPdf[];
 };
 
