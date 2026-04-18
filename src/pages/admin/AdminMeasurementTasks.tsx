@@ -173,10 +173,10 @@ const AdminMeasurementTasks = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl">Measurement Tasks</h1>
-          <p className="mt-1 text-muted-foreground">Assign field staff to capture customer measurements.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Measurement Tasks</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Assign field staff to capture customer measurements.</p>
         </div>
         {isOfficeStaff && (
           <Dialog open={open} onOpenChange={setOpen}>
