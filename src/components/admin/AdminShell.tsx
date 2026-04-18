@@ -47,24 +47,33 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   return (
     <div className="min-h-screen bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card">
-        <div className="container-page flex items-center justify-between py-3">
-          <Link to="/" className="flex items-center gap-3">
-            <Logo className="h-9 w-auto" />
+        <div className="container-page flex items-center justify-between gap-2 py-3">
+          <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Logo className="h-8 w-auto sm:h-9" />
             <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="ghost">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button asChild size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="View site">
+              <Link to="/" target="_blank"><ExternalLink className="h-4 w-4" /></Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex">
               <Link to="/" target="_blank"><ExternalLink className="mr-1 h-4 w-4" /> View site</Link>
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => signOut().then(() => navigate("/auth"))}>
+            <Button size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="Sign out" onClick={() => signOut().then(() => navigate("/auth"))}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => signOut().then(() => navigate("/auth"))}>
               <LogOut className="mr-1 h-4 w-4" /> Sign out
             </Button>
           </div>
         </div>
       </header>
-      <div className="container-page grid gap-6 py-6 md:grid-cols-[220px_1fr]">
+      <div className="container-page grid gap-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:py-6">
         <aside className="md:sticky md:top-20 md:self-start">
-          <nav className="flex gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col">
+          <nav
+            className="flex gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Admin navigation"
+          >
             {links.map((l) => (
               <RRNavLink
                 key={l.to}
@@ -72,8 +81,8 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
                 end={l.end}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-smooth",
-                    isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted"
+                    "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                    isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
                   )
                 }
               >
@@ -81,11 +90,11 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
               </RRNavLink>
             ))}
           </nav>
-          <p className="mt-3 px-2 text-xs text-muted-foreground">
+          <p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">
             Role: <span className="font-semibold text-foreground">{isAdmin ? "Admin" : isMeasurementStaff && !isOfficeStaff ? "Measurement Staff" : "Staff"}</span>
           </p>
         </aside>
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0 pb-6">{children}</main>
       </div>
     </div>
   );
