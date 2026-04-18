@@ -249,14 +249,14 @@ const AdminProducts = () => {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl">
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="font-display text-xl sm:text-2xl">
               {editing ? "Edit product" : "New product"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 sm:grid-cols-2 sm:px-6">
             <Field label="Product name *">
               <Input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} />
             </Field>
