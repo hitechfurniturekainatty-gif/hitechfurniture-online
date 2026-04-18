@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type Role = "admin" | "staff" | "measurement_staff";
@@ -18,6 +18,7 @@ type StaffRow = {
   user_id: string;
   email: string | null;
   display_name: string | null;
+  whatsapp_number: string | null;
   role: Role | null;
   created_at: string;
 };
@@ -38,14 +39,14 @@ const AdminStaff = () => {
   const [openCreate, setOpenCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [showCreatePw, setShowCreatePw] = useState(false);
-  const [form, setForm] = useState<{ email: string; password: string; display_name: string; role: Role }>({
-    email: "", password: "", display_name: "", role: "staff",
+  const [form, setForm] = useState<{ email: string; password: string; display_name: string; whatsapp_number: string; role: Role }>({
+    email: "", password: "", display_name: "", whatsapp_number: "", role: "staff",
   });
 
   // Edit
   const [editing, setEditing] = useState<StaffRow | null>(null);
-  const [editForm, setEditForm] = useState<{ display_name: string; email: string; role: Role; password: string }>({
-    display_name: "", email: "", role: "staff", password: "",
+  const [editForm, setEditForm] = useState<{ display_name: string; email: string; whatsapp_number: string; role: Role; password: string }>({
+    display_name: "", email: "", whatsapp_number: "", role: "staff", password: "",
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [showEditPw, setShowEditPw] = useState(false);
@@ -90,7 +91,7 @@ const AdminStaff = () => {
     }
     setCreating(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", {
-      body: { email: form.email, password: form.password, display_name: form.display_name, role: form.role },
+      body: { email: form.email, password: form.password, display_name: form.display_name, whatsapp_number: form.whatsapp_number, role: form.role },
     });
     setCreating(false);
     if (error || (data as any)?.error) {
@@ -99,7 +100,7 @@ const AdminStaff = () => {
     }
     toast({ title: "Account created", description: `${form.email} added as ${roleLabel[form.role]}` });
     setOpenCreate(false);
-    setForm({ email: "", password: "", display_name: "", role: "staff" });
+    setForm({ email: "", password: "", display_name: "", whatsapp_number: "", role: "staff" });
     load();
   };
 
@@ -108,6 +109,7 @@ const AdminStaff = () => {
     setEditForm({
       display_name: r.display_name ?? "",
       email: r.email ?? "",
+      whatsapp_number: r.whatsapp_number ?? "",
       role: (r.role ?? "staff") as Role,
       password: "",
     });
@@ -118,14 +120,16 @@ const AdminStaff = () => {
     if (!editing) return;
     setSavingEdit(true);
     try {
-      // Profile (name + email)
+      // Profile (name + email + whatsapp)
       if (
         (editForm.display_name ?? "") !== (editing.display_name ?? "") ||
-        (editForm.email ?? "") !== (editing.email ?? "")
+        (editForm.email ?? "") !== (editing.email ?? "") ||
+        (editForm.whatsapp_number ?? "") !== (editing.whatsapp_number ?? "")
       ) {
         await invokeFn("admin-update-user-role", {
           user_id: editing.user_id, action: "update_profile",
           display_name: editForm.display_name, email: editForm.email,
+          whatsapp_number: editForm.whatsapp_number,
         });
       }
       // Role
@@ -209,6 +213,16 @@ const AdminStaff = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label>WhatsApp number (with country code, e.g. 919526610404)</Label>
+                <Input
+                  value={form.whatsapp_number}
+                  onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
+                  placeholder="91XXXXXXXXXX"
+                  inputMode="tel"
+                />
+                <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments via WhatsApp.</p>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Role *</Label>
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -248,6 +262,11 @@ const AdminStaff = () => {
                     <div className="min-w-0">
                       <p className="font-medium truncate">{r.display_name || r.email} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                      {r.whatsapp_number && (
+                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                          <MessageCircle className="h-3 w-3 text-primary" /> {r.whatsapp_number}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -302,6 +321,16 @@ const AdminStaff = () => {
                 <Label>Email</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
                 <p className="text-[11px] text-muted-foreground">Changing email updates the login email immediately.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp number</Label>
+                <Input
+                  value={editForm.whatsapp_number}
+                  onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value })}
+                  placeholder="91XXXXXXXXXX (with country code)"
+                  inputMode="tel"
+                />
+                <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Role</Label>

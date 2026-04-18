@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: 'Admin only' }, 403);
 
     const body = await req.json();
-    const { user_id, role, action, password, display_name, email } = body ?? {};
+    const { user_id, role, action, password, display_name, email, whatsapp_number } = body ?? {};
     if (!user_id) return json({ error: 'user_id required' }, 400);
 
     // Default action for backwards compatibility
@@ -68,11 +68,12 @@ Deno.serve(async (req) => {
         const { error } = await admin.auth.admin.updateUserById(user_id, updates as any);
         if (error) return json({ error: error.message }, 400);
       }
-      if (typeof display_name === 'string') {
-        await admin.from('profiles').update({ display_name }).eq('user_id', user_id);
-      }
-      if (typeof email === 'string' && email.trim()) {
-        await admin.from('profiles').update({ email: email.trim() }).eq('user_id', user_id);
+      const profilePatch: Record<string, unknown> = {};
+      if (typeof display_name === 'string') profilePatch.display_name = display_name;
+      if (typeof email === 'string' && email.trim()) profilePatch.email = email.trim();
+      if (typeof whatsapp_number === 'string') profilePatch.whatsapp_number = whatsapp_number.trim() || null;
+      if (Object.keys(profilePatch).length) {
+        await admin.from('profiles').update(profilePatch).eq('user_id', user_id);
       }
       return json({ ok: true });
     }
