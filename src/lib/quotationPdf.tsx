@@ -128,9 +128,10 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       <View style={styles.table}>
         <View style={styles.tHead}>
           <Text style={[styles.th, { width: cols.sl }]}>SL</Text>
-          <Text style={[styles.th, { width: cols.desc }]}>Description of Goods</Text>
+          <Text style={[styles.th, { width: cols.desc }]}>Description</Text>
           <Text style={[styles.th, { width: cols.img }]}>Image</Text>
           <Text style={[styles.th, { width: cols.meas }]}>Measurement</Text>
+          <Text style={[styles.th, { width: cols.cat }]}>Catalog</Text>
           <Text style={[styles.th, { width: cols.qty, textAlign: "right" }]}>Qty</Text>
           <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price</Text>
           <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount</Text>
@@ -147,7 +148,17 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
+            </View>
+            <View style={[styles.td, { width: cols.cat }]}>
+              {it.catalog_text && <Text style={{ fontSize: 9 }}>{it.catalog_text}</Text>}
+              {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                  {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
+                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
