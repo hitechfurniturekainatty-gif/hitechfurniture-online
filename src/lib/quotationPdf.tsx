@@ -192,8 +192,35 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
   </Document>
 );
 
+// Pre-fetch a remote image and convert to data URI so @react-pdf/renderer
+// never fails on CORS / 404 / slow networks. Returns null on failure.
+async function toDataUri(url: string | null): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
-  return await pdf(<QuotationDoc q={q} />).toBlob();
+  const items = await Promise.all(
+    q.items.map(async (it) => ({
+      ...it,
+      item_image_url: await toDataUri(it.item_image_url),
+      measurement_image_url: await toDataUri(it.measurement_image_url),
+    }))
+  );
+  const safe = { ...q, items };
+  return await pdf(<QuotationDoc q={safe} />).toBlob();
 }
 
 // ===== Job Work PDF (worker-safe: NO prices, NO bank, NO customer phone) =====
@@ -311,5 +338,13 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 );
 
 export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
-  return await pdf(<JobWorkDoc d={d} />).toBlob();
+  const items = await Promise.all(
+    d.items.map(async (it) => ({
+      ...it,
+      item_image_url: await toDataUri(it.item_image_url),
+      measurement_image_url: await toDataUri(it.measurement_image_url),
+    }))
+  );
+  const safe = { ...d, items };
+  return await pdf(<JobWorkDoc d={safe} />).toBlob();
 }
