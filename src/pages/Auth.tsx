@@ -34,11 +34,22 @@ const Auth = () => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast({ title: "Welcome back" });
         // Role-aware redirect: fetch user's roles and route accordingly
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id;
+        // Resolve a friendly display name for the welcome toast
+        let displayName =
+          (userData.user?.user_metadata as any)?.display_name ||
+          userData.user?.email?.split("@")[0] ||
+          "there";
         if (uid) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (profile?.display_name) displayName = profile.display_name;
+          toast({ title: `Hi ${displayName}`, description: "Welcome to My Hitech 👋" });
           const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", uid);
           const roles = (rolesData ?? []).map((r) => r.role as string);
           const isAdmin = roles.includes("admin");
@@ -48,6 +59,7 @@ const Auth = () => {
           else if (roles.includes("measurement_staff")) navigate("/admin/my-work");
           else navigate("/admin");
         } else {
+          toast({ title: `Hi ${displayName}`, description: "Welcome to My Hitech 👋" });
           navigate("/admin");
         }
       }
