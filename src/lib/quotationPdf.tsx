@@ -139,7 +139,13 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
               {it.measurement && <Text style={{ fontSize: 9 }}>{it.measurement}</Text>}
-              {it.measurement_image_url && <Image src={it.measurement_image_url} style={{ width: 70, height: 35, objectFit: "contain", marginTop: 2 }} />}
+              {(it.measurement_images ?? []).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                  {(it.measurement_images ?? []).map((src, k) => (
+                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
             <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{formatINR(it.unit_price)}</Text>
