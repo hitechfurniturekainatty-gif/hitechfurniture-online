@@ -33,11 +33,21 @@ export const SingleImagePicker = ({
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
 
+  // When the parent commits the real URL, drop the temporary blob preview.
+  useEffect(() => {
+    if (value && preview) {
+      URL.revokeObjectURL(preview);
+      setPreview(null);
+    }
+  }, [value, preview]);
+
+  // Cleanup any leftover blob preview on unmount
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview);
     };
-  }, [preview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const uploadFile = useCallback(
     async (file: File) => {
