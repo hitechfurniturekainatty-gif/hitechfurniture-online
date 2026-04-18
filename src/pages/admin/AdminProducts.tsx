@@ -259,12 +259,7 @@ const AdminProducts = () => {
 
           <div
             className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 sm:grid-cols-2 sm:px-6"
-            onFocusCapture={(e) => {
-              const t = e.target as HTMLElement;
-              if (t.matches("input, textarea, [role=combobox]")) {
-                setTimeout(() => t.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
-              }
-            }}
+            onFocusCapture={scrollFocusedIntoView}
           >
             <Field label="Product name *">
               <Input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} />
