@@ -371,6 +371,7 @@ export type Database = {
           advance_amount: number
           created_at: string
           created_by: string | null
+          discount_amount: number
           expected_delivery_date: string | null
           gst_amount: number
           gst_percent: number
@@ -393,6 +394,7 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          discount_amount?: number
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -415,6 +417,7 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          discount_amount?: number
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
