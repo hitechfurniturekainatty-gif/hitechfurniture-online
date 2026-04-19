@@ -189,7 +189,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
         {(q.advance_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Less: Advance Paid</Text>
+            <Text style={styles.totalLabel}>Less: Advance Received</Text>
             <Text style={styles.totalValue}>- {formatINR(q.advance_amount)}</Text>
           </View>
         )}
