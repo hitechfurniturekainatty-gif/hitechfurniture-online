@@ -176,30 +176,37 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       </View>
 
       <View style={styles.totalsBox}>
+        {/* Subtotal — always shown */}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Subtotal</Text>
           <Text style={styles.totalValue}>{formatINR(q.subtotal)}</Text>
         </View>
+
+        {/* Discount — only if > 0 */}
         {(q.discount_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Discount</Text>
             <Text style={styles.totalValue}>- {formatINR(q.discount_amount)}</Text>
           </View>
         )}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>GST ({q.gst_percent}%)</Text>
-          <Text style={styles.totalValue}>{formatINR(q.gst_amount)}</Text>
-        </View>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Grand Total</Text>
-          <Text style={styles.totalValue}>{formatINR(q.total)}</Text>
-        </View>
+
+        {/* GST — only if % > 0 AND amount > 0 */}
+        {(q.gst_percent ?? 0) > 0 && (q.gst_amount ?? 0) > 0 && (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>GST ({q.gst_percent}%)</Text>
+            <Text style={styles.totalValue}>{formatINR(q.gst_amount)}</Text>
+          </View>
+        )}
+
+        {/* Advance — only if > 0 */}
         {(q.advance_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Less: Advance Received</Text>
             <Text style={styles.totalValue}>- {formatINR(q.advance_amount)}</Text>
           </View>
         )}
+
+        {/* Grand Total / Balance Due — always shown */}
         <View style={styles.grandRow}>
           <Text style={styles.grandLabel}>{(q.advance_amount ?? 0) > 0 ? "BALANCE DUE" : "GRAND TOTAL"}</Text>
           <Text style={styles.grandValue}>{formatINR((q.advance_amount ?? 0) > 0 ? (q.balance_due ?? q.total) : q.total)}</Text>

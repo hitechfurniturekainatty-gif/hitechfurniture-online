@@ -831,7 +831,13 @@ const AdminQuotationEditor = () => {
             )}
           </div>
           <div className="order-1 w-full space-y-2 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 md:order-2 md:ml-auto md:max-w-sm">
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{formatINR(subtotal)}</span></div>
+            {/* Subtotal — always visible */}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium">{formatINR(subtotal)}</span>
+            </div>
+
+            {/* Discount — input shown to staff so they can enter; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="discount-amt" className="text-sm text-muted-foreground">Discount</Label>
@@ -847,13 +853,23 @@ const AdminQuotationEditor = () => {
                 />
               </div>
             ) : discountAmount > 0 ? (
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Discount</span><span className="font-medium">- {formatINR(discountAmount)}</span></div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Discount</span>
+                <span className="font-medium">- {formatINR(discountAmount)}</span>
+              </div>
             ) : null}
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">GST ({q.gst_percent}%)</span><span className="font-medium">{formatINR(gstAmount)}</span></div>
-            <Separator />
-            <div className="flex items-baseline justify-between"><span className="font-display text-sm">Grand Total</span><span className="font-display text-lg font-semibold">{formatINR(grandTotal)}</span></div>
-            {canEditPrice && (
-              <div className="flex items-center justify-between gap-2 pt-1">
+
+            {/* GST — only when % > 0 AND amount > 0 */}
+            {(q.gst_percent ?? 0) > 0 && gstAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">GST ({q.gst_percent}%)</span>
+                <span className="font-medium">{formatINR(gstAmount)}</span>
+              </div>
+            )}
+
+            {/* Advance Received — input shown to staff; read-only row only when > 0 */}
+            {canEditPrice ? (
+              <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Received</Label>
                 <Input
                   id="advance-amt"
@@ -866,15 +882,22 @@ const AdminQuotationEditor = () => {
                   onChange={(e) => updateHeader({ advance_amount: Number(e.target.value) || 0 })}
                 />
               </div>
-            )}
-            {advanceAmount > 0 && !canEditPrice && (
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Advance Received</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
-            )}
-            {advanceAmount > 0 && canEditPrice && (
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Less: Advance</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
-            )}
+            ) : advanceAmount > 0 ? (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Advance Received</span>
+                <span className="font-medium">- {formatINR(advanceAmount)}</span>
+              </div>
+            ) : null}
+
             <Separator />
-            <div className="flex items-baseline justify-between"><span className="font-display text-base">Balance Due</span><span className="font-display text-2xl font-bold text-primary">{formatINR(balanceDue)}</span></div>
+
+            {/* Grand Total — always visible. Becomes Balance Due if advance was paid. */}
+            <div className="flex items-baseline justify-between">
+              <span className="font-display text-base">{advanceAmount > 0 ? "Balance Due" : "Grand Total"}</span>
+              <span className="font-display text-2xl font-bold text-primary">
+                {formatINR(advanceAmount > 0 ? balanceDue : grandTotal)}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
