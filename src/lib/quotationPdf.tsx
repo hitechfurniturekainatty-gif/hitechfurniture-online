@@ -73,6 +73,7 @@ export type QuotationPdfData = {
   expected_delivery_date: string | null;
   gst_percent: number;
   subtotal: number;
+  discount_amount?: number;
   gst_amount: number;
   total: number;
   advance_amount?: number;
@@ -179,6 +180,12 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <Text style={styles.totalLabel}>Subtotal</Text>
           <Text style={styles.totalValue}>{formatINR(q.subtotal)}</Text>
         </View>
+        {(q.discount_amount ?? 0) > 0 && (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Discount</Text>
+            <Text style={styles.totalValue}>- {formatINR(q.discount_amount)}</Text>
+          </View>
+        )}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>GST ({q.gst_percent}%)</Text>
           <Text style={styles.totalValue}>{formatINR(q.gst_amount)}</Text>

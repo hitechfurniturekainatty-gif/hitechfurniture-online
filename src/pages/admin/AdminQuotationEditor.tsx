@@ -56,6 +56,7 @@ type Quotation = {
   gst_amount: number;
   total: number;
   advance_amount: number;
+  discount_amount: number;
   status: string;
   notes: string | null;
   terms: string | null;
@@ -161,8 +162,10 @@ const AdminQuotationEditor = () => {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
-  const gstAmount = useMemo(() => Math.round(subtotal * ((q?.gst_percent ?? 0) / 100) * 100) / 100, [subtotal, q?.gst_percent]);
-  const grandTotal = subtotal + gstAmount;
+  const discountAmount = Math.min(Math.max(0, Number(q?.discount_amount) || 0), subtotal);
+  const taxableBase = Math.max(0, subtotal - discountAmount);
+  const gstAmount = useMemo(() => Math.round(taxableBase * ((q?.gst_percent ?? 0) / 100) * 100) / 100, [taxableBase, q?.gst_percent]);
+  const grandTotal = taxableBase + gstAmount;
   const advanceAmount = Math.max(0, Number(q?.advance_amount) || 0);
   const balanceDue = Math.max(0, grandTotal - advanceAmount);
   // Kept for legacy references / WhatsApp message — represents grand total
@@ -259,6 +262,7 @@ const AdminQuotationEditor = () => {
         expected_delivery_date: q.expected_delivery_date,
         gst_percent: q.gst_percent,
         advance_amount: Math.max(0, Number(q.advance_amount) || 0),
+        discount_amount: Math.max(0, Number(q.discount_amount) || 0),
         status: q.status,
         notes: q.notes,
         terms: q.terms,
@@ -370,6 +374,7 @@ const AdminQuotationEditor = () => {
       expected_delivery_date: q.expected_delivery_date ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN") : null,
       gst_percent: q.gst_percent,
       subtotal,
+      discount_amount: discountAmount,
       gst_amount: gstAmount,
       total: grandTotal,
       advance_amount: advanceAmount,
@@ -827,6 +832,23 @@ const AdminQuotationEditor = () => {
           </div>
           <div className="order-1 w-full space-y-2 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 md:order-2 md:ml-auto md:max-w-sm">
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{formatINR(subtotal)}</span></div>
+            {canEditPrice ? (
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="discount-amt" className="text-sm text-muted-foreground">Discount</Label>
+                <Input
+                  id="discount-amt"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  className="h-9 w-32 text-right"
+                  value={q.discount_amount ?? 0}
+                  onChange={(e) => updateHeader({ discount_amount: Number(e.target.value) || 0 })}
+                />
+              </div>
+            ) : discountAmount > 0 ? (
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Discount</span><span className="font-medium">- {formatINR(discountAmount)}</span></div>
+            ) : null}
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">GST ({q.gst_percent}%)</span><span className="font-medium">{formatINR(gstAmount)}</span></div>
             <Separator />
             <div className="flex items-baseline justify-between"><span className="font-display text-sm">Grand Total</span><span className="font-display text-lg font-semibold">{formatINR(grandTotal)}</span></div>
