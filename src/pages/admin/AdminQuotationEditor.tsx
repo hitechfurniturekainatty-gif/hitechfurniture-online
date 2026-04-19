@@ -437,44 +437,55 @@ const AdminQuotationEditor = () => {
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
+  // Shared helper: try native share with file (WhatsApp will attach the PDF directly).
+  // Falls back to download + open chat link if the device doesn't support file sharing.
+  const sharePdfViaWhatsApp = async (
+    blob: Blob,
+    filename: string,
+    phone: string | null,
+    message: string,
+  ): Promise<"shared" | "fallback"> => {
+    const file = new File([blob], filename, { type: "application/pdf" });
+    const navAny = navigator as any;
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, "") : "";
+
+    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+      try {
+        await navAny.share({ files: [file], title: filename, text: message });
+        return "shared";
+      } catch (e) {
+        console.warn("Web Share cancelled/failed, falling back:", e);
+      }
+    }
+
+    // Fallback: download PDF + open WhatsApp chat
+    downloadBlob(blob, filename);
+    toast({
+      title: "PDF downloaded. Please attach it manually to WhatsApp.",
+      description: cleanPhone ? "WhatsApp will open — tap the paperclip and select the downloaded PDF." : undefined,
+      duration: 8000,
+    });
+    if (cleanPhone) {
+      setTimeout(() => {
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
+      }, 600);
+    }
+    return "fallback";
+  };
+
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
     const r = await buildPdfBlob();
     if (!r) return;
 
-    const phone = q.party_phone.replace(/[^0-9]/g, "");
     const balanceLine = advanceAmount > 0
       ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
       : `Total: ${formatINR(grandTotal)}`;
     const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
-    // Try native Web Share API with file (mobile: lets user pick WhatsApp and attaches PDF directly)
-    const file = new File([r.blob], r.filename, { type: "application/pdf" });
-    const navAny = navigator as any;
-    if (navAny.canShare && navAny.canShare({ files: [file] })) {
-      try {
-        await navAny.share({ files: [file], title: r.filename, text: msg });
-        // Auto-mark sent after successful share
-        if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-          await setStatus("sent", { silent: true });
-        }
-        return;
-      } catch (e) {
-        console.warn("Web Share cancelled/failed, falling back:", e);
-      }
-    }
+    await sharePdfViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
 
-    // Fallback: download PDF, then open WhatsApp chat with prefilled message
-    downloadBlob(r.blob, r.filename);
-    toast({
-      title: "PDF downloaded — attach it in WhatsApp",
-      description: "WhatsApp will open. Tap the paperclip icon and select the downloaded PDF.",
-      duration: 8000,
-    });
-    setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-    }, 600);
     if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
       await setStatus("sent", { silent: true });
     }
@@ -520,7 +531,7 @@ const AdminQuotationEditor = () => {
         toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
         return;
       }
-      // generate worker-safe PDF
+      // generate worker-safe PDF (NO prices, NO bank, NO customer phone)
       const blob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
@@ -536,18 +547,10 @@ const AdminQuotationEditor = () => {
           quantity: it.quantity,
         })),
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      const phone = worker.whatsapp_number.replace(/[^0-9]/g, "");
-      const msg = encodeURIComponent(
-        `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\nPDF attached (please attach the downloaded file).\n\n— Hitech Furniture & Interiors`
-      );
-      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+      await sharePdfViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
 
       setJobOpen(false);
       setSelectedItemIds(new Set());
