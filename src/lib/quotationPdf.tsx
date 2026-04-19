@@ -145,24 +145,24 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
             <Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
-              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 8, color: "#9AA8AA" }}>-</Text>}
+              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 10, color: "#9AA8AA" }}>-</Text>}
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
-              {it.measurement && <Text style={{ fontSize: 9 }}>{it.measurement}</Text>}
+              {it.measurement && <Text style={{ fontSize: 11 }}>{it.measurement}</Text>}
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
             </View>
             <View style={[styles.td, { width: cols.cat }]}>
-              {it.catalog_text && <Text style={{ fontSize: 9 }}>{it.catalog_text}</Text>}
+              {it.catalog_text && <Text style={{ fontSize: 11 }}>{it.catalog_text}</Text>}
               {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
