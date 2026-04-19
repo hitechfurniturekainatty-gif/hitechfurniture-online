@@ -445,7 +445,7 @@ const AdminQuotationEditor = () => {
 
     const phone = q.party_phone.replace(/[^0-9]/g, "");
     const balanceLine = advanceAmount > 0
-      ? `Total: ${formatINR(grandTotal)}\nAdvance Paid: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
+      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
       : `Total: ${formatINR(grandTotal)}`;
     const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
@@ -829,7 +829,7 @@ const AdminQuotationEditor = () => {
             <div className="flex items-baseline justify-between"><span className="font-display text-sm">Grand Total</span><span className="font-display text-lg font-semibold">{formatINR(grandTotal)}</span></div>
             {canEditPrice && (
               <div className="flex items-center justify-between gap-2 pt-1">
-                <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Paid</Label>
+                <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Received</Label>
                 <Input
                   id="advance-amt"
                   type="number"
@@ -843,7 +843,7 @@ const AdminQuotationEditor = () => {
               </div>
             )}
             {advanceAmount > 0 && !canEditPrice && (
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Advance Paid</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Advance Received</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>
             )}
             {advanceAmount > 0 && canEditPrice && (
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Less: Advance</span><span className="font-medium">- {formatINR(advanceAmount)}</span></div>

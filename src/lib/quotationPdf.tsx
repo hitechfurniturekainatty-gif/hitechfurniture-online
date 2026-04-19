@@ -10,41 +10,43 @@ const formatINR = (n: number | null | undefined) => {
   return `Rs. ${num}`;
 };
 
+// A4 = 595 x 842 pt. Side padding 22pt → usable width = 551pt
 const styles = StyleSheet.create({
-  page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FFFFFF", fontSize: 10 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 10, marginBottom: 14 },
-  logo: { width: 100, height: 44, objectFit: "contain" },
+  page: { paddingTop: 24, paddingBottom: 36, paddingHorizontal: 22, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FFFFFF", fontSize: 12 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 12, marginBottom: 14 },
+  logo: { width: 120, height: 54, objectFit: "contain" },
   brandRight: { textAlign: "right" },
-  brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 8, color: "#6E7F82", marginTop: 2 },
-  hTitle: { fontSize: 18, fontWeight: 700, color: "#0E5C66", marginBottom: 8, textAlign: "center" },
-  partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, gap: 12 },
-  partyBox: { flex: 1, padding: 8, backgroundColor: "#F4F7F7", borderRadius: 4 },
-  partyLabel: { fontSize: 7, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  partyValue: { fontSize: 10, fontWeight: 600, color: "#0F2A2E" },
-  table: { borderWidth: 0.75, borderColor: "#0E5C66", marginBottom: 10 },
+  brandName: { fontSize: 16, fontWeight: 700, color: "#0E5C66" },
+  brandLine: { fontSize: 10, color: "#6E7F82", marginTop: 2 },
+  hTitle: { fontSize: 22, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
+  partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14, gap: 12 },
+  partyBox: { flex: 1, padding: 10, backgroundColor: "#F4F7F7", borderRadius: 4 },
+  partyLabel: { fontSize: 9, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
+  partyValue: { fontSize: 12, fontWeight: 600, color: "#0F2A2E" },
+  table: { borderWidth: 0.75, borderColor: "#0E5C66", marginBottom: 12 },
   tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
-  th: { color: "#FFFFFF", fontSize: 8.5, fontWeight: 700, padding: 5, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
-  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 32 },
-  td: { fontSize: 9, padding: 5, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
-  tdImg: { width: 50, height: 50, objectFit: "contain" },
-  totalsBox: { marginLeft: "auto", width: 230, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 6, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
-  totalLabel: { fontSize: 9, color: "#1F3F44" },
-  totalValue: { fontSize: 10, fontWeight: 600, color: "#0F2A2E" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, backgroundColor: "#0E5C66" },
-  grandLabel: { color: "#FFFFFF", fontSize: 11, fontWeight: 700 },
-  grandValue: { color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
-  bankBox: { marginTop: 14, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
-  bankTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
-  bankLine: { fontSize: 9, color: "#1F3F44", marginBottom: 1 },
-  termsBox: { marginTop: 10, padding: 10, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
-  termsTitle: { fontSize: 10, fontWeight: 700, color: "#0E5C66", marginBottom: 4 },
-  termsLine: { fontSize: 8.5, color: "#1F3F44", marginBottom: 2, lineHeight: 1.4 },
-  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
+  th: { color: "#FFFFFF", fontSize: 10.5, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
+  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 44 },
+  td: { fontSize: 11, padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
+  tdImg: { width: 64, height: 64, objectFit: "contain" },
+  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
+  totalLabel: { fontSize: 11, color: "#1F3F44" },
+  totalValue: { fontSize: 12, fontWeight: 600, color: "#0F2A2E" },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 10, backgroundColor: "#0E5C66" },
+  grandLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
+  grandValue: { color: "#FFFFFF", fontSize: 16, fontWeight: 700 },
+  bankBox: { marginTop: 16, padding: 12, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
+  bankTitle: { fontSize: 12, fontWeight: 700, color: "#0E5C66", marginBottom: 5 },
+  bankLine: { fontSize: 11, color: "#1F3F44", marginBottom: 2 },
+  termsBox: { marginTop: 12, padding: 12, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
+  termsTitle: { fontSize: 12, fontWeight: 700, color: "#0E5C66", marginBottom: 5 },
+  termsLine: { fontSize: 10.5, color: "#1F3F44", marginBottom: 3, lineHeight: 1.45 },
+  footer: { position: "absolute", bottom: 16, left: 22, right: 22, textAlign: "center", fontSize: 9, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 6 },
 });
 
-const cols = { sl: 20, desc: 110, img: 55, meas: 80, cat: 85, qty: 26, price: 55, amt: 65 };
+// Sum = 551 (matches usable width). Bigger Description / Measurement / Catalog so text reads easily.
+const cols = { sl: 22, desc: 120, img: 70, meas: 95, cat: 100, qty: 30, price: 54, amt: 60 };
 
 export type QuotationItemPdf = {
   description: string;
@@ -143,24 +145,24 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
             <Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
-              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 8, color: "#9AA8AA" }}>-</Text>}
+              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 10, color: "#9AA8AA" }}>-</Text>}
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
-              {it.measurement && <Text style={{ fontSize: 9 }}>{it.measurement}</Text>}
+              {it.measurement && <Text style={{ fontSize: 11 }}>{it.measurement}</Text>}
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
             </View>
             <View style={[styles.td, { width: cols.cat }]}>
-              {it.catalog_text && <Text style={{ fontSize: 9 }}>{it.catalog_text}</Text>}
+              {it.catalog_text && <Text style={{ fontSize: 11 }}>{it.catalog_text}</Text>}
               {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, gap: 2 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 36, height: 36, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
@@ -187,7 +189,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
         {(q.advance_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Less: Advance Paid</Text>
+            <Text style={styles.totalLabel}>Less: Advance Received</Text>
             <Text style={styles.totalValue}>- {formatINR(q.advance_amount)}</Text>
           </View>
         )}
