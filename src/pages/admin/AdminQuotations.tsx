@@ -17,6 +17,11 @@ import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import {
+  saveNewQuotationDraft,
+  loadNewQuotationDraft,
+  clearNewQuotationDraft,
+} from "@/lib/quotationDraft";
 
 type Q = {
   id: string;
@@ -41,6 +46,9 @@ const AdminQuotations = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
   const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
+  // Auto-save / resume state for the "New Quotation" dialog
+  const [resumeOffered, setResumeOffered] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
 
   // Keep state and URL ?status= in sync
   const setStatusFilter = (v: string) => {
@@ -66,6 +74,62 @@ const AdminQuotations = () => {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // ---- Auto-save the New Quotation form every 30s while the dialog is open.
+  // Walking customers + interruptions = high data-loss risk. localStorage
+  // survives browser close, accidental back, mobile screen-off, etc.
+  useEffect(() => {
+    if (!open) return;
+    const tick = () => {
+      saveNewQuotationDraft(form);
+      setDraftSavedAt(Date.now());
+    };
+    // Save immediately when fields change, but throttled to 30s like requested.
+    const id = window.setInterval(tick, 30_000);
+    // Also save on tab hide / page hide so a screen-off doesn't lose data.
+    const onHide = () => saveNewQuotationDraft(form);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, [open, form]);
+
+  // ---- Resume prompt when opening the dialog with a saved draft.
+  const handleOpenChange = (next: boolean) => {
+    if (next && !open) {
+      const draft = loadNewQuotationDraft();
+      const formIsEmpty =
+        !form.party_name.trim() && !form.party_place.trim() && !form.party_phone.trim();
+      if (draft && formIsEmpty && !resumeOffered) {
+        setResumeOffered(true);
+        const ageMin = Math.max(1, Math.round((Date.now() - draft.savedAt) / 60_000));
+        const resume = window.confirm(
+          `Unfinished draft found (saved ~${ageMin} min ago).\n\n` +
+            `Party: ${draft.party_name || "—"}\nPlace: ${draft.party_place || "—"}\n\n` +
+            `Would you like to resume?`,
+        );
+        if (resume) {
+          setForm({
+            party_name: draft.party_name,
+            party_place: draft.party_place,
+            party_phone: draft.party_phone,
+          });
+          toast({ title: "Draft resumed" });
+        } else {
+          clearNewQuotationDraft();
+        }
+      }
+    }
+    if (!next) {
+      // Save final state on close (don't lose data if they cancel).
+      saveNewQuotationDraft(form);
+      setResumeOffered(false);
+    }
+    setOpen(next);
+  };
 
   const create = async () => {
     if (!form.party_name.trim() || !form.party_place.trim()) {
@@ -94,6 +158,8 @@ const AdminQuotations = () => {
       toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       return;
     }
+    // Successfully persisted to DB — drop the local draft.
+    clearNewQuotationDraft();
     setOpen(false);
     setForm({ party_name: "", party_place: "", party_phone: "" });
     navigate(`/admin/quotations/${data.id}`);
@@ -172,7 +238,7 @@ const AdminQuotations = () => {
           <h1 className="font-display text-2xl sm:text-3xl">Quotations</h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create, manage and share customer quotations.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
           <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
             <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
@@ -197,9 +263,15 @@ const AdminQuotations = () => {
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
               <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
+              {draftSavedAt && (
+                <p className="text-[11px] text-muted-foreground">
+                  Auto-saved locally at {new Date(draftSavedAt).toLocaleTimeString("en-IN")} —
+                  you can safely close and resume later.
+                </p>
+              )}
             </div>
             <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
-              <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} className="w-full sm:w-auto">Cancel</Button>
               <Button onClick={create} disabled={creating} className="w-full sm:w-auto">{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create & open</Button>
             </DialogFooter>
           </DialogContent>
