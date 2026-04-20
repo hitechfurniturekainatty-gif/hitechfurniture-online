@@ -130,7 +130,7 @@ export const DeliveryRoutePicker = ({ place, routeId, onChange, label = "Deliver
         )}
       </div>
       {!hasMatch && place.trim() && (
-        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+        <p className="text-[11px] text-accent-foreground/80">
           No route matched "{place}". Pick one above so dispatch can plan the trip.
         </p>
       )}
