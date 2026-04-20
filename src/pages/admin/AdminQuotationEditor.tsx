@@ -984,7 +984,7 @@ const AdminQuotationEditor = () => {
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
         <div className="flex gap-2">
-          <Button onClick={saveAll} disabled={saving} className="h-12 flex-1">
+          <Button onClick={saveAndPreview} disabled={saving} className="h-12 flex-1">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
           </Button>
           {canEditPrice && (
