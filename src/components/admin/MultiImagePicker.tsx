@@ -194,7 +194,13 @@ export const MultiImagePicker = ({
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
           {urls.map((u, i) => (
             <div key={`${u}-${i}`} className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
-              <img src={u} alt={`image ${i + 1}`} className="h-full w-full object-contain p-0.5" />
+              <img
+                src={u}
+                alt={`image ${i + 1}`}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-contain p-0.5"
+              />
               <button
                 type="button"
                 onClick={() => removeAt(i)}
