@@ -52,8 +52,10 @@ Deno.serve(async (req) => {
     const prompt: string = (body.prompt ?? "").toString().trim();
     const itemName: string = (body.item_name ?? "").toString().trim();
     const sourceImageUrl: string | undefined = body.source_image_url;
-    // Default to Nano Banana 2 (fast + pro-quality). Caller can override.
-    const model: string = body.model ?? "google/gemini-3.1-flash-image-preview";
+    // Default to Nano Banana (gemini-2.5-flash-image) — works on Google's free
+    // tier. Nano Banana 2 (gemini-3.1-flash-image-preview) is paid-only and
+    // returns RESOURCE_EXHAUSTED on free keys. Caller can override.
+    const model: string = body.model ?? "google/gemini-2.5-flash-image";
     if (!prompt && !itemName) return json({ error: "Item description required" }, 400);
 
     const finalPrompt = mode === "generate"
