@@ -26,6 +26,7 @@ import {
 import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { handleEnterAsNext } from "@/lib/enterKeyNav";
 
 type QItem = {
   id: string;
@@ -656,8 +657,11 @@ const AdminQuotationEditor = () => {
       {/* Top bar */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
         <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
-          <Button variant="ghost" size="icon" asChild className="shrink-0">
-            <Link to="/admin/quotations"><ArrowLeft className="h-4 w-4" /></Link>
+          <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
+            <Link to="/admin/quotations" aria-label="Back to quotations">
+              <ArrowLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Back</span>
+            </Link>
           </Button>
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
@@ -706,7 +710,10 @@ const AdminQuotationEditor = () => {
             }
           />
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+        <CardContent
+          className="grid gap-3 sm:grid-cols-2 md:grid-cols-3"
+          onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
+        >
           <div className="space-y-1.5"><Label>Party name *</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
