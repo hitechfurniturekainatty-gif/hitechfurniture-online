@@ -52,8 +52,10 @@ Deno.serve(async (req) => {
     const prompt: string = (body.prompt ?? "").toString().trim();
     const itemName: string = (body.item_name ?? "").toString().trim();
     const sourceImageUrl: string | undefined = body.source_image_url;
-    // Default to Nano Banana 2 (fast + pro-quality). Caller can override.
-    const model: string = body.model ?? "google/gemini-3.1-flash-image-preview";
+    // Default to Nano Banana (gemini-2.5-flash-image) — works on Google's free
+    // tier. Nano Banana 2 (gemini-3.1-flash-image-preview) is paid-only and
+    // returns RESOURCE_EXHAUSTED on free keys. Caller can override.
+    const model: string = body.model ?? "google/gemini-2.5-flash-image";
     if (!prompt && !itemName) return json({ error: "Item description required" }, 400);
 
     const finalPrompt = mode === "generate"
@@ -183,18 +185,27 @@ Deno.serve(async (req) => {
     if (!aiResp.ok) {
       const txt = await aiResp.text();
       console.error("AI gateway error", aiResp.status, txt);
-      if (aiResp.status === 429)
-        return json({ error: "Rate limited. Please try again in a moment." }, 429);
-      if (aiResp.status === 402)
-        return json({
-          error: "AI credits exhausted. Add funds in Lovable workspace settings.",
-        }, 402);
       // Try to surface the model's actual error so the user knows what to fix.
       let detail = "";
       try {
         const parsed = JSON.parse(txt);
         detail = parsed?.error?.message ?? parsed?.error?.status ?? "";
       } catch { /* not JSON */ }
+      if (aiResp.status === 429) {
+        const isQuota = /quota|RESOURCE_EXHAUSTED|free_tier/i.test(detail);
+        return json(
+          {
+            error: isQuota
+              ? "Your Google Gemini API key has no quota for this image model. The free tier does not include image generation — enable billing on your Google AI Studio project, or pick a different model."
+              : "Rate limited. Please try again in a moment.",
+          },
+          429,
+        );
+      }
+      if (aiResp.status === 402)
+        return json({
+          error: "AI credits exhausted. Add funds in Lovable workspace settings.",
+        }, 402);
       return json(
         { error: detail ? `AI generation failed: ${detail}` : "AI generation failed" },
         500,
