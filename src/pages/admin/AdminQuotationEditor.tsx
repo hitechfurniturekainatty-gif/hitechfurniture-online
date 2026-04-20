@@ -679,7 +679,7 @@ const AdminQuotationEditor = () => {
         </div>
         {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
         <div className="hidden flex-wrap gap-2 sm:flex">
-          <Button onClick={saveAll} disabled={saving}>
+          <Button onClick={saveAndPreview} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
           {canEditPrice && (
