@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeQuotations } from "@/hooks/useRealtimeQuotations";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,17 @@ const AdminQuotations = () => {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Live updates: when any user creates/edits/deletes a quotation,
+  // refresh the list. Debounced so a burst of updates only triggers one reload.
+  useRealtimeQuotations(() => {
+    if ((window as unknown as { __qListReloadTimer?: number }).__qListReloadTimer) {
+      window.clearTimeout((window as unknown as { __qListReloadTimer?: number }).__qListReloadTimer);
+    }
+    (window as unknown as { __qListReloadTimer?: number }).__qListReloadTimer = window.setTimeout(() => {
+      load();
+    }, 400);
+  });
 
   // ---- Auto-save the New Quotation form every 30s while the dialog is open.
   // Walking customers + interruptions = high data-loss risk. localStorage
