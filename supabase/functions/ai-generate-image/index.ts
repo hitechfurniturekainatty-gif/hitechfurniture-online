@@ -129,7 +129,16 @@ Deno.serve(async (req) => {
         return json({
           error: "AI credits exhausted. Add funds in Lovable workspace settings.",
         }, 402);
-      return json({ error: "AI generation failed" }, 500);
+      // Try to surface the model's actual error so the user knows what to fix.
+      let detail = "";
+      try {
+        const parsed = JSON.parse(txt);
+        detail = parsed?.error?.message ?? "";
+      } catch { /* not JSON */ }
+      return json(
+        { error: detail ? `AI generation failed: ${detail}` : "AI generation failed" },
+        500,
+      );
     }
 
     const aiData = await aiResp.json();
