@@ -24,7 +24,9 @@ Deno.serve(async (req) => {
     const ANON_KEY =
       Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return json({ error: "AI not configured" }, 500);
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY && !LOVABLE_API_KEY)
+      return json({ error: "AI not configured" }, 500);
 
     // Verify caller is staff/admin
     const authHeader = req.headers.get("Authorization");
@@ -124,25 +126,59 @@ Deno.serve(async (req) => {
         ]
       : finalPrompt;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.",
-          },
-          { role: "user", content: userContent },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+    // Prefer the user's own Gemini API key when available (uses their Google
+    // billing instead of Lovable AI credits). Falls back to Lovable AI gateway.
+    let aiResp: Response;
+    let usingDirectGemini = false;
+    if (GEMINI_API_KEY) {
+      usingDirectGemini = true;
+      // Map gateway model id → Google API model id.
+      const geminiModel = model.startsWith("google/")
+        ? model.slice("google/".length)
+        : "gemini-2.5-flash-image";
+      const parts: unknown[] = [
+        {
+          text:
+            "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.\n\n" +
+            finalPrompt,
+        },
+      ];
+      if (inlineImageUrl?.startsWith("data:")) {
+        const m = inlineImageUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (m) parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
+      }
+      aiResp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts }],
+            generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+          }),
+        },
+      );
+    } else {
+      aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.",
+            },
+            { role: "user", content: userContent },
+          ],
+          modalities: ["image", "text"],
+        }),
+      });
+    }
 
     if (!aiResp.ok) {
       const txt = await aiResp.text();
@@ -157,7 +193,7 @@ Deno.serve(async (req) => {
       let detail = "";
       try {
         const parsed = JSON.parse(txt);
-        detail = parsed?.error?.message ?? "";
+        detail = parsed?.error?.message ?? parsed?.error?.status ?? "";
       } catch { /* not JSON */ }
       return json(
         { error: detail ? `AI generation failed: ${detail}` : "AI generation failed" },
@@ -166,8 +202,20 @@ Deno.serve(async (req) => {
     }
 
     const aiData = await aiResp.json();
-    const dataUrl: string | undefined =
-      aiData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    let dataUrl: string | undefined;
+    if (usingDirectGemini) {
+      const partsOut = aiData?.candidates?.[0]?.content?.parts ?? [];
+      for (const p of partsOut) {
+        const inline = p?.inline_data ?? p?.inlineData;
+        if (inline?.data) {
+          const mt = inline.mime_type ?? inline.mimeType ?? "image/png";
+          dataUrl = `data:${mt};base64,${inline.data}`;
+          break;
+        }
+      }
+    } else {
+      dataUrl = aiData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    }
     if (!dataUrl?.startsWith("data:image/")) {
       console.error("No image in response", JSON.stringify(aiData).slice(0, 500));
       return json({ error: "Model did not return an image" }, 500);
