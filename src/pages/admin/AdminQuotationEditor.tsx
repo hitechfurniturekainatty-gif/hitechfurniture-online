@@ -983,27 +983,28 @@ const AdminQuotationEditor = () => {
 
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
-        <div className="flex gap-2">
-          <Button onClick={saveAndPreview} disabled={saving} className="h-12 flex-1">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
-          </Button>
-          {canEditPrice && (
-            <>
-              <Button variant="outline" onClick={downloadPdf} className="h-12 flex-1">
-                <Download className="mr-1.5 h-4 w-4" />PDF
-              </Button>
-              <Button variant="outline" onClick={shareWhatsApp} className="h-12 flex-1">
-                <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
-              </Button>
-              <Button variant="secondary" onClick={openJobDialog} className="h-12 px-3" aria-label="Assign job">
-                <HardHat className="h-5 w-5" />
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Row 1 (top): secondary actions — equal thirds so the Assign button is
+            fully visible on narrow screens (was being clipped to a sliver before). */}
+        {canEditPrice && (
+          <div className="mb-2 grid grid-cols-3 gap-2">
+            <Button variant="outline" onClick={downloadPdf} className="h-11 px-2">
+              <Download className="mr-1.5 h-4 w-4" />PDF
+            </Button>
+            <Button variant="outline" onClick={shareWhatsApp} className="h-11 px-2">
+              <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
+            </Button>
+            <Button variant="secondary" onClick={openJobDialog} className="h-11 px-2">
+              <HardHat className="mr-1.5 h-4 w-4" />Assign
+            </Button>
+          </div>
+        )}
+        {/* Row 2 (bottom): primary Save action sits closest to thumb. */}
+        <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
+        </Button>
       </div>
       {/* Spacer so content isn't hidden behind sticky bar on mobile */}
-      <div className="h-16 sm:hidden" aria-hidden />
+      <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
 
       {/* Product picker */}
       <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
