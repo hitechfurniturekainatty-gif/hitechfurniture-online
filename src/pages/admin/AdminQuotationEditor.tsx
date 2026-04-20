@@ -141,6 +141,14 @@ const AdminQuotationEditor = () => {
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
 
+  // PDF preview sheet — auto-opens after a successful Save (when there are items).
+  // Office staff can review the rendered PDF, then either Edit (close sheet),
+  // Download, or send via WhatsApp without leaving the editor.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewFilename, setPreviewFilename] = useState<string>("quotation.pdf");
+  const [previewBuilding, setPreviewBuilding] = useState(false);
+
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
 
