@@ -46,24 +46,24 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
-      <header className="sticky top-0 z-30 border-b border-border bg-card">
-        <div className="container-page flex items-center justify-between gap-2 py-3">
-          <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <Logo className="h-8 w-auto sm:h-9" />
+      <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
+        <div className="container-page flex items-center justify-between gap-2 py-3 md:py-4">
+          <Link to="/" className="flex min-w-0 items-center gap-3">
+            <Logo className="h-11 w-auto sm:h-12 md:h-14" />
             <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Button asChild size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="View site">
-              <Link to="/" target="_blank"><ExternalLink className="h-4 w-4" /></Link>
+            <Button asChild size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="View site">
+              <Link to="/" target="_blank"><ExternalLink className="h-5 w-5" /></Link>
             </Button>
-            <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex">
-              <Link to="/" target="_blank"><ExternalLink className="mr-1 h-4 w-4" /> View site</Link>
+            <Button asChild size="default" variant="ghost" className="hidden sm:inline-flex text-base">
+              <Link to="/" target="_blank"><ExternalLink className="mr-1 h-5 w-5" /> View site</Link>
             </Button>
-            <Button size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="Sign out" onClick={() => signOut().then(() => navigate("/auth"))}>
-              <LogOut className="h-4 w-4" />
+            <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => signOut().then(() => navigate("/auth"))}>
+              <LogOut className="h-5 w-5" />
             </Button>
-            <Button size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => signOut().then(() => navigate("/auth"))}>
-              <LogOut className="mr-1 h-4 w-4" /> Sign out
+            <Button size="default" variant="ghost" className="hidden sm:inline-flex text-base" onClick={() => signOut().then(() => navigate("/auth"))}>
+              <LogOut className="mr-1 h-5 w-5" /> Sign out
             </Button>
           </div>
         </div>
