@@ -112,11 +112,9 @@ const pickNative = async (): Promise<ContactInfo | null> => {
 
 // Web (Chrome/Edge on Android over HTTPS) ------------------------------------
 const pickWeb = async (): Promise<ContactInfo | null> => {
-  // @ts-expect-error - experimental API
   // Try to also request "address" — supported on newer Chrome on Android.
   // Fall back gracefully if the browser rejects unknown properties.
-  // @ts-expect-error - experimental API
-  const nav: any = navigator;
+  const nav = navigator as any;
   let contacts: any[] = [];
   try {
     contacts = await nav.contacts.select(["name", "tel", "address"], { multiple: false });
