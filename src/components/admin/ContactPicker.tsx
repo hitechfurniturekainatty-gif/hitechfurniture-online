@@ -115,13 +115,13 @@ const pickWeb = async (): Promise<ContactInfo | null> => {
   // @ts-expect-error - experimental API
   // Try to also request "address" — supported on newer Chrome on Android.
   // Fall back gracefully if the browser rejects unknown properties.
+  // @ts-expect-error - experimental API
+  const nav: any = navigator;
   let contacts: any[] = [];
   try {
-    // @ts-expect-error - experimental API
-    contacts = await navigator.contacts.select(["name", "tel", "address"], { multiple: false });
+    contacts = await nav.contacts.select(["name", "tel", "address"], { multiple: false });
   } catch {
-    // @ts-expect-error - experimental API
-    contacts = await navigator.contacts.select(["name", "tel"], { multiple: false });
+    contacts = await nav.contacts.select(["name", "tel"], { multiple: false });
   }
   if (!contacts || contacts.length === 0) return null;
   const c = contacts[0];
