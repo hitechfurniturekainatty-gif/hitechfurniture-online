@@ -130,6 +130,9 @@ const AdminLogistics = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button onClick={suggestTrip} variant="default">
+            <Sparkles className="mr-2 h-4 w-4" /> Suggest trip
+          </Button>
           <Button asChild variant="outline">
             <Link to="/admin/trips"><Truck className="mr-2 h-4 w-4" /> Trips</Link>
           </Button>
