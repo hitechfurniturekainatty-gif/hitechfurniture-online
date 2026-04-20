@@ -17,6 +17,11 @@ import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import {
+  saveNewQuotationDraft,
+  loadNewQuotationDraft,
+  clearNewQuotationDraft,
+} from "@/lib/quotationDraft";
 
 type Q = {
   id: string;
@@ -41,6 +46,9 @@ const AdminQuotations = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
   const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
+  // Auto-save / resume state for the "New Quotation" dialog
+  const [resumeOffered, setResumeOffered] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
 
   // Keep state and URL ?status= in sync
   const setStatusFilter = (v: string) => {
@@ -94,6 +102,8 @@ const AdminQuotations = () => {
       toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       return;
     }
+    // Successfully persisted to DB — drop the local draft.
+    clearNewQuotationDraft();
     setOpen(false);
     setForm({ party_name: "", party_place: "", party_phone: "" });
     navigate(`/admin/quotations/${data.id}`);
