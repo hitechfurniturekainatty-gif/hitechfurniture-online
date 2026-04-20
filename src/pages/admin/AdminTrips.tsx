@@ -108,6 +108,20 @@ const AdminTrips = () => {
     if (searchParams.get("new") === "1") setOpen(true);
   }, [searchParams]);
 
+  // Pre-fill from ?route=<id>&qs=<id,id,id> (from "Suggest trip" on Logistics)
+  useEffect(() => {
+    if (loading) return;
+    const routeParam = searchParams.get("route");
+    const qsParam = searchParams.get("qs");
+    if (!routeParam && !qsParam) return;
+    setDraft((d) => ({
+      ...d,
+      route_id: routeParam || d.route_id,
+      selectedQs: qsParam ? qsParam.split(",").filter(Boolean) : d.selectedQs,
+    }));
+    setOpen(true);
+  }, [loading, searchParams]);
+
   // Quotations not yet on a trip
   const assignedQids = useMemo(() => new Set(tripQs.map((x) => x.quotation_id)), [tripQs]);
   const unassigned = pending.filter((p) => !assignedQids.has(p.id));

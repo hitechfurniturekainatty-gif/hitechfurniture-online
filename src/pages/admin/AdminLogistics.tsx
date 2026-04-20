@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Truck, Navigation2, Route as RouteIcon } from "lucide-react";
+import { Loader2, MapPin, Truck, Navigation2, Route as RouteIcon, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
@@ -85,6 +86,32 @@ const AdminLogistics = () => {
 
   const visibleRoutes = highlightedRoute ? routes.filter((r) => r.id === highlightedRoute) : routes;
 
+  const suggestTrip = () => {
+    // Pick route: highlighted if any, else the one with most pending deliveries
+    let targetRouteId = highlightedRoute;
+    if (!targetRouteId) {
+      let best: { id: string; count: number } | null = null;
+      for (const r of routes) {
+        const c = (grouped.get(r.id) ?? []).length;
+        if (c > 0 && (!best || c > best.count)) best = { id: r.id, count: c };
+      }
+      targetRouteId = best?.id ?? null;
+    }
+    if (!targetRouteId) {
+      toast({ title: "Nothing to suggest", description: "No pending deliveries on any route.", variant: "destructive" });
+      return;
+    }
+    const items = grouped.get(targetRouteId) ?? [];
+    if (items.length === 0) {
+      toast({ title: "No pending deliveries on this route", variant: "destructive" });
+      return;
+    }
+    // Sort by descending order value so high-value drops are prioritised
+    const ordered = [...items].sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0));
+    const qids = ordered.map((x) => x.id).join(",");
+    navigate(`/admin/trips?new=1&route=${targetRouteId}&qs=${qids}`);
+  };
+
   if (!isOfficeStaff) {
     return (
       <AdminShell>
@@ -103,6 +130,9 @@ const AdminLogistics = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button onClick={suggestTrip} variant="default">
+            <Sparkles className="mr-2 h-4 w-4" /> Suggest trip
+          </Button>
           <Button asChild variant="outline">
             <Link to="/admin/trips"><Truck className="mr-2 h-4 w-4" /> Trips</Link>
           </Button>
