@@ -64,6 +64,20 @@ export const DeliveryRoutePicker = ({ place, routeId, onChange, label = "Deliver
   const suggestions = useMemo(() => suggestRoutesForPlace(place, routes).slice(0, 4), [place, routes]);
   const hasMatch = !!routeId;
 
+  // Auto-pick the best matching route when a place is set but no route is
+  // tagged yet (e.g. just after picking from Contacts). Only auto-fills when
+  // the top match is strong (exact or prefix), to avoid wrong tagging.
+  useEffect(() => {
+    if (routeId) return;
+    if (!place.trim()) return;
+    if (suggestions.length === 0) return;
+    const top = suggestions[0];
+    if (top.score >= 60) {
+      onChange({ place, routeId: top.route.id });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [place, suggestions, routeId]);
+
   return (
     <div className="space-y-2">
       <Label className="flex items-center gap-1.5">
