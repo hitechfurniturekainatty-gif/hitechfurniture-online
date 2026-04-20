@@ -7,9 +7,21 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Pencil, Download, MessageCircle, Loader2, FileText, HardHat } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
 // Use the legacy build for broader browser/iframe-less compatibility.
 // We dynamically import inside the effect to keep the initial bundle small.
+
+// Synchronous mobile detection — combines UA sniff (catches Android/iOS even
+// on large screens) with the viewport breakpoint. Running this during render
+// avoids the one-frame flash where the iframe branch would otherwise mount
+// and trigger Chrome's PDF download prompt before the effect-based hook
+// flips `isMobile` to true.
+function detectMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const uaMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const narrow = window.innerWidth < 768;
+  return uaMobile || narrow;
+}
 
 type Props = {
   open: boolean;
@@ -46,7 +58,10 @@ export function QuotationPdfPreviewSheet({
 }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const lastUrl = useRef<string | null>(null);
-  const isMobile = useIsMobile();
+  // Initialise synchronously so the first render already knows whether to
+  // use the raster preview (important — mobile Chrome will start a PDF
+  // download the moment an <iframe src=blob:…pdf> mounts).
+  const [isMobile] = useState<boolean>(() => detectMobile());
   // Rendered page image data URLs (mobile fallback — many mobile browsers
   // refuse to render PDFs inside an <iframe> and instead trigger a download).
   const [pageImages, setPageImages] = useState<string[]>([]);
@@ -54,8 +69,12 @@ export function QuotationPdfPreviewSheet({
   const [renderError, setRenderError] = useState<string | null>(null);
 
   // Create / revoke object URL whenever the blob changes.
+  // IMPORTANT: Only do this on desktop. On mobile we must never feed the PDF
+  // to an iframe (Chrome Android / some iOS browsers trigger a "Saved / Open"
+  // download prompt instead of rendering inline), so we rasterise with
+  // pdf.js in the effect below.
   useEffect(() => {
-    if (!blob) {
+    if (isMobile || !blob) {
       if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
       lastUrl.current = null;
       setUrl(null);
@@ -65,10 +84,7 @@ export function QuotationPdfPreviewSheet({
     if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
     lastUrl.current = next;
     setUrl(next);
-    return () => {
-      // cleanup on unmount only — for blob changes we revoke above
-    };
-  }, [blob]);
+  }, [blob, isMobile]);
 
   // On mobile, rasterize the PDF to images so the preview is actually visible
   // inline (iframes with PDF src often trigger a download on mobile Chrome).
