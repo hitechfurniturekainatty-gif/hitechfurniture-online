@@ -48,7 +48,14 @@ export const ImageUploader = ({
       const path = `products/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("product-images")
-        .upload(path, compressed, { upsert: false, contentType: compressed.type });
+        .upload(path, compressed, {
+          upsert: false,
+          contentType: compressed.type,
+          // 1-year immutable cache — images are content-addressed by UUID so
+          // the URL changes whenever the image changes, making it safe to
+          // let browsers cache them forever.
+          cacheControl: "31536000, immutable",
+        });
       if (error) {
         toast({ title: `Failed: ${file.name}`, description: error.message, variant: "destructive" });
         return;

@@ -102,7 +102,12 @@ Deno.serve(async (req) => {
     const path = `ai-generated/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await admin.storage
       .from("product-images")
-      .upload(path, bin, { contentType: mime, upsert: false });
+      .upload(path, bin, {
+        contentType: mime,
+        upsert: false,
+        // 1-year immutable browser cache — paths are UUID-based.
+        cacheControl: "31536000, immutable",
+      });
     if (upErr) {
       console.error("Storage upload error", upErr);
       return json({ error: "Failed to save image" }, 500);
