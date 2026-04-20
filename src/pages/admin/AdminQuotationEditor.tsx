@@ -78,7 +78,7 @@ const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Bal
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
 
-const GST_OPTIONS = [0, 5, 12, 18, 28];
+const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Full quotation lifecycle (kept lowercase to match DB defaults)
 const STATUS_OPTIONS = [
   "draft",        // just created, no items / not measured
@@ -834,6 +834,7 @@ const AdminQuotationEditor = () => {
                         const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
                         updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                       }}
+                      onFocus={(e) => e.currentTarget.select()}
                       placeholder="1"
                     />
                   </div>
@@ -848,6 +849,7 @@ const AdminQuotationEditor = () => {
                       value={it.unit_price || ""}
                       onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                       disabled={!canEditPrice}
+                      onFocus={(e) => e.currentTarget.select()}
                       placeholder="0"
                     />
                     {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
