@@ -5,5 +5,9 @@ import { Buffer } from "buffer";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initSessionTimeout } from "./lib/sessionTimeout";
+
+// 24h hard session cap (security): sign user out + redirect after 24h of login.
+initSessionTimeout();
 
 createRoot(document.getElementById("root")!).render(<App />);

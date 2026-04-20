@@ -7,7 +7,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #0E5C66", paddingBottom: 12, marginBottom: 18 },
   logo: { width: 110, height: 50, objectFit: "contain" },
   brandLine: { fontSize: 9, color: "#0E5C66", letterSpacing: 1, textTransform: "uppercase" },
-  hero: { width: "100%", height: 280, objectFit: "cover", marginBottom: 18, borderRadius: 4 },
+  // Use "contain" so the entire furniture item is visible — no cropping/cut-off.
+  hero: { width: "100%", height: 280, objectFit: "contain", marginBottom: 18, borderRadius: 4 },
   title: { fontSize: 24, fontWeight: 700, marginBottom: 4, color: "#0E5C66" },
   code: { fontSize: 9, color: "#6E7F82", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 12 },
   desc: { fontSize: 11, lineHeight: 1.6, marginBottom: 16, color: "#1F3F44" },

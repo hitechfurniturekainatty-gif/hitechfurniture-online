@@ -952,7 +952,7 @@ const AdminQuotationEditor = () => {
                   <button key={p.id} type="button" onClick={() => addFromProduct(p)}
                     className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:bg-muted">
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                      {p.product_images?.[0] && <img src={p.product_images[0].image_url} alt="" className="h-full w-full object-cover" />}
+                      {p.product_images?.[0] && <img src={p.product_images[0].image_url} alt="" className="h-full w-full object-contain p-0.5" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-sm">{p.product_name}</p>
