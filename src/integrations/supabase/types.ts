@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_routes: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          destination_lat: number
+          destination_lng: number
+          destination_name: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          destination_lat: number
+          destination_lng: number
+          destination_name: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          destination_lat?: number
+          destination_lng?: number
+          destination_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       job_work_orders: {
         Row: {
           created_at: string
@@ -371,6 +410,8 @@ export type Database = {
           advance_amount: number
           created_at: string
           created_by: string | null
+          delivery_place: string | null
+          delivery_route_id: string | null
           discount_amount: number
           expected_delivery_date: string | null
           gst_amount: number
@@ -394,6 +435,8 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          delivery_place?: string | null
+          delivery_route_id?: string | null
           discount_amount?: number
           expected_delivery_date?: string | null
           gst_amount?: number
@@ -417,6 +460,8 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          delivery_place?: string | null
+          delivery_route_id?: string | null
           discount_amount?: number
           expected_delivery_date?: string | null
           gst_amount?: number
@@ -436,7 +481,53 @@ export type Database = {
           total?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quotations_delivery_route_id_fkey"
+            columns: ["delivery_route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      route_waypoints: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          lat: number
+          lng: number
+          name: string
+          route_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          lat: number
+          lng: number
+          name: string
+          route_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_waypoints_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sub_categories: {
         Row: {
@@ -475,6 +566,92 @@ export type Database = {
             columns: ["main_category_id"]
             isOneToOne: false
             referencedRelation: "main_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_quotations: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          id: string
+          quotation_id: string
+          stop_order: number
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          quotation_id: string
+          stop_order?: number
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          quotation_id?: string
+          stop_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_quotations_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_quotations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          assigned_driver_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          route_id: string | null
+          status: string
+          trip_date: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_driver_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          route_id?: string | null
+          status?: string
+          trip_date?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_driver_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          route_id?: string | null
+          status?: string
+          trip_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
             referencedColumns: ["id"]
           },
         ]
