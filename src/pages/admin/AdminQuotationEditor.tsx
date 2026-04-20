@@ -442,6 +442,61 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
+  // Save → render PDF in preview sheet. Used by the user-facing Save button.
+  // Internal callers (e.g. WhatsApp, Job Work) keep using saveAll/ensureSaved
+  // directly so they don't trigger the preview UI.
+  const saveAndPreview = async () => {
+    const result = await saveAll();
+    if (!result) return;
+    // Skip preview for empty quotations — there's nothing meaningful to show.
+    if (result.savedItems.length === 0) return;
+    setPreviewBuilding(true);
+    setPreviewBlob(null);
+    setPreviewOpen(true);
+    try {
+      const data = buildPdfData();
+      if (!data) {
+        setPreviewOpen(false);
+        return;
+      }
+      const blob = await generateQuotationPdf(data);
+      setPreviewBlob(blob);
+      setPreviewFilename(`${data.quotation_id}.pdf`);
+    } catch (e: any) {
+      console.error("Preview PDF generation failed:", e);
+      toast({
+        title: "Preview failed",
+        description: e?.message ?? "Could not render PDF preview.",
+        variant: "destructive",
+      });
+      setPreviewOpen(false);
+    } finally {
+      setPreviewBuilding(false);
+    }
+  };
+
+  const downloadFromPreview = () => {
+    if (!previewBlob) return;
+    downloadBlob(previewBlob, previewFilename);
+    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
+  };
+
+  const whatsAppFromPreview = async () => {
+    if (!q || !previewBlob) return;
+    if (!q.party_phone) {
+      toast({ title: "No party phone on file", variant: "destructive" });
+      return;
+    }
+    const balanceLine = advanceAmount > 0
+      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
+      : `Total: ${formatINR(grandTotal)}`;
+    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+    await sharePdfViaWhatsApp(previewBlob, previewFilename, q.party_phone, msg);
+    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+      await setStatus("sent", { silent: true });
+    }
+  };
+
   // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
