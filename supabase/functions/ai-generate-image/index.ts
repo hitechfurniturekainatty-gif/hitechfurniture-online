@@ -52,11 +52,58 @@ Deno.serve(async (req) => {
     const model: string = body.model ?? "google/gemini-3.1-flash-image-preview";
     if (!prompt) return json({ error: "Prompt required" }, 400);
 
-    // Build messages: edit mode if source image provided
-    const userContent: unknown = sourceImageUrl
+    // Build messages: edit mode if source image provided.
+    // For remote http(s) URLs we fetch + inline as data URL ourselves so that:
+    //  1. Sites that 403 the AI gateway (retailers etc.) still work via a
+    //     browser-like User-Agent.
+    //  2. We can validate the response is actually an image (not an HTML page).
+    let inlineImageUrl: string | undefined = sourceImageUrl;
+    if (sourceImageUrl && /^https?:\/\//i.test(sourceImageUrl)) {
+      try {
+        const imgResp = await fetch(sourceImageUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+            Accept: "image/*,*/*;q=0.8",
+          },
+          redirect: "follow",
+        });
+        if (!imgResp.ok) {
+          return json(
+            {
+              error: `Could not fetch source image (${imgResp.status}). The site may block hot-linking — please download the image and use "Attach image" instead.`,
+            },
+            400,
+          );
+        }
+        const ct = imgResp.headers.get("content-type") ?? "";
+        if (!ct.startsWith("image/")) {
+          return json(
+            {
+              error:
+                "That URL is not an image (looks like a webpage). Right-click the photo on the source site, copy the image address, and paste it — or use \"Attach image\".",
+            },
+            400,
+          );
+        }
+        const buf = new Uint8Array(await imgResp.arrayBuffer());
+        // Inline as data URL — Gemini accepts this directly.
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        inlineImageUrl = `data:${ct};base64,${btoa(bin)}`;
+      } catch (e) {
+        console.error("Source image fetch failed", e);
+        return json(
+          { error: "Could not download the source image URL. Try attaching the file instead." },
+          400,
+        );
+      }
+    }
+
+    const userContent: unknown = inlineImageUrl
       ? [
           { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: sourceImageUrl } },
+          { type: "image_url", image_url: { url: inlineImageUrl } },
         ]
       : prompt;
 
