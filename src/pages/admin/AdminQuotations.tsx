@@ -259,6 +259,7 @@ const AdminQuotations = () => {
             <div
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
               onFocusCapture={scrollFocusedIntoView}
+              onKeyDown={(e) => handleEnterAsNext(e, () => { if (!creating) create(); })}
             >
               <div className="flex justify-end">
                 <ContactPicker
