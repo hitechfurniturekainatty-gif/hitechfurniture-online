@@ -12,30 +12,33 @@ import { compressImage } from "@/lib/imageCompression";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
 // One-click prompt presets. Selecting a preset replaces the prompt textarea.
+// Uses {{ITEM}} as a placeholder for the furniture description — replaced
+// by the user's typed item name when picked, so generate-mode works without
+// any reference image.
 const PRESETS: { label: string; description: string; prompt: string }[] = [
   {
     label: "Studio shot (light gray)",
     description: "Seamless light-gray backdrop, soft contact shadow, eye-level.",
     prompt:
-      "A professional-grade, seamless studio photograph of the furniture item from the input image. The subject is centered and placed on a perfectly smooth, uniform light gray studio backdrop that has a matte finish. The flooring subtly blends into the wall, creating an infinite, minimalist background. Soft, diffuse lighting illuminates the furniture item evenly, highlighting its texture. Crucially, a realistic, soft, natural contact shadow is cast directly beneath and slightly around the base of the furniture onto the light gray floor, anchoring it in the space. No harsh shadows or reflections. The perspective is front-on and at eye level. High resolution, 8k, photorealistic.",
+      "A professional-grade, seamless studio photograph of {{ITEM}}. The subject is centered on a perfectly smooth, uniform light gray studio backdrop with a matte finish. The flooring subtly blends into the wall, creating an infinite, minimalist background. Soft, diffuse lighting illuminates the item evenly, highlighting its texture. A realistic, soft, natural contact shadow is cast directly beneath and slightly around the base of the furniture onto the light gray floor, anchoring it in the space. No harsh shadows or reflections. Front-on, eye-level perspective. High resolution, 8k, photorealistic.",
   },
   {
     label: "Pure white catalog",
     description: "Clean e-commerce white background, no shadow.",
     prompt:
-      "A high-resolution e-commerce catalog photograph of the furniture item from the input image. Pure white seamless background (#FFFFFF), evenly lit with soft diffused studio lighting from multiple angles to eliminate all shadows and reflections. Subject perfectly centered, front 3/4 view at eye level, sharp focus, true-to-life colors and material textures. 8k, photorealistic.",
+      "A high-resolution e-commerce catalog photograph of {{ITEM}}. Pure white seamless background (#FFFFFF), evenly lit with soft diffused studio lighting from multiple angles to eliminate all shadows and reflections. Subject perfectly centered, front 3/4 view at eye level, sharp focus, true-to-life colors and material textures. 8k, photorealistic.",
   },
   {
     label: "Lifestyle room",
     description: "Furniture placed in a tasteful real-world interior.",
     prompt:
-      "A photorealistic lifestyle interior photograph featuring the furniture item from the input image, naturally placed in a warm, modern Indian living room with neutral wall paint, hardwood flooring, soft natural daylight from a large window, a few tasteful decor elements (plant, rug, art) without overpowering the subject. Front 3/4 angle, eye-level, magazine-quality composition, 8k, photorealistic.",
+      "A photorealistic lifestyle interior photograph featuring {{ITEM}}, naturally placed in a warm, modern Indian living room with neutral wall paint, hardwood flooring, soft natural daylight from a large window, a few tasteful decor elements (plant, rug, art) without overpowering the subject. Front 3/4 angle, eye-level, magazine-quality composition, 8k, photorealistic.",
   },
   {
     label: "Top-down flat lay",
     description: "Bird's-eye view on a soft neutral surface.",
     prompt:
-      "A top-down flat-lay photograph of the furniture item from the input image, perfectly centered on a soft beige linen surface, evenly lit with soft daylight, subtle natural shadows, minimal styling, magazine-quality composition, 8k, photorealistic.",
+      "A top-down flat-lay photograph of {{ITEM}}, perfectly centered on a soft beige linen surface, evenly lit with soft daylight, subtle natural shadows, minimal styling, magazine-quality composition, 8k, photorealistic.",
   },
 ];
 
