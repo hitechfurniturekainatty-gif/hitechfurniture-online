@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+// Route updated to support delivery-only role redirect
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
