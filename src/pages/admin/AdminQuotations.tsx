@@ -216,9 +216,9 @@ const AdminQuotations = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
             {STATUS_FILTERS.map((k) => (
-              <TabsTrigger key={k} value={k} className="capitalize">
+              <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
                 {k === "all" ? "All" : statusLabel(k)} ({counts[k] ?? 0})
               </TabsTrigger>
             ))}

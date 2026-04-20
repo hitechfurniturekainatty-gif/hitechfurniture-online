@@ -215,18 +215,18 @@ const AdminProducts = () => {
             {filtered.map((p) => {
               const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
               return (
-                <li key={p.id} className="flex items-center gap-4 p-3 sm:p-4">
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                <li key={p.id} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-16 sm:w-16">
                     {cover ? <img src={cover} alt="" className="h-full w-full object-contain p-1" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{p.product_name}</p>
-                      {p.is_featured && <Badge className="bg-accent text-accent-foreground">Featured</Badge>}
-                      {!p.is_published && <Badge variant="secondary">Hidden</Badge>}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="min-w-0 truncate font-medium">{p.product_name}</p>
+                      {p.is_featured && <Badge className="bg-accent text-accent-foreground shrink-0 text-[10px]">Featured</Badge>}
+                      {!p.is_published && <Badge variant="secondary" className="shrink-0 text-[10px]">Hidden</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-                    <p className="text-sm">
+                    <p className="truncate text-xs text-muted-foreground">Code · {p.product_code}</p>
+                    <p className="truncate text-sm">
                       <span className="font-semibold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
                       {" · "}
                       <span className={p.stock_quantity > 0 ? "text-foreground/70" : "text-destructive"}>
@@ -234,14 +234,16 @@ const AdminProducts = () => {
                       </span>
                     </p>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {isAdmin && (
-                    <Button size="icon" variant="ghost" onClick={() => remove(p)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                  <div className="flex shrink-0 items-center">
+                    <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                  )}
+                    {isAdmin && (
+                      <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => remove(p)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}

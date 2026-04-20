@@ -587,18 +587,19 @@ const AdminQuotationEditor = () => {
   return (
     <AdminShell>
       {/* Top bar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
           <Button variant="ghost" size="icon" asChild className="shrink-0">
             <Link to="/admin/quotations"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
               {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
+            <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>
-          <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
+          <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
           {canEditPrice && q.status === "sent" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("accepted")}>Mark accepted</Button>
@@ -840,14 +841,14 @@ const AdminQuotationEditor = () => {
             {/* Discount — input shown to staff so they can enter; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="discount-amt" className="text-sm text-muted-foreground">Discount</Label>
+                <Label htmlFor="discount-amt" className="shrink-0 text-sm text-muted-foreground">Discount</Label>
                 <Input
                   id="discount-amt"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   step="0.01"
-                  className="h-9 w-32 text-right"
+                  className="h-9 w-24 min-w-0 text-right sm:w-32"
                   value={q.discount_amount ?? 0}
                   onChange={(e) => updateHeader({ discount_amount: Number(e.target.value) || 0 })}
                 />
@@ -870,14 +871,14 @@ const AdminQuotationEditor = () => {
             {/* Advance Received — input shown to staff; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Received</Label>
+                <Label htmlFor="advance-amt" className="shrink-0 text-sm text-muted-foreground">Advance Received</Label>
                 <Input
                   id="advance-amt"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   step="0.01"
-                  className="h-9 w-32 text-right"
+                  className="h-9 w-24 min-w-0 text-right sm:w-32"
                   value={q.advance_amount ?? 0}
                   onChange={(e) => updateHeader({ advance_amount: Number(e.target.value) || 0 })}
                 />
