@@ -263,11 +263,12 @@ const AdminQuotations = () => {
             >
               <div className="flex justify-end">
                 <ContactPicker
-                  onPick={({ name, tel }) =>
+                  onPick={({ name, tel, place }) =>
                     setForm((f) => ({
                       ...f,
                       party_name: name || f.party_name,
                       party_phone: tel || f.party_phone,
+                      party_place: place || f.party_place,
                     }))
                   }
                 />
