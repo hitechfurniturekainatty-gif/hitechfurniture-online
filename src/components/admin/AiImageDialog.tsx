@@ -42,8 +42,11 @@ const PRESETS: { label: string; description: string; prompt: string }[] = [
   },
 ];
 
-// Default prompt that auto-fills when the dialog opens.
-const DEFAULT_PROMPT = PRESETS[0].prompt;
+// Default item placeholder + prompt that auto-fills when the dialog opens.
+const DEFAULT_ITEM = "a modern furniture item";
+const fillPreset = (tpl: string, item: string) =>
+  tpl.replace(/\{\{ITEM\}\}/g, item.trim() || DEFAULT_ITEM);
+const DEFAULT_PROMPT = fillPreset(PRESETS[0].prompt, DEFAULT_ITEM);
 
 const PresetRow = ({ onPick }: { onPick: (p: string) => void }) => (
   <div className="space-y-1.5">
