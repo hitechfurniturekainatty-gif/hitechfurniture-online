@@ -7,6 +7,9 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Pencil, Download, MessageCircle, Loader2, FileText, HardHat } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+// Use the legacy build for broader browser/iframe-less compatibility.
+// We dynamically import inside the effect to keep the initial bundle small.
 
 type Props = {
   open: boolean;
@@ -43,6 +46,12 @@ export function QuotationPdfPreviewSheet({
 }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const lastUrl = useRef<string | null>(null);
+  const isMobile = useIsMobile();
+  // Rendered page image data URLs (mobile fallback — many mobile browsers
+  // refuse to render PDFs inside an <iframe> and instead trigger a download).
+  const [pageImages, setPageImages] = useState<string[]>([]);
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   // Create / revoke object URL whenever the blob changes.
   useEffect(() => {
@@ -60,6 +69,57 @@ export function QuotationPdfPreviewSheet({
       // cleanup on unmount only — for blob changes we revoke above
     };
   }, [blob]);
+
+  // On mobile, rasterize the PDF to images so the preview is actually visible
+  // inline (iframes with PDF src often trigger a download on mobile Chrome).
+  useEffect(() => {
+    let cancelled = false;
+    if (!isMobile || !blob) {
+      setPageImages([]);
+      setRenderError(null);
+      return;
+    }
+    setRendering(true);
+    setRenderError(null);
+    setPageImages([]);
+    (async () => {
+      try {
+        const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        // Worker: use the bundled worker via Vite ?url import.
+        const workerUrl = (
+          await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")
+        ).default;
+        pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+        const buf = await blob.arrayBuffer();
+        if (cancelled) return;
+        const pdf = await pdfjs.getDocument({ data: buf }).promise;
+        const images: string[] = [];
+        const targetWidth = Math.min(window.innerWidth * window.devicePixelRatio, 1400);
+        for (let p = 1; p <= pdf.numPages; p++) {
+          if (cancelled) return;
+          const page = await pdf.getPage(p);
+          const viewport1 = page.getViewport({ scale: 1 });
+          const scale = targetWidth / viewport1.width;
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) continue;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          images.push(canvas.toDataURL("image/jpeg", 0.85));
+          if (!cancelled) setPageImages([...images]);
+        }
+      } catch (e: any) {
+        if (!cancelled) setRenderError(e?.message || "Failed to render PDF preview");
+      } finally {
+        if (!cancelled) setRendering(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [blob, isMobile]);
 
   // Final cleanup
   useEffect(() => {
@@ -83,19 +143,44 @@ export function QuotationPdfPreviewSheet({
         </SheetHeader>
 
         {/* PDF body */}
-        <div className="flex-1 overflow-hidden bg-muted">
-          {url ? (
+        <div className="flex-1 overflow-auto bg-muted">
+          {!blob ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : isMobile ? (
+            // Mobile: render rasterized pages inline so the preview is
+            // actually visible (avoids browser forcing a PDF download).
+            <div className="flex flex-col items-center gap-3 p-3">
+              {pageImages.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`${filename} page ${i + 1}`}
+                  className="w-full max-w-full rounded-sm bg-background shadow-sm"
+                  loading="lazy"
+                />
+              ))}
+              {rendering && (
+                <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  Rendering preview…
+                </div>
+              )}
+              {!rendering && pageImages.length === 0 && renderError && (
+                <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  Couldn't render inline preview. Tap PDF to download.
+                </div>
+              )}
+            </div>
+          ) : url ? (
             <iframe
               key={url}
               src={url}
               title={filename}
               className="h-full w-full border-0"
             />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* Sticky action bar */}
