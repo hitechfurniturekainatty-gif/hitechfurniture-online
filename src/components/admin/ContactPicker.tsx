@@ -74,9 +74,15 @@ export const ContactPicker = ({ onPick, className, label = "From Contacts" }: Pr
   const webOk = isWebContactsSupported();
   const supported = native || webOk;
 
-  if (!supported) return null;
-
   const handlePick = async () => {
+    if (!supported) {
+      toast({
+        title: "Contacts not available here",
+        description:
+          "Open this app on your phone (installed app or Chrome on Android) to pick from your saved contacts.",
+      });
+      return;
+    }
     try {
       const result = native ? await pickNative() : await pickWeb();
       if (!result) return;
