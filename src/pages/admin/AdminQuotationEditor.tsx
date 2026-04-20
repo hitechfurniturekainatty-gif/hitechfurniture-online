@@ -840,14 +840,14 @@ const AdminQuotationEditor = () => {
             {/* Discount — input shown to staff so they can enter; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="discount-amt" className="text-sm text-muted-foreground">Discount</Label>
+                <Label htmlFor="discount-amt" className="shrink-0 text-sm text-muted-foreground">Discount</Label>
                 <Input
                   id="discount-amt"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   step="0.01"
-                  className="h-9 w-32 text-right"
+                  className="h-9 w-24 min-w-0 text-right sm:w-32"
                   value={q.discount_amount ?? 0}
                   onChange={(e) => updateHeader({ discount_amount: Number(e.target.value) || 0 })}
                 />
@@ -870,14 +870,14 @@ const AdminQuotationEditor = () => {
             {/* Advance Received — input shown to staff; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="advance-amt" className="text-sm text-muted-foreground">Advance Received</Label>
+                <Label htmlFor="advance-amt" className="shrink-0 text-sm text-muted-foreground">Advance Received</Label>
                 <Input
                   id="advance-amt"
                   type="number"
                   inputMode="decimal"
                   min={0}
                   step="0.01"
-                  className="h-9 w-32 text-right"
+                  className="h-9 w-24 min-w-0 text-right sm:w-32"
                   value={q.advance_amount ?? 0}
                   onChange={(e) => updateHeader({ advance_amount: Number(e.target.value) || 0 })}
                 />
