@@ -199,7 +199,20 @@ export const AiImageDialog = ({
           </TabsList>
 
           <TabsContent value="generate" className="space-y-3 pt-3">
-            <PresetRow onPick={setPrompt} />
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Item name / description
+              </Label>
+              <Input
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                placeholder="e.g. 3-seater beige linen sofa with wooden legs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Type what you want — the image is created purely from this description, no reference photo needed.
+              </p>
+            </div>
+            <PresetRow onPick={(tpl) => setPrompt(fillPreset(tpl, itemName))} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Describe the image
@@ -211,7 +224,7 @@ export const AiImageDialog = ({
                 placeholder="e.g. A modern 3-seater sofa in beige linen fabric, wooden legs, on a clean white studio background, professional product photography, soft lighting"
               />
               <p className="text-[11px] text-muted-foreground">
-                Tip: pick a preset above, then tweak the wording for your product.
+                Tip: type the item name above, then pick a preset to auto-fill a polished prompt.
               </p>
             </div>
           </TabsContent>
@@ -292,7 +305,7 @@ export const AiImageDialog = ({
                 />
               </div>
             </div>
-            <PresetRow onPick={setPrompt} />
+            <PresetRow onPick={(tpl) => setPrompt(fillPreset(tpl, "the furniture item from the input image"))} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Editing instruction
