@@ -1,6 +1,15 @@
 import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo.jpeg";
-import { CONTACT_LINE, formatINR } from "./brand";
+import { CONTACT_LINE } from "./brand";
+
+// PDF-safe INR formatter: Helvetica doesn't include the ₹ glyph, which
+// renders as a tiny box / phantom "1" in many PDF viewers. Use plain
+// "Rs " prefix with Indian digit grouping for clean output.
+const formatINR = (n: number | null | undefined) => {
+  if (n == null) return "-";
+  const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
+  return `Rs ${num}`;
+};
 
 const styles = StyleSheet.create({
   page: { padding: 36, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FBF8F2" },
