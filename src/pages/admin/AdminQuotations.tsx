@@ -129,29 +129,36 @@ const AdminQuotations = () => {
   }, [rows, search]);
 
   const renderRow = (q: Q) => (
-    <Card key={q.id}>
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <FileText className="h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 max-w-full truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
-            <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
+    <Card key={q.id} className="overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <span className="min-w-0 break-words font-mono text-sm font-semibold leading-snug">{q.quotation_id}</span>
+                <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
+              </div>
+              <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
+              <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
+            </div>
           </div>
-          <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
-          <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
-        </div>
-        {/* Amount + actions — separated on mobile so buttons are always visible */}
-        <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-3 sm:justify-end sm:border-0 sm:pt-0">
-          <span className="font-display text-lg font-semibold sm:mr-2">{formatINR(q.total)}</span>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" asChild className="h-10 px-4">
-              <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
-            </Button>
-            {isAdmin && (
-              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0" onClick={() => remove(q)} aria-label="Delete">
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
+
+          <div className="border-t border-border/50 pt-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+              <div className={`grid gap-2 sm:flex sm:items-center ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
+                <Button size="sm" asChild className="h-10 w-full px-4 sm:w-auto">
+                  <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                </Button>
+                {isAdmin && (
+                  <Button size="sm" variant="outline" className="h-10 w-full sm:w-auto" onClick={() => remove(q)}>
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>
