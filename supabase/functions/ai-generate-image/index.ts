@@ -128,28 +128,36 @@ Deno.serve(async (req) => {
         ]
       : finalPrompt;
 
-    // Prefer the user's own Gemini API key when available (uses their Google
-    // billing instead of Lovable AI credits). Falls back to Lovable AI gateway.
-    let aiResp: Response;
-    let usingDirectGemini = false;
-    if (GEMINI_API_KEY) {
-      usingDirectGemini = true;
-      // Map gateway model id → Google API model id.
+    const systemPrompt =
+      "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.";
+
+    const callGateway = () =>
+      fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          modalities: ["image", "text"],
+        }),
+      });
+
+    const callGemini = () => {
       const geminiModel = model.startsWith("google/")
         ? model.slice("google/".length)
         : "gemini-2.5-flash-image";
-      const parts: unknown[] = [
-        {
-          text:
-            "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.\n\n" +
-            finalPrompt,
-        },
-      ];
+      const parts: unknown[] = [{ text: `${systemPrompt}\n\n${finalPrompt}` }];
       if (inlineImageUrl?.startsWith("data:")) {
         const m = inlineImageUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (m) parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
       }
-      aiResp = await fetch(
+      return fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
@@ -160,26 +168,35 @@ Deno.serve(async (req) => {
           }),
         },
       );
+    };
+
+    let aiResp: Response;
+    let usingDirectGemini = false;
+    let fellBackFromGeminiQuota = false;
+
+    if (GEMINI_API_KEY) {
+      usingDirectGemini = true;
+      aiResp = await callGemini();
+
+      if (!aiResp.ok && LOVABLE_API_KEY) {
+        const txt = await aiResp.clone().text().catch(() => "");
+        let detail = "";
+        try {
+          const parsed = JSON.parse(txt);
+          detail = parsed?.error?.message ?? parsed?.error?.status ?? "";
+        } catch { /* ignore */ }
+
+        const geminiQuotaBlocked =
+          aiResp.status === 429 && /quota|RESOURCE_EXHAUSTED|free_tier/i.test(detail);
+
+        if (geminiQuotaBlocked) {
+          fellBackFromGeminiQuota = true;
+          usingDirectGemini = false;
+          aiResp = await callGateway();
+        }
+      }
     } else {
-      aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.",
-            },
-            { role: "user", content: userContent },
-          ],
-          modalities: ["image", "text"],
-        }),
-      });
+      aiResp = await callGateway();
     }
 
     if (!aiResp.ok) {
@@ -196,7 +213,9 @@ Deno.serve(async (req) => {
         return json(
           {
             error: isQuota
-              ? "Your Google Gemini API key has no quota for this image model. The free tier does not include image generation — enable billing on your Google AI Studio project, or pick a different model."
+              ? fellBackFromGeminiQuota
+                ? "Your Gemini key has no image quota, and the backup AI service is currently rate limited. Please wait a moment and try again."
+                : "Your Google Gemini API key has no image generation quota. Enable billing on your Google AI Studio project to use your own account for image generation."
               : "Rate limited. Please try again in a moment.",
           },
           429,
@@ -204,7 +223,9 @@ Deno.serve(async (req) => {
       }
       if (aiResp.status === 402)
         return json({
-          error: "AI credits exhausted. Add funds in Lovable workspace settings.",
+          error: fellBackFromGeminiQuota
+            ? "Your Gemini key has no image quota, and the backup AI credits are exhausted. Enable billing on your Google AI Studio project or add workspace AI credits."
+            : "AI credits exhausted. Add funds in Lovable workspace settings.",
         }, 402);
       return json(
         { error: detail ? `AI generation failed: ${detail}` : "AI generation failed" },
