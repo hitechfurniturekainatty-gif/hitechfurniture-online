@@ -6,7 +6,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Pencil, Download, MessageCircle, Loader2, FileText } from "lucide-react";
+import { Pencil, Download, MessageCircle, Loader2, FileText, HardHat } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -19,6 +19,8 @@ type Props = {
   /** Optional handlers to expose Download / WhatsApp directly from the preview. */
   onDownload?: () => void;
   onWhatsApp?: () => void;
+  /** Optional handler to open the Assign Job Work dialog directly from preview. */
+  onAssign?: () => void;
 };
 
 /**
@@ -37,6 +39,7 @@ export function QuotationPdfPreviewSheet({
   onEdit,
   onDownload,
   onWhatsApp,
+  onAssign,
 }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const lastUrl = useRef<string | null>(null);
@@ -123,6 +126,16 @@ export function QuotationPdfPreviewSheet({
               >
                 <MessageCircle className="mr-2 h-4 w-4 text-primary" />
                 WhatsApp
+              </Button>
+            )}
+            {onAssign && (
+              <Button
+                variant="secondary"
+                onClick={onAssign}
+                className="h-11 flex-1 sm:flex-initial"
+              >
+                <HardHat className="mr-2 h-4 w-4" />
+                Assign
               </Button>
             )}
           </div>

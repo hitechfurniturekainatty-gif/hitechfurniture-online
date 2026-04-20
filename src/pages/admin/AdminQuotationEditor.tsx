@@ -1090,6 +1090,7 @@ const AdminQuotationEditor = () => {
         onEdit={() => setPreviewOpen(false)}
         onDownload={canEditPrice && previewBlob ? downloadFromPreview : undefined}
         onWhatsApp={canEditPrice && previewBlob ? whatsAppFromPreview : undefined}
+        onAssign={canEditPrice ? () => { setPreviewOpen(false); openJobDialog(); } : undefined}
       />
     </AdminShell>
   );
