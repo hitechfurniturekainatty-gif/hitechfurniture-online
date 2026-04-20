@@ -156,7 +156,7 @@ const AdminLogistics = () => {
               );
             })}
             {grouped.has("untagged") && (
-              <div className="rounded-lg border border-dashed border-amber-400 bg-amber-50/50 px-3 py-2 text-xs dark:bg-amber-950/20">
+              <div className="rounded-lg border border-dashed border-accent bg-accent/10 px-3 py-2 text-xs">
                 <p className="font-medium">Untagged: {(grouped.get("untagged") ?? []).length}</p>
                 <p className="text-[11px] text-muted-foreground">Open these quotations to set a delivery route.</p>
               </div>

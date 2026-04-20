@@ -18,6 +18,8 @@ export type NewQuotationDraft = {
   party_name: string;
   party_place: string;
   party_phone: string;
+  delivery_place?: string;
+  delivery_route_id?: string | null;
   savedAt: number;
 };
 
@@ -28,7 +30,9 @@ export const saveNewQuotationDraft = (
   const empty =
     !draft.party_name.trim() &&
     !draft.party_place.trim() &&
-    !draft.party_phone.trim();
+    !draft.party_phone.trim() &&
+    !(draft.delivery_place ?? "").trim() &&
+    !draft.delivery_route_id;
   try {
     if (empty) {
       localStorage.removeItem(KEY);
