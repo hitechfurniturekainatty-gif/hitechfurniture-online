@@ -17,6 +17,7 @@ import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -45,7 +46,13 @@ const AdminQuotations = () => {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
-  const [form, setForm] = useState({ party_name: "", party_place: "", party_phone: "" });
+  const [form, setForm] = useState({
+    party_name: "",
+    party_place: "",
+    party_phone: "",
+    delivery_place: "",
+    delivery_route_id: null as string | null,
+  });
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
@@ -116,6 +123,8 @@ const AdminQuotations = () => {
             party_name: draft.party_name,
             party_place: draft.party_place,
             party_phone: draft.party_phone,
+            delivery_place: draft.delivery_place ?? "",
+            delivery_route_id: draft.delivery_route_id ?? null,
           });
           toast({ title: "Draft resumed" });
         } else {
@@ -151,6 +160,8 @@ const AdminQuotations = () => {
       party_name: form.party_name.trim(),
       party_place: form.party_place.trim(),
       party_phone: form.party_phone.trim() || null,
+      delivery_place: form.delivery_place.trim() || null,
+      delivery_route_id: form.delivery_route_id,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -161,7 +172,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "" });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null });
     navigate(`/admin/quotations/${data.id}`);
   };
 
@@ -262,6 +273,11 @@ const AdminQuotations = () => {
               <div className="space-y-1.5"><Label>Party name *</Label><Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
+              <DeliveryRoutePicker
+                place={form.delivery_place}
+                routeId={form.delivery_route_id}
+                onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
+              />
               <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
               {draftSavedAt && (
                 <p className="text-[11px] text-muted-foreground">

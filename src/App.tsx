@@ -25,6 +25,10 @@ const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
 const AdminMeasurementTasks = lazy(() => import("./pages/admin/AdminMeasurementTasks.tsx"));
 const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations.tsx"));
 const AdminQuotationEditor = lazy(() => import("./pages/admin/AdminQuotationEditor.tsx"));
+const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes.tsx"));
+const AdminLogistics = lazy(() => import("./pages/admin/AdminLogistics.tsx"));
+const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
+const AdminMyTrips = lazy(() => import("./pages/admin/AdminMyTrips.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // React Query tuned for many concurrent users:
@@ -69,6 +73,10 @@ const App = () => (
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />
             <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
+            <Route path="/admin/routes" element={<AdminRoutes />} />
+            <Route path="/admin/logistics" element={<AdminLogistics />} />
+            <Route path="/admin/trips" element={<AdminTrips />} />
+            <Route path="/admin/my-trips" element={<AdminMyTrips />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
