@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       .eq('user_id', userData.user.id);
     if (rolesErr) return json({ error: 'Role lookup failed', detail: rolesErr.message }, 200);
     const callerRoles = (rolesRows || []).map((r: { role: string }) => r.role);
-    const allowed = callerRoles.some((r) => r === 'admin' || r === 'staff' || r === 'measurement_staff');
+    const allowed = callerRoles.some((r) => r === 'admin' || r === 'staff' || r === 'measurement_staff' || r === 'delivery');
     if (!allowed) return json({ error: 'Forbidden', detail: 'No staff role assigned to your account.' }, 200);
 
     const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 200 });
@@ -59,7 +59,9 @@ Deno.serve(async (req) => {
           ? 'staff'
           : userRoles.includes('measurement_staff')
             ? 'measurement_staff'
-            : null;
+            : userRoles.includes('delivery')
+              ? 'delivery'
+              : null;
       return {
         user_id: u.id,
         id: u.id,
