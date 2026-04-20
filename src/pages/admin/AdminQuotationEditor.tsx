@@ -17,6 +17,7 @@ import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
   Package, HardHat, Send, FileText, Search,
@@ -60,6 +61,8 @@ type Quotation = {
   status: string;
   notes: string | null;
   terms: string | null;
+  delivery_route_id: string | null;
+  delivery_place: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
@@ -655,6 +658,13 @@ const AdminQuotationEditor = () => {
               </Select>
             </div>
           )}
+          <div className="sm:col-span-2 md:col-span-3">
+            <DeliveryRoutePicker
+              place={q.delivery_place ?? ""}
+              routeId={q.delivery_route_id ?? null}
+              onChange={(v) => updateHeader({ delivery_place: v.place || null, delivery_route_id: v.routeId })}
+            />
+          </div>
         </CardContent>
       </Card>
 
