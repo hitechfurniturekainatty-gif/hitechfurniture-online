@@ -18,7 +18,18 @@ import { HUB, ROUTE_COLOR_PALETTE, type RouteWithWaypoints } from "@/lib/logisti
 
 type DraftWaypoint = { id?: string; name: string; lat: number; lng: number; display_order: number };
 
-const blankRoute = () => ({
+type DraftRoute = {
+  id: string;
+  name: string;
+  destination_name: string;
+  destination_lat: number;
+  destination_lng: number;
+  color: string;
+  is_active: boolean;
+  waypoints: DraftWaypoint[];
+};
+
+const blankRoute = (): DraftRoute => ({
   id: "",
   name: "",
   destination_name: "",
@@ -26,7 +37,7 @@ const blankRoute = () => ({
   destination_lng: HUB.lng + 0.1,
   color: ROUTE_COLOR_PALETTE[0],
   is_active: true,
-  waypoints: [] as DraftWaypoint[],
+  waypoints: [],
 });
 
 const AdminRoutes = () => {
@@ -34,7 +45,7 @@ const AdminRoutes = () => {
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<ReturnType<typeof blankRoute>>(blankRoute());
+  const [draft, setDraft] = useState<DraftRoute>(blankRoute());
   /** controls whether next map click drops destination or a waypoint */
   const [pickMode, setPickMode] = useState<"destination" | "waypoint">("destination");
   const [saving, setSaving] = useState(false);
