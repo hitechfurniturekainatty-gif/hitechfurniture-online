@@ -78,7 +78,7 @@ const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Bal
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
 
-const GST_OPTIONS = [0, 5, 12, 18, 28];
+const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Full quotation lifecycle (kept lowercase to match DB defaults)
 const STATUS_OPTIONS = [
   "draft",        // just created, no items / not measured
