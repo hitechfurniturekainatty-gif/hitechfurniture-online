@@ -26,6 +26,7 @@ import {
 import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { handleEnterAsNext } from "@/lib/enterKeyNav";
 
 type QItem = {
   id: string;
