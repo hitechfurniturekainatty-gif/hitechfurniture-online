@@ -17,6 +17,7 @@ import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { QuotationPdfPreviewSheet } from "@/components/admin/QuotationPdfPreviewSheet";
 import {
@@ -173,6 +174,21 @@ const AdminQuotationEditor = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  // Live sync: when another user edits this quotation, reload silently if the
+  // local form is clean. If the user has unsaved edits, show a soft toast with
+  // a "Reload" action so we never overwrite their work mid-typing.
+  useRealtimeQuotation(id, () => {
+    const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
+    if (!headerDirty && !hasUnsavedItems && !saving) {
+      load();
+    } else {
+      toast({
+        title: "Updated by another user",
+        description: "Save your changes, then reload to see the latest version.",
+      });
+    }
+  });
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
   const discountAmount = Math.min(Math.max(0, Number(q?.discount_amount) || 0), subtotal);
