@@ -587,18 +587,19 @@ const AdminQuotationEditor = () => {
   return (
     <AdminShell>
       {/* Top bar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
           <Button variant="ghost" size="icon" asChild className="shrink-0">
             <Link to="/admin/quotations"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
               {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
+            <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>
-          <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
+          <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
           {canEditPrice && q.status === "sent" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("accepted")}>Mark accepted</Button>
