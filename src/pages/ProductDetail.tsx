@@ -144,30 +144,58 @@ Please share more details.`;
       });
       const file = new File([blob], `${product.product_code}-brochure.pdf`, { type: "application/pdf" });
 
-      // Preferred path: native share sheet with file (mobile)
+      // PREFERRED PATH (mobile): native share sheet with file attached.
+      // On Android/iOS this lets the user pick WhatsApp and the brochure
+      // PDF + message arrive in the admin chat in one tap. This is the
+      // ONLY way to programmatically attach a file to a WhatsApp chat
+      // from a web page — the wa.me URL scheme cannot carry attachments.
       const navAny = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (navAny.canShare && navAny.canShare({ files: [file] }) && navigator.share) {
+      const canShareFiles =
+        typeof navigator.share === "function" &&
+        typeof navAny.canShare === "function" &&
+        navAny.canShare({ files: [file] });
+
+      if (canShareFiles) {
         try {
           await navigator.share({
             files: [file],
             title: product.product_name,
             text: whatsappMsg,
           });
-          toast({ title: "Shared", description: "Pick WhatsApp from the share sheet to send." });
+          toast({
+            title: "Ready to send",
+            description: "Choose WhatsApp from the share sheet to deliver the brochure.",
+          });
           return;
         } catch (err) {
-          // User cancelled the share — silently exit, no fallback download needed
-          if ((err as Error).name === "AbortError") return;
-          // Any other error → fall through to desktop fallback
+          // User cancelled — don't force the desktop fallback on them.
+          if ((err as Error).name === "AbortError") {
+            return;
+          }
+          // Any other error → fall through to desktop fallback below.
+          console.warn("[WhatsApp inquiry] navigator.share failed, falling back:", err);
         }
       }
 
-      // Desktop / unsupported fallback: download the PDF + open WhatsApp with text
+      // DESKTOP / UNSUPPORTED FALLBACK:
+      // 1. Save the PDF to the user's device first (so it's ready in their downloads)
+      // 2. Open WhatsApp with the pre-filled text message
+      // 3. Show a persistent toast that explains the manual attach step
+      //
+      // We deliberately download FIRST and open WhatsApp SECOND so by the time
+      // WhatsApp opens, the PDF is already in their downloads folder ready to
+      // drag-drop into the chat window.
       downloadBlob(blob, `${product.product_code}-brochure.pdf`);
+
+      // Small delay so the download starts before the new tab steals focus
+      await new Promise((r) => setTimeout(r, 250));
       window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
+
       toast({
-        title: "Brochure downloaded",
-        description: "Attach the PDF in the WhatsApp chat that just opened.",
+        title: "Brochure ready ✓",
+        description:
+          "PDF saved to Downloads. Drag it into the WhatsApp chat that just opened, then press send.",
+        duration: 8000,
       });
     } catch (e) {
       console.error("[WhatsApp inquiry] failed:", e);
