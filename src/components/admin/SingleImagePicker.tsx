@@ -61,7 +61,12 @@ export const SingleImagePicker = ({
         const path = `${folder}/${crypto.randomUUID()}.${ext}`;
         const { error } = await supabase.storage
           .from(bucket)
-          .upload(path, compressed, { upsert: false, contentType: compressed.type });
+          .upload(path, compressed, {
+            upsert: false,
+            contentType: compressed.type,
+            // 1-year immutable browser cache — UUID paths change per image
+            cacheControl: "31536000, immutable",
+          });
         if (error) {
           toast({ title: "Upload failed", description: error.message, variant: "destructive" });
           setPreview(null);
