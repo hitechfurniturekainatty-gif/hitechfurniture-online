@@ -88,6 +88,8 @@ export const AiImageDialog = ({
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"generate" | "edit">("generate");
   const [itemName, setItemName] = useState("");
+  const [promptMode, setPromptMode] = useState<"preset" | "custom">("preset");
+  const [presetTemplate, setPresetTemplate] = useState(PRESETS[0].prompt);
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [sourceUrl, setSourceUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,9 +98,29 @@ export const AiImageDialog = ({
 
   const reset = () => {
     setItemName("");
+    setPromptMode("preset");
+    setPresetTemplate(PRESETS[0].prompt);
     setPrompt(DEFAULT_PROMPT);
     setSourceUrl("");
     setMode("generate");
+  };
+
+  const handleGenerateItemChange = (value: string) => {
+    setItemName(value);
+    if (promptMode === "preset") {
+      setPrompt(fillPreset(presetTemplate, value));
+    }
+  };
+
+  const handleGeneratePresetPick = (template: string) => {
+    setPresetTemplate(template);
+    setPromptMode("preset");
+    setPrompt(fillPreset(template, itemName));
+  };
+
+  const handleGeneratePromptChange = (value: string) => {
+    setPromptMode("custom");
+    setPrompt(value);
   };
 
   // Read attached file as a base64 data URL — no storage round-trip needed,
@@ -127,7 +149,14 @@ export const AiImageDialog = ({
   };
 
   const run = async () => {
-    if (!prompt.trim()) {
+    const trimmedPrompt = prompt.trim();
+    const trimmedItemName = itemName.trim();
+
+    if (mode === "generate" && !trimmedItemName) {
+      toast({ title: "Enter item name / description", variant: "destructive" });
+      return;
+    }
+    if (mode === "edit" && !trimmedPrompt) {
       toast({ title: "Enter a prompt", variant: "destructive" });
       return;
     }
@@ -139,7 +168,9 @@ export const AiImageDialog = ({
     try {
       const { data, error } = await supabase.functions.invoke("ai-generate-image", {
         body: {
-          prompt: prompt.trim(),
+          prompt: trimmedPrompt || undefined,
+          item_name: mode === "generate" ? trimmedItemName : undefined,
+          mode,
           source_image_url: mode === "edit" ? sourceUrl.trim() : undefined,
         },
       });
@@ -205,14 +236,14 @@ export const AiImageDialog = ({
               </Label>
               <Input
                 value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
+                onChange={(e) => handleGenerateItemChange(e.target.value)}
                 placeholder="e.g. 3-seater beige linen sofa with wooden legs"
               />
               <p className="text-[11px] text-muted-foreground">
                 Type what you want — the image is created purely from this description, no reference photo needed.
               </p>
             </div>
-            <PresetRow onPick={(tpl) => setPrompt(fillPreset(tpl, itemName))} />
+            <PresetRow onPick={handleGeneratePresetPick} />
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Describe the image
@@ -220,7 +251,7 @@ export const AiImageDialog = ({
               <Textarea
                 rows={5}
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => handleGeneratePromptChange(e.target.value)}
                 placeholder="e.g. A modern 3-seater sofa in beige linen fabric, wooden legs, on a clean white studio background, professional product photography, soft lighting"
               />
               <p className="text-[11px] text-muted-foreground">
