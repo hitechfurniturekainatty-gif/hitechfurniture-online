@@ -87,6 +87,7 @@ export const AiImageDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"generate" | "edit">("generate");
+  const [itemName, setItemName] = useState("");
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [sourceUrl, setSourceUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,6 +95,7 @@ export const AiImageDialog = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
+    setItemName("");
     setPrompt(DEFAULT_PROMPT);
     setSourceUrl("");
     setMode("generate");
