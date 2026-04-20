@@ -132,19 +132,26 @@ const AdminQuotations = () => {
     <Card key={q.id}>
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <FileText className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
+            <span className="min-w-0 max-w-full truncate font-mono text-sm font-semibold">{q.quotation_id}</span>
             <Badge variant={statusBadgeVariant(q.status)} className="shrink-0">{statusLabel(q.status)}</Badge>
           </div>
           <p className="mt-1 truncate text-sm">{q.party_name} · {q.party_place}</p>
           <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
         </div>
-        <div className="flex items-center justify-between gap-3 sm:justify-end">
-          <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" asChild><Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link></Button>
-            {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(q)} aria-label="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+        {/* Amount + actions — separated on mobile so buttons are always visible */}
+        <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-3 sm:justify-end sm:border-0 sm:pt-0">
+          <span className="font-display text-lg font-semibold sm:mr-2">{formatINR(q.total)}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" asChild className="h-10 px-4">
+              <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+            </Button>
+            {isAdmin && (
+              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0" onClick={() => remove(q)} aria-label="Delete">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
