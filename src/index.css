@@ -100,10 +100,15 @@
 
 @layer base {
   * { @apply border-border; }
-  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: hidden; }
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "ss01", "cv11";
+    overflow-x: hidden;
+  }
+  /* Mobile touch target hint: ensure inputs/buttons feel tappable */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; } /* prevents iOS zoom on focus */
   }
   h1, h2, h3, h4 {
     @apply font-display tracking-tight;
