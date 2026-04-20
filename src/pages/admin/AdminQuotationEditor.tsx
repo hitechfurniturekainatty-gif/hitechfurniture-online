@@ -834,6 +834,7 @@ const AdminQuotationEditor = () => {
                         const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
                         updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                       }}
+                      onFocus={(e) => e.currentTarget.select()}
                       placeholder="1"
                     />
                   </div>
@@ -848,6 +849,7 @@ const AdminQuotationEditor = () => {
                       value={it.unit_price || ""}
                       onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                       disabled={!canEditPrice}
+                      onFocus={(e) => e.currentTarget.select()}
                       placeholder="0"
                     />
                     {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
