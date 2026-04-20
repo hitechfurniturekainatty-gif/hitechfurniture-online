@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-type Role = "admin" | "staff" | "measurement_staff";
+type Role = "admin" | "staff" | "measurement_staff" | "delivery";
 type StaffRow = {
   user_id: string;
   email: string | null;
@@ -24,11 +24,17 @@ type StaffRow = {
   created_at: string;
 };
 
-const roleLabel: Record<Role, string> = { admin: "Admin", staff: "Office Staff", measurement_staff: "Measurement Staff" };
+const roleLabel: Record<Role, string> = {
+  admin: "Admin",
+  staff: "Office Staff",
+  measurement_staff: "Measurement Staff",
+  delivery: "Delivery Driver",
+};
 const roleColor: Record<Role, string> = {
   admin: "bg-primary text-primary-foreground",
   staff: "bg-secondary text-secondary-foreground",
   measurement_staff: "bg-accent text-accent-foreground",
+  delivery: "bg-muted text-foreground border border-border",
 };
 
 const AdminStaff = () => {
@@ -232,11 +238,12 @@ const AdminStaff = () => {
                 <Label>Role *</Label>
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin (full access)</SelectItem>
-                    <SelectItem value="staff">Office Staff</SelectItem>
-                    <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
-                  </SelectContent>
+                   <SelectContent>
+                     <SelectItem value="admin">Admin (full access)</SelectItem>
+                     <SelectItem value="staff">Office Staff</SelectItem>
+                     <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
+                     <SelectItem value="delivery">Delivery Driver (trips only)</SelectItem>
+                   </SelectContent>
                 </Select>
               </div>
             </div>
@@ -263,7 +270,8 @@ const AdminStaff = () => {
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shrink-0">
                       {r.role === "admin" ? <ShieldCheck className="h-5 w-5 text-primary" /> :
                         r.role === "measurement_staff" ? <Ruler className="h-5 w-5 text-primary" /> :
-                          <UserIcon className="h-5 w-5 text-primary" />}
+                          r.role === "delivery" ? <Truck className="h-5 w-5 text-primary" /> :
+                            <UserIcon className="h-5 w-5 text-primary" />}
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium truncate">{r.display_name || r.email} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}</p>
@@ -353,6 +361,7 @@ const AdminStaff = () => {
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="staff">Office Staff</SelectItem>
                     <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
+                    <SelectItem value="delivery">Delivery Driver</SelectItem>
                   </SelectContent>
                 </Select>
                 {editing.user_id === user?.id && (

@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     }
 
     if (act === 'set_role') {
-      if (!['admin', 'staff', 'measurement_staff'].includes(role)) return json({ error: 'invalid role' });
+      if (!['admin', 'staff', 'measurement_staff', 'delivery'].includes(role)) return json({ error: 'invalid role' });
       await admin.from('user_roles').delete().eq('user_id', user_id);
       const { error } = await admin.from('user_roles').insert({ user_id, role });
       if (error) return json({ error: error.message });

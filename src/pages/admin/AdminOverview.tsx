@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 const QUOTATION_STATUSES = ["draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
 
 const AdminOverview = () => {
-  const { isAdmin, isOfficeStaff, isMeasurementStaff, user, loading: authLoading } = useAuth();
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     products: 0, categories: 0, lowStock: 0,
     quotations: 0, drafts: 0, myTasks: 0, workers: 0,
@@ -62,8 +62,12 @@ const AdminOverview = () => {
   }, [user?.id, isMeasurementStaff, isOfficeStaff]);
 
   // Measurement-only staff: redirect to personal page
-  if (!authLoading && user && isMeasurementStaff && !isOfficeStaff) {
+  if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) {
     return <Navigate to="/admin/my-work" replace />;
+  }
+  // Delivery-only users: send straight to their trip list
+  if (!authLoading && user && isDelivery && !isOfficeStaff && !isMeasurementStaff) {
+    return <Navigate to="/admin/my-trips" replace />;
   }
 
   const cards = [
