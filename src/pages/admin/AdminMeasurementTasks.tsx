@@ -265,10 +265,10 @@ const AdminMeasurementTasks = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="mine">
-          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
-            <TabsTrigger value="mine">My tasks ({pending(myTasks).length})</TabsTrigger>
-            {isOfficeStaff && <TabsTrigger value="all">All ({pending(otherTasks).length + pending(myTasks).length})</TabsTrigger>}
-            <TabsTrigger value="done">Completed ({done(tasks).length})</TabsTrigger>
+          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+            <TabsTrigger value="mine" className="whitespace-nowrap">My tasks ({pending(myTasks).length})</TabsTrigger>
+            {isOfficeStaff && <TabsTrigger value="all" className="whitespace-nowrap">All ({pending(otherTasks).length + pending(myTasks).length})</TabsTrigger>}
+            <TabsTrigger value="done" className="whitespace-nowrap">Completed ({done(tasks).length})</TabsTrigger>
           </TabsList>
           <TabsContent value="mine" className="mt-4">
             <div className="grid gap-3 md:grid-cols-2">
