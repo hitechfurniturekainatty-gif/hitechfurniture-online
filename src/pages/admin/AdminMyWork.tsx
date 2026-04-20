@@ -192,10 +192,10 @@ const AdminMyWork = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs defaultValue="current" className="mt-6">
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="current">Current ({pendingTasks.length})</TabsTrigger>
-            <TabsTrigger value="history">History ({doneTasks.length})</TabsTrigger>
-            <TabsTrigger value="quotes">My quotations ({quotations.length})</TabsTrigger>
+          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsTrigger value="current" className="whitespace-nowrap">Current ({pendingTasks.length})</TabsTrigger>
+            <TabsTrigger value="history" className="whitespace-nowrap">History ({doneTasks.length})</TabsTrigger>
+            <TabsTrigger value="quotes" className="whitespace-nowrap">My quotations ({quotations.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="current" className="mt-4">
