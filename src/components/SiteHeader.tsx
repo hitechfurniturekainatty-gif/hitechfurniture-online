@@ -17,19 +17,19 @@ export const SiteHeader = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
-      <div className="container-page flex items-center justify-between gap-4 py-3">
-        <Link to="/" className="flex items-center gap-3">
-          <Logo className="h-9 w-auto md:h-11" />
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 shadow-card-soft backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+      <div className="container-page grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3 md:py-4">
+        <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex items-center gap-3 justify-self-start">
+          <Logo className="h-12 w-auto sm:h-14 md:h-16" />
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center justify-center gap-10 md:flex">
           {nav.map((n) => (
             <Link
               key={n.to}
               to={n.to}
               className={cn(
-                "text-sm font-medium tracking-wide transition-smooth hover:text-primary",
+                "text-base font-semibold tracking-wide transition-smooth hover:text-primary",
                 location.pathname === n.to ? "text-primary" : "text-foreground/70"
               )}
             >
@@ -38,17 +38,17 @@ export const SiteHeader = () => {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2 justify-self-end">
           {isStaff ? (
-            <Button asChild variant="default" size="sm">
+            <Button asChild variant="default" size="lg" className="text-base">
               <Link to="/admin">Dashboard</Link>
             </Button>
           ) : user ? (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="lg" className="text-base">
               <Link to="/admin">Dashboard</Link>
             </Button>
           ) : (
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="lg" className="text-base">
               <Link to="/auth">Staff Login</Link>
             </Button>
           )}
@@ -56,22 +56,23 @@ export const SiteHeader = () => {
 
         <button
           aria-label="Toggle menu"
-          className="md:hidden p-2 rounded-md hover:bg-muted"
+          aria-expanded={open}
+          className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/60 bg-card text-foreground hover:bg-muted active:scale-95 transition-smooth justify-self-end"
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-border/60 bg-background">
+        <div className="md:hidden border-t border-border/60 bg-background shadow-card-soft">
           <div className="container-page flex flex-col gap-1 py-3">
             {nav.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted"
+                className="rounded-lg px-3 py-3 text-base font-semibold text-foreground/80 hover:bg-muted active:bg-muted"
               >
                 {n.label}
               </Link>
@@ -79,7 +80,7 @@ export const SiteHeader = () => {
             <Link
               to={isStaff || user ? "/admin" : "/auth"}
               onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-sm font-semibold text-primary hover:bg-muted"
+              className="rounded-lg px-3 py-3 text-base font-bold text-primary hover:bg-muted active:bg-muted"
             >
               {isStaff || user ? "Dashboard" : "Staff Login"}
             </Link>
