@@ -3,11 +3,15 @@ import logo from "@/assets/hitech-logo.jpeg";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 
 // PDF-safe INR formatter: Helvetica doesn't include the ₹ glyph, which can
-// render amounts as a tiny/blank box. Use "Rs." prefix + Indian digit grouping.
+// render amounts as a tiny/blank box. Earlier we used "Rs." but the period
+// next to the digits was being read as an extra leading "1" in some PDF
+// viewers (Rs.1234 looked like Rs1234 or worse). Use a plain "Rs " prefix
+// (no dot) with a clear single space + Indian digit grouping. This renders
+// cleanly across all PDF viewers without any phantom leading character.
 const formatINR = (n: number | null | undefined) => {
   if (n == null) return "-";
   const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
-  return `Rs. ${num}`;
+  return `Rs ${num}`;
 };
 
 // A4 = 595 x 842 pt. Side padding 22pt → usable width = 551pt
