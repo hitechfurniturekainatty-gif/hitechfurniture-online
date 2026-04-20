@@ -702,10 +702,12 @@ const AdminQuotationEditor = () => {
           <CardTitle className="text-base">Party & Quotation Details</CardTitle>
           <ContactPicker
             label="From Contacts"
-            onPick={({ name, tel }) =>
+            onPick={({ name, tel, place, address }) =>
               updateHeader({
                 party_name: name || q.party_name,
                 party_phone: tel || q.party_phone || "",
+                party_place: place || q.party_place,
+                party_address: address || q.party_address || "",
               })
             }
           />

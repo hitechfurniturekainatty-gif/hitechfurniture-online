@@ -222,11 +222,13 @@ const AdminMeasurementTasks = () => {
               >
                 <div className="flex justify-end">
                   <ContactPicker
-                    onPick={({ name, tel }) =>
+                    onPick={({ name, tel, place, address }) =>
                       setForm((f) => ({
                         ...f,
                         customer_name: name || f.customer_name,
                         customer_phone: tel || f.customer_phone,
+                        customer_place: place || f.customer_place,
+                        customer_address: address || f.customer_address,
                       }))
                     }
                   />
