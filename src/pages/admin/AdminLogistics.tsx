@@ -86,6 +86,32 @@ const AdminLogistics = () => {
 
   const visibleRoutes = highlightedRoute ? routes.filter((r) => r.id === highlightedRoute) : routes;
 
+  const suggestTrip = () => {
+    // Pick route: highlighted if any, else the one with most pending deliveries
+    let targetRouteId = highlightedRoute;
+    if (!targetRouteId) {
+      let best: { id: string; count: number } | null = null;
+      for (const r of routes) {
+        const c = (grouped.get(r.id) ?? []).length;
+        if (c > 0 && (!best || c > best.count)) best = { id: r.id, count: c };
+      }
+      targetRouteId = best?.id ?? null;
+    }
+    if (!targetRouteId) {
+      toast({ title: "Nothing to suggest", description: "No pending deliveries on any route.", variant: "destructive" });
+      return;
+    }
+    const items = grouped.get(targetRouteId) ?? [];
+    if (items.length === 0) {
+      toast({ title: "No pending deliveries on this route", variant: "destructive" });
+      return;
+    }
+    // Sort by descending order value so high-value drops are prioritised
+    const ordered = [...items].sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0));
+    const qids = ordered.map((x) => x.id).join(",");
+    navigate(`/admin/trips?new=1&route=${targetRouteId}&qs=${qids}`);
+  };
+
   if (!isOfficeStaff) {
     return (
       <AdminShell>
