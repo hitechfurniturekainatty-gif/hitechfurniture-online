@@ -24,7 +24,9 @@ Deno.serve(async (req) => {
     const ANON_KEY =
       Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return json({ error: "AI not configured" }, 500);
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY && !LOVABLE_API_KEY)
+      return json({ error: "AI not configured" }, 500);
 
     // Verify caller is staff/admin
     const authHeader = req.headers.get("Authorization");
