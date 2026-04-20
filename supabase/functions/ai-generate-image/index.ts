@@ -46,11 +46,28 @@ Deno.serve(async (req) => {
     if (!isStaff) return json({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => ({}));
+    const mode: "generate" | "edit" = body.mode === "edit" ? "edit" : "generate";
     const prompt: string = (body.prompt ?? "").toString().trim();
+    const itemName: string = (body.item_name ?? "").toString().trim();
     const sourceImageUrl: string | undefined = body.source_image_url;
     // Default to Nano Banana 2 (fast + pro-quality). Caller can override.
     const model: string = body.model ?? "google/gemini-3.1-flash-image-preview";
-    if (!prompt) return json({ error: "Prompt required" }, 400);
+    if (!prompt && !itemName) return json({ error: "Item description required" }, 400);
+
+    const finalPrompt = mode === "generate"
+      ? [
+          "Create a photorealistic catalog product image that matches the described item exactly.",
+          itemName ? `PRODUCT DESCRIPTION (source of truth): ${itemName}` : "",
+          prompt ? `IMAGE / STYLING INSTRUCTIONS: ${prompt}` : "",
+          "Do not change the product type, shape, size, seating capacity, color, material, proportions, or core features from the description.",
+          "If any detail is missing, keep the design simple and realistic instead of inventing major new features.",
+          "Show one main product only, fully visible, centered, sharp, photorealistic, and suitable for a sales catalog.",
+          "Do not add text, logos, watermarks, people, or unrelated extra objects unless explicitly requested.",
+        ].filter(Boolean).join("\n\n")
+      : [
+          prompt,
+          itemName ? `Preserve these product details while editing: ${itemName}` : "",
+        ].filter(Boolean).join("\n\n");
 
     // Build messages: edit mode if source image provided.
     // For remote http(s) URLs we fetch + inline as data URL ourselves so that:
@@ -102,10 +119,10 @@ Deno.serve(async (req) => {
 
     const userContent: unknown = inlineImageUrl
       ? [
-          { type: "text", text: prompt },
+          { type: "text", text: finalPrompt },
           { type: "image_url", image_url: { url: inlineImageUrl } },
         ]
-      : prompt;
+      : finalPrompt;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -115,7 +132,14 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: "user", content: userContent }],
+        messages: [
+          {
+            role: "system",
+            content:
+              "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.",
+          },
+          { role: "user", content: userContent },
+        ],
         modalities: ["image", "text"],
       }),
     });
