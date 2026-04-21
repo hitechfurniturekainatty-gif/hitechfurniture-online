@@ -40,6 +40,7 @@ type Quotation = {
   status: string;
   notes: string | null;
   terms: string | null;
+  created_by: string | null;
 };
 
 const fmtDate = (s: string | null | undefined) =>
@@ -55,6 +56,7 @@ const AdminQuotationPreview = () => {
   const [items, setItems] = useState<QItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [createdByName, setCreatedByName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -71,6 +73,17 @@ const AdminQuotationPreview = () => {
       }
       setQ(quote as Quotation);
       setItems((lines ?? []) as QItem[]);
+      const cb = (quote as Quotation).created_by;
+      if (cb) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("display_name, email")
+          .eq("user_id", cb)
+          .maybeSingle();
+        setCreatedByName(prof?.display_name || prof?.email || "Staff");
+      } else {
+        setCreatedByName(null);
+      }
       setLoading(false);
     })();
   }, [id, navigate]);
@@ -433,6 +446,9 @@ const AdminQuotationPreview = () => {
         </section>
 
         <footer className="border-t border-slate-200 p-4 text-center text-[11px] text-slate-500 sm:p-6">
+          {createdByName && (
+            <p className="mb-1">Created By: <span className="font-medium text-slate-700">{createdByName}</span></p>
+          )}
           Thank you for your business — {COMPANY.name}
         </footer>
       </article>

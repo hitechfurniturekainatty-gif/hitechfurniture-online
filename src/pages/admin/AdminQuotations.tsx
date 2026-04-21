@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
@@ -36,6 +36,7 @@ type Q = {
   status: string;
   total: number;
   created_at: string;
+  created_by: string | null;
 };
 
 const AdminQuotations = () => {
@@ -43,6 +44,7 @@ const AdminQuotations = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<Q[]>([]);
+  const [creatorMap, setCreatorMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -76,10 +78,28 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
-    else setRows((data ?? []) as Q[]);
+    else {
+      const list = (data ?? []) as Q[];
+      setRows(list);
+      // Fetch display names for unique created_by ids
+      const ids = Array.from(new Set(list.map((r) => r.created_by).filter(Boolean) as string[]));
+      if (ids.length) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, email")
+          .in("user_id", ids);
+        const map: Record<string, string> = {};
+        (profiles ?? []).forEach((p: any) => {
+          map[p.user_id] = p.display_name || p.email || "Staff";
+        });
+        setCreatorMap(map);
+      } else {
+        setCreatorMap({});
+      }
+    }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -230,7 +250,14 @@ const AdminQuotations = () => {
                 <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
               </div>
               <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
-              <p className="text-xs text-muted-foreground">{new Date(q.quotation_date).toLocaleDateString("en-IN")}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(q.quotation_date).toLocaleDateString("en-IN")}
+                {q.created_by && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    · <User className="h-3 w-3" /> {creatorMap[q.created_by] ?? "Staff"}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
