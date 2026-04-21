@@ -27,6 +27,7 @@ import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
+import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 
 type QItem = {
   id: string;
@@ -165,6 +166,12 @@ const AdminQuotationEditor = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  // Preload published products once so the description autosuggest is instant.
+  useEffect(() => {
+    loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Live sync: when another user edits this quotation, reload silently if the
   // local form is clean. If the user has unsaved edits, show a soft toast with
