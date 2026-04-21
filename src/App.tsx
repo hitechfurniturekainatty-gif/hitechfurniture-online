@@ -25,6 +25,7 @@ const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
 const AdminMeasurementTasks = lazy(() => import("./pages/admin/AdminMeasurementTasks.tsx"));
 const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations.tsx"));
 const AdminQuotationEditor = lazy(() => import("./pages/admin/AdminQuotationEditor.tsx"));
+const AdminQuotationPreview = lazy(() => import("./pages/admin/AdminQuotationPreview.tsx"));
 const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes.tsx"));
 const AdminLogistics = lazy(() => import("./pages/admin/AdminLogistics.tsx"));
 const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />
             <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
+            <Route path="/admin/quotations/:id/preview" element={<AdminQuotationPreview />} />
             <Route path="/admin/routes" element={<AdminRoutes />} />
             <Route path="/admin/logistics" element={<AdminLogistics />} />
             <Route path="/admin/trips" element={<AdminTrips />} />
