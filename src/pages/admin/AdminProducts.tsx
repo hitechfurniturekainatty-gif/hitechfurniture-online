@@ -265,10 +265,53 @@ const AdminProducts = () => {
             onFocusCapture={scrollFocusedIntoView}
           >
             <Field label="Product name *">
-              <Input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} />
+              <AutoSuggestInput
+                value={form.product_name}
+                onChange={(v) => setForm({ ...form, product_name: v })}
+                placeholder="Start typing to search existing products…"
+                fetchSuggestions={(q) => {
+                  const qq = q.toLowerCase();
+                  return products
+                    .filter((p) => p.id !== editing?.id)
+                    .filter(
+                      (p) =>
+                        p.product_name.toLowerCase().includes(qq) ||
+                        p.product_code.toLowerCase().includes(qq),
+                    )
+                    .map<Suggestion<Product>>((p) => ({
+                      label: p.product_name,
+                      sub: `${p.product_code} · ${formatINR(p.offer_price ?? p.mrp)}`,
+                      image: p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url,
+                      data: p,
+                    }));
+                }}
+                onPick={(s) => {
+                  const p = s.data as Product;
+                  if (!p) return;
+                  setForm((prev) => ({
+                    ...prev,
+                    product_name: p.product_name,
+                    product_code: p.product_code,
+                    main_category_id: p.main_category_id,
+                    sub_category_id: p.sub_category_id ?? "",
+                    mrp: prev.mrp || p.mrp.toString(),
+                    offer_price: prev.offer_price || (p.offer_price?.toString() ?? ""),
+                    material: prev.material || (p.material ?? ""),
+                    dimensions: prev.dimensions || (p.dimensions ?? ""),
+                  }));
+                }}
+              />
             </Field>
             <Field label="Product code *">
-              <Input value={form.product_code} onChange={(e) => setForm({ ...form, product_code: e.target.value })} placeholder="e.g. HS-234" />
+              <Input
+                value={form.product_code}
+                onChange={(e) => setForm({ ...form, product_code: e.target.value.toUpperCase() })}
+                placeholder="e.g. HS-234"
+                className="uppercase tracking-wide"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+              />
             </Field>
             <Field label="Main category *">
               <Select value={form.main_category_id} onValueChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}>
