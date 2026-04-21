@@ -223,13 +223,13 @@ Please share more details.`;
       <div className="container-page grid gap-10 pb-20 md:grid-cols-2 md:gap-14">
         {/* Gallery */}
         <div>
-          <div className="img-frame aspect-square">
+          <div className="relative aspect-square overflow-hidden rounded-2xl bg-transparent">
             {cover ? (
               <img
                 src={cover}
                 alt={product.product_name}
                 decoding="async"
-                className="h-full w-full object-contain p-6"
+                className="h-full w-full object-contain object-center"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">No image</div>
@@ -241,11 +241,11 @@ Please share more details.`;
                 <button
                   key={i}
                   onClick={() => setActiveImg(i)}
-                  className={`img-frame-sm aspect-square transition-smooth ${
-                    activeImg === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                  className={`relative aspect-square overflow-hidden rounded-xl bg-transparent transition-smooth ${
+                    activeImg === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "ring-1 ring-border/40"
                   }`}
                 >
-                  <img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1.5" />
+                  <img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
                 </button>
               ))}
             </div>
