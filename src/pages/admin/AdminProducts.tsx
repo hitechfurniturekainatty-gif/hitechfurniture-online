@@ -16,6 +16,7 @@ import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
