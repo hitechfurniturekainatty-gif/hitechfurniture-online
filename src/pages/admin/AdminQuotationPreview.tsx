@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { formatINR } from "@/lib/brand";
+import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
@@ -306,11 +306,11 @@ const AdminQuotationPreview = () => {
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm">
-                    <span className="text-slate-600">Qty: <span className="font-medium text-slate-900">{it.quantity}</span></span>
+                    <span className="text-slate-600">Qty: <span className="font-medium text-slate-900 tabular-nums">{it.quantity}</span></span>
                     {hasAnyPrice && (
                       <>
-                        <span className="text-slate-600">Rate: <span className="font-mono text-slate-900">{formatINR(it.unit_price)}</span></span>
-                        <span className="font-mono font-semibold text-slate-900">{formatINR(amt)}</span>
+                        <span className="text-slate-600">Price: <span className="font-mono tabular-nums text-slate-900">{formatINRNumber(it.unit_price)}</span></span>
+                        <span className="font-mono tabular-nums font-semibold text-slate-900">{formatINRNumber(amt)}</span>
                       </>
                     )}
                   </div>
@@ -323,22 +323,22 @@ const AdminQuotationPreview = () => {
           <div className="hidden overflow-hidden rounded-md border border-slate-200 sm:block">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600">
-                <tr className="text-left">
-                  <th className="w-10 px-3 py-2 text-center">#</th>
-                  <th className="px-3 py-2">Image</th>
-                  <th className="px-3 py-2">Description</th>
-                  <th className="px-3 py-2">Measurement</th>
-                  <th className="w-20 px-3 py-2 text-center">Qty</th>
-                  {hasAnyPrice && <th className="w-28 px-3 py-2 text-right">Rate</th>}
-                  {hasAnyPrice && <th className="w-32 px-3 py-2 text-right">Amount</th>}
+                <tr>
+                  <th className="w-10 px-3 py-2 text-left">Sl No</th>
+                  <th className="px-3 py-2 text-left">Image</th>
+                  <th className="px-3 py-2 text-left">Description</th>
+                  <th className="px-3 py-2 text-left">Measurement</th>
+                  <th className="w-20 px-3 py-2 text-right">Qty</th>
+                  {hasAnyPrice && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
+                  {hasAnyPrice && <th className="w-32 px-3 py-2 text-right">Amount (INR)</th>}
                 </tr>
               </thead>
               <tbody>
                 {items.map((it, idx) => {
                   const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
                   return (
-                    <tr key={it.id} className="border-t border-slate-200 align-top">
-                      <td className="px-3 py-3 text-center text-slate-500">{idx + 1}</td>
+                    <tr key={it.id} className="border-t border-slate-200 align-top odd:bg-white even:bg-slate-50/60">
+                      <td className="px-3 py-3 text-left text-slate-500 tabular-nums">{idx + 1}</td>
                       <td className="px-3 py-3">
                         {it.item_image_url ? (
                           <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
@@ -367,9 +367,9 @@ const AdminQuotationPreview = () => {
                         )}
                       </td>
                       <td className="px-3 py-3 text-slate-700">{it.measurement || "—"}</td>
-                      <td className="px-3 py-3 text-center font-medium">{it.quantity}</td>
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono">{formatINR(it.unit_price)}</td>}
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono font-semibold">{formatINR(amt)}</td>}
+                      <td className="px-3 py-3 text-right font-medium tabular-nums">{it.quantity}</td>
+                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums">{formatINRNumber(it.unit_price)}</td>}
+                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold">{formatINRNumber(amt)}</td>}
                     </tr>
                   );
                 })}
