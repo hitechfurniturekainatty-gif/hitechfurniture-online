@@ -461,28 +461,6 @@ const AdminQuotationEditor = () => {
     navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
-  const downloadFromPreview = () => {
-    if (!previewBlob) return;
-    downloadBlob(previewBlob, previewFilename);
-    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
-  };
-
-  const whatsAppFromPreview = async () => {
-    if (!q || !previewBlob) return;
-    if (!q.party_phone) {
-      toast({ title: "No party phone on file", variant: "destructive" });
-      return;
-    }
-    const balanceLine = advanceAmount > 0
-      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
-      : `Total: ${formatINR(grandTotal)}`;
-    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
-    await sharePdfViaWhatsApp(previewBlob, previewFilename, q.party_phone, msg);
-    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-      await setStatus("sent", { silent: true });
-    }
-  };
-
   // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
