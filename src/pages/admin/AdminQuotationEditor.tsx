@@ -459,37 +459,15 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
-  // Save → render PDF in preview sheet. Used by the user-facing Save button.
-  // Internal callers (e.g. WhatsApp, Job Work) keep using saveAll/ensureSaved
-  // directly so they don't trigger the preview UI.
+  // Save → navigate to the structured digital preview page.
+  // No PDF rendering happens here anymore — the preview is a fast HTML
+  // page that loads instantly on every device. PDF is generated on-demand
+  // from the preview page when the user taps "Share via WhatsApp" or "PDF".
   const saveAndPreview = async () => {
     const result = await saveAll();
     if (!result) return;
-    // Skip preview for empty quotations — there's nothing meaningful to show.
     if (result.savedItems.length === 0) return;
-    setPreviewBuilding(true);
-    setPreviewBlob(null);
-    setPreviewOpen(true);
-    try {
-      const data = buildPdfData();
-      if (!data) {
-        setPreviewOpen(false);
-        return;
-      }
-      const blob = await generateQuotationPdf(data);
-      setPreviewBlob(blob);
-      setPreviewFilename(`${data.quotation_id}.pdf`);
-    } catch (e: any) {
-      console.error("Preview PDF generation failed:", e);
-      toast({
-        title: "Preview failed",
-        description: e?.message ?? "Could not render PDF preview.",
-        variant: "destructive",
-      });
-      setPreviewOpen(false);
-    } finally {
-      setPreviewBuilding(false);
-    }
+    navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
   const downloadFromPreview = () => {
