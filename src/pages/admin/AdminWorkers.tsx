@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat, ListChecks } from "lucide-react";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { Link } from "react-router-dom";
 
 type Worker = {
   id: string;
@@ -119,6 +120,9 @@ const AdminWorkers = () => {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
+                  <Button size="icon" variant="ghost" asChild title="View jobs">
+                    <Link to={`/admin/workers/${w.id}`}><ListChecks className="h-4 w-4" /></Link>
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => startEdit(w)}><Pencil className="h-4 w-4" /></Button>
                   {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(w)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                 </div>
