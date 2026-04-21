@@ -9,5 +9,14 @@ export const formatINR = (n: number | null | undefined) => {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 };
 
+/**
+ * Plain number with Indian digit grouping (no ₹ / Rs prefix).
+ * Use inside line-item tables — the column header already says "(INR)".
+ */
+export const formatINRNumber = (n: number | null | undefined) => {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+};
+
 export const buildWhatsAppUrl = (message: string) =>
   `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;

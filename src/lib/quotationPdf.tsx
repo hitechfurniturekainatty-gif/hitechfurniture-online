@@ -2,16 +2,17 @@ import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/r
 import logo from "@/assets/hitech-logo.jpeg";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 
-// PDF-safe INR formatter: Helvetica doesn't include the ₹ glyph, which can
-// render amounts as a tiny/blank box. Earlier we used "Rs." but the period
-// next to the digits was being read as an extra leading "1" in some PDF
-// viewers (Rs.1234 looked like Rs1234 or worse). Use a plain "Rs " prefix
-// (no dot) with a clear single space + Indian digit grouping. This renders
-// cleanly across all PDF viewers without any phantom leading character.
+// PDF-safe INR formatters.
+// Helvetica doesn't include the ₹ glyph (renders as a blank box), so we use
+// the "Rs " prefix when we need a currency marker, but plain digits inside
+// the line-item table — the column header now reads "Price (INR)" / "Amount (INR)".
+const fmtNum = (n: number | null | undefined) => {
+  if (n == null) return "-";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
+};
 const formatINR = (n: number | null | undefined) => {
   if (n == null) return "-";
-  const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
-  return `Rs ${num}`;
+  return `Rs ${fmtNum(n)}`;
 };
 
 // A4 = 595 x 842 pt. Side padding 22pt → usable width = 551pt
@@ -31,9 +32,11 @@ const styles = StyleSheet.create({
   tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
   th: { color: "#FFFFFF", fontSize: 10.5, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
   tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 44 },
+  tRowAlt: { backgroundColor: "#F4F7F7" },
   td: { fontSize: 11, padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
   tdImg: { width: 64, height: 64, objectFit: "contain" },
-  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
+  totalsWrap: { marginTop: 4, paddingTop: 8, borderTopWidth: 1.5, borderTopColor: "#0E5C66", backgroundColor: "#F4F7F7", paddingHorizontal: 8, paddingBottom: 8, borderRadius: 4 },
+  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FFFFFF" },
   totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
   totalLabel: { fontSize: 11, color: "#1F3F44" },
   totalValue: { fontSize: 12, fontWeight: 600, color: "#0F2A2E" },
@@ -136,17 +139,17 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 
       <View style={styles.table}>
         <View style={styles.tHead}>
-          <Text style={[styles.th, { width: cols.sl }]}>SL</Text>
+          <Text style={[styles.th, { width: cols.sl }]}>Sl</Text>
           <Text style={[styles.th, { width: cols.desc }]}>Description</Text>
           <Text style={[styles.th, { width: cols.img }]}>Image</Text>
           <Text style={[styles.th, { width: cols.meas }]}>Measurement</Text>
           <Text style={[styles.th, { width: cols.cat }]}>Catalog</Text>
           <Text style={[styles.th, { width: cols.qty, textAlign: "right" }]}>Qty</Text>
-          <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price</Text>
-          <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount</Text>
+          <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price (INR)</Text>
+          <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount (INR)</Text>
         </View>
         {q.items.map((it, i) => (
-          <View key={i} style={styles.tRow} wrap={false}>
+          <View key={i} style={[styles.tRow, i % 2 === 1 ? styles.tRowAlt : null]} wrap={false}>
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
             <Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
@@ -173,40 +176,41 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
               )}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
-            <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{formatINR(it.unit_price)}</Text>
-            <Text style={[styles.td, { width: cols.amt, textAlign: "right" }]}>{formatINR(it.amount)}</Text>
+            <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{fmtNum(it.unit_price)}</Text>
+            <Text style={[styles.td, { width: cols.amt, textAlign: "right" }]}>{fmtNum(it.amount)}</Text>
           </View>
         ))}
       </View>
 
+      <View style={styles.totalsWrap}>
       <View style={styles.totalsBox}>
         {/* Subtotal — always shown */}
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Subtotal</Text>
-          <Text style={styles.totalValue}>{formatINR(q.subtotal)}</Text>
+          <Text style={styles.totalLabel}>Subtotal (INR)</Text>
+          <Text style={styles.totalValue}>{fmtNum(q.subtotal)}</Text>
         </View>
 
         {/* Discount — only if > 0 */}
         {(q.discount_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Discount</Text>
-            <Text style={styles.totalValue}>- {formatINR(q.discount_amount)}</Text>
+            <Text style={styles.totalLabel}>Discount (INR)</Text>
+            <Text style={styles.totalValue}>- {fmtNum(q.discount_amount)}</Text>
           </View>
         )}
 
         {/* GST — only if % > 0 AND amount > 0 */}
         {(q.gst_percent ?? 0) > 0 && (q.gst_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>GST ({q.gst_percent}%)</Text>
-            <Text style={styles.totalValue}>{formatINR(q.gst_amount)}</Text>
+            <Text style={styles.totalLabel}>GST {q.gst_percent}% (INR)</Text>
+            <Text style={styles.totalValue}>{fmtNum(q.gst_amount)}</Text>
           </View>
         )}
 
         {/* Advance — only if > 0 */}
         {(q.advance_amount ?? 0) > 0 && (
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Less: Advance Received</Text>
-            <Text style={styles.totalValue}>- {formatINR(q.advance_amount)}</Text>
+            <Text style={styles.totalLabel}>Less: Advance Received (INR)</Text>
+            <Text style={styles.totalValue}>- {fmtNum(q.advance_amount)}</Text>
           </View>
         )}
 
@@ -215,6 +219,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <Text style={styles.grandLabel}>{(q.advance_amount ?? 0) > 0 ? "BALANCE DUE" : "GRAND TOTAL"}</Text>
           <Text style={styles.grandValue}>{formatINR((q.advance_amount ?? 0) > 0 ? (q.balance_due ?? q.total) : q.total)}</Text>
         </View>
+      </View>
       </View>
 
       <View style={styles.bankBox} wrap={false}>
