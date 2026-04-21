@@ -62,6 +62,7 @@ export type Database = {
           notes: string | null
           quotation_id: string
           status: string
+          status_updated_at: string
           updated_at: string
           worker_id: string
         }
@@ -73,6 +74,7 @@ export type Database = {
           notes?: string | null
           quotation_id: string
           status?: string
+          status_updated_at?: string
           updated_at?: string
           worker_id: string
         }
@@ -84,6 +86,7 @@ export type Database = {
           notes?: string | null
           quotation_id?: string
           status?: string
+          status_updated_at?: string
           updated_at?: string
           worker_id?: string
         }
