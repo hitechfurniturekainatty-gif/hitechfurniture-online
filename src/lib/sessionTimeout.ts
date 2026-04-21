@@ -1,8 +1,8 @@
 /**
  * Session timeout: auto sign-out after MAX_SESSION_MS of continuous login.
  *
- * Why: customer phones / shared store laptops often stay signed in for days,
- * which is a security risk. We enforce a 24h hard cap regardless of activity.
+ * Why: customer phones / shared store laptops often stay signed in for hours,
+ * which is a security risk. We enforce a 3h hard cap regardless of activity.
  *
  * How it works:
  * - On successful sign-in we stamp `mh_login_ts` in localStorage.
@@ -14,7 +14,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "mh_login_ts";
-export const MAX_SESSION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const MAX_SESSION_MS = 3 * 60 * 60 * 1000; // 3 hours
 const CHECK_INTERVAL_MS = 60 * 1000; // check every minute
 
 let started = false;
