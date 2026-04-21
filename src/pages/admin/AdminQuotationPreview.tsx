@@ -383,37 +383,37 @@ const AdminQuotationPreview = () => {
 
         {/* Totals */}
         {hasAnyPrice && (
-          <section className="border-t border-slate-200 p-5 sm:p-8">
-            <div className="ml-auto w-full max-w-sm space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Subtotal</span>
-                <span className="font-mono">{formatINR(subtotal)}</span>
+          <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
+            <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
+              <div className="flex justify-between px-4 py-2">
+                <span className="text-slate-600">Subtotal (INR)</span>
+                <span className="font-mono tabular-nums">{formatINRNumber(subtotal)}</span>
               </div>
               {showDiscount && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Discount</span>
-                  <span className="font-mono text-emerald-700">− {formatINR(discount)}</span>
+                <div className="flex justify-between border-t border-slate-100 px-4 py-2">
+                  <span className="text-slate-600">Discount (INR)</span>
+                  <span className="font-mono tabular-nums text-emerald-700">− {formatINRNumber(discount)}</span>
                 </div>
               )}
               {showGst && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">GST ({q.gst_percent}%)</span>
-                  <span className="font-mono">{formatINR(gstAmount)}</span>
+                <div className="flex justify-between border-t border-slate-100 px-4 py-2">
+                  <span className="text-slate-600">GST {q.gst_percent}% (INR)</span>
+                  <span className="font-mono tabular-nums">{formatINRNumber(gstAmount)}</span>
                 </div>
               )}
-              <div className="mt-2 flex justify-between border-t border-slate-300 pt-2 text-base font-semibold">
+              <div className="flex items-center justify-between border-t-2 border-slate-300 bg-slate-900 px-4 py-3 text-base font-semibold text-white">
                 <span>Grand Total</span>
-                <span className="font-mono">{formatINR(grandTotal)}</span>
+                <span className="font-mono tabular-nums">{formatINR(grandTotal)}</span>
               </div>
               {showAdvance && (
                 <>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-600">Advance Received</span>
-                    <span className="font-mono">{formatINR(advance)}</span>
+                  <div className="flex justify-between border-t border-slate-100 px-4 py-2">
+                    <span className="text-slate-600">Advance Received (INR)</span>
+                    <span className="font-mono tabular-nums">{formatINRNumber(advance)}</span>
                   </div>
-                  <div className="flex justify-between font-semibold">
+                  <div className="flex justify-between border-t border-slate-100 bg-amber-50 px-4 py-2 font-semibold">
                     <span>Balance Due</span>
-                    <span className="font-mono">{formatINR(balance)}</span>
+                    <span className="font-mono tabular-nums">{formatINR(balance)}</span>
                   </div>
                 </>
               )}
