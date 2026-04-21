@@ -19,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
-import { QuotationPdfPreviewSheet } from "@/components/admin/QuotationPdfPreviewSheet";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
   Package, HardHat, Send, FileText, Search,
@@ -142,14 +141,6 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
-
-  // PDF preview sheet — auto-opens after a successful Save (when there are items).
-  // Office staff can review the rendered PDF, then either Edit (close sheet),
-  // Download, or send via WhatsApp without leaving the editor.
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewFilename, setPreviewFilename] = useState<string>("quotation.pdf");
-  const [previewBuilding, setPreviewBuilding] = useState(false);
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
@@ -459,59 +450,15 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
-  // Save → render PDF in preview sheet. Used by the user-facing Save button.
-  // Internal callers (e.g. WhatsApp, Job Work) keep using saveAll/ensureSaved
-  // directly so they don't trigger the preview UI.
+  // Save → navigate to the structured digital preview page.
+  // No PDF rendering happens here anymore — the preview is a fast HTML
+  // page that loads instantly on every device. PDF is generated on-demand
+  // from the preview page when the user taps "Share via WhatsApp" or "PDF".
   const saveAndPreview = async () => {
     const result = await saveAll();
     if (!result) return;
-    // Skip preview for empty quotations — there's nothing meaningful to show.
     if (result.savedItems.length === 0) return;
-    setPreviewBuilding(true);
-    setPreviewBlob(null);
-    setPreviewOpen(true);
-    try {
-      const data = buildPdfData();
-      if (!data) {
-        setPreviewOpen(false);
-        return;
-      }
-      const blob = await generateQuotationPdf(data);
-      setPreviewBlob(blob);
-      setPreviewFilename(`${data.quotation_id}.pdf`);
-    } catch (e: any) {
-      console.error("Preview PDF generation failed:", e);
-      toast({
-        title: "Preview failed",
-        description: e?.message ?? "Could not render PDF preview.",
-        variant: "destructive",
-      });
-      setPreviewOpen(false);
-    } finally {
-      setPreviewBuilding(false);
-    }
-  };
-
-  const downloadFromPreview = () => {
-    if (!previewBlob) return;
-    downloadBlob(previewBlob, previewFilename);
-    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
-  };
-
-  const whatsAppFromPreview = async () => {
-    if (!q || !previewBlob) return;
-    if (!q.party_phone) {
-      toast({ title: "No party phone on file", variant: "destructive" });
-      return;
-    }
-    const balanceLine = advanceAmount > 0
-      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
-      : `Total: ${formatINR(grandTotal)}`;
-    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
-    await sharePdfViaWhatsApp(previewBlob, previewFilename, q.party_phone, msg);
-    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-      await setStatus("sent", { silent: true });
-    }
+    navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
   // Persist a status change immediately (used by quick actions and auto-transitions)
@@ -1107,18 +1054,6 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Auto-opens after Save: PDF preview with Edit / Download / WhatsApp */}
-      <QuotationPdfPreviewSheet
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        blob={previewBuilding ? null : previewBlob}
-        filename={previewFilename}
-        onEdit={() => setPreviewOpen(false)}
-        onDownload={canEditPrice && previewBlob ? downloadFromPreview : undefined}
-        onWhatsApp={canEditPrice && previewBlob ? whatsAppFromPreview : undefined}
-        onAssign={canEditPrice ? () => { setPreviewOpen(false); openJobDialog(); } : undefined}
-      />
     </AdminShell>
   );
 };
