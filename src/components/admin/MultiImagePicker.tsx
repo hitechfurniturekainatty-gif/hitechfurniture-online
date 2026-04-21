@@ -131,7 +131,7 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
   const uploading = pending.length > 0;
 
   return (
-    <div className="space-y-2">
+    <div ref={ref} className="space-y-2">
       {label && <p className="text-xs font-medium text-muted-foreground">{label}</p>}
 
       <Tabs defaultValue="upload">
@@ -222,4 +222,4 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
       )}
     </div>
   );
-};
+});
