@@ -19,14 +19,14 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
 
   return (
     <Link to={`/product/${product.id}`} className="product-card group block">
-      <div className="img-frame relative aspect-[4/5]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
         {cover ? (
           <img
             src={cover}
             alt={product.product_name}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105"
+            className="h-full w-full object-contain object-center transition-smooth group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
