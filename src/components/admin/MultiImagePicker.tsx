@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,19 +17,18 @@ import { compressImage } from "@/lib/imageCompression";
  * `value` is the raw column value (newline-joined URLs) or null.
  * `onChange` receives the new joined string (or null when empty).
  */
-export const MultiImagePicker = ({
-  value,
-  onChange,
-  bucket = "quotation-images",
-  folder = "measurements",
-  label,
-}: {
+type MultiImagePickerProps = {
   value: string | null;
   onChange: (joined: string | null) => void;
   bucket?: string;
   folder?: string;
   label?: string;
-}) => {
+};
+
+export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps>(function MultiImagePicker(
+  { value, onChange, bucket = "quotation-images", folder = "measurements", label },
+  ref,
+) {
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   // Pending = local previews (object URLs) currently uploading in background
