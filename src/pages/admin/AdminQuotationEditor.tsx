@@ -27,6 +27,7 @@ import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
+import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 
 type QItem = {
   id: string;
@@ -165,6 +166,12 @@ const AdminQuotationEditor = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  // Preload published products once so the description autosuggest is instant.
+  useEffect(() => {
+    loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Live sync: when another user edits this quotation, reload silently if the
   // local form is clean. If the user has unsaved edits, show a soft toast with
@@ -752,7 +759,39 @@ const AdminQuotationEditor = () => {
                 {/* Description (medium width) */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</Label>
-                  <Textarea rows={2} value={it.description} onChange={(e) => updateItem(it.id, { description: e.target.value })} placeholder="Item name & details" />
+                  <AutoSuggestInput
+                    value={it.description}
+                    onChange={(v) => updateItem(it.id, { description: v })}
+                    placeholder="Item name & details — type to search catalog"
+                    fetchSuggestions={(query) => {
+                      const qq = query.toLowerCase();
+                      return products
+                        .filter(
+                          (p) =>
+                            p.product_name.toLowerCase().includes(qq) ||
+                            p.product_code.toLowerCase().includes(qq),
+                        )
+                        .map<Suggestion<Product>>((p) => ({
+                          label: `${p.product_name} (${p.product_code})`,
+                          sub: formatINR(p.offer_price ?? p.mrp ?? 0),
+                          image: p.product_images?.[0]?.image_url ?? null,
+                          data: p,
+                        }));
+                    }}
+                    onPick={(s) => {
+                      const p = s.data as Product;
+                      if (!p) return;
+                      updateItem(it.id, {
+                        description: `${p.product_name} (${p.product_code})`,
+                        item_image_url: p.product_images?.[0]?.image_url ?? it.item_image_url,
+                        catalog_text: (p.product_code ?? it.catalog_text ?? "").toUpperCase(),
+                        unit_price: canEditPrice
+                          ? Number(p.offer_price ?? p.mrp ?? it.unit_price)
+                          : it.unit_price,
+                        product_id: p.id,
+                      });
+                    }}
+                  />
                 </div>
 
                 {/* Item image */}
@@ -779,8 +818,12 @@ const AdminQuotationEditor = () => {
                   <Input
                     className="h-11"
                     value={it.catalog_text ?? ""}
-                    onChange={(e) => updateItem(it.id, { catalog_text: e.target.value })}
+                    onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
                     placeholder="Catalog name / code"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    spellCheck={false}
+                    style={{ textTransform: "uppercase" }}
                   />
                   <MultiImagePicker
                     value={it.catalog_image_url}
