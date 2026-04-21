@@ -1054,18 +1054,6 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Auto-opens after Save: PDF preview with Edit / Download / WhatsApp */}
-      <QuotationPdfPreviewSheet
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        blob={previewBuilding ? null : previewBlob}
-        filename={previewFilename}
-        onEdit={() => setPreviewOpen(false)}
-        onDownload={canEditPrice && previewBlob ? downloadFromPreview : undefined}
-        onWhatsApp={canEditPrice && previewBlob ? whatsAppFromPreview : undefined}
-        onAssign={canEditPrice ? () => { setPreviewOpen(false); openJobDialog(); } : undefined}
-      />
     </AdminShell>
   );
 };
