@@ -422,6 +422,7 @@ export type Database = {
           delivery_place: string | null
           delivery_route_id: string | null
           discount_amount: number
+          document_type: string
           expected_delivery_date: string | null
           gst_amount: number
           gst_percent: number
@@ -447,6 +448,7 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -472,6 +474,7 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -737,6 +740,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_po_id: { Args: { _party: string; _place: string }; Returns: string }
       next_quotation_id: {
         Args: { _party: string; _place: string }
         Returns: string
