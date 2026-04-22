@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -76,22 +76,17 @@ export const ImageCropDialog = ({
   const [pixels, setPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Build object URL when file changes
-  useState(() => {
-    if (file) {
-      const u = URL.createObjectURL(file);
-      setSrc(u);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setRotation(0);
-      setPixels(null);
-    }
-  });
-  // Re-init when file changes
-  if (file && !src) {
+  // Build / refresh object URL whenever the source file changes.
+  useEffect(() => {
+    if (!file) return;
     const u = URL.createObjectURL(file);
     setSrc(u);
-  }
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setRotation(0);
+    setPixels(null);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
 
   const onComplete = useCallback((_: Area, areaPixels: Area) => setPixels(areaPixels), []);
 
