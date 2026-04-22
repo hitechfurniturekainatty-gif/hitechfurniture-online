@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -18,12 +18,21 @@ type Product = ProductCardData & {
   mrp: number;
 };
 
+// First page size — keeps the initial payload small on 3G/4G so cards
+// appear in under a second; the rest streams in on scroll / "Load more".
+const PAGE_SIZE = 24;
+
 const Catalog = () => {
   const [params, setParams] = useSearchParams();
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  // Defer search text so typing never blocks the main thread while filtering
+  // hundreds of products on a low-end phone.
+  const deferredSearch = useDeferredValue(search);
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [loading, setLoading] = useState(true);
 
   const activeCatSlug = params.get("cat");
   const activeSubSlug = params.get("sub");
@@ -31,22 +40,25 @@ const Catalog = () => {
   const activeCat = mainCats.find((c) => c.slug === activeCatSlug);
 
   useEffect(() => {
-    supabase
-      .from("main_categories")
-      .select("id, name, slug")
-      .order("display_order")
-      .then(({ data }) => setMainCats(data ?? []));
-    supabase
-      .from("sub_categories")
-      .select("id, main_category_id, name, slug")
-      .order("display_order")
-      .then(({ data }) => setSubCats(data ?? []));
-    supabase
-      .from("products")
-      .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
-      .eq("is_published", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setProducts((data ?? []) as Product[]));
+    // Fire all three queries in parallel so the page paints in 1 round-trip
+    // instead of waiting for them to finish sequentially.
+    let cancelled = false;
+    Promise.all([
+      supabase.from("main_categories").select("id, name, slug").order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name, slug").order("display_order"),
+      supabase
+        .from("products")
+        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false }),
+    ]).then(([mc, sc, pr]) => {
+      if (cancelled) return;
+      setMainCats(mc.data ?? []);
+      setSubCats(sc.data ?? []);
+      setProducts((pr.data ?? []) as Product[]);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const subsForActive = useMemo(
@@ -61,8 +73,8 @@ const Catalog = () => {
         const sub = subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id);
         if (sub && p.sub_category_id !== sub.id) return false;
       }
-      if (search) {
-        const q = search.toLowerCase();
+      if (deferredSearch) {
+        const q = deferredSearch.toLowerCase();
         if (
           !p.product_name.toLowerCase().includes(q) &&
           !p.product_code.toLowerCase().includes(q)
@@ -71,7 +83,13 @@ const Catalog = () => {
       }
       return true;
     });
-  }, [products, activeCat, activeSubSlug, search, subCats]);
+  }, [products, activeCat, activeSubSlug, deferredSearch, subCats]);
+
+  // Reset pagination whenever filters change so we never silently hide results.
+  useEffect(() => { setVisible(PAGE_SIZE); }, [activeCatSlug, activeSubSlug, deferredSearch]);
+
+  const visibleProducts = filtered.slice(0, visible);
+  const hasMore = visible < filtered.length;
 
   const setCat = (slug: string | null) => {
     const next = new URLSearchParams(params);
@@ -146,17 +164,32 @@ const Catalog = () => {
         )}
 
         {/* Grid */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-muted" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
             <p className="text-lg font-display text-foreground">No products found</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a different search or category.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+              {visibleProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <Button variant="outline" size="lg" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+                  Load more ({filtered.length - visible})
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -17,21 +17,34 @@ const Index = () => {
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
 
   useEffect(() => {
-    supabase
-      .from("main_categories")
-      .select("id, name, slug, image_url")
-      .order("display_order", { ascending: true })
-      .limit(6)
-      .then(({ data }) => setCategories(data ?? []));
+    // Fire both queries in parallel — saves one full round-trip on mobile.
+    let cancelled = false;
+    Promise.all([
+      supabase
+        .from("main_categories")
+        .select("id, name, slug, image_url")
+        .order("display_order", { ascending: true })
+        .limit(6),
+      supabase
+        .from("products")
+        .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
+        .eq("is_published", true)
+        .eq("is_featured", true)
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]).then(([cats, prods]) => {
+      if (cancelled) return;
+      setCategories(cats.data ?? []);
+      setFeatured((prods.data ?? []) as ProductCardData[]);
+    });
 
-    supabase
-      .from("products")
-      .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
-      .eq("is_published", true)
-      .eq("is_featured", true)
-      .order("created_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => setFeatured((data ?? []) as ProductCardData[]));
+    // Prefetch the catalog chunk while the browser is idle so navigating
+    // from home → catalog feels instant on mobile.
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    const prefetch = () => { import("./Catalog.tsx"); import("./ProductDetail.tsx"); };
+    if (idle) idle(prefetch); else setTimeout(prefetch, 1500);
+
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -69,6 +82,10 @@ const Index = () => {
             <img
               src={heroImg}
               alt="Living room styled with Hitech furniture"
+              fetchPriority="high"
+              decoding="async"
+              width={800}
+              height={1000}
               className="relative aspect-[4/5] w-full rounded-3xl object-cover shadow-elegant md:aspect-[5/6]"
             />
             <div className="absolute -bottom-6 -left-6 hidden rounded-2xl bg-card p-5 shadow-product md:block">
