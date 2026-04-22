@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,17 +76,67 @@ const AdminOverview = () => {
     return <Navigate to="/admin/my-trips" replace />;
   }
 
-  const cards = [
+  type StatCard = { label: string; value: number; icon: any; to: string };
+  type Group = {
+    key: string;
+    title: string;
+    subtitle: string;
+    icon: any;
+    accent: string; // tailwind classes for tint (icon bg + border)
+    cards: StatCard[];
+  };
+
+  const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
     isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=draft" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
     isOfficeStaff && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
-    isOfficeStaff && { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
-    isOfficeStaff && { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
-    isOfficeStaff && { label: "Low stock (≤5)", value: stats.lowStock, icon: AlertTriangle, to: "/admin/products" },
-  ].filter(Boolean) as { label: string; value: number; icon: any; to: string }[];
+  ].filter(Boolean) as StatCard[];
+
+  const logisticsCards: StatCard[] = isOfficeStaff
+    ? [
+        { label: "Logistics Mapping", value: 0, icon: Map, to: "/admin/logistics" },
+        { label: "Trips", value: 0, icon: Truck, to: "/admin/trips" },
+        ...(isAdmin ? [{ label: "Route Manager", value: 0, icon: Route, to: "/admin/routes" }] : []),
+      ]
+    : [];
+
+  const inventoryCards: StatCard[] = isOfficeStaff
+    ? [
+        { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
+        { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
+        { label: "Low stock (≤5)", value: stats.lowStock, icon: AlertTriangle, to: "/admin/products" },
+      ]
+    : [];
+
+  const groups: Group[] = [
+    {
+      key: "sales",
+      title: "Sales & Services",
+      subtitle: "Quotations, customer services and complaints",
+      icon: ShoppingBag,
+      accent: "border-primary/30 bg-primary/5 text-primary",
+      cards: salesCards,
+    },
+    {
+      key: "logistics",
+      title: "Logistics & Fleet",
+      subtitle: "Routes, trips and live mapping",
+      icon: Truck,
+      accent: "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400",
+      cards: logisticsCards,
+    },
+    {
+      key: "inventory",
+      title: "Inventory & Catalog",
+      subtitle: "Products and categories",
+      icon: Boxes,
+      accent: "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+      cards: inventoryCards,
+    },
+  ].filter((g) => g.cards.length > 0);
 
   return (
     <AdminShell>
@@ -97,21 +147,36 @@ const AdminOverview = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {cards.map((c) => (
-          <Link key={c.label} to={c.to} className="block">
-            <Card className="transition-smooth hover:shadow-product">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {c.label}
-                  <c.icon className="h-4 w-4 text-primary" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-3xl font-semibold text-primary">{c.value}</p>
-              </CardContent>
-            </Card>
-          </Link>
+      <div className="space-y-6">
+        {groups.map((g) => (
+          <section key={g.key} className={`rounded-2xl border p-4 sm:p-5 ${g.accent.replace("text-", "")}`}>
+            <div className="mb-3 flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${g.accent}`}>
+                <g.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg font-semibold sm:text-xl">{g.title}</h2>
+                <p className="text-xs text-muted-foreground">{g.subtitle}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {g.cards.map((c) => (
+                <Link key={c.label} to={c.to} className="block">
+                  <Card className="bg-card transition-smooth hover:shadow-product">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="truncate">{c.label}</span>
+                        <c.icon className={`h-4 w-4 ${g.accent.split(" ").filter((cls) => cls.startsWith("text-")).join(" ")}`} />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-display text-3xl font-semibold text-foreground">{c.value}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
 
