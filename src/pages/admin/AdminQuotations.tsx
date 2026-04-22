@@ -194,11 +194,19 @@ const AdminQuotations = () => {
 
   const create = async () => {
     if (!form.party_name.trim() || !form.party_place.trim()) {
-      toast({ title: "Party name and place required", variant: "destructive" });
+      toast({
+        title: isPO(newDocType)
+          ? "Worker / supplier name and place required"
+          : "Party name and place required",
+        variant: "destructive",
+      });
       return;
     }
     setCreating(true);
-    const { data: qid, error: qidErr } = await supabase.rpc("next_quotation_id", {
+    // Generate the right ID depending on doc type — POs use a separate FY counter
+    // so PO-2026/27-001 doesn't collide with quotation 2026/27-001.
+    const rpcName = isPO(newDocType) ? "next_po_id" : "next_quotation_id";
+    const { data: qid, error: qidErr } = await supabase.rpc(rpcName as any, {
       _party: form.party_name,
       _place: form.party_place,
     });
@@ -214,6 +222,7 @@ const AdminQuotations = () => {
       party_phone: form.party_phone.trim() || null,
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
+      document_type: newDocType,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
