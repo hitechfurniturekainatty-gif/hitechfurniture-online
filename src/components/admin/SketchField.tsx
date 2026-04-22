@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Pencil, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { SketchPad } from "./SketchPad";
 
 /**
- * Compact editor field that previews a saved sketch and opens the full-screen
- * SketchPad on tap. If no sketch exists yet, shows a "Draw sketch" CTA.
+ * Compact editor field for a measurement sketch.
+ * - When NO sketch exists: shows a small "+ Measurement sketch" pill so the
+ *   editor row stays compact and doesn't dominate the quotation view.
+ * - When a sketch exists: shows the saved PNG with Edit / Remove controls.
  * Emits the new public PNG URL via `onChange` (or null when removed).
  */
 type Props = {
@@ -50,11 +52,12 @@ export const SketchField = ({ value, onChange, label }: Props) => {
         <Button
           type="button"
           variant="outline"
-          className="h-20 w-full border-dashed text-xs"
+          size="sm"
+          className="h-8 px-2.5 text-xs"
           onClick={() => setOpen(true)}
         >
-          <Pencil className="mr-1.5 h-4 w-4" />
-          Draw measurement sketch
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Measurement sketch
         </Button>
       )}
       <SketchPad
