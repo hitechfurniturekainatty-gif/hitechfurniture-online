@@ -162,6 +162,7 @@ const AdminWorkers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </AdminShell>
   );
 };
