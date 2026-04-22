@@ -892,7 +892,7 @@ const AdminQuotationEditor = () => {
                 </div>
 
                 {/* Qty + Unit price + Amount: side-by-side row on mobile */}
-                <div className="grid grid-cols-3 gap-3 lg:contents">
+                <div className={`grid gap-3 lg:contents ${po ? "grid-cols-1" : "grid-cols-3"}`}>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</Label>
                     <Input
@@ -911,6 +911,8 @@ const AdminQuotationEditor = () => {
                       placeholder="1"
                     />
                   </div>
+                  {showPricing && (
+                  <>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit ₹</Label>
                     <Input
@@ -935,6 +937,8 @@ const AdminQuotationEditor = () => {
                         : <span className="text-muted-foreground font-normal">—</span>}
                     </div>
                   </div>
+                  </>
+                  )}
                 </div>
               </div>
             </div>
