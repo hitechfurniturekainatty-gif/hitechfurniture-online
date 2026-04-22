@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
@@ -20,6 +21,7 @@ import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
+import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -37,6 +39,7 @@ type Q = {
   total: number;
   created_at: string;
   created_by: string | null;
+  document_type: DocType;
 };
 
 const AdminQuotations = () => {
