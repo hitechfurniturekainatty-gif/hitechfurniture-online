@@ -701,7 +701,10 @@ const AdminQuotationEditor = () => {
       {/* Header form */}
       <Card className="mb-4">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="text-base">Party & Quotation Details</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+            {po ? "Purchase Order Details" : "Party & Quotation Details"}
+          </CardTitle>
           <ContactPicker
             label="From Contacts"
             onPick={({ name, tel, place, address }) =>
@@ -718,11 +721,11 @@ const AdminQuotationEditor = () => {
           className="grid gap-3 sm:grid-cols-2 md:grid-cols-3"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
         >
-          <div className="space-y-1.5"><Label>Party name *</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Quotation date</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Expected delivery</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
           {canEditPrice && (
             <div className="space-y-1.5">
@@ -733,13 +736,15 @@ const AdminQuotationEditor = () => {
               </Select>
             </div>
           )}
-          <div className="sm:col-span-2 md:col-span-3">
-            <DeliveryRoutePicker
-              place={q.delivery_place ?? ""}
-              routeId={q.delivery_route_id ?? null}
-              onChange={(v) => updateHeader({ delivery_place: v.place || null, delivery_route_id: v.routeId })}
-            />
-          </div>
+          {!po && (
+            <div className="sm:col-span-2 md:col-span-3">
+              <DeliveryRoutePicker
+                place={q.delivery_place ?? ""}
+                routeId={q.delivery_route_id ?? null}
+                onChange={(v) => updateHeader({ delivery_place: v.place || null, delivery_route_id: v.routeId })}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
