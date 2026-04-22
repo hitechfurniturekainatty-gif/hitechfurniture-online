@@ -173,7 +173,7 @@ export const SingleImagePicker = ({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) uploadFile(f);
+              if (f) setCropFile(f);
               e.target.value = "";
             }}
           />
