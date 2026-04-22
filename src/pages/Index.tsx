@@ -1,14 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
-import { WhatsAppFab } from "@/components/WhatsAppFab";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import heroImg from "@/assets/hero-living.jpg";
+import heroImgWebp from "@/assets/hero-living.webp";
+import heroImgWebpSm from "@/assets/hero-living-sm.webp";
+import heroImgJpg from "@/assets/hero-living.jpg";
 import { BRAND_TAGLINE } from "@/lib/brand";
+
+// Below-the-fold — loaded lazily so the home page's initial JS payload is smaller on mobile.
+const SiteFooter = lazy(() =>
+  import("@/components/SiteFooter").then((m) => ({ default: m.SiteFooter })),
+);
+const WhatsAppFab = lazy(() =>
+  import("@/components/WhatsAppFab").then((m) => ({ default: m.WhatsAppFab })),
+);
 
 type Cat = { id: string; name: string; slug: string; image_url: string | null };
 
@@ -79,15 +87,19 @@ const Index = () => {
           </div>
           <div className="relative animate-scale-in">
             <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10 blur-2xl" />
-            <img
-              src={heroImg}
-              alt="Living room styled with Hitech furniture"
-              fetchPriority="high"
-              decoding="async"
-              width={800}
-              height={1000}
-              className="relative aspect-[4/5] w-full rounded-3xl object-cover shadow-elegant md:aspect-[5/6]"
-            />
+            <picture>
+              <source media="(max-width: 767px)" srcSet={heroImgWebpSm} type="image/webp" />
+              <source srcSet={heroImgWebp} type="image/webp" />
+              <img
+                src={heroImgJpg}
+                alt="Living room styled with Hitech furniture"
+                fetchPriority="high"
+                decoding="async"
+                width={800}
+                height={1000}
+                className="relative aspect-[4/5] w-full rounded-3xl object-cover shadow-elegant md:aspect-[5/6]"
+              />
+            </picture>
             <div className="absolute -bottom-6 -left-6 hidden rounded-2xl bg-card p-5 shadow-product md:block">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">From</p>
               <p className="font-display text-2xl font-semibold text-primary">₹ 12,500</p>
@@ -175,8 +187,10 @@ const Index = () => {
         </div>
       </section>
 
-      <SiteFooter />
-      <WhatsAppFab />
+      <Suspense fallback={null}>
+        <SiteFooter />
+        <WhatsAppFab />
+      </Suspense>
     </div>
   );
 };
