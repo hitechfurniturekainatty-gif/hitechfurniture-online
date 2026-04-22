@@ -194,10 +194,11 @@ const AdminQuotations = () => {
   };
 
   const create = async () => {
-    if (!form.party_name.trim() || !form.party_place.trim()) {
+    const placeRequired = !isPO(newDocType);
+    if (!form.party_name.trim() || (placeRequired && !form.party_place.trim())) {
       toast({
         title: isPO(newDocType)
-          ? "Worker / supplier name and place required"
+          ? "Worker / supplier name required"
           : "Party name and place required",
         variant: "destructive",
       });
@@ -209,7 +210,7 @@ const AdminQuotations = () => {
     const rpcName = isPO(newDocType) ? "next_po_id" : "next_quotation_id";
     const { data: qid, error: qidErr } = await supabase.rpc(rpcName as any, {
       _party: form.party_name,
-      _place: form.party_place,
+      _place: form.party_place || "NA",
     });
     if (qidErr || !qid) {
       setCreating(false);
@@ -219,7 +220,7 @@ const AdminQuotations = () => {
     const { data, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
       party_name: form.party_name.trim(),
-      party_place: form.party_place.trim(),
+      party_place: form.party_place.trim() || "NA",
       party_phone: form.party_phone.trim() || null,
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
@@ -447,7 +448,14 @@ const AdminQuotations = () => {
                   <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
                 )}
               </div>
-              <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
+              <div className="space-y-1.5">
+                <Label>{isPO(newDocType) ? "Place (optional)" : "Place *"}</Label>
+                <Input
+                  value={form.party_place}
+                  onChange={(e) => setForm({ ...form, party_place: e.target.value })}
+                  placeholder="e.g. Wayanad"
+                />
+              </div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
               {!isPO(newDocType) && (
                 <DeliveryRoutePicker
