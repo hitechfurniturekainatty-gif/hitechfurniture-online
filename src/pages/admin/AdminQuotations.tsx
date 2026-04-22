@@ -350,20 +350,56 @@ const AdminQuotations = () => {
     <AdminShell>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Quotations</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create, manage and share customer quotations.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Quotations & Purchase Orders</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            Customer quotations and worker / supplier POs in one place.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
+          <DialogTrigger asChild>
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              {isPO(docTab) ? "New purchase order" : "New quotation"}
+            </Button>
+          </DialogTrigger>
           <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
             <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-              <DialogTitle>Create new quotation</DialogTitle>
+              <DialogTitle>{isPO(newDocType) ? "Create new purchase order" : "Create new quotation"}</DialogTitle>
             </DialogHeader>
             <div
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
               onFocusCapture={scrollFocusedIntoView}
               onKeyDown={(e) => handleEnterAsNext(e, () => { if (!creating) create(); })}
             >
+              {/* Doc-type toggle: green Quotation ↔ blue PO */}
+              <div className={`flex items-center justify-between rounded-lg border p-3 ${
+                isPO(newDocType)
+                  ? "border-blue-500/30 bg-blue-500/5"
+                  : "border-emerald-500/30 bg-emerald-500/5"
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isPO(newDocType) ? (
+                    <ShoppingCart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <div>
+                    <Label className="cursor-pointer text-sm font-semibold">
+                      {isPO(newDocType) ? "Purchase Order Mode" : "Quotation Mode"}
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isPO(newDocType)
+                        ? "Send to a worker / supplier — no prices."
+                        : "Customer quotation with pricing & GST."}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={isPO(newDocType)}
+                  onCheckedChange={(v) => setNewDocType(v ? "po" : "quotation")}
+                  aria-label="Switch document type"
+                />
+              </div>
               <div className="flex justify-end">
                 <ContactPicker
                   onPick={({ name, tel, place }) =>
@@ -376,15 +412,26 @@ const AdminQuotations = () => {
                   }
                 />
               </div>
-              <div className="space-y-1.5"><Label>Party name *</Label><Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label>{isPO(newDocType) ? "Worker / Supplier name *" : "Customer name *"}</Label>
+                <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
+              </div>
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
-              <DeliveryRoutePicker
-                place={form.delivery_place}
-                routeId={form.delivery_route_id}
-                onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
-              />
-              <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
+              {!isPO(newDocType) && (
+                <DeliveryRoutePicker
+                  place={form.delivery_place}
+                  routeId={form.delivery_route_id}
+                  onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                ID will auto-generate as{" "}
+                <span className="font-mono">
+                  {isPO(newDocType) ? "PO-2026/27-001" : "2026/27-001"} / Party / Place
+                </span>{" "}
+                (financial-year serial, never reused).
+              </p>
               {draftSavedAt && (
                 <p className="text-[11px] text-muted-foreground">
                   Auto-saved locally at {new Date(draftSavedAt).toLocaleTimeString("en-IN")} —
