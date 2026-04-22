@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
@@ -20,6 +21,7 @@ import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
+import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -37,6 +39,7 @@ type Q = {
   total: number;
   created_at: string;
   created_by: string | null;
+  document_type: DocType;
 };
 
 const AdminQuotations = () => {
@@ -50,6 +53,12 @@ const AdminQuotations = () => {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
+  // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
+  const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
+  const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
+  // The "create new" dialog can build either a quotation OR a PO. Defaults to
+  // the active tab so the toggle always matches the user's current context.
+  const [newDocType, setNewDocType] = useState<DocType>(initialDocTab);
   const [form, setForm] = useState({
     party_name: "",
     party_place: "",
@@ -71,14 +80,24 @@ const AdminQuotations = () => {
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "all";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
+    const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";
+    if (docFromUrl !== docTab) setDocTabState(docFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  const setDocTab = (v: DocType) => {
+    setDocTabState(v);
+    setNewDocType(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "quotation") next.delete("doc"); else next.set("doc", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
@@ -175,11 +194,19 @@ const AdminQuotations = () => {
 
   const create = async () => {
     if (!form.party_name.trim() || !form.party_place.trim()) {
-      toast({ title: "Party name and place required", variant: "destructive" });
+      toast({
+        title: isPO(newDocType)
+          ? "Worker / supplier name and place required"
+          : "Party name and place required",
+        variant: "destructive",
+      });
       return;
     }
     setCreating(true);
-    const { data: qid, error: qidErr } = await supabase.rpc("next_quotation_id", {
+    // Generate the right ID depending on doc type — POs use a separate FY counter
+    // so PO-2026/27-001 doesn't collide with quotation 2026/27-001.
+    const rpcName = isPO(newDocType) ? "next_po_id" : "next_quotation_id";
+    const { data: qid, error: qidErr } = await supabase.rpc(rpcName as any, {
       _party: form.party_name,
       _place: form.party_place,
     });
@@ -195,6 +222,7 @@ const AdminQuotations = () => {
       party_phone: form.party_phone.trim() || null,
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
+      document_type: newDocType,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -218,24 +246,49 @@ const AdminQuotations = () => {
 
   // All statuses we care about (order = lifecycle order)
   const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
-  type StatusKey = (typeof STATUS_FILTERS)[number];
 
-  const filtered = useMemo(() => {
+  // Apply doc-type tab + search BEFORE the status filter so each tab's status
+  // counts only count the rows visible in that tab.
+  const docFiltered = useMemo(() => {
     const s = search.toLowerCase();
     return rows.filter((r) => {
-      const matchesSearch = !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
-      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // Treat missing document_type as 'quotation' (legacy rows).
+      const t: DocType = (r.document_type as DocType) ?? "quotation";
+      if (t !== docTab) return false;
+      if (!s) return true;
+      return (
+        r.quotation_id.toLowerCase().includes(s) ||
+        r.party_name.toLowerCase().includes(s) ||
+        r.party_place.toLowerCase().includes(s)
+      );
     });
-  }, [rows, search, statusFilter]);
+  }, [rows, search, docTab]);
 
-  // Counts per status (over the search-filtered set, ignoring the status filter itself)
+  const filtered = useMemo(
+    () =>
+      docFiltered.filter((r) => statusFilter === "all" || r.status === statusFilter),
+    [docFiltered, statusFilter],
+  );
+
   const counts = useMemo(() => {
-    const s = search.toLowerCase();
-    const base = rows.filter((r) => !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s));
-    const c: Record<string, number> = { all: base.length };
-    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = base.filter((r) => r.status === k).length;
+    const c: Record<string, number> = { all: docFiltered.length };
+    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = docFiltered.filter((r) => r.status === k).length;
     return c;
+  }, [docFiltered]);
+
+  // Top-level tab counts ignore the status filter so users always see how many
+  // quotations vs POs exist overall (within the current search).
+  const docCounts = useMemo(() => {
+    const s = search.toLowerCase();
+    const matchesSearch = (r: Q) =>
+      !s ||
+      r.quotation_id.toLowerCase().includes(s) ||
+      r.party_name.toLowerCase().includes(s) ||
+      r.party_place.toLowerCase().includes(s);
+    return {
+      quotation: rows.filter((r) => ((r.document_type as DocType) ?? "quotation") === "quotation" && matchesSearch(r)).length,
+      po: rows.filter((r) => r.document_type === "po" && matchesSearch(r)).length,
+    };
   }, [rows, search]);
 
   const renderRow = (q: Q) => (
@@ -243,10 +296,17 @@ const AdminQuotations = () => {
       <CardContent className="p-4">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 items-start gap-2">
-            <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
+            {isPO(q.document_type) ? (
+              <ShoppingCart className="mt-1 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            ) : (
+              <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
+            )}
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <span className="min-w-0 break-words font-mono text-sm font-semibold leading-snug">{q.quotation_id}</span>
+                <Badge variant="outline" className={`w-fit shrink-0 ${docTagClasses(q.document_type)}`}>
+                  {isPO(q.document_type) ? "PO" : "Quotation"}
+                </Badge>
                 <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
               </div>
               <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
@@ -263,7 +323,11 @@ const AdminQuotations = () => {
 
           <div className="border-t border-border/50 pt-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+              {isPO(q.document_type) ? (
+                <span className="text-sm text-muted-foreground">Work / material order</span>
+              ) : (
+                <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+              )}
               <div className={`grid gap-2 sm:flex sm:items-center ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
                 <Button size="sm" asChild className="h-10 w-full px-4 sm:w-auto">
                   <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
@@ -286,20 +350,56 @@ const AdminQuotations = () => {
     <AdminShell>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Quotations</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create, manage and share customer quotations.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Quotations & Purchase Orders</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            Customer quotations and worker / supplier POs in one place.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild><Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New quotation</Button></DialogTrigger>
+          <DialogTrigger asChild>
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              {isPO(docTab) ? "New purchase order" : "New quotation"}
+            </Button>
+          </DialogTrigger>
           <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
             <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-              <DialogTitle>Create new quotation</DialogTitle>
+              <DialogTitle>{isPO(newDocType) ? "Create new purchase order" : "Create new quotation"}</DialogTitle>
             </DialogHeader>
             <div
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
               onFocusCapture={scrollFocusedIntoView}
               onKeyDown={(e) => handleEnterAsNext(e, () => { if (!creating) create(); })}
             >
+              {/* Doc-type toggle: green Quotation ↔ blue PO */}
+              <div className={`flex items-center justify-between rounded-lg border p-3 ${
+                isPO(newDocType)
+                  ? "border-blue-500/30 bg-blue-500/5"
+                  : "border-emerald-500/30 bg-emerald-500/5"
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isPO(newDocType) ? (
+                    <ShoppingCart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <div>
+                    <Label className="cursor-pointer text-sm font-semibold">
+                      {isPO(newDocType) ? "Purchase Order Mode" : "Quotation Mode"}
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isPO(newDocType)
+                        ? "Send to a worker / supplier — no prices."
+                        : "Customer quotation with pricing & GST."}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={isPO(newDocType)}
+                  onCheckedChange={(v) => setNewDocType(v ? "po" : "quotation")}
+                  aria-label="Switch document type"
+                />
+              </div>
               <div className="flex justify-end">
                 <ContactPicker
                   onPick={({ name, tel, place }) =>
@@ -312,15 +412,26 @@ const AdminQuotations = () => {
                   }
                 />
               </div>
-              <div className="space-y-1.5"><Label>Party name *</Label><Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label>{isPO(newDocType) ? "Worker / Supplier name *" : "Customer name *"}</Label>
+                <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
+              </div>
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
-              <DeliveryRoutePicker
-                place={form.delivery_place}
-                routeId={form.delivery_route_id}
-                onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
-              />
-              <p className="text-xs text-muted-foreground">ID will auto-generate as <span className="font-mono">2026/27-001 / Party / Place</span> (financial-year serial, never reused).</p>
+              {!isPO(newDocType) && (
+                <DeliveryRoutePicker
+                  place={form.delivery_place}
+                  routeId={form.delivery_route_id}
+                  onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                ID will auto-generate as{" "}
+                <span className="font-mono">
+                  {isPO(newDocType) ? "PO-2026/27-001" : "2026/27-001"} / Party / Place
+                </span>{" "}
+                (financial-year serial, never reused).
+              </p>
               {draftSavedAt && (
                 <p className="text-[11px] text-muted-foreground">
                   Auto-saved locally at {new Date(draftSavedAt).toLocaleTimeString("en-IN")} —
@@ -336,10 +447,27 @@ const AdminQuotations = () => {
         </Dialog>
       </div>
 
+      {/* Top-level Quotation vs Purchase Order tabs */}
+      <Tabs value={docTab} onValueChange={(v) => setDocTab(v as DocType)} className="mb-4">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
+          <TabsTrigger value="quotation" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Quotations ({docCounts.quotation})
+          </TabsTrigger>
+          <TabsTrigger value="po" className="gap-1.5">
+            <ShoppingCart className="h-4 w-4" /> Purchase Orders ({docCounts.po})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isPO(docTab) ? "Search POs by ID, worker or place..." : "Search by ID, party or place..."}
+            className="pl-9"
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="sm:w-56">
