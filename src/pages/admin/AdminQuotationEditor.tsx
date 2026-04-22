@@ -25,7 +25,9 @@ import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
   Package, HardHat, Send, FileText, Search, ShoppingCart,
 } from "lucide-react";
-import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
+// PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
+// of blocking initial page paint on mobile.
+const loadPdfLib = () => import("@/lib/quotationPdf");
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
@@ -502,6 +504,7 @@ const AdminQuotationEditor = () => {
     const data = buildPdfData();
     if (!data) return null;
     try {
+      const { generateQuotationPdf } = await loadPdfLib();
       const blob = await generateQuotationPdf(data);
       return { blob, filename: `${data.quotation_id}.pdf` };
     } catch (e: any) {
@@ -652,6 +655,7 @@ const AdminQuotationEditor = () => {
         return;
       }
       // generate worker-safe PDF (NO prices, NO bank, NO customer phone)
+      const { generateJobWorkPdf } = await loadPdfLib();
       const blob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
