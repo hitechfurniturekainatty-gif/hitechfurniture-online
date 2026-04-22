@@ -111,6 +111,8 @@ const AdminQuotationPreview = () => {
   const handleEdit = () => navigate(`/admin/quotations/${id}`);
   const handleDone = () => navigate("/admin/quotations");
 
+  const po = isPO(q?.document_type);
+
   const buildAndShare = async (mode: "share" | "download") => {
     if (!q) return;
     if (mode === "share" && !q.party_phone) {
@@ -140,6 +142,7 @@ const AdminQuotationPreview = () => {
         balance_due: balance,
         notes: q.notes,
         terms: q.terms,
+        is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
           item_image_url: it.item_image_url,
