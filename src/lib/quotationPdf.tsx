@@ -283,31 +283,87 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 
 // Pre-fetch a remote image and convert to data URI so @react-pdf/renderer
 // never fails on CORS / 404 / slow networks. Returns null on failure.
+// IMPORTANT: @react-pdf/renderer only supports JPEG and PNG — NOT WebP / AVIF.
+// We always re-encode the fetched image to JPEG via canvas so PDFs render
+// every photo regardless of the source format. This fixes the "no item
+// photos in PDF" bug introduced when uploads started using WebP.
 async function toDataUri(url: string | null): Promise<string | null> {
   if (!url) return null;
-  // Already a data URI - use as-is
-  if (url.startsWith("data:")) return url;
+  // Already a data URI in a PDF-safe format (jpeg/png) — use as-is
+  if (url.startsWith("data:image/jpeg") || url.startsWith("data:image/jpg") || url.startsWith("data:image/png")) {
+    return url;
+  }
   try {
-    // credentials: 'omit' avoids sending stale cookies that some CDNs reject
-    const res = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-cache" });
-    if (!res.ok) {
-      console.warn(`[PDF] image fetch ${res.status} for ${url}`);
-      return null;
+    let blob: Blob;
+    if (url.startsWith("data:")) {
+      // Data URI in unsupported format (e.g. webp) — decode locally
+      const res = await fetch(url);
+      blob = await res.blob();
+    } else {
+      // credentials: 'omit' avoids sending stale cookies that some CDNs reject
+      const res = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-cache" });
+      if (!res.ok) {
+        console.warn(`[PDF] image fetch ${res.status} for ${url}`);
+        return null;
+      }
+      blob = await res.blob();
+      if (!blob.type.startsWith("image/")) {
+        console.warn(`[PDF] non-image blob (${blob.type}) for ${url}`);
+        return null;
+      }
     }
-    const blob = await res.blob();
-    if (!blob.type.startsWith("image/")) {
-      console.warn(`[PDF] non-image blob (${blob.type}) for ${url}`);
-      return null;
-    }
+    // Re-encode to JPEG so @react-pdf/renderer always accepts it.
+    return await blobToJpegDataUri(blob);
+  } catch (e) {
+    console.warn(`[PDF] image fetch threw for ${url}:`, e);
+    return null;
+  }
+}
+
+// Decode any browser-supported image (webp, avif, png, jpeg, gif) and
+// re-encode it as JPEG via canvas. Returns null on failure.
+async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
+  // PNG with transparency would lose its alpha if encoded as JPEG;
+  // keep PNGs as PNGs (react-pdf supports them natively).
+  if (blob.type === "image/png") {
     return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
+  }
+  // For jpeg, webp, avif, gif → decode + re-encode as JPEG.
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new window.Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => resolve(im);
+      im.onerror = (e) => reject(e);
+      im.src = objectUrl;
+    });
+    // Cap longest side at 1200px — keeps PDF small and fast without
+    // visibly hurting quality at the 64×64–88×88 print sizes we use.
+    const MAX = 1200;
+    const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    // White background — JPEGs have no alpha; avoids black fill on transparent webps.
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
   } catch (e) {
-    console.warn(`[PDF] image fetch threw for ${url}:`, e);
+    console.warn("[PDF] decode/re-encode failed", e);
     return null;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
   }
 }
 
