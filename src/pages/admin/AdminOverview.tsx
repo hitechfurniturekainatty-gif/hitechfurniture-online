@@ -92,7 +92,7 @@ const AdminOverview = () => {
     isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=draft" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
-    isOfficeStaff && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
+    isAdmin && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
   ].filter(Boolean) as StatCard[];
 
   const logisticsCards: StatCard[] = isOfficeStaff
@@ -103,7 +103,7 @@ const AdminOverview = () => {
       ]
     : [];
 
-  const inventoryCards: StatCard[] = isOfficeStaff
+  const inventoryCards: StatCard[] = isAdmin
     ? [
         { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
         { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
@@ -209,7 +209,7 @@ const AdminOverview = () => {
             <Button asChild><Link to="/admin/quotations"><FileText className="mr-2 h-4 w-4" />New quotation</Link></Button>
             <Button asChild variant="outline"><Link to="/admin/services"><LifeBuoy className="mr-2 h-4 w-4" />Service & Complaint Hub</Link></Button>
             <Button asChild variant="outline"><Link to="/admin/measurement-tasks"><Ruler className="mr-2 h-4 w-4" />Assign measurement</Link></Button>
-            <Button asChild variant="outline"><Link to="/admin/workers"><HardHat className="mr-2 h-4 w-4" />Manage workers</Link></Button>
+            {isAdmin && <Button asChild variant="outline"><Link to="/admin/workers"><HardHat className="mr-2 h-4 w-4" />Manage workers</Link></Button>}
             {isAdmin && <Button asChild variant="outline"><Link to="/admin/staff"><Users className="mr-2 h-4 w-4" />Staff management</Link></Button>}
           </CardContent>
         </Card>
