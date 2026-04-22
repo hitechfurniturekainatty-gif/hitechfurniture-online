@@ -142,6 +142,13 @@ const AdminCategories = () => {
 
   return (
     <AdminShell>
+      {!authLoading && !isAdmin && (
+        <div className="rounded-xl border bg-card p-6 text-center">
+          <h1 className="font-display text-xl">Admins only</h1>
+          <p className="mt-2 text-sm text-muted-foreground">You don't have permission to view Categories.</p>
+        </div>
+      )}
+      {!authLoading && isAdmin && (<>
       <div className="mb-6 sm:mb-8">
         <h1 className="font-display text-2xl sm:text-3xl">Categories</h1>
         <p className="mt-1 text-sm text-muted-foreground sm:text-base">Organize your catalog with main categories and sub-categories.</p>
