@@ -685,32 +685,46 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         </DialogFooter>
       </DialogContent>
 
-      {/* Text-input dialog: ensures the mobile keyboard pops up reliably */}
-      <Dialog open={textOpen} onOpenChange={setTextOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add label</DialogTitle>
-            <DialogDescription>
+      {/* Inline text-input overlay (NOT a nested Radix Dialog) so we can focus
+          the input synchronously inside the touch gesture — required for the
+          mobile keyboard to actually pop up reliably on iOS / Android. */}
+      {textOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => { setTextOpen(false); pendingPoint.current = null; }}
+        >
+          <div
+            className="w-full max-w-sm rounded-t-xl bg-background p-4 shadow-xl sm:rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 text-sm font-semibold">Add label</p>
+            <p className="mb-2 text-xs text-muted-foreground">
               Type a number (e.g. <strong>180</strong>) — we'll format it as <strong>180 cm</strong> automatically.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            ref={textInputRef}
-            value={textValue}
-            onChange={(e) => setTextValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitText(); } }}
-            placeholder="e.g. 180 or 180 cm"
-            inputMode="text"
-            autoFocus
-          />
-          <DialogFooter className="flex-row justify-end gap-2">
-            <Button variant="outline" onClick={() => { setTextOpen(false); pendingPoint.current = null; }}>
-              Cancel
-            </Button>
-            <Button onClick={commitText}>Add</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </p>
+            <input
+              ref={textInputRef}
+              type="text"
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitText(); } }}
+              placeholder="e.g. 180 or 180 cm"
+              inputMode="text"
+              autoFocus
+              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setTextOpen(false); pendingPoint.current = null; }}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={commitText}>Add</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 };
