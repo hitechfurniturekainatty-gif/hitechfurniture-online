@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 // Route updated to support delivery-only role redirect
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -117,7 +117,8 @@ const AdminOverview = () => {
       title: "Sales & Services",
       subtitle: "Quotations, customer services and complaints",
       icon: ShoppingBag,
-      accent: "border-primary/30 bg-primary/5 text-primary",
+      // Green / success theme
+      accent: "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
       cards: salesCards,
     },
     {
@@ -125,7 +126,8 @@ const AdminOverview = () => {
       title: "Logistics & Fleet",
       subtitle: "Routes, trips and live mapping",
       icon: Truck,
-      accent: "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400",
+      // Blue / info theme
+      accent: "border-sky-500/30 bg-sky-500/5 text-sky-600 dark:text-sky-400",
       cards: logisticsCards,
     },
     {
@@ -133,7 +135,8 @@ const AdminOverview = () => {
       title: "Inventory & Catalog",
       subtitle: "Products and categories",
       icon: Boxes,
-      accent: "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+      // Orange / warning theme
+      accent: "border-orange-500/30 bg-orange-500/5 text-orange-600 dark:text-orange-400",
       cards: inventoryCards,
     },
   ].filter((g) => g.cards.length > 0);

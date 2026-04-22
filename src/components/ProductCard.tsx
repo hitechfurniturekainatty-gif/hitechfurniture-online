@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { formatINR } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 
@@ -15,7 +15,23 @@ export type ProductCardData = {
 };
 
 const ProductCardInner = ({ product }: { product: ProductCardData }) => {
-  const cover = product.product_images?.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+  // Pick the lowest display_order image without mutating the source array
+  // and request a small WebP-rendered variant from Supabase Storage so mobile
+  // visitors download ~10–20 KB instead of the full original.
+  const cover = useMemo(() => {
+    const raw = product.product_images
+      ?.slice()
+      .sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+    if (!raw) return undefined;
+    // Only transform Supabase-hosted images (public bucket urls).
+    if (raw.includes("/storage/v1/object/public/")) {
+      // Supabase image render endpoint will auto-negotiate webp via Accept header
+      return raw.replace("/object/public/", "/render/image/public/")
+        + (raw.includes("?") ? "&" : "?")
+        + "width=480&quality=72&resize=contain";
+    }
+    return raw;
+  }, [product.product_images]);
   const onOffer = product.offer_price && product.offer_price < product.mrp;
 
   return (

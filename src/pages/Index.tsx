@@ -133,7 +133,21 @@ const Index = () => {
                 className="img-frame group relative aspect-square transition-smooth hover:shadow-product"
               >
                 {c.image_url ? (
-                  <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105" />
+                  <img
+                    src={
+                      c.image_url.includes("/storage/v1/object/public/")
+                        ? c.image_url.replace("/object/public/", "/render/image/public/") +
+                          (c.image_url.includes("?") ? "&" : "?") +
+                          "width=320&quality=72&resize=contain"
+                        : c.image_url
+                    }
+                    alt={c.name}
+                    loading="lazy"
+                    decoding="async"
+                    width={320}
+                    height={320}
+                    className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
                     <span className="font-display text-2xl text-primary">{c.name[0]}</span>
