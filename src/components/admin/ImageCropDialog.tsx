@@ -137,14 +137,15 @@ export const ImageCropDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative h-[55vh] w-full overflow-hidden rounded-md bg-muted">
+        <div ref={stageRef} className="relative h-[55vh] w-full overflow-hidden rounded-md bg-muted">
           {src && (
             <Cropper
               image={src}
               crop={crop}
               zoom={zoom}
               rotation={rotation}
-              aspect={aspect}
+              aspect={manual ? undefined : aspect}
+              cropSize={manual ? { width: boxW, height: boxH } : undefined}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onRotationChange={setRotation}
@@ -156,16 +157,27 @@ export const ImageCropDialog = ({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={manual ? "default" : "outline"}
+              onClick={() => setManual(true)}
+            >
+              <Move className="mr-1 h-3.5 w-3.5" /> Manual
+            </Button>
             {ASPECTS.map((a) => {
               const Icon = a.icon;
-              const active = aspect === a.value;
+              const active = !manual && aspect === a.value;
               return (
                 <Button
                   key={a.label}
                   type="button"
                   size="sm"
                   variant={active ? "default" : "outline"}
-                  onClick={() => setAspect(a.value)}
+                  onClick={() => {
+                    setManual(false);
+                    setAspect(a.value);
+                  }}
                 >
                   <Icon className="mr-1 h-3.5 w-3.5" /> {a.label}
                 </Button>
@@ -175,6 +187,32 @@ export const ImageCropDialog = ({
               <RotateCw className="mr-1 h-3.5 w-3.5" /> Rotate
             </Button>
           </div>
+          {manual && stageSize.w > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-12">Width</span>
+                <Slider
+                  value={[boxW]}
+                  min={40}
+                  max={Math.max(40, stageSize.w - 16)}
+                  step={1}
+                  onValueChange={(v) => setBoxW(v[0])}
+                  className="flex-1"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-12">Height</span>
+                <Slider
+                  value={[boxH]}
+                  min={40}
+                  max={Math.max(40, stageSize.h - 16)}
+                  step={1}
+                  onValueChange={(v) => setBoxH(v[0])}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground w-12">Zoom</span>
             <Slider
