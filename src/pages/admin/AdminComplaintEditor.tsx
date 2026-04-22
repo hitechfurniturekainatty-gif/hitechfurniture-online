@@ -360,7 +360,7 @@ const AdminComplaintEditor = () => {
               place={cp.customer_place}
               routeId={cp.delivery_route_id}
               onChange={(next) => update({ customer_place: next.place, delivery_route_id: next.routeId })}
-              label="Customer Place / Route *"
+              label="Customer Place / Route"
             />
             <div>
               <Label>Address</Label>
@@ -392,7 +392,7 @@ const AdminComplaintEditor = () => {
               />
             </div>
             <div>
-              <Label>Issue Description *</Label>
+              <Label>Issue Description</Label>
               <Textarea rows={4} value={cp.issue_description} onChange={(e) => update({ issue_description: e.target.value })} />
             </div>
             <div>
