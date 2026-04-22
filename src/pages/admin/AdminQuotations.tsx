@@ -296,10 +296,17 @@ const AdminQuotations = () => {
       <CardContent className="p-4">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 items-start gap-2">
-            <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
+            {isPO(q.document_type) ? (
+              <ShoppingCart className="mt-1 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            ) : (
+              <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
+            )}
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <span className="min-w-0 break-words font-mono text-sm font-semibold leading-snug">{q.quotation_id}</span>
+                <Badge variant="outline" className={`w-fit shrink-0 ${docTagClasses(q.document_type)}`}>
+                  {isPO(q.document_type) ? "PO" : "Quotation"}
+                </Badge>
                 <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
               </div>
               <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
@@ -316,7 +323,11 @@ const AdminQuotations = () => {
 
           <div className="border-t border-border/50 pt-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+              {isPO(q.document_type) ? (
+                <span className="text-sm text-muted-foreground">Work / material order</span>
+              ) : (
+                <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+              )}
               <div className={`grid gap-2 sm:flex sm:items-center ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
                 <Button size="sm" asChild className="h-10 w-full px-4 sm:w-auto">
                   <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
