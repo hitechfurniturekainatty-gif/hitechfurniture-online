@@ -410,6 +410,53 @@ const AdminQuotationEditor = () => {
     return result.savedItems;
   };
 
+  // ---- Auto-save on image attach ----
+  // When the user adds/removes any item photo (item, measurement, site,
+  // catalog, sketch), auto-save 1.2s later so they never lose uploaded
+  // images by closing the page or navigating away.
+  // We hash only the image URLs so typing into description/qty/price
+  // does NOT trigger auto-save (those still use the manual Save button).
+  const imageFingerprint = useMemo(
+    () => items.map((it) =>
+      [
+        it.id,
+        it.item_image_url ?? "",
+        it.measurement_image_url ?? "",
+        it.site_photos ?? "",
+        it.catalog_image_url ?? "",
+        it.sketch_url ?? "",
+      ].join("|")
+    ).join("\n"),
+    [items]
+  );
+  const lastSavedFingerprintRef = useRef<string>("");
+  useEffect(() => {
+    // Skip first render and while loading
+    if (loading) {
+      lastSavedFingerprintRef.current = imageFingerprint;
+      return;
+    }
+    if (imageFingerprint === lastSavedFingerprintRef.current) return;
+    // Only auto-save items that have a description (skip blank rows)
+    const hasSavable = items.some((it) => it._dirty && it.description.trim());
+    if (!hasSavable || saving) return;
+    const t = setTimeout(async () => {
+      const result = await saveAll();
+      if (result) {
+        lastSavedFingerprintRef.current = imageFingerprint;
+        if (Object.keys(result.idMap).length > 0) {
+          setSelectedItemIds((prev) => {
+            const next = new Set<string>();
+            prev.forEach((id) => next.add(result.idMap[id] ?? id));
+            return next;
+          });
+        }
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageFingerprint, loading]);
+
   // ---- PDF & WhatsApp ----
 
   const buildPdfData = () => {
