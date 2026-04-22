@@ -447,10 +447,27 @@ const AdminQuotations = () => {
         </Dialog>
       </div>
 
+      {/* Top-level Quotation vs Purchase Order tabs */}
+      <Tabs value={docTab} onValueChange={(v) => setDocTab(v as DocType)} className="mb-4">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
+          <TabsTrigger value="quotation" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Quotations ({docCounts.quotation})
+          </TabsTrigger>
+          <TabsTrigger value="po" className="gap-1.5">
+            <ShoppingCart className="h-4 w-4" /> Purchase Orders ({docCounts.po})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by ID, party or place..." className="pl-9" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isPO(docTab) ? "Search POs by ID, worker or place..." : "Search by ID, party or place..."}
+            className="pl-9"
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="sm:w-56">
