@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { memo } from "react";
 import { formatINR } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 
@@ -13,7 +14,7 @@ export type ProductCardData = {
   product_images?: { image_url: string; display_order: number }[];
 };
 
-export const ProductCard = ({ product }: { product: ProductCardData }) => {
+const ProductCardInner = ({ product }: { product: ProductCardData }) => {
   const cover = product.product_images?.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
   const onOffer = product.offer_price && product.offer_price < product.mrp;
 
@@ -26,6 +27,8 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
             alt={product.product_name}
             loading="lazy"
             decoding="async"
+            width={400}
+            height={500}
             className="h-full w-full object-contain object-center transition-smooth group-hover:scale-[1.03]"
           />
         ) : (
@@ -76,3 +79,7 @@ export const ProductCard = ({ product }: { product: ProductCardData }) => {
     </Link>
   );
 };
+
+// Memoized — the catalog re-renders on every search keystroke; without this every
+// card re-runs sort + DOM diff for nothing. Big win on mobile with 50+ products.
+export const ProductCard = memo(ProductCardInner);
