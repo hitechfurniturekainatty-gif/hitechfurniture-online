@@ -954,6 +954,7 @@ const AdminQuotationEditor = () => {
       </Card>
 
       {/* Totals */}
+      {!po && (
       <Card className="mb-4">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3 order-2 md:order-1">
@@ -1055,6 +1056,21 @@ const AdminQuotationEditor = () => {
           </div>
         </CardContent>
       </Card>
+      )}
+      {po && (
+        <Card className="mb-4">
+          <CardContent className="space-y-3 p-4">
+            <div className="space-y-1.5">
+              <Label>Notes for worker / supplier</Label>
+              <Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Material specs, delivery date, priority, finish type..." />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No prices, GST, bank details or customer terms are shown on a Purchase Order.
+              Use the <span className="font-semibold">Assign</span> button below to send this PO to a worker on WhatsApp.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {isFieldOnly && (
         <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
