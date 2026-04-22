@@ -62,9 +62,13 @@ export type QuotationItemPdf = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url?: string | null;
+  site_photos?: string | null;
   /** Set internally during PDF generation: list of data-URI images to render. */
   measurement_images?: string[];
   catalog_images?: string[];
+  sketch_data_uri?: string | null;
+  site_photos_data?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
