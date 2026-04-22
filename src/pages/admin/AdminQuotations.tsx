@@ -415,7 +415,37 @@ const AdminQuotations = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>{isPO(newDocType) ? "Worker / Supplier name *" : "Customer name *"}</Label>
-                <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
+                {isPO(newDocType) ? (
+                  <AutoSuggestInput<{ phone: string | null; whatsapp_number: string }>
+                    value={form.party_name}
+                    onChange={(v) => setForm((f) => ({ ...f, party_name: v }))}
+                    placeholder="Type to search saved workers / suppliers, or enter new"
+                    minChars={1}
+                    fetchSuggestions={async (q) => {
+                      const { data } = await supabase
+                        .from("workers")
+                        .select("name, trade, phone, whatsapp_number")
+                        .ilike("name", `%${q}%`)
+                        .eq("is_active", true)
+                        .order("name")
+                        .limit(8);
+                      return (data ?? []).map((w) => ({
+                        label: w.name,
+                        sub: [w.trade, w.phone || w.whatsapp_number].filter(Boolean).join(" · "),
+                        data: { phone: w.phone, whatsapp_number: w.whatsapp_number },
+                      })) as Suggestion<{ phone: string | null; whatsapp_number: string }>[];
+                    }}
+                    onPick={(s) =>
+                      setForm((f) => ({
+                        ...f,
+                        party_name: s.label,
+                        party_phone: f.party_phone || s.data?.phone || s.data?.whatsapp_number || "",
+                      }))
+                    }
+                  />
+                ) : (
+                  <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
+                )}
               </div>
               <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
