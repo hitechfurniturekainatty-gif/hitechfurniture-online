@@ -53,6 +53,12 @@ const AdminQuotations = () => {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
+  // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
+  const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
+  const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
+  // The "create new" dialog can build either a quotation OR a PO. Defaults to
+  // the active tab so the toggle always matches the user's current context.
+  const [newDocType, setNewDocType] = useState<DocType>(initialDocTab);
   const [form, setForm] = useState({
     party_name: "",
     party_place: "",
@@ -74,8 +80,18 @@ const AdminQuotations = () => {
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "all";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
+    const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";
+    if (docFromUrl !== docTab) setDocTabState(docFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  const setDocTab = (v: DocType) => {
+    setDocTabState(v);
+    setNewDocType(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "quotation") next.delete("doc"); else next.set("doc", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const load = async () => {
     setLoading(true);
