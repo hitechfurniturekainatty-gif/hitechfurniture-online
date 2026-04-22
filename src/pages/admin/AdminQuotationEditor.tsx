@@ -548,10 +548,14 @@ const AdminQuotationEditor = () => {
     const r = await buildPdfBlob();
     if (!r) return;
 
-    const balanceLine = advanceAmount > 0
-      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
-      : `Total: ${formatINR(grandTotal)}`;
-    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+    const msg = po
+      ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
+      : (() => {
+          const balanceLine = advanceAmount > 0
+            ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
+            : `Total: ${formatINR(grandTotal)}`;
+          return `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+        })();
 
     await sharePdfViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
 
