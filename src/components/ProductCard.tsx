@@ -25,9 +25,10 @@ const ProductCardInner = ({ product }: { product: ProductCardData }) => {
     if (!raw) return undefined;
     // Only transform Supabase-hosted images (public bucket urls).
     if (raw.includes("/storage/v1/object/public/")) {
+      // Supabase image render endpoint will auto-negotiate webp via Accept header
       return raw.replace("/object/public/", "/render/image/public/")
         + (raw.includes("?") ? "&" : "?")
-        + "width=480&quality=72&resize=contain&format=origin";
+        + "width=480&quality=72&resize=contain";
     }
     return raw;
   }, [product.product_images]);
