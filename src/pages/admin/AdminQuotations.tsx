@@ -448,7 +448,14 @@ const AdminQuotations = () => {
                   <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
                 )}
               </div>
-              <div className="space-y-1.5"><Label>Place *</Label><Input value={form.party_place} onChange={(e) => setForm({ ...form, party_place: e.target.value })} placeholder="e.g. Wayanad" /></div>
+              <div className="space-y-1.5">
+                <Label>{isPO(newDocType) ? "Place (optional)" : "Place *"}</Label>
+                <Input
+                  value={form.party_place}
+                  onChange={(e) => setForm({ ...form, party_place: e.target.value })}
+                  placeholder="e.g. Wayanad"
+                />
+              </div>
               <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
               {!isPO(newDocType) && (
                 <DeliveryRoutePicker
