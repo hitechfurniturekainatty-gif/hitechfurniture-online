@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
 
 /**
  * Single image picker with Upload / Camera / URL tabs.
@@ -32,6 +33,8 @@ export const SingleImagePicker = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
+  // Pending file awaiting crop confirmation. When set, the crop dialog is open.
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   // When the parent commits the real URL, drop the temporary blob preview.
   useEffect(() => {
@@ -85,9 +88,10 @@ export const SingleImagePicker = ({
 
   const onDrop = useCallback(
     (files: File[]) => {
-      if (files[0]) uploadFile(files[0]);
+      // Open crop dialog first — user can still hit "Use as-is" to skip.
+      if (files[0]) setCropFile(files[0]);
     },
-    [uploadFile]
+    []
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
