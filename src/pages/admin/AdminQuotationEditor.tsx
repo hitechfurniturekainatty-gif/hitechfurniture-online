@@ -819,6 +819,17 @@ const AdminQuotationEditor = () => {
                     folder="measurements"
                     label="Measurement photos"
                   />
+                  <SketchField
+                    value={it.sketch_url}
+                    onChange={(v) => updateItem(it.id, { sketch_url: v })}
+                    label="Hand-drawn sketch"
+                  />
+                  <MultiImagePicker
+                    value={it.site_photos}
+                    onChange={(v) => updateItem(it.id, { site_photos: v })}
+                    folder="site-photos"
+                    label="Site photos (location context)"
+                  />
                 </div>
 
                 {/* Catalog (NEW) */}
