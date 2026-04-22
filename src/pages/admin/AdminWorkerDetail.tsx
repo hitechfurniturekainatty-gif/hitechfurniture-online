@@ -11,7 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
+  ShoppingCart,
 } from "lucide-react";
+import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 
 type Worker = {
   id: string;
@@ -34,6 +36,7 @@ type Job = {
   quotation_code: string;
   party_name: string;
   party_place: string;
+  document_type: DocType;
 };
 
 export const JOB_STATUSES = [
@@ -68,7 +71,7 @@ const AdminWorkerDetail = () => {
       supabase.from("workers").select("*").eq("id", id).maybeSingle(),
       supabase
         .from("job_work_orders")
-        .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, quotations!inner(quotation_id, party_name, party_place)")
+        .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, quotations!inner(quotation_id, party_name, party_place, document_type)")
         .eq("worker_id", id)
         .order("created_at", { ascending: false }),
     ]);
@@ -89,6 +92,7 @@ const AdminWorkerDetail = () => {
       quotation_code: row.quotations?.quotation_id ?? "",
       party_name: row.quotations?.party_name ?? "",
       party_place: row.quotations?.party_place ?? "",
+      document_type: (row.quotations?.document_type ?? "quotation") as DocType,
     }));
     setJobs(flat);
     setLoading(false);
