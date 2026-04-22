@@ -263,7 +263,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
   const [size, setSize] = useState<number>(PEN_SIZES[1]);
   const [saving, setSaving] = useState(false);
 
-  // Text input dialog state — guarantees the mobile keyboard appears.
+  // Inline text-input overlay state. We use a plain overlay (not a nested
+  // Radix Dialog) so we can focus the <input> synchronously inside the same
+  // touch gesture — that's what reliably opens the mobile keyboard.
   const [textOpen, setTextOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
   const textInputRef = useRef<HTMLInputElement | null>(null);
