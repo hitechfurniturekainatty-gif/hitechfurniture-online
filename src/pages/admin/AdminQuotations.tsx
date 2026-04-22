@@ -246,24 +246,49 @@ const AdminQuotations = () => {
 
   // All statuses we care about (order = lifecycle order)
   const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
-  type StatusKey = (typeof STATUS_FILTERS)[number];
 
-  const filtered = useMemo(() => {
+  // Apply doc-type tab + search BEFORE the status filter so each tab's status
+  // counts only count the rows visible in that tab.
+  const docFiltered = useMemo(() => {
     const s = search.toLowerCase();
     return rows.filter((r) => {
-      const matchesSearch = !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s);
-      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // Treat missing document_type as 'quotation' (legacy rows).
+      const t: DocType = (r.document_type as DocType) ?? "quotation";
+      if (t !== docTab) return false;
+      if (!s) return true;
+      return (
+        r.quotation_id.toLowerCase().includes(s) ||
+        r.party_name.toLowerCase().includes(s) ||
+        r.party_place.toLowerCase().includes(s)
+      );
     });
-  }, [rows, search, statusFilter]);
+  }, [rows, search, docTab]);
 
-  // Counts per status (over the search-filtered set, ignoring the status filter itself)
+  const filtered = useMemo(
+    () =>
+      docFiltered.filter((r) => statusFilter === "all" || r.status === statusFilter),
+    [docFiltered, statusFilter],
+  );
+
   const counts = useMemo(() => {
-    const s = search.toLowerCase();
-    const base = rows.filter((r) => !s || r.quotation_id.toLowerCase().includes(s) || r.party_name.toLowerCase().includes(s) || r.party_place.toLowerCase().includes(s));
-    const c: Record<string, number> = { all: base.length };
-    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = base.filter((r) => r.status === k).length;
+    const c: Record<string, number> = { all: docFiltered.length };
+    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = docFiltered.filter((r) => r.status === k).length;
     return c;
+  }, [docFiltered]);
+
+  // Top-level tab counts ignore the status filter so users always see how many
+  // quotations vs POs exist overall (within the current search).
+  const docCounts = useMemo(() => {
+    const s = search.toLowerCase();
+    const matchesSearch = (r: Q) =>
+      !s ||
+      r.quotation_id.toLowerCase().includes(s) ||
+      r.party_name.toLowerCase().includes(s) ||
+      r.party_place.toLowerCase().includes(s);
+    return {
+      quotation: rows.filter((r) => ((r.document_type as DocType) ?? "quotation") === "quotation" && matchesSearch(r)).length,
+      po: rows.filter((r) => r.document_type === "po" && matchesSearch(r)).length,
+    };
   }, [rows, search]);
 
   const renderRow = (q: Q) => (
