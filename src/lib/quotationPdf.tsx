@@ -92,6 +92,8 @@ export type QuotationPdfData = {
   notes: string | null;
   terms?: string | null;
   items: QuotationItemPdf[];
+  /** When true, renders as PURCHASE ORDER: no prices, no totals, no bank, no terms. */
+  is_po?: boolean;
 };
 
 const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
@@ -106,11 +108,11 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
       </View>
 
-      <Text style={styles.hTitle}>QUOTATION</Text>
+      <Text style={styles.hTitle}>{q.is_po ? "PURCHASE ORDER" : "QUOTATION"}</Text>
 
       <View style={styles.partyRow}>
         <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>Quotation No.</Text>
+          <Text style={styles.partyLabel}>{q.is_po ? "PO No." : "Quotation No."}</Text>
           <Text style={styles.partyValue}>{q.quotation_id}</Text>
           <Text style={[styles.partyLabel, { marginTop: 6 }]}>Date</Text>
           <Text style={styles.partyValue}>{q.quotation_date}</Text>
@@ -122,7 +124,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           )}
         </View>
         <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>Party Name</Text>
+          <Text style={styles.partyLabel}>{q.is_po ? "Worker / Supplier" : "Party Name"}</Text>
           <Text style={styles.partyValue}>{q.party_name}</Text>
           <Text style={[styles.partyLabel, { marginTop: 6 }]}>Place</Text>
           <Text style={styles.partyValue}>{q.party_place}</Text>
