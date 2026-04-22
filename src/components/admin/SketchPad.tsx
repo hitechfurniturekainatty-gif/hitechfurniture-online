@@ -409,7 +409,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     }
   }, [tool, color, size]);
 
-  // Eraser click + Text-tool tap → open text input dialog (so mobile keyboard appears)
+  // Eraser click + Text-tool tap → open inline text input (so mobile keyboard appears)
   useEffect(() => {
     const c = fabricRef.current;
     if (!c) return;
@@ -423,6 +423,16 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         pendingPoint.current = { x: p.x, y: p.y };
         setTextValue("");
         setTextOpen(true);
+        // CRITICAL for mobile: focus must happen inside the same user gesture
+        // that started the touch, otherwise iOS/Android suppress the keyboard.
+        // We grab focus on the next microtask once the input has rendered.
+        requestAnimationFrame(() => {
+          const el = textInputRef.current;
+          if (el) {
+            el.focus();
+            try { el.click(); } catch { /* noop */ }
+          }
+        });
       }
     };
     c.on("mouse:down", onDown);
@@ -430,13 +440,6 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       c.off("mouse:down", onDown);
     };
   }, [snapshot]);
-
-  // Focus the text input as soon as its dialog opens (triggers mobile keyboard)
-  useEffect(() => {
-    if (!textOpen) return;
-    const t = setTimeout(() => textInputRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, [textOpen]);
 
   const commitText = () => {
     const c = fabricRef.current;
