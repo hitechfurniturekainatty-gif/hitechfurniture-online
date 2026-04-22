@@ -561,14 +561,19 @@ export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
     d.items.map(async (it) => {
       const measUrls = splitUrls(it.measurement_image_url);
       const catUrls = splitUrls(it.catalog_image_url);
-      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+      const siteUrls = splitUrls(it.site_photos ?? null);
+      const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
         Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
         Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
+        Promise.all(siteUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
         toDataUri(it.item_image_url),
+        toDataUri(it.sketch_url ?? null),
       ]);
       return {
         ...it,
@@ -577,6 +582,8 @@ export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
         measurement_images: measDataUris,
         catalog_image_url: catDataUris[0] ?? null,
         catalog_images: catDataUris,
+        sketch_data_uri: sketchUri,
+        site_photos_data: siteDataUris,
       };
     })
   );
