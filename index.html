@@ -15,6 +15,9 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Preconnect to Supabase so the home page's first DB call skips the TLS/DNS handshake -->
+    <link rel="preconnect" href="https://thwleiywbpyccgtacczv.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://thwleiywbpyccgtacczv.supabase.co" />
     <!-- Non-blocking font load: critical for mobile networks. Fonts apply once ready, but text paints immediately with system fallback. -->
     <link
       rel="preload"
