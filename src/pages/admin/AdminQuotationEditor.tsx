@@ -30,8 +30,8 @@ import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
-import { type DocType, isPO } from "@/lib/docType";
-import { Switch } from "@/components/ui/switch";
+import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
+import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 
 type QItem = {
   id: string;
@@ -152,6 +152,11 @@ const AdminQuotationEditor = () => {
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
+  // Document type drives major UI changes: PO mode hides all pricing,
+  // GST, advance, discount, terms, totals, and bank info — POs only
+  // describe the work / materials sent to a worker or supplier.
+  const po = isPO(q?.document_type);
+  const showPricing = !po;
 
   const load = async () => {
     if (!id) return;
@@ -374,8 +379,13 @@ const AdminQuotationEditor = () => {
     const hasItems = updated.length > 0 && updated.some((it) => it.description.trim());
     const hasPricing = updated.some((it) => Number(it.unit_price) > 0);
     let nextStatus: string | null = null;
-    if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
-    if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    if (po) {
+      // POs don't have a "finalized" pricing step — once items exist, it's drafted/finalized.
+      if (q.status === "draft" && hasItems) nextStatus = "finalized";
+    } else {
+      if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
+      if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    }
     if (nextStatus) {
       const { error: stErr } = await supabase.from("quotations").update({ status: nextStatus }).eq("id", q.id);
       if (!stErr) setQ((prev) => (prev ? { ...prev, status: nextStatus! } : prev));
