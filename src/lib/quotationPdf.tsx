@@ -485,6 +485,26 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
                   ))}
                 </View>
               )}
+              {it.sketch_data_uri && (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={jwStyles.sketchLabel}>Sketch</Text>
+                  <View style={jwStyles.sketchBox}>
+                    <Image src={it.sketch_data_uri} style={jwStyles.sketchImg} />
+                  </View>
+                </View>
+              )}
+              {(it.site_photos_data ?? []).length > 0 && (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={jwStyles.sketchLabel}>Site photos</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                    {(it.site_photos_data ?? []).map((src, k) => (
+                      <View key={`site-${k}`} style={{ width: 58, height: 58, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
+                        <Image src={src} style={{ width: 54, height: 54, objectFit: "contain" }} />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.cat }]}>
               {it.catalog_text ? (
