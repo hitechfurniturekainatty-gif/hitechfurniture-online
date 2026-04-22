@@ -600,7 +600,7 @@ const AdminServices = () => {
                     place={cpForm.customer_place}
                     routeId={cpForm.delivery_route_id}
                     onChange={(next) => setCpForm({ ...cpForm, customer_place: next.place, delivery_route_id: next.routeId })}
-                    label="Customer Place / Route *"
+                    label="Customer Place / Route"
                   />
                   <div>
                     <Label>Address</Label>
@@ -618,7 +618,7 @@ const AdminServices = () => {
                     </p>
                   </div>
                   <div>
-                    <Label>Issue Description *</Label>
+                    <Label>Issue Description</Label>
                     <Textarea
                       rows={3}
                       value={cpForm.issue_description}
