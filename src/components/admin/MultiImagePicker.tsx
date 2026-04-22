@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
 
 /**
  * Multi-image picker that stores a list of image URLs serialized into a single
@@ -33,6 +34,9 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
   const cameraRef = useRef<HTMLInputElement>(null);
   // Pending = local previews (object URLs) currently uploading in background
   const [pending, setPending] = useState<{ id: string; preview: string }[]>([]);
+  // Crop queue — files waiting for the user to crop. Processed FIFO so the
+  // dialog re-opens for each picked photo without losing any.
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
 
   const urls: string[] = (value ?? "")
     .split(/\r?\n/)
@@ -91,12 +95,18 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
   const uploadFiles = useCallback(
     (files: File[]) => {
       if (!files.length) return;
-      // Show previews instantly + kick off uploads in parallel (background)
-      const newPending = files.map((f) => ({ id: crypto.randomUUID(), preview: URL.createObjectURL(f), file: f }));
-      setPending((prev) => [...prev, ...newPending.map(({ id, preview }) => ({ id, preview }))]);
-      newPending.forEach(({ id, preview, file }) => {
-        void uploadOne(file, id, preview);
-      });
+      // Drop files into the crop queue; the dialog walks through each.
+      setCropQueue((prev) => [...prev, ...files]);
+    },
+    []
+  );
+
+  const startUpload = useCallback(
+    (file: File) => {
+      const id = crypto.randomUUID();
+      const preview = URL.createObjectURL(file);
+      setPending((prev) => [...prev, { id, preview }]);
+      void uploadOne(file, id, preview);
     },
     [uploadOne]
   );
