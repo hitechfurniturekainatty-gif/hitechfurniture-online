@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Pencil, Plus, X } from "lucide-react";
-import { SketchPad } from "./SketchPad";
+
+// Lazy-load the heavy Fabric.js sketch pad so mobile users don't pay the
+// ~250kB cost on every quotation editor render.
+const SketchPad = lazy(() => import("./SketchPad"));
 
 /**
  * Compact editor field for a measurement sketch.
@@ -60,12 +63,16 @@ export const SketchField = ({ value, onChange, label }: Props) => {
           Measurement sketch
         </Button>
       )}
-      <SketchPad
-        open={open}
-        onOpenChange={setOpen}
-        initialUrl={value}
-        onSave={(url) => onChange(url)}
-      />
+      {open && (
+        <Suspense fallback={null}>
+          <SketchPad
+            open={open}
+            onOpenChange={setOpen}
+            initialUrl={value}
+            onSave={(url) => onChange(url)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

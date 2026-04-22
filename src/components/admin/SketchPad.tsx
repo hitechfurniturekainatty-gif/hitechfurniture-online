@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
@@ -264,7 +263,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
   const [size, setSize] = useState<number>(PEN_SIZES[1]);
   const [saving, setSaving] = useState(false);
 
-  // Text input dialog state — guarantees the mobile keyboard appears.
+  // Inline text-input overlay state. We use a plain overlay (not a nested
+  // Radix Dialog) so we can focus the <input> synchronously inside the same
+  // touch gesture — that's what reliably opens the mobile keyboard.
   const [textOpen, setTextOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
   const textInputRef = useRef<HTMLInputElement | null>(null);
@@ -408,7 +409,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     }
   }, [tool, color, size]);
 
-  // Eraser click + Text-tool tap → open text input dialog (so mobile keyboard appears)
+  // Eraser click + Text-tool tap → open inline text input (so mobile keyboard appears)
   useEffect(() => {
     const c = fabricRef.current;
     if (!c) return;
@@ -422,6 +423,16 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         pendingPoint.current = { x: p.x, y: p.y };
         setTextValue("");
         setTextOpen(true);
+        // CRITICAL for mobile: focus must happen inside the same user gesture
+        // that started the touch, otherwise iOS/Android suppress the keyboard.
+        // We grab focus on the next microtask once the input has rendered.
+        requestAnimationFrame(() => {
+          const el = textInputRef.current;
+          if (el) {
+            el.focus();
+            try { el.click(); } catch { /* noop */ }
+          }
+        });
       }
     };
     c.on("mouse:down", onDown);
@@ -429,13 +440,6 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       c.off("mouse:down", onDown);
     };
   }, [snapshot]);
-
-  // Focus the text input as soon as its dialog opens (triggers mobile keyboard)
-  useEffect(() => {
-    if (!textOpen) return;
-    const t = setTimeout(() => textInputRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, [textOpen]);
 
   const commitText = () => {
     const c = fabricRef.current;
@@ -681,32 +685,46 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         </DialogFooter>
       </DialogContent>
 
-      {/* Text-input dialog: ensures the mobile keyboard pops up reliably */}
-      <Dialog open={textOpen} onOpenChange={setTextOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add label</DialogTitle>
-            <DialogDescription>
+      {/* Inline text-input overlay (NOT a nested Radix Dialog) so we can focus
+          the input synchronously inside the touch gesture — required for the
+          mobile keyboard to actually pop up reliably on iOS / Android. */}
+      {textOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => { setTextOpen(false); pendingPoint.current = null; }}
+        >
+          <div
+            className="w-full max-w-sm rounded-t-xl bg-background p-4 shadow-xl sm:rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 text-sm font-semibold">Add label</p>
+            <p className="mb-2 text-xs text-muted-foreground">
               Type a number (e.g. <strong>180</strong>) — we'll format it as <strong>180 cm</strong> automatically.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            ref={textInputRef}
-            value={textValue}
-            onChange={(e) => setTextValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitText(); } }}
-            placeholder="e.g. 180 or 180 cm"
-            inputMode="text"
-            autoFocus
-          />
-          <DialogFooter className="flex-row justify-end gap-2">
-            <Button variant="outline" onClick={() => { setTextOpen(false); pendingPoint.current = null; }}>
-              Cancel
-            </Button>
-            <Button onClick={commitText}>Add</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </p>
+            <input
+              ref={textInputRef}
+              type="text"
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitText(); } }}
+              placeholder="e.g. 180 or 180 cm"
+              inputMode="text"
+              autoFocus
+              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setTextOpen(false); pendingPoint.current = null; }}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={commitText}>Add</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 };
