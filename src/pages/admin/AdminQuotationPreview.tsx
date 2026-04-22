@@ -20,6 +20,8 @@ type QItem = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url: string | null;
+  site_photos: string | null;
   quantity: number;
   unit_price: number;
   display_order: number;
@@ -143,6 +145,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
           quantity: it.quantity,
           unit_price: it.unit_price,
           amount: (it.quantity || 0) * (it.unit_price || 0),
