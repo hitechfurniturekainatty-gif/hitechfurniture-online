@@ -97,7 +97,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
