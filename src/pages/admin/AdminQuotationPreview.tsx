@@ -179,7 +179,9 @@ const AdminQuotationPreview = () => {
       const balanceLine = advance > 0
         ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advance)}\nBalance Due: ${formatINR(balance)}`
         : `Total: ${formatINR(grandTotal)}`;
-      const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+      const msg = po
+        ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
+        : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
       if (navAny.canShare && navAny.canShare({ files: [file] })) {
         try {
