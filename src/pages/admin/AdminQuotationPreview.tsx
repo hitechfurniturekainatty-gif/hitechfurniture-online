@@ -457,13 +457,15 @@ const AdminQuotationPreview = () => {
 
         {/* Bank + Terms (collapsed compactly) */}
         <section className="grid gap-4 border-t border-slate-200 p-5 text-xs sm:grid-cols-2 sm:p-8">
-          <div>
-            <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Bank Details</h3>
-            <p className="text-slate-700">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
-            <p className="text-slate-700">A/C: {BANK_DETAILS.accountName}</p>
-            <p className="font-mono text-slate-700">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
-          </div>
-          {q.terms && (
+          {!po && (
+            <div>
+              <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Bank Details</h3>
+              <p className="text-slate-700">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
+              <p className="text-slate-700">A/C: {BANK_DETAILS.accountName}</p>
+              <p className="font-mono text-slate-700">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
+            </div>
+          )}
+          {!po && q.terms && (
             <div>
               <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Terms</h3>
               <p className="whitespace-pre-line text-[11px] leading-snug text-slate-600">{q.terms}</p>
