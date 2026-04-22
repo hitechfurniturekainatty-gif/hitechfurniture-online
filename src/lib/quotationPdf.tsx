@@ -337,7 +337,7 @@ async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
   const objectUrl = URL.createObjectURL(blob);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image();
+      const im = new window.Image();
       im.crossOrigin = "anonymous";
       im.onload = () => resolve(im);
       im.onerror = (e) => reject(e);
