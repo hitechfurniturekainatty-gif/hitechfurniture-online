@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { ContactPicker } from "@/components/admin/ContactPicker";
+import { SketchField } from "@/components/admin/SketchField";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
@@ -37,6 +38,8 @@ type QItem = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url: string | null;
+  site_photos: string | null;
   quantity: number;
   unit_price: number;
   amount: number;
