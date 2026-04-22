@@ -3,7 +3,7 @@ import Cropper, { type Area } from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, RectangleVertical, Move } from "lucide-react";
 
 /**
  * Reusable image crop dialog used by SingleImagePicker / MultiImagePicker.
@@ -13,7 +13,6 @@ import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, Recta
  */
 
 const ASPECTS: { label: string; value: number | undefined; icon: React.ComponentType<{ className?: string }> }[] = [
-  { label: "Free", value: undefined, icon: CropIcon },
   { label: "1:1", value: 1, icon: Square },
   { label: "4:3", value: 4 / 3, icon: RectangleHorizontal },
   { label: "3:4", value: 3 / 4, icon: RectangleVertical },
