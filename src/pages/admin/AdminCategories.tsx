@@ -23,7 +23,7 @@ type EditMainState = { id: string; name: string; image: UploadedImage[] } | null
 type EditSubState = { id: string; name: string; main_category_id: string; image: UploadedImage[] } | null;
 
 const AdminCategories = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [newMain, setNewMain] = useState("");

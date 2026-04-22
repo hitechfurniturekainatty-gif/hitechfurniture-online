@@ -28,7 +28,7 @@ type Worker = {
 const empty = { name: "", phone: "", whatsapp_number: "", trade: "", notes: "", is_active: true };
 
 const AdminWorkers = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
