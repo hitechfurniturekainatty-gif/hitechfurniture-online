@@ -186,8 +186,15 @@ const AdminWorkerDetail = () => {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      {isPO(job.document_type) ? (
+                        <ShoppingCart className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      )}
                       <span className="font-mono text-sm font-semibold">{job.quotation_code}</span>
+                      <Badge variant="outline" className={docTagClasses(job.document_type)}>
+                        {isPO(job.document_type) ? "PO" : "Quotation"}
+                      </Badge>
                       <Badge variant={jobStatusTone(job.status)}>{jobStatusLabel(job.status)}</Badge>
                     </div>
                     <p className="mt-1 text-sm">{job.party_name} · {job.party_place}</p>
