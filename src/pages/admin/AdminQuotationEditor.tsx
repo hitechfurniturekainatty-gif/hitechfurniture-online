@@ -655,6 +655,7 @@ const AdminQuotationEditor = () => {
         return;
       }
       // generate worker-safe PDF (NO prices, NO bank, NO customer phone)
+      const { generateJobWorkPdf } = await loadPdfLib();
       const blob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
