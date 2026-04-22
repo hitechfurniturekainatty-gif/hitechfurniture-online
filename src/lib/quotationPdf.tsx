@@ -168,6 +168,18 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
                   ))}
                 </View>
               )}
+              {it.sketch_data_uri && (
+                <View style={{ marginTop: 3 }}>
+                  <Image src={it.sketch_data_uri} style={{ width: cols.meas - 12, height: 60, objectFit: "contain", borderWidth: 0.5, borderColor: "#D8DEDF" }} />
+                </View>
+              )}
+              {(it.site_photos_data ?? []).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
+                  {(it.site_photos_data ?? []).map((src, k) => (
+                    <Image key={`s-${k}`} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
             </View>
             <View style={[styles.td, { width: cols.cat }]}>
               {it.catalog_text && <Text style={{ fontSize: 11 }}>{it.catalog_text}</Text>}
