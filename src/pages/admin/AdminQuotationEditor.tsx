@@ -330,6 +330,8 @@ const AdminQuotationEditor = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
           quantity: Number(it.quantity) || 0,
           unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
           display_order: it.display_order,
