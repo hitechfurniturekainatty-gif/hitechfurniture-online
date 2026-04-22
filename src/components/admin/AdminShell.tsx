@@ -43,9 +43,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff },
     { to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff },
     { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
-    { to: "/admin/workers", label: "Workers", icon: HardHat, show: isOfficeStaff },
-    { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isOfficeStaff },
-    { to: "/admin/products", label: "Products", icon: Package, show: isOfficeStaff },
+    { to: "/admin/workers", label: "Workers", icon: HardHat, show: isAdmin },
+    { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
+    { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
     { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
   ].filter((l) => l.show);
 

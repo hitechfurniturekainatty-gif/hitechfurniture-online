@@ -28,7 +28,7 @@ type Worker = {
 const empty = { name: "", phone: "", whatsapp_number: "", trade: "", notes: "", is_active: true };
 
 const AdminWorkers = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -92,6 +92,13 @@ const AdminWorkers = () => {
 
   return (
     <AdminShell>
+      {!authLoading && !isAdmin && (
+        <div className="rounded-xl border bg-card p-6 text-center">
+          <h1 className="font-display text-xl">Admins only</h1>
+          <p className="mt-2 text-sm text-muted-foreground">You don't have permission to view Workers.</p>
+        </div>
+      )}
+      {!authLoading && isAdmin && (<>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Workers</h1>
@@ -155,6 +162,7 @@ const AdminWorkers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </AdminShell>
   );
 };

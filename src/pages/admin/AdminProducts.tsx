@@ -68,7 +68,7 @@ const emptyForm: FormState = {
 };
 
 const AdminProducts = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
@@ -194,6 +194,13 @@ const AdminProducts = () => {
 
   return (
     <AdminShell>
+      {!authLoading && !isAdmin && (
+        <div className="rounded-xl border bg-card p-6 text-center">
+          <h1 className="font-display text-xl">Admins only</h1>
+          <p className="mt-2 text-sm text-muted-foreground">You don't have permission to view Products.</p>
+        </div>
+      )}
+      {!authLoading && isAdmin && (<>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
@@ -384,6 +391,7 @@ const AdminProducts = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </AdminShell>
   );
 };
