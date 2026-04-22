@@ -766,9 +766,9 @@ const AdminQuotationEditor = () => {
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
           {items.map((it, idx) => (
-            <div key={it.id} className="rounded-lg border bg-card p-3 shadow-sm">
+            <div key={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
               {/* Row header: SL, badges, delete */}
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
                   {canEditPrice && !it._isNew && (
                     <Checkbox
@@ -778,10 +778,10 @@ const AdminQuotationEditor = () => {
                       aria-label="Select for job work"
                     />
                   )}
-                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">#{idx + 1}</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Item #{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
-                  {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
-                    <span className="ml-auto font-mono text-sm font-semibold text-primary sm:hidden">
+                  {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
+                    <span className="ml-2 font-mono text-sm font-semibold text-primary">
                       {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
                     </span>
                   )}
@@ -791,11 +791,16 @@ const AdminQuotationEditor = () => {
                 </Button>
               </div>
 
-              {/* Mobile-first stacked layout, with desktop grid above lg */}
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_80px_110px_110px]">
-                {/* Description (medium width) */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</Label>
+              <div className="space-y-4 p-3 sm:p-4">
+                {/* SECTION 1: Product / Description */}
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Product</h3>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-xs font-medium">Description *</Label>
                   <AutoSuggestInput
                     value={it.description}
                     onChange={(v) => updateItem(it.id, { description: v })}
@@ -829,72 +834,90 @@ const AdminQuotationEditor = () => {
                       });
                     }}
                   />
-                </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Catalog name / code</Label>
+                      <Input
+                        className="h-11"
+                        value={it.catalog_text ?? ""}
+                        onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
+                        placeholder="e.g. SKU-1234"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        spellCheck={false}
+                        style={{ textTransform: "uppercase" }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Item photo</Label>
+                      <SingleImagePicker
+                        value={it.item_image_url}
+                        onChange={(v) => updateItem(it.id, { item_image_url: v })}
+                        folder="items"
+                      />
+                    </div>
+                  </div>
+                </section>
 
-                {/* Item image */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Item photo</Label>
-                  <CollapsibleField label="Item photo" hasValue={!!it.item_image_url}>
-                    <SingleImagePicker value={it.item_image_url} onChange={(v) => updateItem(it.id, { item_image_url: v })} folder="items" />
-                  </CollapsibleField>
-                </div>
-
-                {/* Measurement */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Measurement</Label>
-                  <Textarea rows={2} value={it.measurement ?? ""} onChange={(e) => updateItem(it.id, { measurement: e.target.value })} placeholder="W x H x D" />
-                  <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
-                    <MultiImagePicker
-                      value={it.measurement_image_url}
-                      onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
-                      folder="measurements"
-                      label="Measurement photos"
+                {/* SECTION 2: Measurement & Sketches */}
+                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Measurement &amp; Site</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Dimensions</Label>
+                    <Textarea
+                      rows={2}
+                      value={it.measurement ?? ""}
+                      onChange={(e) => updateItem(it.id, { measurement: e.target.value })}
+                      placeholder="W x H x D"
                     />
-                  </CollapsibleField>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
+                      <MultiImagePicker
+                        value={it.measurement_image_url}
+                        onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
+                        folder="measurements"
+                        label="Measurement photos"
+                      />
+                    </CollapsibleField>
+                    <CollapsibleField label="Site photos" hasValue={!!it.site_photos}>
+                      <MultiImagePicker
+                        value={it.site_photos}
+                        onChange={(v) => updateItem(it.id, { site_photos: v })}
+                        folder="site-photos"
+                        label="Site photos (location context)"
+                      />
+                    </CollapsibleField>
+                    <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
+                      <MultiImagePicker
+                        value={it.catalog_image_url}
+                        onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
+                        folder="catalog"
+                        label="Catalog / cloth photos"
+                      />
+                    </CollapsibleField>
+                  </div>
                   <SketchField
                     value={it.sketch_url}
                     onChange={(v) => updateItem(it.id, { sketch_url: v })}
                     label="Hand-drawn sketch"
                   />
-                  <CollapsibleField label="Site photos" hasValue={!!it.site_photos}>
-                    <MultiImagePicker
-                      value={it.site_photos}
-                      onChange={(v) => updateItem(it.id, { site_photos: v })}
-                      folder="site-photos"
-                      label="Site photos (location context)"
-                    />
-                  </CollapsibleField>
-                </div>
+                </section>
 
-                {/* Catalog (NEW) */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Catalog</Label>
-                  <CollapsibleField label="Catalog name / code" hasValue={!!(it.catalog_text && it.catalog_text.trim())}>
-                    <Input
-                      className="h-11"
-                      value={it.catalog_text ?? ""}
-                      onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
-                      placeholder="Catalog name / code"
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      spellCheck={false}
-                      style={{ textTransform: "uppercase" }}
-                    />
-                  </CollapsibleField>
-                  <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
-                    <MultiImagePicker
-                      value={it.catalog_image_url}
-                      onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
-                      folder="catalog"
-                      label="Catalog / cloth photos"
-                    />
-                  </CollapsibleField>
-                </div>
-
-                {/* Qty + Unit price + Amount: side-by-side row on mobile */}
-                <div className={`grid gap-3 lg:contents ${po ? "grid-cols-1" : "grid-cols-3"}`}>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</Label>
+                {/* SECTION 3: Quantity & Pricing */}
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {showPricing ? "Quantity & Pricing" : "Quantity"}
+                    </h3>
+                  </div>
+                  <div className={`grid gap-3 ${showPricing ? "grid-cols-3" : "grid-cols-1 sm:max-w-[160px]"}`}>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Qty</Label>
                     <Input
                       className="h-11"
                       type="number"
@@ -914,7 +937,7 @@ const AdminQuotationEditor = () => {
                   {showPricing && (
                   <>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit ₹</Label>
+                    <Label className="text-xs font-medium">Unit price (₹)</Label>
                     <Input
                       className="h-11"
                       type="number"
@@ -930,16 +953,17 @@ const AdminQuotationEditor = () => {
                     {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</Label>
-                    <div className="flex h-11 items-center justify-end rounded-md border bg-muted px-3 font-mono text-sm font-semibold">
+                    <Label className="text-xs font-medium">Amount</Label>
+                    <div className="flex h-11 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary">
                       {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
                         ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
-                        : <span className="text-muted-foreground font-normal">—</span>}
+                        : <span className="font-normal text-muted-foreground">—</span>}
                     </div>
                   </div>
                   </>
                   )}
-                </div>
+                  </div>
+                </section>
               </div>
             </div>
           ))}
