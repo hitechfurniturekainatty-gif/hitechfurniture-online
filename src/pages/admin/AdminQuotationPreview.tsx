@@ -11,6 +11,7 @@ import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
 } from "lucide-react";
+import { isPO, type DocType } from "@/lib/docType";
 
 type QItem = {
   id: string;
@@ -43,6 +44,7 @@ type Quotation = {
   notes: string | null;
   terms: string | null;
   created_by: string | null;
+  document_type: DocType;
 };
 
 const fmtDate = (s: string | null | undefined) =>
@@ -109,6 +111,8 @@ const AdminQuotationPreview = () => {
   const handleEdit = () => navigate(`/admin/quotations/${id}`);
   const handleDone = () => navigate("/admin/quotations");
 
+  const po = isPO(q?.document_type);
+
   const buildAndShare = async (mode: "share" | "download") => {
     if (!q) return;
     if (mode === "share" && !q.party_phone) {
@@ -138,6 +142,7 @@ const AdminQuotationPreview = () => {
         balance_due: balance,
         notes: q.notes,
         terms: q.terms,
+        is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
           item_image_url: it.item_image_url,
@@ -174,7 +179,9 @@ const AdminQuotationPreview = () => {
       const balanceLine = advance > 0
         ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advance)}\nBalance Due: ${formatINR(balance)}`
         : `Total: ${formatINR(grandTotal)}`;
-      const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+      const msg = po
+        ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
+        : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
       if (navAny.canShare && navAny.canShare({ files: [file] })) {
         try {
@@ -232,9 +239,9 @@ const AdminQuotationPreview = () => {
       <div className="mb-3 flex items-center justify-between gap-2">
         <Button variant="outline" size="sm" onClick={handleDone} className="h-9">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          <span className="hidden sm:inline">Quotations</span>
+          <span className="hidden sm:inline">{po ? "Purchase Orders" : "Quotations"}</span>
         </Button>
-        <span className="text-xs text-muted-foreground">Digital Preview</span>
+        <span className="text-xs text-muted-foreground">{po ? "PO Preview" : "Digital Preview"}</span>
       </div>
 
       {/* Document */}
@@ -250,7 +257,9 @@ const AdminQuotationPreview = () => {
             </div>
           </div>
           <div className="text-left sm:text-right">
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">Quotation</p>
+            <p className={`text-[11px] uppercase tracking-wider ${po ? "font-bold text-blue-600" : "text-slate-500"}`}>
+              {po ? "PURCHASE ORDER" : "Quotation"}
+            </p>
             <p className="font-mono text-base font-semibold sm:text-lg">{q.quotation_id}</p>
             <p className="mt-1 text-xs text-slate-600 sm:text-sm">Date: {fmtDate(q.quotation_date)}</p>
             {q.expected_delivery_date && (
@@ -261,7 +270,7 @@ const AdminQuotationPreview = () => {
 
         {/* Party */}
         <section className="border-b border-slate-200 p-5 sm:p-8">
-          <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">Quotation For</p>
+          <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">{po ? "Worker / Supplier" : "Quotation For"}</p>
           <p className="text-base font-semibold sm:text-lg">{q.party_name}</p>
           <p className="text-sm text-slate-700">{q.party_place}</p>
           {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{q.party_address}</p>}
@@ -401,7 +410,7 @@ const AdminQuotationPreview = () => {
         </section>
 
         {/* Totals */}
-        {hasAnyPrice && (
+        {hasAnyPrice && !po && (
           <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
             <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
               <div className="flex justify-between px-4 py-2">
@@ -450,13 +459,15 @@ const AdminQuotationPreview = () => {
 
         {/* Bank + Terms (collapsed compactly) */}
         <section className="grid gap-4 border-t border-slate-200 p-5 text-xs sm:grid-cols-2 sm:p-8">
-          <div>
-            <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Bank Details</h3>
-            <p className="text-slate-700">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
-            <p className="text-slate-700">A/C: {BANK_DETAILS.accountName}</p>
-            <p className="font-mono text-slate-700">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
-          </div>
-          {q.terms && (
+          {!po && (
+            <div>
+              <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Bank Details</h3>
+              <p className="text-slate-700">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
+              <p className="text-slate-700">A/C: {BANK_DETAILS.accountName}</p>
+              <p className="font-mono text-slate-700">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
+            </div>
+          )}
+          {!po && q.terms && (
             <div>
               <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Terms</h3>
               <p className="whitespace-pre-line text-[11px] leading-snug text-slate-600">{q.terms}</p>

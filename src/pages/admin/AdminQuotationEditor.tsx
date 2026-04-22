@@ -30,8 +30,8 @@ import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
-import { type DocType, isPO } from "@/lib/docType";
-import { Switch } from "@/components/ui/switch";
+import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
+import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 
 type QItem = {
   id: string;
@@ -152,6 +152,11 @@ const AdminQuotationEditor = () => {
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
+  // Document type drives major UI changes: PO mode hides all pricing,
+  // GST, advance, discount, terms, totals, and bank info — POs only
+  // describe the work / materials sent to a worker or supplier.
+  const po = isPO(q?.document_type);
+  const showPricing = !po;
 
   const load = async () => {
     if (!id) return;
@@ -374,8 +379,13 @@ const AdminQuotationEditor = () => {
     const hasItems = updated.length > 0 && updated.some((it) => it.description.trim());
     const hasPricing = updated.some((it) => Number(it.unit_price) > 0);
     let nextStatus: string | null = null;
-    if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
-    if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    if (po) {
+      // POs don't have a "finalized" pricing step — once items exist, it's drafted/finalized.
+      if (q.status === "draft" && hasItems) nextStatus = "finalized";
+    } else {
+      if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
+      if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
+    }
     if (nextStatus) {
       const { error: stErr } = await supabase.from("quotations").update({ status: nextStatus }).eq("id", q.id);
       if (!stErr) setQ((prev) => (prev ? { ...prev, status: nextStatus! } : prev));
@@ -421,6 +431,7 @@ const AdminQuotationEditor = () => {
       balance_due: balanceDue,
       notes: q.notes,
       terms: q.terms ?? DEFAULT_TERMS,
+      is_po: po,
       items: items.map((it) => ({
         description: it.description,
         item_image_url: it.item_image_url,
@@ -537,10 +548,14 @@ const AdminQuotationEditor = () => {
     const r = await buildPdfBlob();
     if (!r) return;
 
-    const balanceLine = advanceAmount > 0
-      ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
-      : `Total: ${formatINR(grandTotal)}`;
-    const msg = `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+    const msg = po
+      ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
+      : (() => {
+          const balanceLine = advanceAmount > 0
+            ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advanceAmount)}\nBalance Due: ${formatINR(balanceDue)}`
+            : `Total: ${formatINR(grandTotal)}`;
+          return `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
+        })();
 
     await sharePdfViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
 
@@ -686,7 +701,10 @@ const AdminQuotationEditor = () => {
       {/* Header form */}
       <Card className="mb-4">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="text-base">Party & Quotation Details</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+            {po ? "Purchase Order Details" : "Party & Quotation Details"}
+          </CardTitle>
           <ContactPicker
             label="From Contacts"
             onPick={({ name, tel, place, address }) =>
@@ -703,11 +721,11 @@ const AdminQuotationEditor = () => {
           className="grid gap-3 sm:grid-cols-2 md:grid-cols-3"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
         >
-          <div className="space-y-1.5"><Label>Party name *</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Quotation date</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Expected delivery</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
           {canEditPrice && (
             <div className="space-y-1.5">
@@ -718,13 +736,15 @@ const AdminQuotationEditor = () => {
               </Select>
             </div>
           )}
-          <div className="sm:col-span-2 md:col-span-3">
-            <DeliveryRoutePicker
-              place={q.delivery_place ?? ""}
-              routeId={q.delivery_route_id ?? null}
-              onChange={(v) => updateHeader({ delivery_place: v.place || null, delivery_route_id: v.routeId })}
-            />
-          </div>
+          {!po && (
+            <div className="sm:col-span-2 md:col-span-3">
+              <DeliveryRoutePicker
+                place={q.delivery_place ?? ""}
+                routeId={q.delivery_route_id ?? null}
+                onChange={(v) => updateHeader({ delivery_place: v.place || null, delivery_route_id: v.routeId })}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -872,7 +892,7 @@ const AdminQuotationEditor = () => {
                 </div>
 
                 {/* Qty + Unit price + Amount: side-by-side row on mobile */}
-                <div className="grid grid-cols-3 gap-3 lg:contents">
+                <div className={`grid gap-3 lg:contents ${po ? "grid-cols-1" : "grid-cols-3"}`}>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</Label>
                     <Input
@@ -891,6 +911,8 @@ const AdminQuotationEditor = () => {
                       placeholder="1"
                     />
                   </div>
+                  {showPricing && (
+                  <>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit ₹</Label>
                     <Input
@@ -915,6 +937,8 @@ const AdminQuotationEditor = () => {
                         : <span className="text-muted-foreground font-normal">—</span>}
                     </div>
                   </div>
+                  </>
+                  )}
                 </div>
               </div>
             </div>
@@ -930,6 +954,7 @@ const AdminQuotationEditor = () => {
       </Card>
 
       {/* Totals */}
+      {!po && (
       <Card className="mb-4">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3 order-2 md:order-1">
@@ -1031,6 +1056,21 @@ const AdminQuotationEditor = () => {
           </div>
         </CardContent>
       </Card>
+      )}
+      {po && (
+        <Card className="mb-4">
+          <CardContent className="space-y-3 p-4">
+            <div className="space-y-1.5">
+              <Label>Notes for worker / supplier</Label>
+              <Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Material specs, delivery date, priority, finish type..." />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No prices, GST, bank details or customer terms are shown on a Purchase Order.
+              Use the <span className="font-semibold">Assign</span> button below to send this PO to a worker on WhatsApp.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {isFieldOnly && (
         <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>

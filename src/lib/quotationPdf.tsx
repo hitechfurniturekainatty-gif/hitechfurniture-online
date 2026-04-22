@@ -92,6 +92,8 @@ export type QuotationPdfData = {
   notes: string | null;
   terms?: string | null;
   items: QuotationItemPdf[];
+  /** When true, renders as PURCHASE ORDER: no prices, no totals, no bank, no terms. */
+  is_po?: boolean;
 };
 
 const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
@@ -106,11 +108,11 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
       </View>
 
-      <Text style={styles.hTitle}>QUOTATION</Text>
+      <Text style={styles.hTitle}>{q.is_po ? "PURCHASE ORDER" : "QUOTATION"}</Text>
 
       <View style={styles.partyRow}>
         <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>Quotation No.</Text>
+          <Text style={styles.partyLabel}>{q.is_po ? "PO No." : "Quotation No."}</Text>
           <Text style={styles.partyValue}>{q.quotation_id}</Text>
           <Text style={[styles.partyLabel, { marginTop: 6 }]}>Date</Text>
           <Text style={styles.partyValue}>{q.quotation_date}</Text>
@@ -122,7 +124,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           )}
         </View>
         <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>Party Name</Text>
+          <Text style={styles.partyLabel}>{q.is_po ? "Worker / Supplier" : "Party Name"}</Text>
           <Text style={styles.partyValue}>{q.party_name}</Text>
           <Text style={[styles.partyLabel, { marginTop: 6 }]}>Place</Text>
           <Text style={styles.partyValue}>{q.party_place}</Text>
@@ -149,8 +151,12 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <Text style={[styles.th, { width: cols.meas }]}>Measurement</Text>
           <Text style={[styles.th, { width: cols.cat }]}>Catalog</Text>
           <Text style={[styles.th, { width: cols.qty, textAlign: "right" }]}>Qty</Text>
-          <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price (INR)</Text>
-          <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount (INR)</Text>
+          {!q.is_po && (
+            <>
+              <Text style={[styles.th, { width: cols.price, textAlign: "right" }]}>Price (INR)</Text>
+              <Text style={[styles.th, { width: cols.amt, textAlign: "right" }]}>Amount (INR)</Text>
+            </>
+          )}
         </View>
         {q.items.map((it, i) => (
           <View key={i} style={[styles.tRow, i % 2 === 1 ? styles.tRowAlt : null]} wrap={false}>
@@ -192,12 +198,17 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
               )}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
-            <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{fmtNum(it.unit_price)}</Text>
-            <Text style={[styles.td, { width: cols.amt, textAlign: "right" }]}>{fmtNum(it.amount)}</Text>
+            {!q.is_po && (
+              <>
+                <Text style={[styles.td, { width: cols.price, textAlign: "right" }]}>{fmtNum(it.unit_price)}</Text>
+                <Text style={[styles.td, { width: cols.amt, textAlign: "right" }]}>{fmtNum(it.amount)}</Text>
+              </>
+            )}
           </View>
         ))}
       </View>
 
+      {!q.is_po && (
       <View style={styles.totalsWrap}>
       <View style={styles.totalsBox}>
         {/* Subtotal — always shown */}
@@ -237,7 +248,9 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
       </View>
       </View>
+      )}
 
+      {!q.is_po && (
       <View style={styles.bankBox} wrap={false}>
         <Text style={styles.bankTitle}>Bank Details</Text>
         <Text style={styles.bankLine}>Bank: {BANK_DETAILS.bankName}</Text>
@@ -246,8 +259,9 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         <Text style={styles.bankLine}>IFSC: {BANK_DETAILS.ifsc}</Text>
         <Text style={styles.bankLine}>Branch: {BANK_DETAILS.branch}</Text>
       </View>
+      )}
 
-      {q.terms && q.terms.trim() !== "" && (
+      {!q.is_po && q.terms && q.terms.trim() !== "" && (
         <View style={styles.termsBox} wrap={false}>
           <Text style={styles.termsTitle}>Terms & Conditions</Text>
           {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => (
