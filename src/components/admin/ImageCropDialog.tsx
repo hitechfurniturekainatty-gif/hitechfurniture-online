@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, RectangleVertical, Move } from "lucide-react";
 
 /**
  * Reusable image crop dialog used by SingleImagePicker / MultiImagePicker.
@@ -13,7 +13,6 @@ import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, Recta
  */
 
 const ASPECTS: { label: string; value: number | undefined; icon: React.ComponentType<{ className?: string }> }[] = [
-  { label: "Free", value: undefined, icon: CropIcon },
   { label: "1:1", value: 1, icon: Square },
   { label: "4:3", value: 4 / 3, icon: RectangleHorizontal },
   { label: "3:4", value: 3 / 4, icon: RectangleVertical },
@@ -75,6 +74,25 @@ export const ImageCropDialog = ({
   const [aspect, setAspect] = useState<number | undefined>(undefined);
   const [pixels, setPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  // Manual mode: free aspect + user-controlled crop box size (in screen px).
+  const [manual, setManual] = useState(true);
+  const [boxW, setBoxW] = useState(260);
+  const [boxH, setBoxH] = useState(260);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+
+  // Track stage size so manual sliders never exceed the visible area.
+  useEffect(() => {
+    if (!stageRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect;
+      setStageSize({ w: r.width, h: r.height });
+      setBoxW((w) => Math.min(w || r.width * 0.7, r.width - 16));
+      setBoxH((h) => Math.min(h || r.height * 0.7, r.height - 16));
+    });
+    ro.observe(stageRef.current);
+    return () => ro.disconnect();
+  }, [open]);
 
   // Build / refresh object URL whenever the source file changes.
   useEffect(() => {
@@ -119,14 +137,15 @@ export const ImageCropDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative h-[55vh] w-full overflow-hidden rounded-md bg-muted">
+        <div ref={stageRef} className="relative h-[55vh] w-full overflow-hidden rounded-md bg-muted">
           {src && (
             <Cropper
               image={src}
               crop={crop}
               zoom={zoom}
               rotation={rotation}
-              aspect={aspect}
+              aspect={manual ? undefined : aspect}
+              cropSize={manual ? { width: boxW, height: boxH } : undefined}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onRotationChange={setRotation}
@@ -138,16 +157,27 @@ export const ImageCropDialog = ({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={manual ? "default" : "outline"}
+              onClick={() => setManual(true)}
+            >
+              <Move className="mr-1 h-3.5 w-3.5" /> Manual
+            </Button>
             {ASPECTS.map((a) => {
               const Icon = a.icon;
-              const active = aspect === a.value;
+              const active = !manual && aspect === a.value;
               return (
                 <Button
                   key={a.label}
                   type="button"
                   size="sm"
                   variant={active ? "default" : "outline"}
-                  onClick={() => setAspect(a.value)}
+                  onClick={() => {
+                    setManual(false);
+                    setAspect(a.value);
+                  }}
                 >
                   <Icon className="mr-1 h-3.5 w-3.5" /> {a.label}
                 </Button>
@@ -157,6 +187,32 @@ export const ImageCropDialog = ({
               <RotateCw className="mr-1 h-3.5 w-3.5" /> Rotate
             </Button>
           </div>
+          {manual && stageSize.w > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-12">Width</span>
+                <Slider
+                  value={[boxW]}
+                  min={40}
+                  max={Math.max(40, stageSize.w - 16)}
+                  step={1}
+                  onValueChange={(v) => setBoxW(v[0])}
+                  className="flex-1"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-12">Height</span>
+                <Slider
+                  value={[boxH]}
+                  min={40}
+                  max={Math.max(40, stageSize.h - 16)}
+                  step={1}
+                  onValueChange={(v) => setBoxH(v[0])}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground w-12">Zoom</span>
             <Slider
