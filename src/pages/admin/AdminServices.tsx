@@ -521,14 +521,14 @@ const AdminServices = () => {
                     place={svcForm.customer_place}
                     routeId={svcForm.delivery_route_id}
                     onChange={(next) => setSvcForm({ ...svcForm, customer_place: next.place, delivery_route_id: next.routeId })}
-                    label="Customer Place / Route *"
+                    label="Customer Place / Route"
                   />
                   <div>
                     <Label>Address</Label>
                     <Textarea rows={2} value={svcForm.customer_address} onChange={(e) => setSvcForm({ ...svcForm, customer_address: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Item / Product *</Label>
+                    <Label>Item / Product</Label>
                     <Input
                       value={svcForm.item_description}
                       onChange={(e) => setSvcForm({ ...svcForm, item_description: e.target.value })}
