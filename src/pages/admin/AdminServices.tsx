@@ -149,43 +149,84 @@ const AdminServices = () => {
   }, [tab]);
 
   const createService = async () => {
-    if (!svcForm.customer_name.trim() || !svcForm.customer_place.trim() || !svcForm.item_description.trim()) {
+    if (!svcForm.customer_name.trim() || !svcForm.customer_phone.trim()) {
       toast({
         title: "Missing details",
-        description: "Customer name, place and item description are required.",
+        description: "Customer name and phone are required.",
         variant: "destructive",
       });
       return;
     }
     setCreating(true);
+    const placeFinal = svcForm.customer_place.trim() || "NA";
+    const itemFinal = svcForm.item_description.trim() || "Service request";
     const { data: codeData, error: codeErr } = await supabase.rpc("next_service_id" as any);
     if (codeErr || !codeData) {
       setCreating(false);
       toast({ title: "Failed to generate ID", description: codeErr?.message, variant: "destructive" });
       return;
     }
+    // 1) Insert the customer_services row
     const { data, error } = await supabase
       .from("customer_services")
       .insert({
         service_code: codeData as string,
         customer_name: svcForm.customer_name.trim(),
         customer_phone: svcForm.customer_phone.trim() || null,
-        customer_place: svcForm.customer_place.trim(),
+        customer_place: placeFinal,
         customer_address: svcForm.customer_address.trim() || null,
-        item_description: svcForm.item_description.trim(),
+        item_description: itemFinal,
         work_needed: svcForm.work_needed.trim() || null,
         estimated_cost: Number(svcForm.estimated_cost) || 0,
         delivery_route_id: svcForm.delivery_route_id,
-        delivery_place: svcForm.customer_place.trim(),
+        delivery_place: placeFinal,
         created_by: user?.id ?? null,
       })
       .select("id")
       .single();
-    setCreating(false);
     if (error || !data) {
+      setCreating(false);
       toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       return;
     }
+    // 2) Auto-generate a linked Service Quotation (QT-XXX) so admin can edit pricing/photos right away
+    const { data: qid, error: qidErr } = await supabase.rpc("next_quotation_id" as any, {
+      _party: svcForm.customer_name.trim(),
+      _place: placeFinal,
+    });
+    if (!qidErr && qid) {
+      const { data: qData } = await supabase
+        .from("quotations")
+        .insert({
+          quotation_id: qid as string,
+          party_name: svcForm.customer_name.trim(),
+          party_place: placeFinal,
+          party_phone: svcForm.customer_phone.trim() || null,
+          party_address: svcForm.customer_address.trim() || null,
+          delivery_place: placeFinal,
+          delivery_route_id: svcForm.delivery_route_id,
+          document_type: "quotation",
+          service_type: "service",
+          source_service_id: data.id,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (qData) {
+        await supabase.from("quotation_items").insert({
+          quotation_id: qData.id,
+          description: `${itemFinal}${svcForm.work_needed.trim() ? ` — ${svcForm.work_needed.trim()}` : ""}`,
+          quantity: 1,
+          unit_price: Number(svcForm.estimated_cost) || 0,
+          display_order: 0,
+        });
+        await supabase
+          .from("customer_services")
+          .update({ quotation_id: qData.id, status: "converted" })
+          .eq("id", data.id);
+      }
+    }
+    setCreating(false);
     setSvcOpen(false);
     setSvcForm({
       customer_name: "",
@@ -197,20 +238,25 @@ const AdminServices = () => {
       estimated_cost: "",
       delivery_route_id: null,
     });
-    toast({ title: "Service created", description: codeData as string });
+    toast({
+      title: "Service created",
+      description: `${codeData as string} — Service Quotation auto-generated. Open it to add product photo & price.`,
+    });
     load();
   };
 
   const createComplaint = async () => {
-    if (!cpForm.customer_name.trim() || !cpForm.customer_place.trim() || !cpForm.issue_description.trim()) {
+    if (!cpForm.customer_name.trim() || !cpForm.customer_phone.trim()) {
       toast({
         title: "Missing details",
-        description: "Customer name, place and issue description are required.",
+        description: "Customer name and phone are required.",
         variant: "destructive",
       });
       return;
     }
     setCreating(true);
+    const placeFinal = cpForm.customer_place.trim() || "NA";
+    const issueFinal = cpForm.issue_description.trim() || "Complaint logged";
     const { data: codeData, error: codeErr } = await supabase.rpc("next_complaint_id" as any);
     if (codeErr || !codeData) {
       setCreating(false);
@@ -233,13 +279,13 @@ const AdminServices = () => {
         complaint_code: codeData as string,
         customer_name: cpForm.customer_name.trim(),
         customer_phone: cpForm.customer_phone.trim() || null,
-        customer_place: cpForm.customer_place.trim(),
+        customer_place: placeFinal,
         customer_address: cpForm.customer_address.trim() || null,
         original_quotation_id: originalId,
         original_quotation_code: cpForm.original_quotation_code.trim() || null,
-        issue_description: cpForm.issue_description.trim(),
+        issue_description: issueFinal,
         delivery_route_id: cpForm.delivery_route_id,
-        delivery_place: cpForm.customer_place.trim(),
+        delivery_place: placeFinal,
         created_by: user?.id ?? null,
       })
       .select("id")
@@ -475,14 +521,14 @@ const AdminServices = () => {
                     place={svcForm.customer_place}
                     routeId={svcForm.delivery_route_id}
                     onChange={(next) => setSvcForm({ ...svcForm, customer_place: next.place, delivery_route_id: next.routeId })}
-                    label="Customer Place / Route *"
+                    label="Customer Place / Route"
                   />
                   <div>
                     <Label>Address</Label>
                     <Textarea rows={2} value={svcForm.customer_address} onChange={(e) => setSvcForm({ ...svcForm, customer_address: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Item / Product *</Label>
+                    <Label>Item / Product</Label>
                     <Input
                       value={svcForm.item_description}
                       onChange={(e) => setSvcForm({ ...svcForm, item_description: e.target.value })}
@@ -554,7 +600,7 @@ const AdminServices = () => {
                     place={cpForm.customer_place}
                     routeId={cpForm.delivery_route_id}
                     onChange={(next) => setCpForm({ ...cpForm, customer_place: next.place, delivery_route_id: next.routeId })}
-                    label="Customer Place / Route *"
+                    label="Customer Place / Route"
                   />
                   <div>
                     <Label>Address</Label>
@@ -572,7 +618,7 @@ const AdminServices = () => {
                     </p>
                   </div>
                   <div>
-                    <Label>Issue Description *</Label>
+                    <Label>Issue Description</Label>
                     <Textarea
                       rows={3}
                       value={cpForm.issue_description}

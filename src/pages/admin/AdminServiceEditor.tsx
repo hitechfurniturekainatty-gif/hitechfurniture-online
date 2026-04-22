@@ -366,7 +366,7 @@ const AdminServiceEditor = () => {
               place={svc.customer_place}
               routeId={svc.delivery_route_id}
               onChange={(next) => update({ customer_place: next.place, delivery_route_id: next.routeId })}
-              label="Customer Place / Route *"
+              label="Customer Place / Route"
             />
             <div>
               <Label>Address</Label>
@@ -390,7 +390,7 @@ const AdminServiceEditor = () => {
           <CardHeader><CardTitle className="text-base">Service Details</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <Label>Item / Product *</Label>
+              <Label>Item / Product</Label>
               <Input value={svc.item_description} onChange={(e) => update({ item_description: e.target.value })} />
             </div>
             <div>
