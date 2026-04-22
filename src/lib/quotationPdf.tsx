@@ -62,9 +62,13 @@ export type QuotationItemPdf = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url?: string | null;
+  site_photos?: string | null;
   /** Set internally during PDF generation: list of data-URI images to render. */
   measurement_images?: string[];
   catalog_images?: string[];
+  sketch_data_uri?: string | null;
+  site_photos_data?: string[];
   quantity: number;
   unit_price: number;
   amount: number;
@@ -161,6 +165,18 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
                     <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
+                  ))}
+                </View>
+              )}
+              {it.sketch_data_uri && (
+                <View style={{ marginTop: 3 }}>
+                  <Image src={it.sketch_data_uri} style={{ width: cols.meas - 12, height: 60, objectFit: "contain", borderWidth: 0.5, borderColor: "#D8DEDF" }} />
+                </View>
+              )}
+              {(it.site_photos_data ?? []).length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
+                  {(it.site_photos_data ?? []).map((src, k) => (
+                    <Image key={`s-${k}`} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
@@ -289,14 +305,19 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
     q.items.map(async (it) => {
       const measUrls = splitUrls(it.measurement_image_url);
       const catUrls = splitUrls(it.catalog_image_url);
-      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+      const siteUrls = splitUrls(it.site_photos ?? null);
+      const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
         Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
         Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
+        Promise.all(siteUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
         toDataUri(it.item_image_url),
+        toDataUri(it.sketch_url ?? null),
       ]);
       return {
         ...it,
@@ -305,6 +326,8 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
         measurement_images: measDataUris,
         catalog_image_url: catDataUris[0] ?? null,
         catalog_images: catDataUris,
+        sketch_data_uri: sketchUri,
+        site_photos_data: siteDataUris,
       };
     })
   );
@@ -380,9 +403,13 @@ export type JobWorkPdfData = {
     measurement_image_url: string | null;
     catalog_text: string | null;
     catalog_image_url: string | null;
+    sketch_url?: string | null;
+    site_photos?: string | null;
     /** Set internally during PDF generation: list of data-URI sketches/cloth refs. */
     measurement_images?: string[];
     catalog_images?: string[];
+    sketch_data_uri?: string | null;
+    site_photos_data?: string[];
     quantity: number;
   }[];
 };
@@ -458,6 +485,26 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
                   ))}
                 </View>
               )}
+              {it.sketch_data_uri && (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={jwStyles.sketchLabel}>Sketch</Text>
+                  <View style={jwStyles.sketchBox}>
+                    <Image src={it.sketch_data_uri} style={jwStyles.sketchImg} />
+                  </View>
+                </View>
+              )}
+              {(it.site_photos_data ?? []).length > 0 && (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={jwStyles.sketchLabel}>Site photos</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+                    {(it.site_photos_data ?? []).map((src, k) => (
+                      <View key={`site-${k}`} style={{ width: 58, height: 58, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" }}>
+                        <Image src={src} style={{ width: 54, height: 54, objectFit: "contain" }} />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.cat }]}>
               {it.catalog_text ? (
@@ -514,14 +561,19 @@ export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
     d.items.map(async (it) => {
       const measUrls = splitUrls(it.measurement_image_url);
       const catUrls = splitUrls(it.catalog_image_url);
-      const [measDataUris, catDataUris, itemUri] = await Promise.all([
+      const siteUrls = splitUrls(it.site_photos ?? null);
+      const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
         Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
         Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
+        Promise.all(siteUrls.map((u) => toDataUri(u))).then((arr) =>
+          arr.filter((u): u is string => !!u)
+        ),
         toDataUri(it.item_image_url),
+        toDataUri(it.sketch_url ?? null),
       ]);
       return {
         ...it,
@@ -530,6 +582,8 @@ export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
         measurement_images: measDataUris,
         catalog_image_url: catDataUris[0] ?? null,
         catalog_images: catDataUris,
+        sketch_data_uri: sketchUri,
+        site_photos_data: siteDataUris,
       };
     })
   );

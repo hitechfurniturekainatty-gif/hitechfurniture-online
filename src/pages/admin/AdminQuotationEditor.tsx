@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { ContactPicker } from "@/components/admin/ContactPicker";
+import { SketchField } from "@/components/admin/SketchField";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
@@ -37,6 +38,8 @@ type QItem = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url: string | null;
+  site_photos: string | null;
   quantity: number;
   unit_price: number;
   amount: number;
@@ -212,6 +215,8 @@ const AdminQuotationEditor = () => {
       measurement_image_url: null,
       catalog_text: null,
       catalog_image_url: null,
+      sketch_url: null,
+      site_photos: null,
       quantity: 1,
       unit_price: 0,
       amount: 0,
@@ -262,6 +267,8 @@ const AdminQuotationEditor = () => {
       measurement_image_url: null,
       catalog_text: p.product_code ?? null,
       catalog_image_url: null,
+      sketch_url: null,
+      site_photos: null,
       quantity: 1,
       unit_price: Number(p.offer_price ?? p.mrp ?? 0),
       amount: Number(p.offer_price ?? p.mrp ?? 0),
@@ -323,6 +330,8 @@ const AdminQuotationEditor = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
           quantity: Number(it.quantity) || 0,
           unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
           display_order: it.display_order,
@@ -415,6 +424,8 @@ const AdminQuotationEditor = () => {
         measurement_image_url: it.measurement_image_url,
         catalog_text: it.catalog_text,
         catalog_image_url: it.catalog_image_url,
+        sketch_url: it.sketch_url,
+        site_photos: it.site_photos,
         quantity: it.quantity,
         unit_price: it.unit_price,
         amount: (it.quantity || 0) * (it.unit_price || 0),
@@ -587,6 +598,8 @@ const AdminQuotationEditor = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
           quantity: it.quantity,
         })),
       });
@@ -809,6 +822,17 @@ const AdminQuotationEditor = () => {
                     onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
                     folder="measurements"
                     label="Measurement photos"
+                  />
+                  <SketchField
+                    value={it.sketch_url}
+                    onChange={(v) => updateItem(it.id, { sketch_url: v })}
+                    label="Hand-drawn sketch"
+                  />
+                  <MultiImagePicker
+                    value={it.site_photos}
+                    onChange={(v) => updateItem(it.id, { site_photos: v })}
+                    folder="site-photos"
+                    label="Site photos (location context)"
                   />
                 </div>
 

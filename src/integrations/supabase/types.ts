@@ -357,6 +357,8 @@ export type Database = {
           product_id: string | null
           quantity: number
           quotation_id: string
+          site_photos: string | null
+          sketch_url: string | null
           unit_price: number
         }
         Insert: {
@@ -373,6 +375,8 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           quotation_id: string
+          site_photos?: string | null
+          sketch_url?: string | null
           unit_price?: number
         }
         Update: {
@@ -389,6 +393,8 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           quotation_id?: string
+          site_photos?: string | null
+          sketch_url?: string | null
           unit_price?: number
         }
         Relationships: [

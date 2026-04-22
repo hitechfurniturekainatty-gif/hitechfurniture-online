@@ -20,6 +20,8 @@ type QItem = {
   measurement_image_url: string | null;
   catalog_text: string | null;
   catalog_image_url: string | null;
+  sketch_url: string | null;
+  site_photos: string | null;
   quantity: number;
   unit_price: number;
   display_order: number;
@@ -143,6 +145,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
           quantity: it.quantity,
           unit_price: it.unit_price,
           amount: (it.quantity || 0) * (it.unit_price || 0),
@@ -286,7 +290,7 @@ const AdminQuotationPreview = () => {
                       )}
                     </div>
                   </div>
-                  {(it.item_image_url || it.measurement_image_url || it.catalog_image_url) && (
+                  {(it.item_image_url || it.measurement_image_url || it.catalog_image_url || it.sketch_url || it.site_photos) && (
                     <div className="mt-2 grid grid-cols-3 gap-2">
                       {it.item_image_url && (
                         <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
@@ -303,6 +307,21 @@ const AdminQuotationPreview = () => {
                           <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-full w-full object-contain" />
                         </div>
                       )}
+                      {it.sketch_url && (
+                        <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-white">
+                          <img src={it.sketch_url} alt="Sketch" loading="lazy" className="h-full w-full object-contain" />
+                        </div>
+                      )}
+                      {(it.site_photos ?? "")
+                        .split(/\r?\n/)
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .slice(0, 3)
+                        .map((u, k) => (
+                          <div key={`site-${k}`} className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
+                            <img src={u} alt={`Site ${k + 1}`} loading="lazy" className="h-full w-full object-contain" />
+                          </div>
+                        ))}
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm">
