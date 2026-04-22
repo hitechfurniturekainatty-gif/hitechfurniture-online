@@ -431,6 +431,7 @@ const AdminQuotationEditor = () => {
       balance_due: balanceDue,
       notes: q.notes,
       terms: q.terms ?? DEFAULT_TERMS,
+      is_po: po,
       items: items.map((it) => ({
         description: it.description,
         item_image_url: it.item_image_url,
