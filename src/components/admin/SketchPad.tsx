@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
 import {
-  Pencil, Eraser, Type as TypeIcon, Undo2, Redo2, Trash2, Save, Loader2, X,
+  Pencil, Eraser, Type as TypeIcon, Undo2, Redo2, Trash2, Save, Loader2, X, Ruler,
 } from "lucide-react";
 
 /**
@@ -14,18 +15,18 @@ import {
  *
  * Features
  * - Free-draw with finger / stylus / mouse (Fabric.js).
- * - Auto shape recognition: rough straight line → perfect line, rough circle → ellipse,
- *   rough rectangle → rectangle. Fires on every `path:created`.
+ * - Auto shape recognition: rough straight line → perfect line (axis-snapped),
+ *   rough circle → ellipse, rough rectangle → rectangle.
+ * - Optional "Dimension" mode: every drawn line becomes a measurement line with
+ *   arrowheads at both ends and a clean digital "cm" label centered above it.
  * - Pen color (Black / Red / Blue) and 3 thicknesses.
- * - Tap-to-add text labels (e.g., "233 cm") that can be dragged.
+ * - Text tool: tapping the canvas opens a focused input dialog so the mobile
+ *   keyboard reliably appears; numeric inputs are auto-formatted as "<n> cm".
  * - Eraser tool (object selection + delete) for surgical cleanup.
  * - Undo / redo with JSON snapshot stack.
  * - Clear canvas.
  * - Export → flattens to PNG (2x DPR), uploads to `quotation-images/sketches`,
  *   returns the public URL via `onSave`.
- *
- * Loaded inside a full-screen dialog so the canvas can use all the screen
- * real estate on mobile.
  */
 
 const PEN_COLORS = [
@@ -35,7 +36,7 @@ const PEN_COLORS = [
 ];
 const PEN_SIZES = [2, 4, 7];
 
-type Tool = "draw" | "erase" | "text";
+type Tool = "draw" | "erase" | "text" | "dimension";
 
 type SketchPadProps = {
   open: boolean;
@@ -45,15 +46,97 @@ type SketchPadProps = {
   onSave: (publicUrl: string) => void;
 };
 
+/** Snap a near-axis angle to the closest 0/45/90 degree axis. */
+function snapAngle(dx: number, dy: number) {
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return { dx, dy, len };
+  const angle = Math.atan2(dy, dx);
+  const deg = (angle * 180) / Math.PI;
+  // Snap if within 8° of a 45° step
+  const step = 45;
+  const snapped = Math.round(deg / step) * step;
+  if (Math.abs(deg - snapped) < 8) {
+    const r = (snapped * Math.PI) / 180;
+    return { dx: Math.cos(r) * len, dy: Math.sin(r) * len, len };
+  }
+  return { dx, dy, len };
+}
+
+/** Build arrowhead triangles + an optional centered "cm" label for a line. */
+function buildDimensionGroup(
+  x1: number, y1: number, x2: number, y2: number,
+  stroke: string, strokeWidth: number, label?: string,
+): fabric.Object[] {
+  const objs: fabric.Object[] = [];
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const px = -uy, py = ux; // perpendicular unit
+
+  const line = new fabric.Line([x1, y1, x2, y2], {
+    stroke, strokeWidth, strokeLineCap: "round", selectable: true,
+  });
+  objs.push(line);
+
+  // Arrowheads (small filled triangles)
+  const head = Math.max(8, strokeWidth * 3);
+  const wing = head * 0.5;
+  const mkHead = (hx: number, hy: number, sign: number) => {
+    const bx = hx + ux * head * sign;
+    const by = hy + uy * head * sign;
+    const p1 = { x: bx + px * wing, y: by + py * wing };
+    const p2 = { x: bx - px * wing, y: by - py * wing };
+    return new fabric.Polygon(
+      [{ x: hx, y: hy }, p1, p2],
+      { fill: stroke, stroke, strokeWidth: 1, selectable: true },
+    );
+  };
+  objs.push(mkHead(x1, y1, 1));   // arrow at start, pointing inward reverse
+  objs.push(mkHead(x2, y2, -1));  // arrow at end
+
+  if (label) {
+    const cx = (x1 + x2) / 2;
+    const cy = (y1 + y2) / 2;
+    // Place label slightly "above" the line (perpendicular offset)
+    const off = 14 + strokeWidth;
+    // Choose the side that goes "up" on screen
+    const side = py < 0 ? 1 : -1;
+    const lx = cx + px * off * side;
+    const ly = cy + py * off * side;
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    // Keep text upright (avoid upside-down)
+    const textAngle = angle > 90 || angle < -90 ? angle + 180 : angle;
+    const text = new fabric.Text(label, {
+      left: lx,
+      top: ly,
+      fontSize: 16,
+      fontWeight: "bold",
+      fill: stroke,
+      fontFamily: "Inter, system-ui, sans-serif",
+      originX: "center",
+      originY: "center",
+      angle: textAngle,
+      backgroundColor: "rgba(255,255,255,0.85)",
+      selectable: true,
+    });
+    objs.push(text);
+  }
+
+  return objs;
+}
+
 /**
  * Detect if the just-drawn freehand path is essentially:
- * - a straight line (replace with perfect line)
+ * - a straight line (replace with perfect axis-snapped line + optional dimension)
  * - a closed circle/ellipse (replace with ellipse)
  * - a closed rectangle (replace with rect)
- * Otherwise leave the path as-is.
  */
-function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
-  // Extract points from the SVG-style path data
+function recognizeShape(
+  canvas: fabric.Canvas,
+  path: fabric.Path,
+  opts: { dimension: boolean },
+) {
   const pts: { x: number; y: number }[] = [];
   const data = (path.path as unknown as Array<(string | number)[]>) ?? [];
   for (const seg of data) {
@@ -74,15 +157,14 @@ function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
   const minY = Math.min(...ys), maxY = Math.max(...ys);
   const w = maxX - minX, h = maxY - minY;
   const diag = Math.hypot(w, h);
-  if (diag < 30) return false; // too small, leave alone
+  if (diag < 30) return false;
 
   const closed = Math.hypot(first.x - last.x, first.y - last.y) < diag * 0.25;
   const stroke = (path.stroke as string) || "#000000";
   const strokeWidth = path.strokeWidth ?? 3;
 
-  // --- 1. Straight line: short, not closed, all points fit a line tightly ---
+  // --- Straight line: not closed, points fit a chord tightly ---
   if (!closed) {
-    // Distance of each point from the chord first→last
     const dx = last.x - first.x;
     const dy = last.y - first.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -92,39 +174,42 @@ function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
       if (dev > maxDev) maxDev = dev;
     }
     if (maxDev < Math.max(8, len * 0.05)) {
-      const line = new fabric.Line([first.x, first.y, last.x, last.y], {
-        stroke,
-        strokeWidth,
-        strokeLineCap: "round",
-        selectable: true,
-      });
+      // Snap to nearest axis (0, 45, 90, …)
+      const snapped = snapAngle(dx, dy);
+      const x2 = first.x + snapped.dx;
+      const y2 = first.y + snapped.dy;
       canvas.remove(path);
-      canvas.add(line);
+      if (opts.dimension) {
+        // Use snapped length as the cm value (rounded), label centered.
+        const label = `${Math.round(snapped.len)} cm`;
+        const objs = buildDimensionGroup(first.x, first.y, x2, y2, stroke, strokeWidth, label);
+        objs.forEach((o) => canvas.add(o));
+      } else {
+        const line = new fabric.Line([first.x, first.y, x2, y2], {
+          stroke, strokeWidth, strokeLineCap: "round", selectable: true,
+        });
+        canvas.add(line);
+      }
       canvas.requestRenderAll();
       return true;
     }
     return false;
   }
 
-  // Closed shape — try rectangle, then ellipse
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
 
-  // Rectangle test: each point should be near one of the 4 edges of bbox
   let rectInliers = 0;
   const tol = Math.max(10, Math.min(w, h) * 0.1);
   for (const p of pts) {
     const dEdge = Math.min(
-      Math.abs(p.x - minX),
-      Math.abs(p.x - maxX),
-      Math.abs(p.y - minY),
-      Math.abs(p.y - maxY),
+      Math.abs(p.x - minX), Math.abs(p.x - maxX),
+      Math.abs(p.y - minY), Math.abs(p.y - maxY),
     );
     if (dEdge < tol) rectInliers++;
   }
   const rectScore = rectInliers / pts.length;
 
-  // Ellipse test: each point should be near the bbox-fitted ellipse
   const rx = w / 2, ry = h / 2;
   let ellipseInliers = 0;
   for (const p of pts) {
@@ -133,18 +218,10 @@ function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
   }
   const ellipseScore = ellipseInliers / pts.length;
 
-  // Strong rectangle signal AND aspect within a reasonable range
   if (rectScore > 0.78 && rectScore >= ellipseScore) {
     const rect = new fabric.Rect({
-      left: minX,
-      top: minY,
-      width: w,
-      height: h,
-      fill: "transparent",
-      stroke,
-      strokeWidth,
-      strokeLineJoin: "round",
-      selectable: true,
+      left: minX, top: minY, width: w, height: h,
+      fill: "transparent", stroke, strokeWidth, strokeLineJoin: "round", selectable: true,
     });
     canvas.remove(path);
     canvas.add(rect);
@@ -154,14 +231,8 @@ function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
 
   if (ellipseScore > 0.7) {
     const ellipse = new fabric.Ellipse({
-      left: minX,
-      top: minY,
-      rx,
-      ry,
-      fill: "transparent",
-      stroke,
-      strokeWidth,
-      selectable: true,
+      left: minX, top: minY, rx, ry,
+      fill: "transparent", stroke, strokeWidth, selectable: true,
     });
     canvas.remove(path);
     canvas.add(ellipse);
@@ -170,6 +241,17 @@ function recognizeShape(canvas: fabric.Canvas, path: fabric.Path) {
   }
 
   return false;
+}
+
+/** Auto-format a label: "180" → "180 cm"; existing units kept as-is. */
+function formatLabel(raw: string): string {
+  const v = raw.trim();
+  if (!v) return "";
+  // If already contains a unit (cm, mm, m, ft, in, "), keep as-is
+  if (/[a-zA-Z"']/.test(v)) return v;
+  // Pure numeric (or decimal) → append cm
+  if (/^\d+(\.\d+)?$/.test(v)) return `${v} cm`;
+  return v;
 }
 
 export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadProps) => {
@@ -182,12 +264,25 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
   const [size, setSize] = useState<number>(PEN_SIZES[1]);
   const [saving, setSaving] = useState(false);
 
+  // Text input dialog state — guarantees the mobile keyboard appears.
+  const [textOpen, setTextOpen] = useState(false);
+  const [textValue, setTextValue] = useState("");
+  const textInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingPoint = useRef<{ x: number; y: number } | null>(null);
+
+  // Refs so canvas event handlers always read the latest tool/color/size
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const sizeRef = useRef(size);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+  useEffect(() => { colorRef.current = color; }, [color]);
+  useEffect(() => { sizeRef.current = size; }, [size]);
+
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
   const isRestoring = useRef(false);
-  const [, force] = useState(0); // re-render to refresh undo/redo button enabled state
+  const [, force] = useState(0);
 
-  // Snapshot current canvas state so we can undo to it later.
   const snapshot = useCallback(() => {
     if (!fabricRef.current || isRestoring.current) return;
     const json = JSON.stringify(fabricRef.current.toJSON());
@@ -204,9 +299,6 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     let raf = 0;
     let cancelled = false;
 
-    // Wait until the dialog content has actually been laid out and the
-    // canvas + wrapper have non-zero dimensions, otherwise Fabric creates
-    // a 0x0 canvas and no strokes are visible.
     const init = () => {
       if (cancelled) return;
       const wrap = wrapRef.current;
@@ -230,49 +322,49 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         enableRetinaScaling: true,
         allowTouchScrolling: false,
       });
-      canvas.freeDrawingBrush.color = color;
-      canvas.freeDrawingBrush.width = size;
+      canvas.freeDrawingBrush.color = colorRef.current;
+      canvas.freeDrawingBrush.width = sizeRef.current;
+      // Smoother strokes (less shakiness) — PencilBrush in fabric 5 supports decimate
+      (canvas.freeDrawingBrush as unknown as { decimate?: number }).decimate = 4;
       fabricRef.current = canvas;
 
-    // Optional: load existing PNG as background so user can iterate
-    if (initialUrl) {
-      fabric.Image.fromURL(
-        initialUrl,
-        (img) => {
-          if (!img || !canvas) return;
-          const scale = Math.min(w / (img.width ?? w), h / (img.height ?? h), 1);
-          img.set({
-            scaleX: scale,
-            scaleY: scale,
-            selectable: false,
-            evented: false,
-            left: ((w - (img.width ?? w) * scale) / 2),
-            top: ((h - (img.height ?? h) * scale) / 2),
-          });
-          canvas.add(img);
-          canvas.sendToBack(img);
-          canvas.requestRenderAll();
-          // Push initial snapshot AFTER background load so undo can return to it
-          snapshot();
-        },
-        { crossOrigin: "anonymous" },
-      );
-    } else {
-      snapshot();
-    }
+      if (initialUrl) {
+        fabric.Image.fromURL(
+          initialUrl,
+          (img) => {
+            if (!img || !canvas) return;
+            const scale = Math.min(w / (img.width ?? w), h / (img.height ?? h), 1);
+            img.set({
+              scaleX: scale,
+              scaleY: scale,
+              selectable: false,
+              evented: false,
+              left: ((w - (img.width ?? w) * scale) / 2),
+              top: ((h - (img.height ?? h) * scale) / 2),
+            });
+            canvas.add(img);
+            canvas.sendToBack(img);
+            canvas.requestRenderAll();
+            snapshot();
+          },
+          { crossOrigin: "anonymous" },
+        );
+      } else {
+        snapshot();
+      }
 
-    // Path created → recognize shape → snapshot
-    canvas.on("path:created", (e: fabric.IEvent & { path?: fabric.Path }) => {
-      const path = e.path;
-      if (path && canvas) recognizeShape(canvas, path);
-      snapshot();
-    });
-    canvas.on("object:modified", () => snapshot());
+      canvas.on("path:created", (e: fabric.IEvent & { path?: fabric.Path }) => {
+        const path = e.path;
+        if (path && canvas) {
+          recognizeShape(canvas, path, { dimension: toolRef.current === "dimension" });
+        }
+        snapshot();
+      });
+      canvas.on("object:modified", () => snapshot());
     };
 
     raf = requestAnimationFrame(init);
 
-    // Resize handling
     const onResize = () => {
       if (!wrapRef.current || !fabricRef.current) return;
       fabricRef.current.setDimensions({
@@ -299,7 +391,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
   useEffect(() => {
     const c = fabricRef.current;
     if (!c) return;
-    if (tool === "draw") {
+    if (tool === "draw" || tool === "dimension") {
       c.isDrawingMode = true;
       c.selection = false;
       c.freeDrawingBrush.color = color;
@@ -316,37 +408,63 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     }
   }, [tool, color, size]);
 
-  // Eraser: click an object to delete it
+  // Eraser click + Text-tool tap → open text input dialog (so mobile keyboard appears)
   useEffect(() => {
     const c = fabricRef.current;
     if (!c) return;
     const onDown = (e: fabric.IEvent) => {
-      if (tool === "erase" && e.target) {
+      if (toolRef.current === "erase" && e.target) {
         c.remove(e.target);
         c.requestRenderAll();
         snapshot();
-      } else if (tool === "text" && !e.target) {
+      } else if (toolRef.current === "text" && !e.target) {
         const p = c.getPointer(e.e);
-        const text = new fabric.IText("Text", {
-          left: p.x,
-          top: p.y,
-          fontSize: 22,
-          fill: color,
-          fontFamily: "Inter, system-ui, sans-serif",
-          editable: true,
-        });
-        c.add(text);
-        c.setActiveObject(text);
-        text.enterEditing();
-        text.selectAll();
-        snapshot();
+        pendingPoint.current = { x: p.x, y: p.y };
+        setTextValue("");
+        setTextOpen(true);
       }
     };
     c.on("mouse:down", onDown);
     return () => {
       c.off("mouse:down", onDown);
     };
-  }, [tool, color, snapshot]);
+  }, [snapshot]);
+
+  // Focus the text input as soon as its dialog opens (triggers mobile keyboard)
+  useEffect(() => {
+    if (!textOpen) return;
+    const t = setTimeout(() => textInputRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, [textOpen]);
+
+  const commitText = () => {
+    const c = fabricRef.current;
+    const pt = pendingPoint.current;
+    const formatted = formatLabel(textValue);
+    if (!c || !pt || !formatted) {
+      setTextOpen(false);
+      pendingPoint.current = null;
+      return;
+    }
+    const text = new fabric.Text(formatted, {
+      left: pt.x,
+      top: pt.y,
+      fontSize: 20,
+      fontWeight: "bold",
+      fill: colorRef.current,
+      fontFamily: "Inter, system-ui, sans-serif",
+      backgroundColor: "rgba(255,255,255,0.85)",
+      originX: "center",
+      originY: "center",
+      selectable: true,
+    });
+    c.add(text);
+    c.setActiveObject(text);
+    c.requestRenderAll();
+    snapshot();
+    setTextOpen(false);
+    pendingPoint.current = null;
+  };
 
   const undo = () => {
     const c = fabricRef.current;
@@ -389,12 +507,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     if (!c) return;
     setSaving(true);
     try {
-      // Export at 2x DPR so the PNG looks crisp in the PDF
-      const dataUrl = c.toDataURL({
-        format: "png",
-        multiplier: 2,
-        quality: 1,
-      });
+      const dataUrl = c.toDataURL({ format: "png", multiplier: 2, quality: 1 });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `sketch-${Date.now()}.png`, { type: "image/png" });
       const compressed = await compressImage(file);
@@ -425,19 +538,25 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         <DialogHeader className="shrink-0 border-b border-border px-3 py-2 sm:px-4">
           <DialogTitle className="text-base">Measurement Sketch</DialogTitle>
           <DialogDescription className="sr-only">
-            Draw measurements with finger, stylus, or mouse. Rough lines and shapes auto-perfect.
+            Draw measurements with finger, stylus, or mouse. Lines auto-snap to axes;
+            in dimension mode, a clean cm label and arrowheads are added automatically.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Toolbar */}
-        <div className="shrink-0 border-b border-border bg-muted/40 px-2 py-2">
+        {/* Canvas area */}
+        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white">
+          <canvas ref={canvasElRef} className="block touch-none" />
+        </div>
+
+        {/* Bottom toolbar — easier to reach with thumbs on mobile */}
+        <div className="shrink-0 border-t border-border bg-muted/40 px-2 py-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Tools */}
             <div className="flex gap-1 rounded-md bg-background p-0.5 shadow-sm">
               <Button
                 size="sm"
                 variant={tool === "draw" ? "default" : "ghost"}
-                className="h-9 px-2.5"
+                className="h-10 px-3"
                 onClick={() => setTool("draw")}
                 title="Pen"
               >
@@ -445,8 +564,17 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
               </Button>
               <Button
                 size="sm"
+                variant={tool === "dimension" ? "default" : "ghost"}
+                className="h-10 px-3"
+                onClick={() => setTool("dimension")}
+                title="Dimension line (auto arrows + cm)"
+              >
+                <Ruler className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
                 variant={tool === "text" ? "default" : "ghost"}
-                className="h-9 px-2.5"
+                className="h-10 px-3"
                 onClick={() => setTool("text")}
                 title="Text"
               >
@@ -455,7 +583,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
               <Button
                 size="sm"
                 variant={tool === "erase" ? "default" : "ghost"}
-                className="h-9 px-2.5"
+                className="h-10 px-3"
                 onClick={() => setTool("erase")}
                 title="Erase (tap an object)"
               >
@@ -470,7 +598,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
                   key={c.value}
                   type="button"
                   onClick={() => setColor(c.value)}
-                  className={`h-7 w-7 rounded-full border-2 transition-all ${
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${
                     color === c.value ? "border-foreground scale-110" : "border-transparent"
                   }`}
                   style={{ backgroundColor: c.value }}
@@ -487,7 +615,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
                   key={s}
                   type="button"
                   onClick={() => setSize(s)}
-                  className={`flex h-7 w-7 items-center justify-center rounded-md border ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border ${
                     size === s ? "border-foreground bg-muted" : "border-transparent"
                   }`}
                   aria-label={`Pen size ${s}`}
@@ -506,8 +634,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-9 px-2.5"
-                onClick={undo}
+                className="h-10 px-3"
+                onMouseDown={(e) => { e.preventDefault(); undo(); }}
+                onTouchStart={(e) => { e.preventDefault(); undo(); }}
                 disabled={undoStack.current.length <= 1}
                 title="Undo"
               >
@@ -516,8 +645,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-9 px-2.5"
-                onClick={redo}
+                className="h-10 px-3"
+                onMouseDown={(e) => { e.preventDefault(); redo(); }}
+                onTouchStart={(e) => { e.preventDefault(); redo(); }}
                 disabled={redoStack.current.length === 0}
                 title="Redo"
               >
@@ -528,7 +658,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto h-9 px-2.5 text-destructive hover:text-destructive"
+              className="ml-auto h-10 px-3 text-destructive hover:text-destructive"
               onClick={clearAll}
               title="Clear all"
             >
@@ -536,15 +666,8 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
             </Button>
           </div>
           <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
-            Tip: rough lines snap straight, rough circles & rectangles auto-perfect.
+            Tip: lines auto-snap to nearest axis. Use the ruler tool to add arrowheads + cm label automatically.
           </p>
-        </div>
-
-        {/* Canvas area — `touch-action: none` is applied to the <canvas> only,
-            so touch events become pointer events Fabric can read instead of
-            scrolling/zooming the page. */}
-        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white">
-          <canvas ref={canvasElRef} className="block touch-none" />
         </div>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-3 py-2 sm:flex-row sm:px-4 sm:py-3">
@@ -557,6 +680,33 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Text-input dialog: ensures the mobile keyboard pops up reliably */}
+      <Dialog open={textOpen} onOpenChange={setTextOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add label</DialogTitle>
+            <DialogDescription>
+              Type a number (e.g. <strong>180</strong>) — we'll format it as <strong>180 cm</strong> automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            ref={textInputRef}
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitText(); } }}
+            placeholder="e.g. 180 or 180 cm"
+            inputMode="text"
+            autoFocus
+          />
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button variant="outline" onClick={() => { setTextOpen(false); pendingPoint.current = null; }}>
+              Cancel
+            </Button>
+            <Button onClick={commitText}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
