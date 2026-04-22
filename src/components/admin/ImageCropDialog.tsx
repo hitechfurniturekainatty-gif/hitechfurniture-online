@@ -74,6 +74,25 @@ export const ImageCropDialog = ({
   const [aspect, setAspect] = useState<number | undefined>(undefined);
   const [pixels, setPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  // Manual mode: free aspect + user-controlled crop box size (in screen px).
+  const [manual, setManual] = useState(true);
+  const [boxW, setBoxW] = useState(260);
+  const [boxH, setBoxH] = useState(260);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+
+  // Track stage size so manual sliders never exceed the visible area.
+  useEffect(() => {
+    if (!stageRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect;
+      setStageSize({ w: r.width, h: r.height });
+      setBoxW((w) => Math.min(w || r.width * 0.7, r.width - 16));
+      setBoxH((h) => Math.min(h || r.height * 0.7, r.height - 16));
+    });
+    ro.observe(stageRef.current);
+    return () => ro.disconnect();
+  }, [open]);
 
   // Build / refresh object URL whenever the source file changes.
   useEffect(() => {
