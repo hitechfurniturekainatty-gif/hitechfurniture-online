@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
@@ -199,30 +199,47 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
 
   // Initialize Fabric canvas when the dialog opens.
   useEffect(() => {
-    if (!open || !canvasElRef.current || !wrapRef.current) return;
-    const wrap = wrapRef.current;
-    const w = wrap.clientWidth;
-    const h = wrap.clientHeight;
+    if (!open) return;
+    let canvas: fabric.Canvas | null = null;
+    let raf = 0;
+    let cancelled = false;
 
-    const canvas = new fabric.Canvas(canvasElRef.current, {
-      width: w,
-      height: h,
-      backgroundColor: "#ffffff",
-      isDrawingMode: true,
-      enableRetinaScaling: true,
-      // Speed: skip multi-touch zoom/pan for now
-      allowTouchScrolling: false,
-    });
-    canvas.freeDrawingBrush.color = color;
-    canvas.freeDrawingBrush.width = size;
-    fabricRef.current = canvas;
+    // Wait until the dialog content has actually been laid out and the
+    // canvas + wrapper have non-zero dimensions, otherwise Fabric creates
+    // a 0x0 canvas and no strokes are visible.
+    const init = () => {
+      if (cancelled) return;
+      const wrap = wrapRef.current;
+      const el = canvasElRef.current;
+      if (!wrap || !el) {
+        raf = requestAnimationFrame(init);
+        return;
+      }
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      if (w < 10 || h < 10) {
+        raf = requestAnimationFrame(init);
+        return;
+      }
+
+      canvas = new fabric.Canvas(el, {
+        width: w,
+        height: h,
+        backgroundColor: "#ffffff",
+        isDrawingMode: true,
+        enableRetinaScaling: true,
+        allowTouchScrolling: false,
+      });
+      canvas.freeDrawingBrush.color = color;
+      canvas.freeDrawingBrush.width = size;
+      fabricRef.current = canvas;
 
     // Optional: load existing PNG as background so user can iterate
     if (initialUrl) {
       fabric.Image.fromURL(
         initialUrl,
         (img) => {
-          if (!img) return;
+          if (!img || !canvas) return;
           const scale = Math.min(w / (img.width ?? w), h / (img.height ?? h), 1);
           img.set({
             scaleX: scale,
@@ -247,10 +264,13 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     // Path created → recognize shape → snapshot
     canvas.on("path:created", (e: fabric.IEvent & { path?: fabric.Path }) => {
       const path = e.path;
-      if (path) recognizeShape(canvas, path);
+      if (path && canvas) recognizeShape(canvas, path);
       snapshot();
     });
     canvas.on("object:modified", () => snapshot());
+    };
+
+    raf = requestAnimationFrame(init);
 
     // Resize handling
     const onResize = () => {
@@ -264,8 +284,10 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     window.addEventListener("resize", onResize);
 
     return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
-      canvas.dispose();
+      if (canvas) canvas.dispose();
       fabricRef.current = null;
       undoStack.current = [];
       redoStack.current = [];
@@ -402,6 +424,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-[88vh] sm:max-w-4xl sm:rounded-lg">
         <DialogHeader className="shrink-0 border-b border-border px-3 py-2 sm:px-4">
           <DialogTitle className="text-base">Measurement Sketch</DialogTitle>
+          <DialogDescription className="sr-only">
+            Draw measurements with finger, stylus, or mouse. Rough lines and shapes auto-perfect.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Toolbar */}
@@ -515,9 +540,11 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
           </p>
         </div>
 
-        {/* Canvas area */}
-        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white touch-none">
-          <canvas ref={canvasElRef} className="block" />
+        {/* Canvas area — `touch-action: none` is applied to the <canvas> only,
+            so touch events become pointer events Fabric can read instead of
+            scrolling/zooming the page. */}
+        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white">
+          <canvas ref={canvasElRef} className="block touch-none" />
         </div>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-3 py-2 sm:flex-row sm:px-4 sm:py-3">
