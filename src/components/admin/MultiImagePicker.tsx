@@ -230,6 +230,16 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
           ))}
         </div>
       )}
+
+      <ImageCropDialog
+        file={cropQueue[0] ?? null}
+        open={cropQueue.length > 0}
+        onCancel={() => setCropQueue((q) => q.slice(1))}
+        onConfirm={(f) => {
+          startUpload(f);
+          setCropQueue((q) => q.slice(1));
+        }}
+      />
     </div>
   );
 });
