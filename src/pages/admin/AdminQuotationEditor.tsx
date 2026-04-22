@@ -25,7 +25,9 @@ import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
   Package, HardHat, Send, FileText, Search, ShoppingCart,
 } from "lucide-react";
-import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
+// PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
+// of blocking initial page paint on mobile.
+const loadPdfLib = () => import("@/lib/quotationPdf");
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
