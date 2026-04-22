@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/imageCompression";
+import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
 
 /**
  * Single image picker with Upload / Camera / URL tabs.
@@ -32,6 +33,8 @@ export const SingleImagePicker = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
+  // Pending file awaiting crop confirmation. When set, the crop dialog is open.
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   // When the parent commits the real URL, drop the temporary blob preview.
   useEffect(() => {
@@ -85,9 +88,10 @@ export const SingleImagePicker = ({
 
   const onDrop = useCallback(
     (files: File[]) => {
-      if (files[0]) uploadFile(files[0]);
+      // Open crop dialog first — user can still hit "Use as-is" to skip.
+      if (files[0]) setCropFile(files[0]);
     },
-    [uploadFile]
+    []
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -111,8 +115,22 @@ export const SingleImagePicker = ({
 
   // Show committed value, OR live preview while uploading in background
   const displayUrl = value || preview;
+
+  const cropDialog = (
+    <ImageCropDialog
+      file={cropFile}
+      open={!!cropFile}
+      onCancel={() => setCropFile(null)}
+      onConfirm={(f) => {
+        setCropFile(null);
+        uploadFile(f);
+      }}
+    />
+  );
+
   if (displayUrl) {
     return (
+      <>
       <div className={`relative overflow-hidden rounded-md border border-border bg-muted ${compact ? "h-20 w-20" : "h-32 w-full"}`}>
         <img src={displayUrl} alt={label || "image"} loading="lazy" decoding="async" className={`h-full w-full object-contain p-1 ${uploading ? "opacity-70" : ""}`} />
         {uploading && (
@@ -137,10 +155,13 @@ export const SingleImagePicker = ({
           </button>
         )}
       </div>
+      {cropDialog}
+      </>
     );
   }
 
   return (
+    <>
     <div className="space-y-2">
       {label && <p className="text-xs font-medium text-muted-foreground">{label}</p>}
       <Tabs defaultValue="upload">
@@ -169,7 +190,7 @@ export const SingleImagePicker = ({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) uploadFile(f);
+              if (f) setCropFile(f);
               e.target.value = "";
             }}
           />
@@ -192,5 +213,7 @@ export const SingleImagePicker = ({
         </TabsContent>
       </Tabs>
     </div>
+    {cropDialog}
+    </>
   );
 };
