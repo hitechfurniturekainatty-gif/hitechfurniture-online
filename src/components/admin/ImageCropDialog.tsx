@@ -91,15 +91,11 @@ export const ImageCropDialog = ({
   const onComplete = useCallback((_: Area, areaPixels: Area) => setPixels(areaPixels), []);
 
   const close = () => {
-    if (src) URL.revokeObjectURL(src);
-    setSrc(null);
     onCancel();
   };
 
   const useAsIs = () => {
     if (!file) return;
-    if (src) URL.revokeObjectURL(src);
-    setSrc(null);
     onConfirm(file);
   };
 
@@ -108,8 +104,6 @@ export const ImageCropDialog = ({
     setBusy(true);
     try {
       const out = await getCroppedFile(src, pixels, rotation, file.name);
-      URL.revokeObjectURL(src);
-      setSrc(null);
       onConfirm(out);
     } finally {
       setBusy(false);
