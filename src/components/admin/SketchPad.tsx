@@ -424,6 +424,9 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-[88vh] sm:max-w-4xl sm:rounded-lg">
         <DialogHeader className="shrink-0 border-b border-border px-3 py-2 sm:px-4">
           <DialogTitle className="text-base">Measurement Sketch</DialogTitle>
+          <DialogDescription className="sr-only">
+            Draw measurements with finger, stylus, or mouse. Rough lines and shapes auto-perfect.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Toolbar */}
@@ -537,9 +540,11 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
           </p>
         </div>
 
-        {/* Canvas area */}
-        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white touch-none">
-          <canvas ref={canvasElRef} className="block" />
+        {/* Canvas area — `touch-action: none` is applied to the <canvas> only,
+            so touch events become pointer events Fabric can read instead of
+            scrolling/zooming the page. */}
+        <div ref={wrapRef} className="relative flex-1 overflow-hidden bg-white">
+          <canvas ref={canvasElRef} className="block touch-none" />
         </div>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-3 py-2 sm:flex-row sm:px-4 sm:py-3">
