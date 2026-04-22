@@ -23,13 +23,15 @@ import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
-  Package, HardHat, Send, FileText, Search,
+  Package, HardHat, Send, FileText, Search, ShoppingCart,
 } from "lucide-react";
 import { generateQuotationPdf, generateJobWorkPdf } from "@/lib/quotationPdf";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
+import { type DocType, isPO } from "@/lib/docType";
+import { Switch } from "@/components/ui/switch";
 
 type QItem = {
   id: string;
