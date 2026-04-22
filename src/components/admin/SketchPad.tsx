@@ -324,9 +324,8 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       });
       canvas.freeDrawingBrush.color = colorRef.current;
       canvas.freeDrawingBrush.width = sizeRef.current;
-      // Smoother strokes (less shakiness)
-      // @ts-expect-error - decimate is supported by PencilBrush in fabric 5
-      canvas.freeDrawingBrush.decimate = 4;
+      // Smoother strokes (less shakiness) — PencilBrush in fabric 5 supports decimate
+      (canvas.freeDrawingBrush as unknown as { decimate?: number }).decimate = 4;
       fabricRef.current = canvas;
 
       if (initialUrl) {
