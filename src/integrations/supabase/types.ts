@@ -14,6 +14,175 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_complaints: {
+        Row: {
+          complaint_code: string
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_name: string
+          customer_phone: string | null
+          customer_place: string
+          delivery_place: string | null
+          delivery_route_id: string | null
+          id: string
+          issue_description: string
+          notes: string | null
+          original_quotation_code: string | null
+          original_quotation_id: string | null
+          paid_parts_amount: number
+          paid_parts_description: string | null
+          photos: string | null
+          service_quotation_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          complaint_code: string
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          customer_place: string
+          delivery_place?: string | null
+          delivery_route_id?: string | null
+          id?: string
+          issue_description: string
+          notes?: string | null
+          original_quotation_code?: string | null
+          original_quotation_id?: string | null
+          paid_parts_amount?: number
+          paid_parts_description?: string | null
+          photos?: string | null
+          service_quotation_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          complaint_code?: string
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          customer_place?: string
+          delivery_place?: string | null
+          delivery_route_id?: string | null
+          id?: string
+          issue_description?: string
+          notes?: string | null
+          original_quotation_code?: string | null
+          original_quotation_id?: string | null
+          paid_parts_amount?: number
+          paid_parts_description?: string | null
+          photos?: string | null
+          service_quotation_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_complaints_delivery_route_id_fkey"
+            columns: ["delivery_route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_original_quotation_id_fkey"
+            columns: ["original_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_complaints_service_quotation_id_fkey"
+            columns: ["service_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_services: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_name: string
+          customer_phone: string | null
+          customer_place: string
+          delivery_place: string | null
+          delivery_route_id: string | null
+          estimated_cost: number
+          id: string
+          item_description: string
+          notes: string | null
+          photos: string | null
+          quotation_id: string | null
+          service_code: string
+          status: string
+          updated_at: string
+          work_needed: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          customer_place: string
+          delivery_place?: string | null
+          delivery_route_id?: string | null
+          estimated_cost?: number
+          id?: string
+          item_description: string
+          notes?: string | null
+          photos?: string | null
+          quotation_id?: string | null
+          service_code: string
+          status?: string
+          updated_at?: string
+          work_needed?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          customer_place?: string
+          delivery_place?: string | null
+          delivery_route_id?: string | null
+          estimated_cost?: number
+          id?: string
+          item_description?: string
+          notes?: string | null
+          photos?: string | null
+          quotation_id?: string | null
+          service_code?: string
+          status?: string
+          updated_at?: string
+          work_needed?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_services_delivery_route_id_fkey"
+            columns: ["delivery_route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_services_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_routes: {
         Row: {
           color: string
@@ -58,9 +227,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_urgent: boolean
           item_ids: string[]
+          job_type: string
           notes: string | null
-          quotation_id: string
+          quotation_id: string | null
+          source_complaint_id: string | null
+          source_service_id: string | null
           status: string
           status_updated_at: string
           updated_at: string
@@ -70,9 +243,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_urgent?: boolean
           item_ids?: string[]
+          job_type?: string
           notes?: string | null
-          quotation_id: string
+          quotation_id?: string | null
+          source_complaint_id?: string | null
+          source_service_id?: string | null
           status?: string
           status_updated_at?: string
           updated_at?: string
@@ -82,9 +259,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_urgent?: boolean
           item_ids?: string[]
+          job_type?: string
           notes?: string | null
-          quotation_id?: string
+          quotation_id?: string | null
+          source_complaint_id?: string | null
+          source_service_id?: string | null
           status?: string
           status_updated_at?: string
           updated_at?: string
@@ -96,6 +277,20 @@ export type Database = {
             columns: ["quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_orders_source_complaint_id_fkey"
+            columns: ["source_complaint_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_work_orders_source_service_id_fkey"
+            columns: ["source_service_id"]
+            isOneToOne: false
+            referencedRelation: "customer_services"
             referencedColumns: ["id"]
           },
           {
@@ -434,6 +629,9 @@ export type Database = {
           party_place: string
           quotation_date: string
           quotation_id: string
+          service_type: string
+          source_complaint_id: string | null
+          source_service_id: string | null
           source_task_id: string | null
           status: string
           subtotal: number
@@ -460,6 +658,9 @@ export type Database = {
           party_place: string
           quotation_date?: string
           quotation_id: string
+          service_type?: string
+          source_complaint_id?: string | null
+          source_service_id?: string | null
           source_task_id?: string | null
           status?: string
           subtotal?: number
@@ -486,6 +687,9 @@ export type Database = {
           party_place?: string
           quotation_date?: string
           quotation_id?: string
+          service_type?: string
+          source_complaint_id?: string | null
+          source_service_id?: string | null
           source_task_id?: string | null
           status?: string
           subtotal?: number
@@ -499,6 +703,20 @@ export type Database = {
             columns: ["delivery_route_id"]
             isOneToOne: false
             referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_source_complaint_id_fkey"
+            columns: ["source_complaint_id"]
+            isOneToOne: false
+            referencedRelation: "customer_complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_source_service_id_fkey"
+            columns: ["source_service_id"]
+            isOneToOne: false
+            referencedRelation: "customer_services"
             referencedColumns: ["id"]
           },
         ]
@@ -740,11 +958,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_complaint_id: { Args: never; Returns: string }
       next_po_id: { Args: { _party: string; _place: string }; Returns: string }
       next_quotation_id: {
         Args: { _party: string; _place: string }
         Returns: string
       }
+      next_service_id: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "staff" | "measurement_staff" | "delivery"

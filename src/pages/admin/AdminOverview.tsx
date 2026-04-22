@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ const AdminOverview = () => {
   const [stats, setStats] = useState({
     products: 0, categories: 0, lowStock: 0,
     quotations: 0, drafts: 0, myTasks: 0, workers: 0,
+    openServices: 0, openComplaints: 0,
   });
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
@@ -29,6 +30,8 @@ const AdminOverview = () => {
         supabase.from("quotations").select("id", { count: "exact", head: true }).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", "draft").then((r) => r),
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true).then((r) => r),
+        supabase.from("customer_services").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,cancelled,converted)").then((r) => r),
+        supabase.from("customer_complaints").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,cancelled)").then((r) => r),
       ];
       if (user?.id && isMeasurementStaff) {
         queries.push(
@@ -44,7 +47,9 @@ const AdminOverview = () => {
         quotations: r[3].count ?? 0,
         drafts: r[4].count ?? 0,
         workers: r[5].count ?? 0,
-        myTasks: r[6]?.count ?? 0,
+        openServices: r[6].count ?? 0,
+        openComplaints: r[7].count ?? 0,
+        myTasks: r[8]?.count ?? 0,
       });
 
       // Status breakdown for office staff
@@ -75,6 +80,8 @@ const AdminOverview = () => {
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
     isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=draft" },
+    isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
+    isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
     isOfficeStaff && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
     isOfficeStaff && { label: "Products", value: stats.products, icon: Package, to: "/admin/products" },
     isOfficeStaff && { label: "Categories", value: stats.categories, icon: FolderTree, to: "/admin/categories" },
@@ -132,6 +139,7 @@ const AdminOverview = () => {
           <CardHeader><CardTitle className="font-display text-xl">Quick actions</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button asChild><Link to="/admin/quotations"><FileText className="mr-2 h-4 w-4" />New quotation</Link></Button>
+            <Button asChild variant="outline"><Link to="/admin/services"><LifeBuoy className="mr-2 h-4 w-4" />Service & Complaint Hub</Link></Button>
             <Button asChild variant="outline"><Link to="/admin/measurement-tasks"><Ruler className="mr-2 h-4 w-4" />Assign measurement</Link></Button>
             <Button asChild variant="outline"><Link to="/admin/workers"><HardHat className="mr-2 h-4 w-4" />Manage workers</Link></Button>
             {isAdmin && <Button asChild variant="outline"><Link to="/admin/staff"><Users className="mr-2 h-4 w-4" />Staff management</Link></Button>}
