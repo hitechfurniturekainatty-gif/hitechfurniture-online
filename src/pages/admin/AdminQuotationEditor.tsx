@@ -504,6 +504,7 @@ const AdminQuotationEditor = () => {
     const data = buildPdfData();
     if (!data) return null;
     try {
+      const { generateQuotationPdf } = await loadPdfLib();
       const blob = await generateQuotationPdf(data);
       return { blob, filename: `${data.quotation_id}.pdf` };
     } catch (e: any) {
