@@ -41,6 +41,7 @@ type Q = {
   created_at: string;
   created_by: string | null;
   document_type: DocType;
+  service_type?: string | null;
 };
 
 const AdminQuotations = () => {
@@ -98,7 +99,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
@@ -310,6 +311,16 @@ const AdminQuotations = () => {
                   {isPO(q.document_type) ? "PO" : "Quotation"}
                 </Badge>
                 <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
+                {q.service_type === "service" && (
+                  <Badge variant="outline" className="w-fit shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                    Service Request
+                  </Badge>
+                )}
+                {q.service_type === "complaint-repair" && (
+                  <Badge variant="outline" className="w-fit shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                    Complaint Repair
+                  </Badge>
+                )}
               </div>
               <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
               <p className="text-xs text-muted-foreground">
