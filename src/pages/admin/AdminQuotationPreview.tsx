@@ -237,9 +237,9 @@ const AdminQuotationPreview = () => {
       <div className="mb-3 flex items-center justify-between gap-2">
         <Button variant="outline" size="sm" onClick={handleDone} className="h-9">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          <span className="hidden sm:inline">Quotations</span>
+          <span className="hidden sm:inline">{po ? "Purchase Orders" : "Quotations"}</span>
         </Button>
-        <span className="text-xs text-muted-foreground">Digital Preview</span>
+        <span className="text-xs text-muted-foreground">{po ? "PO Preview" : "Digital Preview"}</span>
       </div>
 
       {/* Document */}
@@ -255,7 +255,9 @@ const AdminQuotationPreview = () => {
             </div>
           </div>
           <div className="text-left sm:text-right">
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">Quotation</p>
+            <p className={`text-[11px] uppercase tracking-wider ${po ? "font-bold text-blue-600" : "text-slate-500"}`}>
+              {po ? "PURCHASE ORDER" : "Quotation"}
+            </p>
             <p className="font-mono text-base font-semibold sm:text-lg">{q.quotation_id}</p>
             <p className="mt-1 text-xs text-slate-600 sm:text-sm">Date: {fmtDate(q.quotation_date)}</p>
             {q.expected_delivery_date && (
@@ -266,7 +268,7 @@ const AdminQuotationPreview = () => {
 
         {/* Party */}
         <section className="border-b border-slate-200 p-5 sm:p-8">
-          <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">Quotation For</p>
+          <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">{po ? "Worker / Supplier" : "Quotation For"}</p>
           <p className="text-base font-semibold sm:text-lg">{q.party_name}</p>
           <p className="text-sm text-slate-700">{q.party_place}</p>
           {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{q.party_address}</p>}
