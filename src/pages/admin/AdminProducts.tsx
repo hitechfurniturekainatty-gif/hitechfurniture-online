@@ -391,6 +391,7 @@ const AdminProducts = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </AdminShell>
   );
 };

@@ -385,6 +385,7 @@ const AdminCategories = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </AdminShell>
   );
 };
