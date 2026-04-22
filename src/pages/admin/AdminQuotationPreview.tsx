@@ -11,6 +11,7 @@ import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
 } from "lucide-react";
+import { isPO, type DocType } from "@/lib/docType";
 
 type QItem = {
   id: string;
@@ -43,6 +44,7 @@ type Quotation = {
   notes: string | null;
   terms: string | null;
   created_by: string | null;
+  document_type: DocType;
 };
 
 const fmtDate = (s: string | null | undefined) =>
