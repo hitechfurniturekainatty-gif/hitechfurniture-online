@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { HardHat, Loader2 } from "lucide-react";
+import { HardHat, Loader2, Eye, EyeOff } from "lucide-react";
 import { BRAND_NAME } from "@/lib/brand";
 
 const phoneToEmail = (phone: string) => `${phone.replace(/\D+/g, "")}@workers.local`;
@@ -17,6 +17,7 @@ const WorkerLogin = () => {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   useEffect(() => {
     // If already signed in as worker → go to portal
@@ -85,16 +86,27 @@ const WorkerLogin = () => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pin">PIN</Label>
-                <Input
-                  id="pin"
-                  type="password"
-                  inputMode="numeric"
-                  autoComplete="current-password"
-                  placeholder="4–6 digits"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  maxLength={6}
-                />
+                <div className="relative">
+                  <Input
+                    id="pin"
+                    type={showPin ? "text" : "password"}
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    placeholder="4–6 digits"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    maxLength={6}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((v) => !v)}
+                    aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
