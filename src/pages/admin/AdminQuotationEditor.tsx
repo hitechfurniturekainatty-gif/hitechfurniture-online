@@ -513,11 +513,13 @@ const AdminQuotationEditor = () => {
     if (!data) return null;
     try {
       const { generateQuotationPdf } = await loadPdfLib();
-      const blob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
-      return { blob, filename: `${data.quotation_id}.pdf` };
+      const pdfBlob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
+      const { pdfBlobToJpgBlob } = await loadJpgLib();
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      return { blob, filename: `${data.quotation_id}.jpg` };
     } catch (e: any) {
-      console.error("PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
+      console.error("Image generation failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
       return null;
     }
   };
@@ -533,11 +535,11 @@ const AdminQuotationEditor = () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const downloadPdf = async (): Promise<boolean> => {
+  const downloadJpg = async (): Promise<boolean> => {
     const r = await buildPdfBlob("download");
     if (!r) return false;
     downloadBlob(r.blob, r.filename);
-    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
+    toast({ title: "Image downloaded", description: "Check your Downloads folder." });
     return true;
   };
 
@@ -564,15 +566,15 @@ const AdminQuotationEditor = () => {
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
-  // Shared helper: try native share with file (WhatsApp will attach the PDF directly).
+  // Shared helper: try native share with file (WhatsApp will attach the JPG directly).
   // Falls back to download + open chat link if the device doesn't support file sharing.
-  const sharePdfViaWhatsApp = async (
+  const shareJpgViaWhatsApp = async (
     blob: Blob,
     filename: string,
     phone: string | null,
     message: string,
   ): Promise<"shared" | "fallback"> => {
-    const file = new File([blob], filename, { type: "application/pdf" });
+    const file = new File([blob], filename, { type: "image/jpeg" });
     const navAny = navigator as any;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, "") : "";
 
@@ -585,11 +587,11 @@ const AdminQuotationEditor = () => {
       }
     }
 
-    // Fallback: download PDF + open WhatsApp chat
+    // Fallback: download JPG + open WhatsApp chat
     downloadBlob(blob, filename);
     toast({
-      title: "Compressed PDF downloaded",
-      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded PDF." : undefined,
+      title: "Image downloaded",
+      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded image." : undefined,
       duration: 8000,
     });
     if (cleanPhone) {
@@ -613,7 +615,7 @@ const AdminQuotationEditor = () => {
           return `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
         })();
 
-    await sharePdfViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
+    await shareJpgViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
 
     if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
       await setStatus("sent", { silent: true });
