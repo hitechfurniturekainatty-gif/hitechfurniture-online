@@ -544,6 +544,35 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
+  // Generates the *raw* multi-page PDF (no JPG rasterization). Used by the
+  // unified Download/Share menu so admins can pick the format that matches
+  // who they're sending it to (PDF for customers, JPG for workers/WhatsApp).
+  const downloadPdf = async (): Promise<boolean> => {
+    if (items.length === 0) {
+      toast({ title: "Add at least one item", variant: "destructive" });
+      return false;
+    }
+    const saved = await ensureSaved();
+    if (!saved) return false;
+    const data = buildPdfData();
+    if (!data) return false;
+    try {
+      const { generateQuotationPdf } = await loadPdfLib();
+      const pdfBlob = await generateQuotationPdf(data);
+      downloadBlob(pdfBlob, `${data.quotation_id}.pdf`);
+      toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
+      return true;
+    } catch (e: any) {
+      console.error("PDF generation failed:", e);
+      toast({
+        title: "PDF generation failed",
+        description: e?.message ?? "Try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   // Save → navigate to the structured digital preview page.
   // No PDF rendering happens here anymore — the preview is a fast HTML
   // page that loads instantly on every device. PDF is generated on-demand
