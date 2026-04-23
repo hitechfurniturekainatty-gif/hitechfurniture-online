@@ -237,15 +237,51 @@ const AdminProducts = () => {
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">{products.length} items in your catalog.</p>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            {products.length} items in your catalog
+            {lowStockCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-destructive">
+                · <AlertTriangle className="h-3.5 w-3.5" /> {lowStockCount} low stock
+              </span>
+            )}
+          </p>
         </div>
         <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
       </div>
 
-      <div className="mb-4 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or code…" className="pl-9" />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or code…" className="pl-9" />
+        </div>
+        <Button
+          type="button"
+          variant={showLowStockOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowLowStockOnly((v) => !v)}
+          className="gap-1.5"
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Low stock {lowStockCount > 0 && `(${lowStockCount})`}
+        </Button>
       </div>
+
+      {selected.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+          <p className="text-sm font-medium">
+            <Tag className="mr-1.5 inline h-4 w-4 text-primary" />
+            {selected.size} selected for label printing
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="mr-1 h-3.5 w-3.5" /> Clear
+            </Button>
+            <Button size="sm" onClick={() => setLabelDialogOpen(true)}>
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> Print labels
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
