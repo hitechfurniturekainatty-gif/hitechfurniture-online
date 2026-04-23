@@ -353,7 +353,7 @@ const AdminQuotationPreview = () => {
     setAssignOpen(true);
   };
 
-  const generateAndAssignJob = async () => {
+  const generateAndAssignJob = async (format: "jpg" | "pdf" = "jpg") => {
     if (!q) return;
     if (!selectedWorker) {
       toast({ title: "Select a worker", variant: "destructive" });
@@ -365,7 +365,7 @@ const AdminQuotationPreview = () => {
       toast({ title: "Worker not found", variant: "destructive" });
       return;
     }
-    if (!worker.whatsapp_number?.trim()) {
+    if (format === "jpg" && !worker.whatsapp_number?.trim()) {
       toast({ title: "Worker WhatsApp missing", description: `Add a WhatsApp number for ${worker.name} first.`, variant: "destructive" });
       return;
     }
