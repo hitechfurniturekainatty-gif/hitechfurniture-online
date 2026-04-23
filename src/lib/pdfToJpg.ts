@@ -41,10 +41,17 @@ export async function pdfBlobToJpgBlob(
 
   // Lazy-load pdf.js (heavy) only when actually rasterising.
   const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const workerUrl = (
-    await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")
-  ).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  // Use Vite's `new Worker(new URL(..., import.meta.url), { type: "module" })`
+  // pattern. Vite bundles the worker and serves it with the correct MIME type,
+  // which avoids the "Setting up fake worker failed" / "module script must be
+  // served with a JavaScript MIME type" errors we hit when using `?url` on
+  // some hosts (which serve .mjs as application/octet-stream).
+  if (!pdfjs.GlobalWorkerOptions.workerPort) {
+    pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+      new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
+      { type: "module" },
+    );
+  }
 
   const buf = await pdfBlob.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buf }).promise;
