@@ -322,7 +322,9 @@ const AdminQuotations = () => {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm leading-snug break-words">{q.party_name} · {q.party_place}</p>
+              <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
+                {q.party_name} <span className="text-primary/70">·</span> {q.party_place}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {new Date(q.quotation_date).toLocaleDateString("en-IN")}
                 {q.created_by && (
