@@ -12,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
+import { StockMovementDialog } from "@/components/admin/StockMovementDialog";
+import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/PriceLabelPrintDialog";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
@@ -32,6 +34,7 @@ type Product = {
   material: string | null;
   dimensions: string | null;
   stock_quantity: number;
+  reorder_level: number;
   is_featured: boolean;
   is_published: boolean;
   main_category_id: string;
@@ -50,6 +53,7 @@ type FormState = {
   material: string;
   dimensions: string;
   stock_quantity: string;
+  reorder_level: string;
   is_featured: boolean;
   is_published: boolean;
   main_category_id: string;
@@ -62,6 +66,7 @@ const emptyForm: FormState = {
   cost_price: "", mrp: "", offer_price: "",
   available_colors: "", material: "", dimensions: "",
   stock_quantity: "0",
+  reorder_level: "5",
   is_featured: false, is_published: true,
   main_category_id: "", sub_category_id: "",
   images: [],
@@ -77,6 +82,19 @@ const AdminProducts = () => {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelected(new Set());
 
   const load = async () => {
     const { data } = await supabase
@@ -93,10 +111,23 @@ const AdminProducts = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return products;
+    let list = products;
+    if (showLowStockOnly) {
+      list = list.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5));
+    }
+    if (!search) return list;
     const q = search.toLowerCase();
-    return products.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
-  }, [products, search]);
+    return list.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
+  }, [products, search, showLowStockOnly]);
+
+  const lowStockCount = useMemo(
+    () => products.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5)).length,
+    [products],
+  );
+  const selectedProducts = useMemo(
+    () => products.filter((p) => selected.has(p.id)),
+    [products, selected],
+  );
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
@@ -119,6 +150,7 @@ const AdminProducts = () => {
       material: p.material ?? "",
       dimensions: p.dimensions ?? "",
       stock_quantity: p.stock_quantity.toString(),
+      reorder_level: (p.reorder_level ?? 5).toString(),
       is_featured: p.is_featured,
       is_published: p.is_published,
       main_category_id: p.main_category_id,
@@ -148,6 +180,7 @@ const AdminProducts = () => {
       material: form.material || null,
       dimensions: form.dimensions || null,
       stock_quantity: Number(form.stock_quantity || 0),
+      reorder_level: Number(form.reorder_level || 5),
       is_featured: form.is_featured,
       is_published: form.is_published,
       main_category_id: form.main_category_id,
@@ -204,15 +237,51 @@ const AdminProducts = () => {
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">{products.length} items in your catalog.</p>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            {products.length} items in your catalog
+            {lowStockCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-destructive">
+                · <AlertTriangle className="h-3.5 w-3.5" /> {lowStockCount} low stock
+              </span>
+            )}
+          </p>
         </div>
         <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
       </div>
 
-      <div className="mb-4 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or code…" className="pl-9" />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or code…" className="pl-9" />
+        </div>
+        <Button
+          type="button"
+          variant={showLowStockOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowLowStockOnly((v) => !v)}
+          className="gap-1.5"
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Low stock {lowStockCount > 0 && `(${lowStockCount})`}
+        </Button>
       </div>
+
+      {selected.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+          <p className="text-sm font-medium">
+            <Tag className="mr-1.5 inline h-4 w-4 text-primary" />
+            {selected.size} selected for label printing
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="mr-1 h-3.5 w-3.5" /> Clear
+            </Button>
+            <Button size="sm" onClick={() => setLabelDialogOpen(true)}>
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> Print labels
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -222,8 +291,17 @@ const AdminProducts = () => {
             )}
             {filtered.map((p) => {
               const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+              const isSelected = selected.has(p.id);
+              const isLow = p.stock_quantity <= (p.reorder_level ?? 5);
               return (
-                <li key={p.id} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                <li key={p.id} className={`flex items-center gap-3 p-3 sm:gap-4 sm:p-4 ${isSelected ? "bg-primary/5" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(p.id)}
+                    aria-label={`Select ${p.product_name} for label printing`}
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                  />
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-16 sm:w-16">
                     {cover ? <img src={cover} alt="" className="h-full w-full object-contain p-1" /> : null}
                   </div>
@@ -232,17 +310,31 @@ const AdminProducts = () => {
                       <p className="min-w-0 truncate font-medium">{p.product_name}</p>
                       {p.is_featured && <Badge className="bg-accent text-accent-foreground shrink-0 text-[10px]">Featured</Badge>}
                       {!p.is_published && <Badge variant="secondary" className="shrink-0 text-[10px]">Hidden</Badge>}
+                      {isLow && (
+                        <Badge variant="destructive" className="shrink-0 gap-0.5 text-[10px]">
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {p.stock_quantity === 0 ? "Out" : "Low"}
+                        </Badge>
+                      )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">Code · {p.product_code}</p>
                     <p className="truncate text-sm">
                       <span className="font-semibold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
                       {" · "}
-                      <span className={p.stock_quantity > 0 ? "text-foreground/70" : "text-destructive"}>
+                      <button
+                        type="button"
+                        onClick={() => setStockProduct(p)}
+                        className={`underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-foreground/70"}`}
+                        title="Manage stock"
+                      >
                         Stock {p.stock_quantity}
-                      </span>
+                      </button>
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center">
+                    <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setStockProduct(p)} title="Manage inventory">
+                      <Boxes className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -351,6 +443,9 @@ const AdminProducts = () => {
             <Field label="Stock quantity">
               <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
             </Field>
+            <Field label="Reorder level (low-stock alert)">
+              <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
+            </Field>
             <Field label="Material">
               <Input value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} placeholder="e.g. Solid wood, fabric" />
             </Field>
@@ -392,6 +487,18 @@ const AdminProducts = () => {
         </DialogContent>
       </Dialog>
       </>)}
+
+      <StockMovementDialog
+        product={stockProduct}
+        open={!!stockProduct}
+        onOpenChange={(o) => { if (!o) setStockProduct(null); }}
+        onChanged={load}
+      />
+      <PriceLabelPrintDialog
+        open={labelDialogOpen}
+        onOpenChange={setLabelDialogOpen}
+        products={selectedProducts as unknown as LabelProduct[]}
+      />
     </AdminShell>
   );
 };
