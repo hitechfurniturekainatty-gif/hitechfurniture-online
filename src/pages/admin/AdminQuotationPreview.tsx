@@ -687,6 +687,29 @@ const AdminQuotationPreview = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {workers.length === 0 && (
+                <p className="text-xs text-destructive">
+                  No active workers found. Add a worker (with WhatsApp number) under Admin → Workers first.
+                </p>
+              )}
+              {selectedWorker && (() => {
+                const w = workers.find((x) => x.id === selectedWorker);
+                if (!w) return null;
+                const wa = (w.whatsapp_number ?? "").replace(/[^0-9]/g, "");
+                return (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                    <p className="font-semibold">{w.name}</p>
+                    {w.trade && <p className="text-xs text-muted-foreground">{w.trade}</p>}
+                    {wa ? (
+                      <p className="mt-1 font-mono text-xs">WhatsApp: +{wa}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-destructive">
+                        ⚠ No WhatsApp number on file. Add one before assigning.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="space-y-2">
