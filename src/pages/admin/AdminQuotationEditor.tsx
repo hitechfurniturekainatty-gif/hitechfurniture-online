@@ -781,7 +781,12 @@ const AdminQuotationEditor = () => {
           </Button>
           {canEditPrice && (
             <>
-              <Button variant="outline" onClick={downloadJpg}><ImageIcon className="mr-2 h-4 w-4" />JPG</Button>
+              <DownloadShareMenu
+                onPdf={downloadPdf}
+                onJpg={downloadJpg}
+                pdfTooltip="PDF — full quotation for customer"
+                jpgTooltip="JPG — high-res images for WhatsApp"
+              />
               <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
               <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
             </>
@@ -1197,9 +1202,14 @@ const AdminQuotationEditor = () => {
             fully visible on narrow screens (was being clipped to a sliver before). */}
         {canEditPrice && (
           <div className="mb-2 grid grid-cols-3 gap-2">
-            <Button variant="outline" onClick={downloadJpg} className="h-11 px-2">
-              <ImageIcon className="mr-1.5 h-4 w-4" />JPG
-            </Button>
+            <DownloadShareMenu
+              onPdf={downloadPdf}
+              onJpg={downloadJpg}
+              triggerClassName="h-11 px-2 w-full"
+              label="Save"
+              pdfTooltip="PDF — full quotation"
+              jpgTooltip="JPG — for WhatsApp"
+            />
             <Button variant="outline" onClick={shareWhatsApp} className="h-11 px-2">
               <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
             </Button>
