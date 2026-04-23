@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat, ListChecks } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat, ListChecks, KeyRound, Copy, Check } from "lucide-react";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { Link } from "react-router-dom";
 
@@ -23,6 +23,8 @@ type Worker = {
   trade: string | null;
   notes: string | null;
   is_active: boolean;
+  user_id: string | null;
+  login_phone: string | null;
 };
 
 const empty = { name: "", phone: "", whatsapp_number: "", trade: "", notes: "", is_active: true };
@@ -35,6 +37,12 @@ const AdminWorkers = () => {
   const [editing, setEditing] = useState<Worker | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [loginWorker, setLoginWorker] = useState<Worker | null>(null);
+  const [loginPhone, setLoginPhone] = useState("");
+  const [loginPin, setLoginPin] = useState("");
+  const [loginSaving, setLoginSaving] = useState(false);
+  const [lastCreds, setLastCreds] = useState<{ phone: string; pin: string; name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -88,6 +96,71 @@ const AdminWorkers = () => {
     }
     toast({ title: "Worker removed" });
     load();
+  };
+
+  const openLogin = (w: Worker) => {
+    setLoginWorker(w);
+    setLoginPhone((w.login_phone || w.whatsapp_number || w.phone || "").replace(/\D+/g, ""));
+    // Generate a memorable random 4-digit PIN as a sensible default
+    setLoginPin(String(Math.floor(1000 + Math.random() * 9000)));
+    setLastCreds(null);
+    setCopied(false);
+  };
+
+  const saveLogin = async () => {
+    if (!loginWorker) return;
+    const cleanPhone = loginPhone.replace(/\D+/g, "");
+    const cleanPin = loginPin.replace(/\D+/g, "");
+    if (cleanPhone.length < 8) {
+      toast({ title: "Enter a valid phone number", variant: "destructive" });
+      return;
+    }
+    if (cleanPin.length < 4 || cleanPin.length > 6) {
+      toast({ title: "PIN must be 4–6 digits", variant: "destructive" });
+      return;
+    }
+    setLoginSaving(true);
+    const { data, error } = await supabase.functions.invoke("worker-create-login", {
+      body: { worker_id: loginWorker.id, phone: cleanPhone, pin: cleanPin },
+    });
+    setLoginSaving(false);
+    if (error || (data as any)?.error) {
+      toast({
+        title: "Login setup failed",
+        description: (data as any)?.error || error?.message || "Try again",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLastCreds({ phone: cleanPhone, pin: cleanPin, name: loginWorker.name });
+    toast({ title: "Login ready", description: `${loginWorker.name} can sign in now` });
+    void load();
+  };
+
+  const shareCreds = () => {
+    if (!lastCreds) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const msg =
+      `Hi ${lastCreds.name}, your work portal login:\n\n` +
+      `🔗 ${origin}/worker/login\n` +
+      `📱 Phone: ${lastCreds.phone}\n` +
+      `🔑 PIN: ${lastCreds.pin}\n\n` +
+      `Open the link, enter phone + PIN to see your assigned jobs and update progress.`;
+    const url = `https://wa.me/${lastCreds.phone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const copyCreds = async () => {
+    if (!lastCreds) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const text = `Login: ${origin}/worker/login\nPhone: ${lastCreds.phone}\nPIN: ${lastCreds.pin}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
   };
 
   return (
