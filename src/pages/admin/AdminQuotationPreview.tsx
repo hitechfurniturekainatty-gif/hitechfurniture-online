@@ -392,6 +392,9 @@ const AdminQuotationPreview = () => {
       }
 
       const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      // Worker-safe PDF: generateJobWorkPdf strips prices, GST and customer
+      // contact details by design, so the same blob is safe whether we deliver
+      // it as PDF or rasterised JPG.
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
@@ -408,17 +411,25 @@ const AdminQuotationPreview = () => {
           site_photos: item.site_photos,
           quantity: item.quantity,
         })),
-      }, COMPRESSED_PDF_OPTIONS);
-      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      }, format === "jpg" ? COMPRESSED_PDF_OPTIONS : undefined);
 
-      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.jpg`;
+      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      await shareJpgViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      if (format === "pdf") {
+        downloadBlob(pdfBlob, `${baseFilename}.pdf`);
+        toast({
+          title: "Job PDF downloaded",
+          description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
+        });
+      } else {
+        const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
+        const blob = await pdfBlobToJpgBlob(pdfBlob);
+        await shareJpgViaWhatsApp(blob, `${baseFilename}.jpg`, worker.whatsapp_number, msg);
+        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+      }
       setAssignOpen(false);
       setSelectedItemIds(new Set());
-      toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
     } catch (e: any) {
       console.error("Job image generation failed:", e);
       toast({ title: "Image generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
@@ -807,10 +818,16 @@ const AdminQuotationPreview = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
-            <Button onClick={generateAndAssignJob} disabled={generatingJob || workers.length === 0}>
-              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
-              Generate JPG & send
-            </Button>
+            <DownloadShareMenu
+              busy={generatingJob}
+              disabled={workers.length === 0 || !selectedWorker}
+              onPdf={() => generateAndAssignJob("pdf")}
+              onJpg={() => generateAndAssignJob("jpg")}
+              triggerVariant="default"
+              label="Assign & send"
+              pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
+              jpgTooltip="JPG — send via WhatsApp to worker now"
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
