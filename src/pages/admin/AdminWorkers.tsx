@@ -319,6 +319,41 @@ const AdminWorkers = () => {
             <div className="space-y-1.5"><Label>Trade</Label><Input value={form.trade} onChange={(e) => setForm({ ...form, trade: e.target.value })} placeholder="Carpenter, Polish, Upholstery..." /></div>
             <div className="space-y-1.5"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
             <div className="flex items-center justify-between rounded-md border p-3"><Label>Active</Label><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /></div>
+
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Worker login</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Worker signs in at <span className="font-mono text-foreground">/worker/login</span> using their phone (username) and PIN (password).
+              </p>
+              <div className="space-y-1.5">
+                <Label>Username — phone number (with country code)</Label>
+                <Input
+                  inputMode="tel"
+                  value={form.login_phone}
+                  onChange={(e) => setForm({ ...form, login_phone: e.target.value })}
+                  placeholder="91XXXXXXXXXX"
+                />
+                <p className="text-xs text-muted-foreground">Defaults to WhatsApp number. Must be unique per worker.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password (PIN, 4–6 digits) {editing && <span className="text-muted-foreground font-normal">— leave blank to keep current</span>}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    inputMode="numeric"
+                    value={form.login_pin}
+                    onChange={(e) => setForm({ ...form, login_pin: e.target.value })}
+                    maxLength={6}
+                    placeholder={editing ? "Enter new PIN to reset" : "e.g. 1234"}
+                  />
+                  <Button type="button" variant="outline" onClick={() => setForm({ ...form, login_pin: randomPin() })}>
+                    Generate
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
