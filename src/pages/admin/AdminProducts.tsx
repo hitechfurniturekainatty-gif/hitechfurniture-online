@@ -82,6 +82,19 @@ const AdminProducts = () => {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelected(new Set());
 
   const load = async () => {
     const { data } = await supabase
@@ -154,6 +167,7 @@ const AdminProducts = () => {
       material: form.material || null,
       dimensions: form.dimensions || null,
       stock_quantity: Number(form.stock_quantity || 0),
+      reorder_level: Number(form.reorder_level || 5),
       is_featured: form.is_featured,
       is_published: form.is_published,
       main_category_id: form.main_category_id,
