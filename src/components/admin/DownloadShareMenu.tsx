@@ -100,7 +100,7 @@ export function DownloadShareMenu({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10"
+                  className="h-10 w-10 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => handlePick(onPdf)}
                   disabled={busy}
                   aria-label="Download as PDF"
@@ -118,7 +118,7 @@ export function DownloadShareMenu({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full text-teal-600 hover:bg-teal-50 hover:text-teal-700 dark:text-teal-400 dark:hover:bg-teal-500/10"
+                  className="h-10 w-10 rounded-full text-primary hover:bg-primary/10 hover:text-primary"
                   onClick={() => handlePick(onJpg)}
                   disabled={busy}
                   aria-label="Download as JPG"
