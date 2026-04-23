@@ -498,7 +498,9 @@ const AdminQuotationEditor = () => {
     };
   };
 
-  const SHARE_PDF_OPTIONS = { image: { maxSide: 900, jpegQuality: 0.72 } } as const;
+  // Aggressive compression for WhatsApp / job-work share: photos display at
+  // 44–88px in the PDF, so 700px / q=0.6 stays sharp while cutting file size ~60%.
+  const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
 
   const buildPdfBlob = async (
     mode: "download" | "share" = "download"
