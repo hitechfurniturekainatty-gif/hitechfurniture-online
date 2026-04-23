@@ -24,6 +24,7 @@ import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat, Image as ImageIcon,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 
 type QItem = {
   id: string;
