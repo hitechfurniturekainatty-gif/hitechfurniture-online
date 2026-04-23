@@ -3,14 +3,25 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
-  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
+  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 
@@ -48,16 +59,23 @@ type Quotation = {
   document_type: DocType;
 };
 
+type Worker = {
+  id: string;
+  name: string;
+  whatsapp_number: string;
+  trade: string | null;
+};
+
 const fmtDate = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const AdminQuotationPreview = () => {
   // Aggressive compression for WhatsApp share — photos display tiny in the PDF,
   // so 700px / q=0.6 stays sharp while cutting file size ~60%.
-  const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
+  const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isOfficeStaff } = useAuth();
+  const { user, isOfficeStaff } = useAuth();
   const canShare = isOfficeStaff;
 
   const [q, setQ] = useState<Quotation | null>(null);
@@ -65,6 +83,12 @@ const AdminQuotationPreview = () => {
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [createdByName, setCreatedByName] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState("");
+  const [jobNotes, setJobNotes] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [generatingJob, setGeneratingJob] = useState(false);
 
   useEffect(() => {
     if (!id) return;
