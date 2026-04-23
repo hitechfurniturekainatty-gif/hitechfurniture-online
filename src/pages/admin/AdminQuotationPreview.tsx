@@ -251,13 +251,19 @@ const AdminQuotationPreview = () => {
         })),
       };
       const pdfBlob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
-      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
-      const filename = `${q.quotation_id}.jpg`;
+      const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+      // Page-by-page output: high-resolution (3×) sequence so each page
+      // stays sharp on its own and items are never split across two images.
+      const blobs = await pdfBlobToJpgPages(pdfBlob);
+      const baseName = q.quotation_id;
+      const isMulti = blobs.length > 1;
 
       if (mode === "download") {
-        downloadBlob(blob, filename);
-        toast({ title: "Image downloaded" });
+        blobs.forEach((b, i) => {
+          const fn = isMulti ? `${baseName}_Page${i + 1}.jpg` : `${baseName}.jpg`;
+          setTimeout(() => downloadBlob(b, fn), i * 250);
+        });
+        toast({ title: isMulti ? `${blobs.length} images downloaded` : "Image downloaded" });
         return;
       }
 
@@ -268,7 +274,7 @@ const AdminQuotationPreview = () => {
         ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
         : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
-      await shareJpgViaWhatsApp(blob, filename, q.party_phone, msg);
+      await shareJpgPagesViaWhatsApp(blobs, baseName, q.party_phone, msg);
       await markSent();
     } catch (e: any) {
       console.error("Image share failed:", e);
@@ -436,10 +442,13 @@ const AdminQuotationPreview = () => {
           description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
-        const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-        const blob = await pdfBlobToJpgBlob(pdfBlob);
-        await shareJpgViaWhatsApp(blob, `${baseFilename}.jpg`, worker.whatsapp_number, msg);
-        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+        const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+        const blobs = await pdfBlobToJpgPages(pdfBlob);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        toast({
+          title: "Job work sent",
+          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+        });
       }
       setAssignOpen(false);
       setSelectedItemIds(new Set());
