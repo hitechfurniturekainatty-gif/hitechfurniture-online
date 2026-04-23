@@ -443,6 +443,9 @@ const AdminProducts = () => {
             <Field label="Stock quantity">
               <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
             </Field>
+            <Field label="Reorder level (low-stock alert)">
+              <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
+            </Field>
             <Field label="Material">
               <Input value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} placeholder="e.g. Solid wood, fabric" />
             </Field>
@@ -484,6 +487,18 @@ const AdminProducts = () => {
         </DialogContent>
       </Dialog>
       </>)}
+
+      <StockMovementDialog
+        product={stockProduct}
+        open={!!stockProduct}
+        onOpenChange={(o) => { if (!o) setStockProduct(null); }}
+        onChanged={load}
+      />
+      <PriceLabelPrintDialog
+        open={labelDialogOpen}
+        onOpenChange={setLabelDialogOpen}
+        products={selectedProducts as unknown as LabelProduct[]}
+      />
     </AdminShell>
   );
 };
