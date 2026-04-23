@@ -436,6 +436,7 @@ export type Database = {
           offer_price: number | null
           product_code: string
           product_name: string
+          reorder_level: number
           stock_quantity: number
           sub_category_id: string | null
           updated_at: string
@@ -455,6 +456,7 @@ export type Database = {
           offer_price?: number | null
           product_code: string
           product_name: string
+          reorder_level?: number
           stock_quantity?: number
           sub_category_id?: string | null
           updated_at?: string
@@ -474,6 +476,7 @@ export type Database = {
           offer_price?: number | null
           product_code?: string
           product_name?: string
+          reorder_level?: number
           stock_quantity?: number
           sub_category_id?: string | null
           updated_at?: string
@@ -755,6 +758,47 @@ export type Database = {
             columns: ["route_id"]
             isOneToOne: false
             referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          change_qty: number
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          product_id: string
+          reason: string
+          resulting_stock: number
+        }
+        Insert: {
+          change_qty: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          product_id: string
+          reason: string
+          resulting_stock: number
+        }
+        Update: {
+          change_qty?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          product_id?: string
+          reason?: string
+          resulting_stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
