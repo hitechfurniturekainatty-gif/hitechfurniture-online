@@ -101,11 +101,16 @@ export function QuotationPdfPreviewSheet({
     (async () => {
       try {
         const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
-        // Worker: use the bundled worker via Vite ?url import.
-        const workerUrl = (
-          await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")
-        ).default;
-        pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+        // Vite-friendly worker setup: `new Worker(new URL(...), {type:"module"})`
+        // bundles the worker and serves it with the correct MIME type (some
+        // hosts return application/octet-stream for raw .mjs assets, which
+        // breaks `workerSrc`).
+        if (!pdfjs.GlobalWorkerOptions.workerPort) {
+          pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+            new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url),
+            { type: "module" },
+          );
+        }
         const buf = await blob.arrayBuffer();
         if (cancelled) return;
         const pdf = await pdfjs.getDocument({ data: buf }).promise;
