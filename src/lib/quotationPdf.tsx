@@ -332,17 +332,12 @@ async function toDataUri(url: string | null, options: PdfImageOptions = {}): Pro
 // Decode any browser-supported image (webp, avif, png, jpeg, gif) and
 // re-encode it as JPEG via canvas. Returns null on failure.
 async function blobToJpegDataUri(blob: Blob, options: PdfImageOptions = {}): Promise<string | null> {
-  const { maxSide = 1200, jpegQuality = 0.85 } = options;
-  // PNG with transparency would lose its alpha if encoded as JPEG;
-  // keep PNGs as PNGs (react-pdf supports them natively).
-  if (blob.type === "image/png") {
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  }
+  // Tighter defaults: photos render at ~44–96px in the PDF, so 900px / q=0.7
+  // is visually identical to 1200px / q=0.85 but produces ~50% smaller files.
+  const { maxSide = 900, jpegQuality = 0.7 } = options;
+  // Even PNGs get re-encoded to JPEG — PNG payloads are typically 3–6× larger
+  // than the equivalent JPEG and we don't need transparency in the PDF (white
+  // page background). This is the single biggest win for compression.
   // For jpeg, webp, avif, gif → decode + re-encode as JPEG.
   const objectUrl = URL.createObjectURL(blob);
   try {

@@ -52,7 +52,9 @@ const fmtDate = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const AdminQuotationPreview = () => {
-  const SHARE_PDF_OPTIONS = { image: { maxSide: 900, jpegQuality: 0.72 } } as const;
+  // Aggressive compression for WhatsApp share — photos display tiny in the PDF,
+  // so 700px / q=0.6 stays sharp while cutting file size ~60%.
+  const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isOfficeStaff } = useAuth();
