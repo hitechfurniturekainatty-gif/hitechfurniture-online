@@ -713,14 +713,14 @@ const AdminQuotationPreview = () => {
             </Button>
           )}
           {canShare && (
-            <Button
-              variant="outline"
-              onClick={() => buildAndShare("download")}
-              disabled={sharing}
-              className="h-11 flex-1 sm:flex-initial"
-            >
-              <ImageIcon className="mr-2 h-4 w-4" />JPG
-            </Button>
+            <DownloadShareMenu
+              busy={sharing}
+              onPdf={downloadPdf}
+              onJpg={() => buildAndShare("download")}
+              triggerClassName="h-11 flex-1 sm:flex-initial"
+              pdfTooltip="PDF — full quotation for customer"
+              jpgTooltip="JPG — high-res images for WhatsApp"
+            />
           )}
           <Button variant="secondary" onClick={handleDone} className="h-11 flex-1 sm:flex-initial">
             <Check className="mr-2 h-4 w-4" />Done
