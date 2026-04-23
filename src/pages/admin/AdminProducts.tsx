@@ -12,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
+import { StockMovementDialog } from "@/components/admin/StockMovementDialog";
+import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/PriceLabelPrintDialog";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
@@ -32,6 +34,7 @@ type Product = {
   material: string | null;
   dimensions: string | null;
   stock_quantity: number;
+  reorder_level: number;
   is_featured: boolean;
   is_published: boolean;
   main_category_id: string;
@@ -50,6 +53,7 @@ type FormState = {
   material: string;
   dimensions: string;
   stock_quantity: string;
+  reorder_level: string;
   is_featured: boolean;
   is_published: boolean;
   main_category_id: string;
@@ -62,6 +66,7 @@ const emptyForm: FormState = {
   cost_price: "", mrp: "", offer_price: "",
   available_colors: "", material: "", dimensions: "",
   stock_quantity: "0",
+  reorder_level: "5",
   is_featured: false, is_published: true,
   main_category_id: "", sub_category_id: "",
   images: [],
