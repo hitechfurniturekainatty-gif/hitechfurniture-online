@@ -124,6 +124,7 @@ const AdminProducts = () => {
       material: p.material ?? "",
       dimensions: p.dimensions ?? "",
       stock_quantity: p.stock_quantity.toString(),
+      reorder_level: (p.reorder_level ?? 5).toString(),
       is_featured: p.is_featured,
       is_published: p.is_published,
       main_category_id: p.main_category_id,
