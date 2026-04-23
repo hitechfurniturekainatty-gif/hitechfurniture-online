@@ -27,7 +27,18 @@ type Worker = {
   login_phone: string | null;
 };
 
-const empty = { name: "", phone: "", whatsapp_number: "", trade: "", notes: "", is_active: true };
+const empty = {
+  name: "",
+  phone: "",
+  whatsapp_number: "",
+  trade: "",
+  notes: "",
+  is_active: true,
+  login_phone: "",
+  login_pin: "",
+};
+
+const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
 const AdminWorkers = () => {
   const { isAdmin, loading: authLoading } = useAuth();
@@ -53,16 +64,45 @@ const AdminWorkers = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const startNew = () => {
+    setEditing(null);
+    setForm({ ...empty, login_pin: randomPin() });
+    setOpen(true);
+  };
   const startEdit = (w: Worker) => {
     setEditing(w);
-    setForm({ name: w.name, phone: w.phone ?? "", whatsapp_number: w.whatsapp_number, trade: w.trade ?? "", notes: w.notes ?? "", is_active: w.is_active });
+    setForm({
+      name: w.name,
+      phone: w.phone ?? "",
+      whatsapp_number: w.whatsapp_number,
+      trade: w.trade ?? "",
+      notes: w.notes ?? "",
+      is_active: w.is_active,
+      login_phone: (w.login_phone || w.whatsapp_number || "").replace(/\D+/g, ""),
+      login_pin: "", // never show old PIN; blank = keep existing
+    });
     setOpen(true);
   };
 
   const save = async () => {
     if (!form.name.trim() || !form.whatsapp_number.trim()) {
       toast({ title: "Name and WhatsApp number required", variant: "destructive" });
+      return;
+    }
+    const cleanLoginPhone = (form.login_phone || form.whatsapp_number).replace(/\D+/g, "");
+    const cleanLoginPin = form.login_pin.replace(/\D+/g, "");
+    // For NEW worker: PIN is required (default suggested). For edit: PIN optional (blank = keep).
+    if (!editing) {
+      if (cleanLoginPhone.length < 8) {
+        toast({ title: "Login phone must include country code (8+ digits)", variant: "destructive" });
+        return;
+      }
+      if (cleanLoginPin.length < 4 || cleanLoginPin.length > 6) {
+        toast({ title: "Login PIN must be 4–6 digits", variant: "destructive" });
+        return;
+      }
+    } else if (cleanLoginPin && (cleanLoginPin.length < 4 || cleanLoginPin.length > 6)) {
+      toast({ title: "PIN must be 4–6 digits (or leave blank to keep current)", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -74,17 +114,57 @@ const AdminWorkers = () => {
       notes: form.notes.trim() || null,
       is_active: form.is_active,
     };
-    const { error } = editing
-      ? await supabase.from("workers").update(payload).eq("id", editing.id)
-      : await supabase.from("workers").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
-      return;
+    let workerId = editing?.id ?? null;
+    if (editing) {
+      const { error } = await supabase.from("workers").update(payload).eq("id", editing.id);
+      if (error) {
+        setSaving(false);
+        toast({ title: "Save failed", description: error.message, variant: "destructive" });
+        return;
+      }
+    } else {
+      const { data, error } = await supabase.from("workers").insert(payload).select("id").single();
+      if (error || !data) {
+        setSaving(false);
+        toast({ title: "Save failed", description: error?.message || "Insert failed", variant: "destructive" });
+        return;
+      }
+      workerId = data.id;
     }
+
+    // Provision / update login if PIN was provided (always for new, optional for edit)
+    let createdCreds: { phone: string; pin: string; name: string } | null = null;
+    if (workerId && cleanLoginPin) {
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke("worker-create-login", {
+        body: { worker_id: workerId, phone: cleanLoginPhone, pin: cleanLoginPin },
+      });
+      if (fnErr || (fnData as any)?.error) {
+        setSaving(false);
+        toast({
+          title: "Worker saved, but login setup failed",
+          description: (fnData as any)?.error || fnErr?.message || "Try again from the key icon",
+          variant: "destructive",
+        });
+        setOpen(false);
+        load();
+        return;
+      }
+      createdCreds = { phone: cleanLoginPhone, pin: cleanLoginPin, name: form.name.trim() };
+    }
+
+    setSaving(false);
     toast({ title: editing ? "Worker updated" : "Worker added" });
     setOpen(false);
     load();
+
+    // For NEW worker show credentials popup so admin can copy / WhatsApp them
+    if (!editing && createdCreds) {
+      setLoginWorker({ id: workerId!, name: createdCreds.name } as Worker);
+      setLoginPhone(createdCreds.phone);
+      setLoginPin(createdCreds.pin);
+      setLastCreds(createdCreds);
+      setCopied(false);
+    }
   };
 
   const remove = async (w: Worker) => {
@@ -243,6 +323,41 @@ const AdminWorkers = () => {
             <div className="space-y-1.5"><Label>Trade</Label><Input value={form.trade} onChange={(e) => setForm({ ...form, trade: e.target.value })} placeholder="Carpenter, Polish, Upholstery..." /></div>
             <div className="space-y-1.5"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
             <div className="flex items-center justify-between rounded-md border p-3"><Label>Active</Label><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /></div>
+
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Worker login</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Worker signs in at <span className="font-mono text-foreground">/worker/login</span> using their phone (username) and PIN (password).
+              </p>
+              <div className="space-y-1.5">
+                <Label>Username — phone number (with country code)</Label>
+                <Input
+                  inputMode="tel"
+                  value={form.login_phone}
+                  onChange={(e) => setForm({ ...form, login_phone: e.target.value })}
+                  placeholder="91XXXXXXXXXX"
+                />
+                <p className="text-xs text-muted-foreground">Defaults to WhatsApp number. Must be unique per worker.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password (PIN, 4–6 digits) {editing && <span className="text-muted-foreground font-normal">— leave blank to keep current</span>}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    inputMode="numeric"
+                    value={form.login_pin}
+                    onChange={(e) => setForm({ ...form, login_pin: e.target.value })}
+                    maxLength={6}
+                    placeholder={editing ? "Enter new PIN to reset" : "e.g. 1234"}
+                  />
+                  <Button type="button" variant="outline" onClick={() => setForm({ ...form, login_pin: randomPin() })}>
+                    Generate
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
