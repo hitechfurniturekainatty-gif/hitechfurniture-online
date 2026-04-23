@@ -35,6 +35,8 @@ const AdminServices = lazy(() => import("./pages/admin/AdminServices.tsx"));
 const AdminServiceEditor = lazy(() => import("./pages/admin/AdminServiceEditor.tsx"));
 const AdminComplaintEditor = lazy(() => import("./pages/admin/AdminComplaintEditor.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
+const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -87,6 +89,8 @@ const App = () => (
             <Route path="/admin/services" element={<AdminServices />} />
             <Route path="/admin/services/:id" element={<AdminServiceEditor />} />
             <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
+            <Route path="/worker/login" element={<WorkerLogin />} />
+            <Route path="/worker" element={<WorkerPortal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
