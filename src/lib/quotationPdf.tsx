@@ -508,10 +508,6 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
           <Text style={jwStyles.metaLabel}>Reference</Text>
           <Text style={jwStyles.metaValue}>{d.quotation_id}</Text>
         </View>
-        <View style={jwStyles.metaCell}>
-          <Text style={jwStyles.metaLabel}>Worker</Text>
-          <Text style={jwStyles.metaValue}>{d.worker_name}</Text>
-        </View>
         <View style={jwStyles.metaCellLast}>
           <Text style={jwStyles.metaLabel}>Date</Text>
           <Text style={jwStyles.metaValue}>{d.date}</Text>
