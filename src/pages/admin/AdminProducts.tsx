@@ -111,10 +111,23 @@ const AdminProducts = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return products;
+    let list = products;
+    if (showLowStockOnly) {
+      list = list.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5));
+    }
+    if (!search) return list;
     const q = search.toLowerCase();
-    return products.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
-  }, [products, search]);
+    return list.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
+  }, [products, search, showLowStockOnly]);
+
+  const lowStockCount = useMemo(
+    () => products.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5)).length,
+    [products],
+  );
+  const selectedProducts = useMemo(
+    () => products.filter((p) => selected.has(p.id)),
+    [products, selected],
+  );
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
