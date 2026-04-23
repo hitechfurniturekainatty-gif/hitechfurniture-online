@@ -291,8 +291,17 @@ const AdminProducts = () => {
             )}
             {filtered.map((p) => {
               const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+              const isSelected = selected.has(p.id);
+              const isLow = p.stock_quantity <= (p.reorder_level ?? 5);
               return (
-                <li key={p.id} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                <li key={p.id} className={`flex items-center gap-3 p-3 sm:gap-4 sm:p-4 ${isSelected ? "bg-primary/5" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(p.id)}
+                    aria-label={`Select ${p.product_name} for label printing`}
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                  />
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-16 sm:w-16">
                     {cover ? <img src={cover} alt="" className="h-full w-full object-contain p-1" /> : null}
                   </div>
@@ -301,17 +310,31 @@ const AdminProducts = () => {
                       <p className="min-w-0 truncate font-medium">{p.product_name}</p>
                       {p.is_featured && <Badge className="bg-accent text-accent-foreground shrink-0 text-[10px]">Featured</Badge>}
                       {!p.is_published && <Badge variant="secondary" className="shrink-0 text-[10px]">Hidden</Badge>}
+                      {isLow && (
+                        <Badge variant="destructive" className="shrink-0 gap-0.5 text-[10px]">
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {p.stock_quantity === 0 ? "Out" : "Low"}
+                        </Badge>
+                      )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">Code · {p.product_code}</p>
                     <p className="truncate text-sm">
                       <span className="font-semibold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
                       {" · "}
-                      <span className={p.stock_quantity > 0 ? "text-foreground/70" : "text-destructive"}>
+                      <button
+                        type="button"
+                        onClick={() => setStockProduct(p)}
+                        className={`underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-foreground/70"}`}
+                        title="Manage stock"
+                      >
                         Stock {p.stock_quantity}
-                      </span>
+                      </button>
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center">
+                    <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setStockProduct(p)} title="Manage inventory">
+                      <Boxes className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
