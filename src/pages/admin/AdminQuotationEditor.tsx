@@ -662,9 +662,9 @@ const AdminQuotationEditor = () => {
         toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
         return;
       }
-      // generate worker-safe PDF (NO prices, NO bank, NO customer phone)
+      // generate worker-safe JPG (NO prices, NO bank, NO customer phone)
       const { generateJobWorkPdf } = await loadPdfLib();
-      const blob = await generateJobWorkPdf({
+      const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
         date: new Date().toLocaleDateString("en-IN"),
@@ -681,17 +681,19 @@ const AdminQuotationEditor = () => {
           quantity: it.quantity,
         })),
       }, SHARE_PDF_OPTIONS);
-      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      const { pdfBlobToJpgBlob } = await loadJpgLib();
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.jpg`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      await sharePdfViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      await shareJpgViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
 
       setJobOpen(false);
       setSelectedItemIds(new Set());
       toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
     } catch (e: any) {
-      console.error("Job PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
+      console.error("Job image generation failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
     } finally {
       setGeneratingJob(false);
     }
@@ -749,7 +751,7 @@ const AdminQuotationEditor = () => {
           </Button>
           {canEditPrice && (
             <>
-              <Button variant="outline" onClick={downloadPdf}><Download className="mr-2 h-4 w-4" />PDF</Button>
+              <Button variant="outline" onClick={downloadJpg}><ImageIcon className="mr-2 h-4 w-4" />JPG</Button>
               <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
               <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
             </>
@@ -1165,8 +1167,8 @@ const AdminQuotationEditor = () => {
             fully visible on narrow screens (was being clipped to a sliver before). */}
         {canEditPrice && (
           <div className="mb-2 grid grid-cols-3 gap-2">
-            <Button variant="outline" onClick={downloadPdf} className="h-11 px-2">
-              <Download className="mr-1.5 h-4 w-4" />PDF
+            <Button variant="outline" onClick={downloadJpg} className="h-11 px-2">
+              <ImageIcon className="mr-1.5 h-4 w-4" />JPG
             </Button>
             <Button variant="outline" onClick={shareWhatsApp} className="h-11 px-2">
               <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
@@ -1230,7 +1232,7 @@ const AdminQuotationEditor = () => {
             className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
-            <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker PDF will exclude prices, GST and customer phone.</p>
+            <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
             <div className="space-y-1.5">
               <Label>Worker *</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -1253,7 +1255,7 @@ const AdminQuotationEditor = () => {
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <Button onClick={generateAndSendJob} disabled={generatingJob || !selectedWorker} className="w-full sm:w-auto">
               {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Generate PDF + WhatsApp
+              Generate JPG + WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>
