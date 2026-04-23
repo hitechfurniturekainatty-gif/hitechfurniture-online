@@ -22,12 +22,13 @@ import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
-  Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
+  Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart,
 } from "lucide-react";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
 // of blocking initial page paint on mobile.
 const loadPdfLib = () => import("@/lib/quotationPdf");
+const loadJpgLib = () => import("@/lib/pdfToJpg");
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
