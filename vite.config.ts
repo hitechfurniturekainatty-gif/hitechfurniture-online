@@ -35,6 +35,16 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@tanstack")) return "query";
           if (id.includes("recharts") || id.includes("d3-")) return "charts";
         },
+        // pdf.js workers imported via `new URL(..., import.meta.url)` are
+        // emitted as assets. Some hosts serve `.mjs` worker assets with the
+        // wrong MIME type, so rename only emitted `.mjs` assets to `.js`.
+        assetFileNames: (assetInfo) => {
+          const name = assetInfo.name || "";
+          if (name.endsWith(".mjs")) {
+            return "assets/[name]-[hash].js";
+          }
+          return "assets/[name]-[hash][extname]";
+        },
       },
     },
     // Don't warn until a chunk is genuinely huge
