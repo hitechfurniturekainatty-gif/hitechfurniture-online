@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
+import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
 } from "lucide-react";
@@ -51,6 +52,7 @@ const fmtDate = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const AdminQuotationPreview = () => {
+  const SHARE_PDF_OPTIONS = { image: { maxSide: 900, jpegQuality: 0.72 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isOfficeStaff } = useAuth();
@@ -157,7 +159,7 @@ const AdminQuotationPreview = () => {
           amount: (it.quantity || 0) * (it.unit_price || 0),
         })),
       };
-      const blob = await generateQuotationPdf(data);
+      const blob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
       const filename = `${q.quotation_id}.pdf`;
 
       if (mode === "download") {
@@ -206,13 +208,13 @@ const AdminQuotationPreview = () => {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast({
-        title: "PDF downloaded",
-        description: "Attach it manually in WhatsApp once it opens.",
+        title: "Compressed PDF downloaded",
+        description: "Opening WhatsApp app now. If the PDF is not attached automatically, use the paperclip and select the downloaded file.",
         duration: 8000,
       });
       setTimeout(() => {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, "_blank");
-      }, 600);
+        openWhatsAppApp(cleanPhone, msg);
+      }, 400);
       if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
         await supabase.from("quotations").update({ status: "sent" }).eq("id", q.id);
         setQ({ ...q, status: "sent" });

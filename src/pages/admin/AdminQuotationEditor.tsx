@@ -34,6 +34,7 @@ import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
 import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
+import { openWhatsAppApp } from "@/lib/whatsapp";
 
 type QItem = {
   id: string;
@@ -497,7 +498,11 @@ const AdminQuotationEditor = () => {
     };
   };
 
-  const buildPdfBlob = async (): Promise<{ blob: Blob; filename: string } | null> => {
+  const SHARE_PDF_OPTIONS = { image: { maxSide: 900, jpegQuality: 0.72 } } as const;
+
+  const buildPdfBlob = async (
+    mode: "download" | "share" = "download"
+  ): Promise<{ blob: Blob; filename: string } | null> => {
     if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return null; }
     const saved = await ensureSaved();
     if (!saved) return null;
@@ -505,7 +510,7 @@ const AdminQuotationEditor = () => {
     if (!data) return null;
     try {
       const { generateQuotationPdf } = await loadPdfLib();
-      const blob = await generateQuotationPdf(data);
+      const blob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
       return { blob, filename: `${data.quotation_id}.pdf` };
     } catch (e: any) {
       console.error("PDF generation failed:", e);
@@ -526,7 +531,7 @@ const AdminQuotationEditor = () => {
   };
 
   const downloadPdf = async (): Promise<boolean> => {
-    const r = await buildPdfBlob();
+    const r = await buildPdfBlob("download");
     if (!r) return false;
     downloadBlob(r.blob, r.filename);
     toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
@@ -580,14 +585,12 @@ const AdminQuotationEditor = () => {
     // Fallback: download PDF + open WhatsApp chat
     downloadBlob(blob, filename);
     toast({
-      title: "PDF downloaded. Please attach it manually to WhatsApp.",
-      description: cleanPhone ? "WhatsApp will open — tap the paperclip and select the downloaded PDF." : undefined,
+      title: "Compressed PDF downloaded",
+      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded PDF." : undefined,
       duration: 8000,
     });
     if (cleanPhone) {
-      setTimeout(() => {
-        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
-      }, 600);
+      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400);
     }
     return "fallback";
   };
@@ -595,7 +598,7 @@ const AdminQuotationEditor = () => {
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
-    const r = await buildPdfBlob();
+    const r = await buildPdfBlob("share");
     if (!r) return;
 
     const msg = po
@@ -672,7 +675,7 @@ const AdminQuotationEditor = () => {
           site_photos: it.site_photos,
           quantity: it.quantity,
         })),
-      });
+      }, SHARE_PDF_OPTIONS);
       const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
