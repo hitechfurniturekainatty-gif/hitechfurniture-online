@@ -250,6 +250,74 @@ const AdminWorkers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!loginWorker} onOpenChange={(o) => { if (!o) { setLoginWorker(null); setLastCreds(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              {loginWorker?.user_id ? "Reset login PIN" : "Create worker login"}
+            </DialogTitle>
+          </DialogHeader>
+          {loginWorker && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                <strong>{loginWorker.name}</strong> will sign in at{" "}
+                <span className="font-mono text-foreground">/worker/login</span> using their phone number and a 4–6 digit PIN.
+              </p>
+              <div className="space-y-1.5">
+                <Label>Phone number (digits only, with country code)</Label>
+                <Input
+                  inputMode="tel"
+                  value={loginPhone}
+                  onChange={(e) => setLoginPhone(e.target.value)}
+                  placeholder="919526610404"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>PIN (4–6 digits)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={loginPin}
+                  onChange={(e) => setLoginPin(e.target.value)}
+                  maxLength={6}
+                />
+                <p className="text-xs text-muted-foreground">A random 4-digit PIN was suggested. Change it if you like.</p>
+              </div>
+
+              {lastCreds && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-sm font-semibold text-primary">Login ready ✓</p>
+                  <p className="mt-1 text-sm">
+                    <span className="text-muted-foreground">Phone:</span> <span className="font-mono">{lastCreds.phone}</span>
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">PIN:</span> <span className="font-mono font-semibold">{lastCreds.pin}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={copyCreds}>
+                      {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
+                      {copied ? "Copied" : "Copy"}
+                    </Button>
+                    <Button size="sm" onClick={shareCreds}>
+                      <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> Send via WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => { setLoginWorker(null); setLastCreds(null); }}>
+              {lastCreds ? "Done" : "Cancel"}
+            </Button>
+            <Button onClick={saveLogin} disabled={loginSaving}>
+              {loginSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loginWorker?.user_id ? "Reset PIN" : "Create login"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </>)}
     </AdminShell>
   );
