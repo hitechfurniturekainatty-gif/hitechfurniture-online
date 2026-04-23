@@ -631,6 +631,17 @@ const AdminQuotationPreview = () => {
           </Button>
           {canShare && (
             <Button
+              variant="secondary"
+              onClick={openAssignDialog}
+              disabled={sharing || generatingJob || items.length === 0}
+              className="h-11 flex-1 sm:flex-initial"
+            >
+              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
+              Assign Job
+            </Button>
+          )}
+          {canShare && (
+            <Button
               onClick={() => buildAndShare("share")}
               disabled={sharing}
               className="h-11 flex-1 sm:flex-initial"
@@ -654,6 +665,70 @@ const AdminQuotationPreview = () => {
           </Button>
         </div>
       </div>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Assign job work</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Worker</Label>
+              <Select value={selectedWorker} onValueChange={setSelectedWorker}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a worker" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workers.map((worker) => (
+                    <SelectItem key={worker.id} value={worker.id}>
+                      {worker.name}{worker.trade ? ` · ${worker.trade}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Items to assign</Label>
+              <div className="max-h-64 space-y-2 overflow-auto rounded-md border border-border p-3">
+                {items.map((item, index) => (
+                  <label key={item.id} className="flex items-start gap-3 rounded-md border border-border/60 p-3">
+                    <Checkbox
+                      checked={selectedItemIds.has(item.id)}
+                      onCheckedChange={(checked) => toggleItemSelection(item.id, !!checked)}
+                      aria-label={`Select item ${index + 1}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">Item #{index + 1}</p>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                      <p className="text-xs text-muted-foreground">Qty {item.quantity}{item.catalog_text ? ` · ${item.catalog_text}` : ""}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes for worker</Label>
+              <Textarea
+                rows={4}
+                value={jobNotes}
+                onChange={(event) => setJobNotes(event.target.value)}
+                placeholder="Material, finish, deadline, special instructions..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
+            <Button onClick={generateAndAssignJob} disabled={generatingJob || workers.length === 0}>
+              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
+              Generate compressed PDF & send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
