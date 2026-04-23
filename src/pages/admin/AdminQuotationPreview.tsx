@@ -265,6 +265,63 @@ const AdminQuotationPreview = () => {
     }
   };
 
+  // Build the raw multi-page PDF (no JPG rasterization). Used by the unified
+  // Download/Share menu so admins can pick the format that matches who they
+  // are sending it to (PDF for customers, JPG for workers/WhatsApp).
+  const downloadPdf = async () => {
+    if (!q) return;
+    setSharing(true);
+    try {
+      const { generateQuotationPdf } = await import("@/lib/quotationPdf");
+      const data = {
+        quotation_id: q.quotation_id,
+        party_name: q.party_name,
+        party_place: q.party_place,
+        party_phone: q.party_phone,
+        party_address: q.party_address,
+        quotation_date: new Date(q.quotation_date).toLocaleDateString("en-IN"),
+        expected_delivery_date: q.expected_delivery_date
+          ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN")
+          : null,
+        gst_percent: q.gst_percent,
+        subtotal,
+        discount_amount: discount,
+        gst_amount: gstAmount,
+        total: grandTotal,
+        advance_amount: advance,
+        balance_due: balance,
+        notes: q.notes,
+        terms: q.terms,
+        is_po: isPO(q.document_type),
+        items: items.map((it) => ({
+          description: it.description,
+          item_image_url: it.item_image_url,
+          measurement: it.measurement,
+          measurement_image_url: it.measurement_image_url,
+          catalog_text: it.catalog_text,
+          catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          amount: (it.quantity || 0) * (it.unit_price || 0),
+        })),
+      };
+      const pdfBlob = await generateQuotationPdf(data);
+      downloadBlob(pdfBlob, `${q.quotation_id}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch (e: any) {
+      console.error("PDF generation failed:", e);
+      toast({
+        title: "PDF generation failed",
+        description: e?.message ?? "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const toggleItemSelection = (itemId: string, checked: boolean) => {
     setSelectedItemIds((prev) => {
       const next = new Set(prev);
