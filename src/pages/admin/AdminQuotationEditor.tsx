@@ -36,6 +36,7 @@ import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSugges
 import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
 import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 
 type QItem = {
   id: string;
