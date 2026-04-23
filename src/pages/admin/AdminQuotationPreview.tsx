@@ -3,14 +3,25 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
-  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download,
+  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 
@@ -48,16 +59,23 @@ type Quotation = {
   document_type: DocType;
 };
 
+type Worker = {
+  id: string;
+  name: string;
+  whatsapp_number: string;
+  trade: string | null;
+};
+
 const fmtDate = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const AdminQuotationPreview = () => {
   // Aggressive compression for WhatsApp share — photos display tiny in the PDF,
   // so 700px / q=0.6 stays sharp while cutting file size ~60%.
-  const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
+  const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isOfficeStaff } = useAuth();
+  const { user, isOfficeStaff } = useAuth();
   const canShare = isOfficeStaff;
 
   const [q, setQ] = useState<Quotation | null>(null);
@@ -65,6 +83,12 @@ const AdminQuotationPreview = () => {
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [createdByName, setCreatedByName] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState("");
+  const [jobNotes, setJobNotes] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [generatingJob, setGeneratingJob] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -117,6 +141,57 @@ const AdminQuotationPreview = () => {
 
   const po = isPO(q?.document_type);
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const markSent = async () => {
+    if (!q) return;
+    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
+      await supabase.from("quotations").update({ status: "sent" }).eq("id", q.id);
+      setQ({ ...q, status: "sent" });
+    }
+  };
+
+  const sharePdfViaWhatsApp = async (
+    blob: Blob,
+    filename: string,
+    phone: string | null,
+    message: string,
+  ) => {
+    const file = new File([blob], filename, { type: "application/pdf" });
+    const navAny = navigator as any;
+    const cleanPhone = (phone ?? "").replace(/[^0-9]/g, "");
+
+    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+      try {
+        await navAny.share({ files: [file], title: filename, text: message });
+        return;
+      } catch (e) {
+        console.warn("Share cancelled, falling back", e);
+      }
+    }
+
+    downloadBlob(blob, filename);
+    toast({
+      title: "Compressed PDF downloaded",
+      description: cleanPhone
+        ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and choose the downloaded PDF."
+        : "PDF downloaded to this device.",
+      duration: 8000,
+    });
+    if (cleanPhone) {
+      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400);
+    }
+  };
+
   const buildAndShare = async (mode: "share" | "download") => {
     if (!q) return;
     if (mode === "share" && !q.party_phone) {
@@ -161,25 +236,15 @@ const AdminQuotationPreview = () => {
           amount: (it.quantity || 0) * (it.unit_price || 0),
         })),
       };
-      const blob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
+      const blob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
       const filename = `${q.quotation_id}.pdf`;
 
       if (mode === "download") {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        toast({ title: "PDF downloaded" });
+        downloadBlob(blob, filename);
+        toast({ title: "Compressed PDF downloaded" });
         return;
       }
 
-      const file = new File([blob], filename, { type: "application/pdf" });
-      const navAny = navigator as any;
-      const cleanPhone = q.party_phone!.replace(/[^0-9]/g, "");
       const balanceLine = advance > 0
         ? `Total: ${formatINR(grandTotal)}\nAdvance Received: ${formatINR(advance)}\nBalance Due: ${formatINR(balance)}`
         : `Total: ${formatINR(grandTotal)}`;
@@ -187,45 +252,116 @@ const AdminQuotationPreview = () => {
         ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
         : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
-      if (navAny.canShare && navAny.canShare({ files: [file] })) {
-        try {
-          await navAny.share({ files: [file], title: filename, text: msg });
-          // mark sent
-          if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-            await supabase.from("quotations").update({ status: "sent" }).eq("id", q.id);
-            setQ({ ...q, status: "sent" });
-          }
-          return;
-        } catch (e) {
-          console.warn("Share cancelled, falling back", e);
-        }
-      }
-      // Fallback: download then open WhatsApp
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast({
-        title: "Compressed PDF downloaded",
-        description: "Opening WhatsApp app now. If the PDF is not attached automatically, use the paperclip and select the downloaded file.",
-        duration: 8000,
-      });
-      setTimeout(() => {
-        openWhatsAppApp(cleanPhone, msg);
-      }, 400);
-      if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-        await supabase.from("quotations").update({ status: "sent" }).eq("id", q.id);
-        setQ({ ...q, status: "sent" });
-      }
+      await sharePdfViaWhatsApp(blob, filename, q.party_phone, msg);
+      await markSent();
     } catch (e: any) {
       console.error("PDF share failed:", e);
       toast({ title: "PDF generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
     } finally {
       setSharing(false);
+    }
+  };
+
+  const toggleItemSelection = (itemId: string, checked: boolean) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  };
+
+  const openAssignDialog = async () => {
+    if (!q) return;
+    if (items.length === 0) {
+      toast({ title: "No items to assign", description: "Add at least one saved item first.", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase
+      .from("workers")
+      .select("id, name, whatsapp_number, trade")
+      .eq("is_active", true)
+      .order("name");
+    if (error) {
+      toast({ title: "Workers load failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setWorkers((data ?? []) as Worker[]);
+    setSelectedWorker("");
+    setJobNotes("");
+    setSelectedItemIds(new Set(items.map((item) => item.id)));
+    setAssignOpen(true);
+  };
+
+  const generateAndAssignJob = async () => {
+    if (!q) return;
+    if (!selectedWorker) {
+      toast({ title: "Select a worker", variant: "destructive" });
+      return;
+    }
+
+    const worker = workers.find((entry) => entry.id === selectedWorker);
+    if (!worker) {
+      toast({ title: "Worker not found", variant: "destructive" });
+      return;
+    }
+    if (!worker.whatsapp_number?.trim()) {
+      toast({ title: "Worker WhatsApp missing", description: `Add a WhatsApp number for ${worker.name} first.`, variant: "destructive" });
+      return;
+    }
+
+    const chosenItems = items.filter((item) => selectedItemIds.has(item.id));
+    if (chosenItems.length === 0) {
+      toast({ title: "Select at least one item", description: "Choose which quotation items to assign.", variant: "destructive" });
+      return;
+    }
+
+    setGeneratingJob(true);
+    try {
+      const { error } = await supabase.from("job_work_orders").insert({
+        quotation_id: q.id,
+        worker_id: worker.id,
+        item_ids: chosenItems.map((item) => item.id),
+        notes: jobNotes.trim() || null,
+        status: "assigned",
+        created_by: user?.id ?? null,
+      });
+      if (error) {
+        toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      const blob = await generateJobWorkPdf({
+        quotation_id: q.quotation_id,
+        worker_name: worker.name,
+        date: new Date().toLocaleDateString("en-IN"),
+        notes: jobNotes.trim() || null,
+        items: chosenItems.map((item) => ({
+          description: item.description,
+          item_image_url: item.item_image_url,
+          measurement: item.measurement,
+          measurement_image_url: item.measurement_image_url,
+          catalog_text: item.catalog_text,
+          catalog_image_url: item.catalog_image_url,
+          sketch_url: item.sketch_url,
+          site_photos: item.site_photos,
+          quantity: item.quantity,
+        })),
+      }, COMPRESSED_PDF_OPTIONS);
+
+      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
+
+      await sharePdfViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      setAssignOpen(false);
+      setSelectedItemIds(new Set());
+      toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+    } catch (e: any) {
+      console.error("Job PDF generation failed:", e);
+      toast({ title: "PDF generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
+    } finally {
+      setGeneratingJob(false);
     }
   };
 
@@ -495,6 +631,17 @@ const AdminQuotationPreview = () => {
           </Button>
           {canShare && (
             <Button
+              variant="secondary"
+              onClick={openAssignDialog}
+              disabled={sharing || generatingJob || items.length === 0}
+              className="h-11 flex-1 sm:flex-initial"
+            >
+              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
+              Assign Job
+            </Button>
+          )}
+          {canShare && (
+            <Button
               onClick={() => buildAndShare("share")}
               disabled={sharing}
               className="h-11 flex-1 sm:flex-initial"
@@ -518,6 +665,70 @@ const AdminQuotationPreview = () => {
           </Button>
         </div>
       </div>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Assign job work</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Worker</Label>
+              <Select value={selectedWorker} onValueChange={setSelectedWorker}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a worker" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workers.map((worker) => (
+                    <SelectItem key={worker.id} value={worker.id}>
+                      {worker.name}{worker.trade ? ` · ${worker.trade}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Items to assign</Label>
+              <div className="max-h-64 space-y-2 overflow-auto rounded-md border border-border p-3">
+                {items.map((item, index) => (
+                  <label key={item.id} className="flex items-start gap-3 rounded-md border border-border/60 p-3">
+                    <Checkbox
+                      checked={selectedItemIds.has(item.id)}
+                      onCheckedChange={(checked) => toggleItemSelection(item.id, !!checked)}
+                      aria-label={`Select item ${index + 1}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">Item #{index + 1}</p>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                      <p className="text-xs text-muted-foreground">Qty {item.quantity}{item.catalog_text ? ` · ${item.catalog_text}` : ""}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes for worker</Label>
+              <Textarea
+                rows={4}
+                value={jobNotes}
+                onChange={(event) => setJobNotes(event.target.value)}
+                placeholder="Material, finish, deadline, special instructions..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
+            <Button onClick={generateAndAssignJob} disabled={generatingJob || workers.length === 0}>
+              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
+              Generate compressed PDF & send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
