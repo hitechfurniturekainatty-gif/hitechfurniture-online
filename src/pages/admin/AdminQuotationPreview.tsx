@@ -24,6 +24,7 @@ import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat, Image as ImageIcon,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 
 type QItem = {
   id: string;
@@ -264,6 +265,63 @@ const AdminQuotationPreview = () => {
     }
   };
 
+  // Build the raw multi-page PDF (no JPG rasterization). Used by the unified
+  // Download/Share menu so admins can pick the format that matches who they
+  // are sending it to (PDF for customers, JPG for workers/WhatsApp).
+  const downloadPdf = async () => {
+    if (!q) return;
+    setSharing(true);
+    try {
+      const { generateQuotationPdf } = await import("@/lib/quotationPdf");
+      const data = {
+        quotation_id: q.quotation_id,
+        party_name: q.party_name,
+        party_place: q.party_place,
+        party_phone: q.party_phone,
+        party_address: q.party_address,
+        quotation_date: new Date(q.quotation_date).toLocaleDateString("en-IN"),
+        expected_delivery_date: q.expected_delivery_date
+          ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN")
+          : null,
+        gst_percent: q.gst_percent,
+        subtotal,
+        discount_amount: discount,
+        gst_amount: gstAmount,
+        total: grandTotal,
+        advance_amount: advance,
+        balance_due: balance,
+        notes: q.notes,
+        terms: q.terms,
+        is_po: isPO(q.document_type),
+        items: items.map((it) => ({
+          description: it.description,
+          item_image_url: it.item_image_url,
+          measurement: it.measurement,
+          measurement_image_url: it.measurement_image_url,
+          catalog_text: it.catalog_text,
+          catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          amount: (it.quantity || 0) * (it.unit_price || 0),
+        })),
+      };
+      const pdfBlob = await generateQuotationPdf(data);
+      downloadBlob(pdfBlob, `${q.quotation_id}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch (e: any) {
+      console.error("PDF generation failed:", e);
+      toast({
+        title: "PDF generation failed",
+        description: e?.message ?? "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const toggleItemSelection = (itemId: string, checked: boolean) => {
     setSelectedItemIds((prev) => {
       const next = new Set(prev);
@@ -295,7 +353,7 @@ const AdminQuotationPreview = () => {
     setAssignOpen(true);
   };
 
-  const generateAndAssignJob = async () => {
+  const generateAndAssignJob = async (format: "jpg" | "pdf" = "jpg") => {
     if (!q) return;
     if (!selectedWorker) {
       toast({ title: "Select a worker", variant: "destructive" });
@@ -307,7 +365,7 @@ const AdminQuotationPreview = () => {
       toast({ title: "Worker not found", variant: "destructive" });
       return;
     }
-    if (!worker.whatsapp_number?.trim()) {
+    if (format === "jpg" && !worker.whatsapp_number?.trim()) {
       toast({ title: "Worker WhatsApp missing", description: `Add a WhatsApp number for ${worker.name} first.`, variant: "destructive" });
       return;
     }
@@ -334,6 +392,9 @@ const AdminQuotationPreview = () => {
       }
 
       const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      // Worker-safe PDF: generateJobWorkPdf strips prices, GST and customer
+      // contact details by design, so the same blob is safe whether we deliver
+      // it as PDF or rasterised JPG.
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
@@ -350,17 +411,25 @@ const AdminQuotationPreview = () => {
           site_photos: item.site_photos,
           quantity: item.quantity,
         })),
-      }, COMPRESSED_PDF_OPTIONS);
-      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      }, format === "jpg" ? COMPRESSED_PDF_OPTIONS : undefined);
 
-      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.jpg`;
+      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      await shareJpgViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      if (format === "pdf") {
+        downloadBlob(pdfBlob, `${baseFilename}.pdf`);
+        toast({
+          title: "Job PDF downloaded",
+          description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
+        });
+      } else {
+        const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
+        const blob = await pdfBlobToJpgBlob(pdfBlob);
+        await shareJpgViaWhatsApp(blob, `${baseFilename}.jpg`, worker.whatsapp_number, msg);
+        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+      }
       setAssignOpen(false);
       setSelectedItemIds(new Set());
-      toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
     } catch (e: any) {
       console.error("Job image generation failed:", e);
       toast({ title: "Image generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
@@ -655,14 +724,14 @@ const AdminQuotationPreview = () => {
             </Button>
           )}
           {canShare && (
-            <Button
-              variant="outline"
-              onClick={() => buildAndShare("download")}
-              disabled={sharing}
-              className="h-11 flex-1 sm:flex-initial"
-            >
-              <ImageIcon className="mr-2 h-4 w-4" />JPG
-            </Button>
+            <DownloadShareMenu
+              busy={sharing}
+              onPdf={downloadPdf}
+              onJpg={() => buildAndShare("download")}
+              triggerClassName="h-11 flex-1 sm:flex-initial"
+              pdfTooltip="PDF — full quotation for customer"
+              jpgTooltip="JPG — high-res images for WhatsApp"
+            />
           )}
           <Button variant="secondary" onClick={handleDone} className="h-11 flex-1 sm:flex-initial">
             <Check className="mr-2 h-4 w-4" />Done
@@ -749,10 +818,16 @@ const AdminQuotationPreview = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
-            <Button onClick={generateAndAssignJob} disabled={generatingJob || workers.length === 0}>
-              {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
-              Generate JPG & send
-            </Button>
+            <DownloadShareMenu
+              busy={generatingJob}
+              disabled={workers.length === 0 || !selectedWorker}
+              onPdf={() => generateAndAssignJob("pdf")}
+              onJpg={() => generateAndAssignJob("jpg")}
+              triggerVariant="default"
+              label="Assign & send"
+              pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
+              jpgTooltip="JPG — send via WhatsApp to worker now"
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>

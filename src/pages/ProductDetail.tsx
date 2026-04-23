@@ -5,11 +5,12 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MessageCircle, Loader2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2 } from "lucide-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
 import { downloadBlob, generateProductPdf } from "@/lib/pdf";
 import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
 import { toast } from "@/hooks/use-toast";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 
 type Product = {
   id: string;
@@ -116,6 +117,32 @@ Please share more details.`;
       toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
     } catch (e) {
       toast({ title: "Image generation failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setGeneratingJpg(false);
+    }
+  };
+
+  // Generates the *raw* multi-page brochure PDF (no JPG rasterization).
+  // Customers usually prefer the crisp PDF; the JPG is offered alongside for
+  // workers / casual WhatsApp sharing.
+  const handleDownloadPdf = async () => {
+    setGeneratingJpg(true);
+    try {
+      const pdfBlob = await generateProductPdf({
+        product_name: product.product_name,
+        product_code: product.product_code,
+        description: product.description,
+        mrp: Number(product.mrp),
+        offer_price: product.offer_price ? Number(product.offer_price) : null,
+        available_colors: product.available_colors,
+        material: product.material,
+        dimensions: product.dimensions,
+        cover_image: cover ?? null,
+      });
+      downloadBlob(pdfBlob, `${product.product_code}-brochure.pdf`);
+      toast({ title: "Brochure PDF downloaded" });
+    } catch (e) {
+      toast({ title: "PDF generation failed", description: "Please try again.", variant: "destructive" });
     } finally {
       setGeneratingJpg(false);
     }
@@ -306,10 +333,16 @@ Please share more details.`;
               )}
               Inquire on WhatsApp
             </Button>
-            <Button size="lg" variant="outline" onClick={handleDownloadJpg} disabled={generatingJpg}>
-              {generatingJpg ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-1 h-4 w-4" />}
-              Download brochure (JPG)
-            </Button>
+            <DownloadShareMenu
+              busy={generatingJpg}
+              onPdf={handleDownloadPdf}
+              onJpg={handleDownloadJpg}
+              triggerVariant="outline"
+              triggerSize="lg"
+              label="Download brochure"
+              pdfTooltip="PDF — print-quality brochure"
+              jpgTooltip="JPG — image for WhatsApp"
+            />
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
             On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure image + message in one step.
