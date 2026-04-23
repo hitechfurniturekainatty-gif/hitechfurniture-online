@@ -355,13 +355,13 @@ Please share more details.`;
               )}
               Inquire on WhatsApp
             </Button>
-            <Button size="lg" variant="outline" onClick={handleDownloadPdf} disabled={generatingPdf}>
-              {generatingPdf ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
-              Download brochure (PDF)
+            <Button size="lg" variant="outline" onClick={handleDownloadJpg} disabled={generatingJpg}>
+              {generatingJpg ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-1 h-4 w-4" />}
+              Download brochure (JPG)
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure PDF + message in one step.
+            On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure image + message in one step.
           </p>
         </div>
       </div>
