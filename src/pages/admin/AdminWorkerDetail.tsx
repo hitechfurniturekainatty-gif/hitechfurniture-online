@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart,
+  ShoppingCart, History, Camera,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 
@@ -39,6 +39,16 @@ type Job = {
   document_type: DocType;
 };
 
+type StatusUpdate = {
+  id: string;
+  job_id: string;
+  status: string;
+  note: string | null;
+  photo_url: string | null;
+  created_at: string;
+  created_by: string | null;
+};
+
 export const JOB_STATUSES = [
   { value: "assigned", label: "Job Assigned", tone: "secondary" as const },
   { value: "started", label: "Work Started", tone: "outline" as const },
@@ -63,6 +73,8 @@ const AdminWorkerDetail = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [historyByJob, setHistoryByJob] = useState<Record<string, StatusUpdate[]>>({});
+  const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     if (!id) return;
@@ -95,6 +107,23 @@ const AdminWorkerDetail = () => {
       document_type: (row.quotations?.document_type ?? "quotation") as DocType,
     }));
     setJobs(flat);
+
+    // Bulk-load status history for all of this worker's jobs
+    const jobIds = flat.map((j) => j.id);
+    if (jobIds.length) {
+      const { data: hist } = await supabase
+        .from("worker_status_updates")
+        .select("id, job_id, status, note, photo_url, created_at, created_by")
+        .in("job_id", jobIds)
+        .order("created_at", { ascending: false });
+      const byJob: Record<string, StatusUpdate[]> = {};
+      for (const u of (hist ?? []) as StatusUpdate[]) {
+        (byJob[u.job_id] ??= []).push(u);
+      }
+      setHistoryByJob(byJob);
+    } else {
+      setHistoryByJob({});
+    }
     setLoading(false);
   };
 
