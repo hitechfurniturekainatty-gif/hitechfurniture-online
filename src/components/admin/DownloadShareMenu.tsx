@@ -28,9 +28,9 @@ import { cn } from "@/lib/utils";
  */
 export type DownloadShareMenuProps = {
   /** Called when the user picks the PDF action. */
-  onPdf: () => void | Promise<void>;
+  onPdf: () => unknown | Promise<unknown>;
   /** Called when the user picks the JPG action. */
-  onJpg: () => void | Promise<void>;
+  onJpg: () => unknown | Promise<unknown>;
   /** Disables both actions while a generation is in progress. */
   busy?: boolean;
   /** Optional override for the trigger label. */
@@ -66,7 +66,7 @@ export function DownloadShareMenu({
 }: DownloadShareMenuProps) {
   const [open, setOpen] = useState(false);
 
-  const handlePick = async (fn: () => void | Promise<void>) => {
+  const handlePick = async (fn: () => unknown | Promise<unknown>) => {
     setOpen(false);
     await fn();
   };
