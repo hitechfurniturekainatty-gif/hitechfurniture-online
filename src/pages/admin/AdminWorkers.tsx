@@ -64,7 +64,11 @@ const AdminWorkers = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const startNew = () => {
+    setEditing(null);
+    setForm({ ...empty, login_pin: randomPin() });
+    setOpen(true);
+  };
   const startEdit = (w: Worker) => {
     setEditing(w);
     setForm({
