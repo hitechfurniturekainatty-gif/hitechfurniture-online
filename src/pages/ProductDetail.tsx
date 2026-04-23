@@ -5,9 +5,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, MessageCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, Image as ImageIcon } from "lucide-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
 import { downloadBlob, generateProductPdf } from "@/lib/pdf";
+import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
 import { toast } from "@/hooks/use-toast";
 
 type Product = {
@@ -31,7 +32,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [generatingJpg, setGeneratingJpg] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
 
   useEffect(() => {
@@ -92,10 +93,37 @@ View / brochure: ${productUrl}
 
 Please share more details.`;
 
-  const handleDownloadPdf = async () => {
-    setGeneratingPdf(true);
+  const buildBrochureJpgBlob = async (): Promise<Blob> => {
+    const pdfBlob = await generateProductPdf({
+      product_name: product.product_name,
+      product_code: product.product_code,
+      description: product.description,
+      mrp: Number(product.mrp),
+      offer_price: product.offer_price ? Number(product.offer_price) : null,
+      available_colors: product.available_colors,
+      material: product.material,
+      dimensions: product.dimensions,
+      cover_image: cover ?? null,
+    });
+    return await pdfBlobToJpgBlob(pdfBlob);
+  };
+
+  const handleDownloadJpg = async () => {
+    setGeneratingJpg(true);
     try {
-      const blob = await generateProductPdf({
+      const blob = await buildBrochureJpgBlob();
+      downloadBlob(blob, `${product.product_code}-brochure.jpg`);
+      toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
+    } catch (e) {
+      toast({ title: "Image generation failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setGeneratingJpg(false);
+    }
+  };
+
+  // Legacy alias removed — generation pipeline below uses buildBrochureJpgBlob().
+  const _legacy = async () => {
+    return generateProductPdf({
         product_name: product.product_name,
         product_code: product.product_code,
         description: product.description,
@@ -105,14 +133,7 @@ Please share more details.`;
         material: product.material,
         dimensions: product.dimensions,
         cover_image: cover ?? null,
-      });
-      downloadBlob(blob, `${product.product_code}-brochure.pdf`);
-      toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
-    } catch (e) {
-      toast({ title: "PDF failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setGeneratingPdf(false);
-    }
+    });
   };
 
   /**
