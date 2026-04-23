@@ -161,35 +161,48 @@ const AdminQuotationPreview = () => {
     }
   };
 
-  const shareJpgViaWhatsApp = async (
-    blob: Blob,
-    filename: string,
+  // Share one or more JPG pages (page-by-page sequence). Tries the native
+  // Web Share sheet first (WhatsApp picks all files in one bubble); on
+  // unsupported devices we fall back to downloading every page and opening
+  // the WhatsApp chat so the admin can attach them via the paperclip.
+  const shareJpgPagesViaWhatsApp = async (
+    blobs: Blob[],
+    baseName: string,
     phone: string | null,
     message: string,
   ) => {
-    const file = new File([blob], filename, { type: "image/jpeg" });
-    const navAny = navigator as any;
     const cleanPhone = (phone ?? "").replace(/[^0-9]/g, "");
+    const isMulti = blobs.length > 1;
+    const files = blobs.map((b, i) =>
+      new File(
+        [b],
+        isMulti ? `${baseName}_Page${i + 1}.jpg` : `${baseName}.jpg`,
+        { type: "image/jpeg" },
+      ),
+    );
+    const navAny = navigator as any;
 
-    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+    if (navAny.canShare && navAny.canShare({ files })) {
       try {
-        await navAny.share({ files: [file], title: filename, text: message });
+        await navAny.share({ files, title: baseName, text: message });
         return;
       } catch (e) {
         console.warn("Share cancelled, falling back", e);
       }
     }
 
-    downloadBlob(blob, filename);
+    files.forEach((f, idx) => {
+      setTimeout(() => downloadBlob(f, f.name), idx * 250);
+    });
     toast({
-      title: "Image downloaded",
+      title: isMulti ? `${files.length} images downloaded` : "Image downloaded",
       description: cleanPhone
-        ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and choose the downloaded image."
-        : "Image downloaded to this device.",
+        ? "Opening WhatsApp app now. Tap the paperclip and attach the downloaded images in order."
+        : "Saved to this device.",
       duration: 8000,
     });
     if (cleanPhone) {
-      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400);
+      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400 + files.length * 250);
     }
   };
 
