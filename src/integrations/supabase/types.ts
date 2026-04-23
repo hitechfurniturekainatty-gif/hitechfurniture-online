@@ -967,7 +967,7 @@ export type Database = {
       next_service_id: { Args: never; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "staff" | "measurement_staff" | "delivery"
+      app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1095,7 +1095,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "measurement_staff", "delivery"],
+      app_role: ["admin", "staff", "measurement_staff", "delivery", "worker"],
     },
   },
 } as const
