@@ -96,6 +96,15 @@ export type QuotationPdfData = {
   is_po?: boolean;
 };
 
+type PdfImageOptions = {
+  maxSide?: number;
+  jpegQuality?: number;
+};
+
+type PdfRenderOptions = {
+  image?: PdfImageOptions;
+};
+
 const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -287,7 +296,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 // We always re-encode the fetched image to JPEG via canvas so PDFs render
 // every photo regardless of the source format. This fixes the "no item
 // photos in PDF" bug introduced when uploads started using WebP.
-async function toDataUri(url: string | null): Promise<string | null> {
+async function toDataUri(url: string | null, options: PdfImageOptions = {}): Promise<string | null> {
   if (!url) return null;
   // Already a data URI in a PDF-safe format (jpeg/png) — use as-is
   if (url.startsWith("data:image/jpeg") || url.startsWith("data:image/jpg") || url.startsWith("data:image/png")) {
@@ -313,7 +322,7 @@ async function toDataUri(url: string | null): Promise<string | null> {
       }
     }
     // Re-encode to JPEG so @react-pdf/renderer always accepts it.
-    return await blobToJpegDataUri(blob);
+    return await blobToJpegDataUri(blob, options);
   } catch (e) {
     console.warn(`[PDF] image fetch threw for ${url}:`, e);
     return null;
@@ -322,7 +331,8 @@ async function toDataUri(url: string | null): Promise<string | null> {
 
 // Decode any browser-supported image (webp, avif, png, jpeg, gif) and
 // re-encode it as JPEG via canvas. Returns null on failure.
-async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
+async function blobToJpegDataUri(blob: Blob, options: PdfImageOptions = {}): Promise<string | null> {
+  const { maxSide = 1200, jpegQuality = 0.85 } = options;
   // PNG with transparency would lose its alpha if encoded as JPEG;
   // keep PNGs as PNGs (react-pdf supports them natively).
   if (blob.type === "image/png") {
@@ -345,8 +355,7 @@ async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
     });
     // Cap longest side at 1200px — keeps PDF small and fast without
     // visibly hurting quality at the 64×64–88×88 print sizes we use.
-    const MAX = 1200;
-    const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.max(1, Math.round(img.naturalWidth * scale));
     const h = Math.max(1, Math.round(img.naturalHeight * scale));
     const canvas = document.createElement("canvas");
@@ -358,7 +367,7 @@ async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return canvas.toDataURL("image/jpeg", jpegQuality);
   } catch (e) {
     console.warn("[PDF] decode/re-encode failed", e);
     return null;
@@ -367,7 +376,8 @@ async function blobToJpegDataUri(blob: Blob): Promise<string | null> {
   }
 }
 
-export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
+export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRenderOptions = {}): Promise<Blob> {
+  const imageOptions = options.image ?? {};
   const splitUrls = (raw: string | null) =>
     (raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 
@@ -377,17 +387,17 @@ export async function generateQuotationPdf(q: QuotationPdfData): Promise<Blob> {
       const catUrls = splitUrls(it.catalog_image_url);
       const siteUrls = splitUrls(it.site_photos ?? null);
       const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
-        Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(measUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(catUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        Promise.all(siteUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url),
-        toDataUri(it.sketch_url ?? null),
+        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
         ...it,
@@ -623,7 +633,8 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
   </Document>
 );
 
-export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
+export async function generateJobWorkPdf(d: JobWorkPdfData, options: PdfRenderOptions = {}): Promise<Blob> {
+  const imageOptions = options.image ?? {};
   const splitUrls = (raw: string | null) =>
     (raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 
@@ -633,17 +644,17 @@ export async function generateJobWorkPdf(d: JobWorkPdfData): Promise<Blob> {
       const catUrls = splitUrls(it.catalog_image_url);
       const siteUrls = splitUrls(it.site_photos ?? null);
       const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
-        Promise.all(measUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(measUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        Promise.all(catUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(catUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        Promise.all(siteUrls.map((u) => toDataUri(u))).then((arr) =>
+        Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url),
-        toDataUri(it.sketch_url ?? null),
+        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
         ...it,
