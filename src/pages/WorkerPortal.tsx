@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
@@ -148,7 +149,7 @@ const WorkerPortal = () => {
     try {
       let photoUrl: string | null = null;
       if (photoFile) {
-        const compressed = await compressImage(photoFile, { maxDimension: 1600, quality: 0.82 });
+        const compressed = await compressImage(photoFile);
         const path = `worker-updates/${dialogJob.id}/${Date.now()}-${photoFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
         const { error: upErr } = await supabase.storage.from("quotation-images").upload(path, compressed);
         if (upErr) throw upErr;
