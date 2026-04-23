@@ -504,9 +504,12 @@ const AdminQuotationEditor = () => {
   // 44–88px in the PDF, so 700px / q=0.6 stays sharp while cutting file size ~60%.
   const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
 
-  const buildPdfBlob = async (
+  // Build the multi-page JPG sequence (one image per PDF page) at 3× scale.
+  // Each page contains atomic items (no item is split across pages) because
+  // the source PDF uses `wrap={false}` on every row.
+  const buildJpgPages = async (
     mode: "download" | "share" = "download"
-  ): Promise<{ blob: Blob; filename: string } | null> => {
+  ): Promise<{ blobs: Blob[]; baseName: string } | null> => {
     if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return null; }
     const saved = await ensureSaved();
     if (!saved) return null;
@@ -515,9 +518,9 @@ const AdminQuotationEditor = () => {
     try {
       const { generateQuotationPdf } = await loadPdfLib();
       const pdfBlob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
-      const { pdfBlobToJpgBlob } = await loadJpgLib();
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
-      return { blob, filename: `${data.quotation_id}.jpg` };
+      const { pdfBlobToJpgPages } = await loadJpgLib();
+      const blobs = await pdfBlobToJpgPages(pdfBlob);
+      return { blobs, baseName: data.quotation_id };
     } catch (e: any) {
       console.error("Image generation failed:", e);
       toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
@@ -537,10 +540,17 @@ const AdminQuotationEditor = () => {
   };
 
   const downloadJpg = async (): Promise<boolean> => {
-    const r = await buildPdfBlob("download");
+    const r = await buildJpgPages("download");
     if (!r) return false;
-    downloadBlob(r.blob, r.filename);
-    toast({ title: "Image downloaded", description: "Check your Downloads folder." });
+    const isMulti = r.blobs.length > 1;
+    r.blobs.forEach((b, i) => {
+      const fn = isMulti ? `${r.baseName}_Page${i + 1}.jpg` : `${r.baseName}.jpg`;
+      setTimeout(() => downloadBlob(b, fn), i * 250);
+    });
+    toast({
+      title: isMulti ? `${r.blobs.length} images downloaded` : "Image downloaded",
+      description: "Check your Downloads folder.",
+    });
     return true;
   };
 
