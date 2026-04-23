@@ -161,35 +161,48 @@ const AdminQuotationPreview = () => {
     }
   };
 
-  const shareJpgViaWhatsApp = async (
-    blob: Blob,
-    filename: string,
+  // Share one or more JPG pages (page-by-page sequence). Tries the native
+  // Web Share sheet first (WhatsApp picks all files in one bubble); on
+  // unsupported devices we fall back to downloading every page and opening
+  // the WhatsApp chat so the admin can attach them via the paperclip.
+  const shareJpgPagesViaWhatsApp = async (
+    blobs: Blob[],
+    baseName: string,
     phone: string | null,
     message: string,
   ) => {
-    const file = new File([blob], filename, { type: "image/jpeg" });
-    const navAny = navigator as any;
     const cleanPhone = (phone ?? "").replace(/[^0-9]/g, "");
+    const isMulti = blobs.length > 1;
+    const files = blobs.map((b, i) =>
+      new File(
+        [b],
+        isMulti ? `${baseName}_Page${i + 1}.jpg` : `${baseName}.jpg`,
+        { type: "image/jpeg" },
+      ),
+    );
+    const navAny = navigator as any;
 
-    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+    if (navAny.canShare && navAny.canShare({ files })) {
       try {
-        await navAny.share({ files: [file], title: filename, text: message });
+        await navAny.share({ files, title: baseName, text: message });
         return;
       } catch (e) {
         console.warn("Share cancelled, falling back", e);
       }
     }
 
-    downloadBlob(blob, filename);
+    files.forEach((f, idx) => {
+      setTimeout(() => downloadBlob(f, f.name), idx * 250);
+    });
     toast({
-      title: "Image downloaded",
+      title: isMulti ? `${files.length} images downloaded` : "Image downloaded",
       description: cleanPhone
-        ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and choose the downloaded image."
-        : "Image downloaded to this device.",
+        ? "Opening WhatsApp app now. Tap the paperclip and attach the downloaded images in order."
+        : "Saved to this device.",
       duration: 8000,
     });
     if (cleanPhone) {
-      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400);
+      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400 + files.length * 250);
     }
   };
 
@@ -238,13 +251,19 @@ const AdminQuotationPreview = () => {
         })),
       };
       const pdfBlob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
-      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
-      const filename = `${q.quotation_id}.jpg`;
+      const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+      // Page-by-page output: high-resolution (3×) sequence so each page
+      // stays sharp on its own and items are never split across two images.
+      const blobs = await pdfBlobToJpgPages(pdfBlob);
+      const baseName = q.quotation_id;
+      const isMulti = blobs.length > 1;
 
       if (mode === "download") {
-        downloadBlob(blob, filename);
-        toast({ title: "Image downloaded" });
+        blobs.forEach((b, i) => {
+          const fn = isMulti ? `${baseName}_Page${i + 1}.jpg` : `${baseName}.jpg`;
+          setTimeout(() => downloadBlob(b, fn), i * 250);
+        });
+        toast({ title: isMulti ? `${blobs.length} images downloaded` : "Image downloaded" });
         return;
       }
 
@@ -255,7 +274,7 @@ const AdminQuotationPreview = () => {
         ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
         : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
-      await shareJpgViaWhatsApp(blob, filename, q.party_phone, msg);
+      await shareJpgPagesViaWhatsApp(blobs, baseName, q.party_phone, msg);
       await markSent();
     } catch (e: any) {
       console.error("Image share failed:", e);
@@ -423,10 +442,13 @@ const AdminQuotationPreview = () => {
           description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
-        const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
-        const blob = await pdfBlobToJpgBlob(pdfBlob);
-        await shareJpgViaWhatsApp(blob, `${baseFilename}.jpg`, worker.whatsapp_number, msg);
-        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+        const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+        const blobs = await pdfBlobToJpgPages(pdfBlob);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        toast({
+          title: "Job work sent",
+          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+        });
       }
       setAssignOpen(false);
       setSelectedItemIds(new Set());

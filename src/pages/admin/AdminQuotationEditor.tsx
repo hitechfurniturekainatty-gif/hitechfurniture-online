@@ -504,9 +504,12 @@ const AdminQuotationEditor = () => {
   // 44–88px in the PDF, so 700px / q=0.6 stays sharp while cutting file size ~60%.
   const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
 
-  const buildPdfBlob = async (
+  // Build the multi-page JPG sequence (one image per PDF page) at 3× scale.
+  // Each page contains atomic items (no item is split across pages) because
+  // the source PDF uses `wrap={false}` on every row.
+  const buildJpgPages = async (
     mode: "download" | "share" = "download"
-  ): Promise<{ blob: Blob; filename: string } | null> => {
+  ): Promise<{ blobs: Blob[]; baseName: string } | null> => {
     if (items.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return null; }
     const saved = await ensureSaved();
     if (!saved) return null;
@@ -515,9 +518,9 @@ const AdminQuotationEditor = () => {
     try {
       const { generateQuotationPdf } = await loadPdfLib();
       const pdfBlob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
-      const { pdfBlobToJpgBlob } = await loadJpgLib();
-      const blob = await pdfBlobToJpgBlob(pdfBlob);
-      return { blob, filename: `${data.quotation_id}.jpg` };
+      const { pdfBlobToJpgPages } = await loadJpgLib();
+      const blobs = await pdfBlobToJpgPages(pdfBlob);
+      return { blobs, baseName: data.quotation_id };
     } catch (e: any) {
       console.error("Image generation failed:", e);
       toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
@@ -537,10 +540,17 @@ const AdminQuotationEditor = () => {
   };
 
   const downloadJpg = async (): Promise<boolean> => {
-    const r = await buildPdfBlob("download");
+    const r = await buildJpgPages("download");
     if (!r) return false;
-    downloadBlob(r.blob, r.filename);
-    toast({ title: "Image downloaded", description: "Check your Downloads folder." });
+    const isMulti = r.blobs.length > 1;
+    r.blobs.forEach((b, i) => {
+      const fn = isMulti ? `${r.baseName}_Page${i + 1}.jpg` : `${r.baseName}.jpg`;
+      setTimeout(() => downloadBlob(b, fn), i * 250);
+    });
+    toast({
+      title: isMulti ? `${r.blobs.length} images downloaded` : "Image downloaded",
+      description: "Check your Downloads folder.",
+    });
     return true;
   };
 
@@ -596,36 +606,48 @@ const AdminQuotationEditor = () => {
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
-  // Shared helper: try native share with file (WhatsApp will attach the JPG directly).
-  // Falls back to download + open chat link if the device doesn't support file sharing.
-  const shareJpgViaWhatsApp = async (
-    blob: Blob,
-    filename: string,
+  // Shared helper: try native share with file(s) (WhatsApp attaches the JPGs
+  // directly). Falls back to downloading every page + opening the chat link
+  // if the device doesn't support multi-file sharing.
+  const shareJpgPagesViaWhatsApp = async (
+    blobs: Blob[],
+    baseName: string,
     phone: string | null,
     message: string,
   ): Promise<"shared" | "fallback"> => {
-    const file = new File([blob], filename, { type: "image/jpeg" });
+    const isMulti = blobs.length > 1;
+    const files = blobs.map((b, i) =>
+      new File(
+        [b],
+        isMulti ? `${baseName}_Page${i + 1}.jpg` : `${baseName}.jpg`,
+        { type: "image/jpeg" },
+      ),
+    );
     const navAny = navigator as any;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, "") : "";
 
-    if (navAny.canShare && navAny.canShare({ files: [file] })) {
+    if (navAny.canShare && navAny.canShare({ files })) {
       try {
-        await navAny.share({ files: [file], title: filename, text: message });
+        await navAny.share({ files, title: baseName, text: message });
         return "shared";
       } catch (e) {
         console.warn("Web Share cancelled/failed, falling back:", e);
       }
     }
 
-    // Fallback: download JPG + open WhatsApp chat
-    downloadBlob(blob, filename);
+    // Fallback: download every page + open WhatsApp chat
+    files.forEach((f, idx) => {
+      setTimeout(() => downloadBlob(f, f.name), idx * 250);
+    });
     toast({
-      title: "Image downloaded",
-      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded image." : undefined,
+      title: isMulti ? `${files.length} images downloaded` : "Image downloaded",
+      description: cleanPhone
+        ? "Opening WhatsApp app now. Tap the paperclip and attach the downloaded images in order."
+        : undefined,
       duration: 8000,
     });
     if (cleanPhone) {
-      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400);
+      setTimeout(() => openWhatsAppApp(cleanPhone, message), 400 + files.length * 250);
     }
     return "fallback";
   };
@@ -633,7 +655,7 @@ const AdminQuotationEditor = () => {
   const shareWhatsApp = async () => {
     if (!q) return;
     if (!q.party_phone) { toast({ title: "No party phone on file", variant: "destructive" }); return; }
-    const r = await buildPdfBlob("share");
+    const r = await buildJpgPages("share");
     if (!r) return;
 
     const msg = po
@@ -645,7 +667,7 @@ const AdminQuotationEditor = () => {
           return `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
         })();
 
-    await shareJpgViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
+    await shareJpgPagesViaWhatsApp(r.blobs, r.baseName, q.party_phone, msg);
 
     if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
       await setStatus("sent", { silent: true });
@@ -721,10 +743,13 @@ const AdminQuotationEditor = () => {
           description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
-        const { pdfBlobToJpgBlob } = await loadJpgLib();
-        const blob = await pdfBlobToJpgBlob(pdfBlob);
-        await shareJpgViaWhatsApp(blob, `${baseFilename}.jpg`, worker.whatsapp_number, msg);
-        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
+        const { pdfBlobToJpgPages } = await loadJpgLib();
+        const blobs = await pdfBlobToJpgPages(pdfBlob);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        toast({
+          title: "Job work sent",
+          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+        });
       }
 
       setJobOpen(false);
