@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "staff" | "measurement_staff" | "delivery";
+export type AppRole = "admin" | "staff" | "measurement_staff" | "delivery" | "worker";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,8 +43,9 @@ export function useAuth() {
   const isMeasurementStaff = roles.includes("measurement_staff");
   const isOfficeStaff = roles.includes("staff") || isAdmin;
   const isDelivery = roles.includes("delivery");
+  const isWorker = roles.includes("worker");
   // any authenticated app user (admin/staff/measurement_staff)
-  const isStaff = isOfficeStaff || isMeasurementStaff || isDelivery;
+  const isStaff = isOfficeStaff || isMeasurementStaff || isDelivery || isWorker;
 
   return {
     user,
@@ -54,6 +55,7 @@ export function useAuth() {
     isOfficeStaff,
     isMeasurementStaff,
     isDelivery,
+    isWorker,
     isStaff,
     signOut: () => supabase.auth.signOut(),
   };

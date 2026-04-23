@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart,
+  ShoppingCart, History, Camera,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 
@@ -39,6 +39,16 @@ type Job = {
   document_type: DocType;
 };
 
+type StatusUpdate = {
+  id: string;
+  job_id: string;
+  status: string;
+  note: string | null;
+  photo_url: string | null;
+  created_at: string;
+  created_by: string | null;
+};
+
 export const JOB_STATUSES = [
   { value: "assigned", label: "Job Assigned", tone: "secondary" as const },
   { value: "started", label: "Work Started", tone: "outline" as const },
@@ -63,6 +73,8 @@ const AdminWorkerDetail = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [historyByJob, setHistoryByJob] = useState<Record<string, StatusUpdate[]>>({});
+  const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     if (!id) return;
@@ -95,6 +107,23 @@ const AdminWorkerDetail = () => {
       document_type: (row.quotations?.document_type ?? "quotation") as DocType,
     }));
     setJobs(flat);
+
+    // Bulk-load status history for all of this worker's jobs
+    const jobIds = flat.map((j) => j.id);
+    if (jobIds.length) {
+      const { data: hist } = await supabase
+        .from("worker_status_updates")
+        .select("id, job_id, status, note, photo_url, created_at, created_by")
+        .in("job_id", jobIds)
+        .order("created_at", { ascending: false });
+      const byJob: Record<string, StatusUpdate[]> = {};
+      for (const u of (hist ?? []) as StatusUpdate[]) {
+        (byJob[u.job_id] ??= []).push(u);
+      }
+      setHistoryByJob(byJob);
+    } else {
+      setHistoryByJob({});
+    }
     setLoading(false);
   };
 
@@ -231,6 +260,46 @@ const AdminWorkerDetail = () => {
                       </SelectContent>
                     </Select>
                     {savingId === job.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
+                )}
+
+                {(historyByJob[job.id]?.length ?? 0) > 0 && (
+                  <div className="border-t border-border/50 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setOpenHistory((p) => ({ ...p, [job.id]: !p[job.id] }))}
+                      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      {openHistory[job.id] ? "Hide" : "Show"} status history ({historyByJob[job.id].length})
+                    </button>
+                    {openHistory[job.id] && (
+                      <ol className="mt-2 space-y-2 border-l-2 border-border pl-3">
+                        {historyByJob[job.id].map((u) => (
+                          <li key={u.id} className="text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={jobStatusTone(u.status)} className="text-[10px]">
+                                {jobStatusLabel(u.status)}
+                              </Badge>
+                              <span className="text-muted-foreground">{fmtDateTime(u.created_at)}</span>
+                            </div>
+                            {u.note && (
+                              <p className="mt-1 italic text-muted-foreground">"{u.note}"</p>
+                            )}
+                            {u.photo_url && (
+                              <a
+                                href={u.photo_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                              >
+                                <Camera className="h-3 w-3" /> View photo
+                              </a>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
                 )}
               </CardContent>

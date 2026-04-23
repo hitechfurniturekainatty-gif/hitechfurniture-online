@@ -907,17 +907,67 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_status_updates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          note: string | null
+          photo_url: string | null
+          status: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          note?: string | null
+          photo_url?: string | null
+          status: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          note?: string | null
+          photo_url?: string | null
+          status?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_status_updates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_status_updates_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workers: {
         Row: {
           created_at: string
           created_by: string | null
           id: string
           is_active: boolean
+          login_phone: string | null
           name: string
           notes: string | null
           phone: string | null
           trade: string | null
           updated_at: string
+          user_id: string | null
           whatsapp_number: string
         }
         Insert: {
@@ -925,11 +975,13 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          login_phone?: string | null
           name: string
           notes?: string | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          user_id?: string | null
           whatsapp_number: string
         }
         Update: {
@@ -937,11 +989,13 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          login_phone?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           trade?: string | null
           updated_at?: string
+          user_id?: string | null
           whatsapp_number?: string
         }
         Relationships: []
@@ -951,6 +1005,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_worker_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -967,7 +1022,7 @@ export type Database = {
       next_service_id: { Args: never; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "staff" | "measurement_staff" | "delivery"
+      app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1095,7 +1150,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "measurement_staff", "delivery"],
+      app_role: ["admin", "staff", "measurement_staff", "delivery", "worker"],
     },
   },
 } as const
