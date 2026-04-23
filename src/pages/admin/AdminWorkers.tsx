@@ -196,12 +196,27 @@ const AdminWorkers = () => {
                     {w.trade && <p className="text-xs text-muted-foreground">{w.trade}</p>}
                     <p className="mt-1 text-sm flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-primary" /> {w.whatsapp_number}</p>
                     {w.phone && w.phone !== w.whatsapp_number && <p className="text-xs text-muted-foreground">Call: {w.phone}</p>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {w.user_id ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <KeyRound className="h-3 w-3" /> Login active
+                          {w.login_phone && <span className="font-mono text-[10px] opacity-80">· {w.login_phone}</span>}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground">
+                          <KeyRound className="h-3 w-3" /> No login
+                        </Badge>
+                      )}
+                    </div>
                     {!w.is_active && <Badge variant="outline" className="mt-1">Inactive</Badge>}
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button size="icon" variant="ghost" asChild title="View jobs">
                     <Link to={`/admin/workers/${w.id}`}><ListChecks className="h-4 w-4" /></Link>
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => openLogin(w)} title={w.user_id ? "Reset login PIN" : "Create login"}>
+                    <KeyRound className="h-4 w-4" />
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => startEdit(w)}><Pencil className="h-4 w-4" /></Button>
                   {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(w)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
