@@ -5,9 +5,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, MessageCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, Image as ImageIcon } from "lucide-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
 import { downloadBlob, generateProductPdf } from "@/lib/pdf";
+import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
 import { toast } from "@/hooks/use-toast";
 
 type Product = {
@@ -31,7 +32,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [generatingJpg, setGeneratingJpg] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
 
   useEffect(() => {
@@ -92,63 +93,47 @@ View / brochure: ${productUrl}
 
 Please share more details.`;
 
-  const handleDownloadPdf = async () => {
-    setGeneratingPdf(true);
+  const buildBrochureJpgBlob = async (): Promise<Blob> => {
+    const pdfBlob = await generateProductPdf({
+      product_name: product.product_name,
+      product_code: product.product_code,
+      description: product.description,
+      mrp: Number(product.mrp),
+      offer_price: product.offer_price ? Number(product.offer_price) : null,
+      available_colors: product.available_colors,
+      material: product.material,
+      dimensions: product.dimensions,
+      cover_image: cover ?? null,
+    });
+    return await pdfBlobToJpgBlob(pdfBlob);
+  };
+
+  const handleDownloadJpg = async () => {
+    setGeneratingJpg(true);
     try {
-      const blob = await generateProductPdf({
-        product_name: product.product_name,
-        product_code: product.product_code,
-        description: product.description,
-        mrp: Number(product.mrp),
-        offer_price: product.offer_price ? Number(product.offer_price) : null,
-        available_colors: product.available_colors,
-        material: product.material,
-        dimensions: product.dimensions,
-        cover_image: cover ?? null,
-      });
-      downloadBlob(blob, `${product.product_code}-brochure.pdf`);
+      const blob = await buildBrochureJpgBlob();
+      downloadBlob(blob, `${product.product_code}-brochure.jpg`);
       toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
     } catch (e) {
-      toast({ title: "PDF failed", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Image generation failed", description: "Please try again.", variant: "destructive" });
     } finally {
-      setGeneratingPdf(false);
+      setGeneratingJpg(false);
     }
   };
 
   /**
-   * One-click inquiry: build the brochure PDF and try to share it via the native
-   * Web Share API (mobile). If the device supports sharing files (Android Chrome,
-   * iOS Safari 16+), the user picks WhatsApp from the share sheet and the PDF +
-   * message are attached in one step — exactly what the user asked for.
-   *
-   * If file-sharing is unsupported (most desktop browsers), we fall back to:
-   *   1. download the PDF locally so the user has it ready to attach
-   *   2. open wa.me with the pre-filled message + product link (rich preview)
-   *
-   * NOTE: There is NO way to programmatically attach a file to a wa.me link —
-   * that is a WhatsApp platform restriction, not a bug in our code.
+   * One-click inquiry: build the brochure JPG and try to share it via the native
+   * Web Share API. On mobile the user picks WhatsApp from the share sheet and the
+   * image + message are attached in one tap. On desktop we fall back to a normal
+   * download + opening wa.me with the pre-filled message.
    */
   const handleInquireOnWhatsApp = async () => {
     setSendingWa(true);
     try {
-      const blob = await generateProductPdf({
-        product_name: product.product_name,
-        product_code: product.product_code,
-        description: product.description,
-        mrp: Number(product.mrp),
-        offer_price: product.offer_price ? Number(product.offer_price) : null,
-        available_colors: product.available_colors,
-        material: product.material,
-        dimensions: product.dimensions,
-        cover_image: cover ?? null,
-      });
-      const file = new File([blob], `${product.product_code}-brochure.pdf`, { type: "application/pdf" });
+      const blob = await buildBrochureJpgBlob();
+      const filename = `${product.product_code}-brochure.jpg`;
+      const file = new File([blob], filename, { type: "image/jpeg" });
 
-      // PREFERRED PATH (mobile): native share sheet with file attached.
-      // On Android/iOS this lets the user pick WhatsApp and the brochure
-      // PDF + message arrive in the admin chat in one tap. This is the
-      // ONLY way to programmatically attach a file to a WhatsApp chat
-      // from a web page — the wa.me URL scheme cannot carry attachments.
       const navAny = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       const canShareFiles =
         typeof navigator.share === "function" &&
@@ -168,40 +153,27 @@ Please share more details.`;
           });
           return;
         } catch (err) {
-          // User cancelled — don't force the desktop fallback on them.
-          if ((err as Error).name === "AbortError") {
-            return;
-          }
-          // Any other error → fall through to desktop fallback below.
+          if ((err as Error).name === "AbortError") return;
           console.warn("[WhatsApp inquiry] navigator.share failed, falling back:", err);
         }
       }
 
-      // DESKTOP / UNSUPPORTED FALLBACK:
-      // 1. Save the PDF to the user's device first (so it's ready in their downloads)
-      // 2. Open WhatsApp with the pre-filled text message
-      // 3. Show a persistent toast that explains the manual attach step
-      //
-      // We deliberately download FIRST and open WhatsApp SECOND so by the time
-      // WhatsApp opens, the PDF is already in their downloads folder ready to
-      // drag-drop into the chat window.
-      downloadBlob(blob, `${product.product_code}-brochure.pdf`);
-
-      // Small delay so the download starts before the new tab steals focus
+      // Desktop fallback: download JPG + open WhatsApp chat
+      downloadBlob(blob, filename);
       await new Promise((r) => setTimeout(r, 250));
       window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
 
       toast({
         title: "Brochure ready ✓",
         description:
-          "PDF saved to Downloads. Drag it into the WhatsApp chat that just opened, then press send.",
+          "Image saved to Downloads. Drag it into the WhatsApp chat that just opened, then press send.",
         duration: 8000,
       });
     } catch (e) {
       console.error("[WhatsApp inquiry] failed:", e);
       toast({
         title: "Couldn't prepare brochure",
-        description: "Opening WhatsApp without the PDF — please try again to attach it.",
+        description: "Opening WhatsApp without the image — please try again to attach it.",
         variant: "destructive",
       });
       window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
@@ -334,13 +306,13 @@ Please share more details.`;
               )}
               Inquire on WhatsApp
             </Button>
-            <Button size="lg" variant="outline" onClick={handleDownloadPdf} disabled={generatingPdf}>
-              {generatingPdf ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
-              Download brochure (PDF)
+            <Button size="lg" variant="outline" onClick={handleDownloadJpg} disabled={generatingJpg}>
+              {generatingJpg ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-1 h-4 w-4" />}
+              Download brochure (JPG)
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure PDF + message in one step.
+            On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure image + message in one step.
           </p>
         </div>
       </div>

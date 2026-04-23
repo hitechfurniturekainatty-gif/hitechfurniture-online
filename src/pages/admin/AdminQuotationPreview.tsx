@@ -21,7 +21,7 @@ import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
-  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
+  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat, Image as ImageIcon,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 
@@ -160,13 +160,13 @@ const AdminQuotationPreview = () => {
     }
   };
 
-  const sharePdfViaWhatsApp = async (
+  const shareJpgViaWhatsApp = async (
     blob: Blob,
     filename: string,
     phone: string | null,
     message: string,
   ) => {
-    const file = new File([blob], filename, { type: "application/pdf" });
+    const file = new File([blob], filename, { type: "image/jpeg" });
     const navAny = navigator as any;
     const cleanPhone = (phone ?? "").replace(/[^0-9]/g, "");
 
@@ -181,10 +181,10 @@ const AdminQuotationPreview = () => {
 
     downloadBlob(blob, filename);
     toast({
-      title: "Compressed PDF downloaded",
+      title: "Image downloaded",
       description: cleanPhone
-        ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and choose the downloaded PDF."
-        : "PDF downloaded to this device.",
+        ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and choose the downloaded image."
+        : "Image downloaded to this device.",
       duration: 8000,
     });
     if (cleanPhone) {
@@ -200,7 +200,7 @@ const AdminQuotationPreview = () => {
     }
     setSharing(true);
     try {
-      // Lazy-load heavy PDF lib only when sharing
+      // Lazy-load heavy PDF + rasteriser libs only when sharing
       const { generateQuotationPdf } = await import("@/lib/quotationPdf");
       const data = {
         quotation_id: q.quotation_id,
@@ -236,12 +236,14 @@ const AdminQuotationPreview = () => {
           amount: (it.quantity || 0) * (it.unit_price || 0),
         })),
       };
-      const blob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
-      const filename = `${q.quotation_id}.pdf`;
+      const pdfBlob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
+      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      const filename = `${q.quotation_id}.jpg`;
 
       if (mode === "download") {
         downloadBlob(blob, filename);
-        toast({ title: "Compressed PDF downloaded" });
+        toast({ title: "Image downloaded" });
         return;
       }
 
@@ -252,11 +254,11 @@ const AdminQuotationPreview = () => {
         ? `Hi ${q.party_name},\n\nPurchase Order ${q.quotation_id} attached.\nItems: ${items.length}\n\n— Hitech Furniture & Interiors`
         : `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
 
-      await sharePdfViaWhatsApp(blob, filename, q.party_phone, msg);
+      await shareJpgViaWhatsApp(blob, filename, q.party_phone, msg);
       await markSent();
     } catch (e: any) {
-      console.error("PDF share failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
+      console.error("Image share failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
     } finally {
       setSharing(false);
     }
@@ -332,7 +334,7 @@ const AdminQuotationPreview = () => {
       }
 
       const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
-      const blob = await generateJobWorkPdf({
+      const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
         date: new Date().toLocaleDateString("en-IN"),
@@ -349,17 +351,19 @@ const AdminQuotationPreview = () => {
           quantity: item.quantity,
         })),
       }, COMPRESSED_PDF_OPTIONS);
+      const { pdfBlobToJpgBlob } = await import("@/lib/pdfToJpg");
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
 
-      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.jpg`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      await sharePdfViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      await shareJpgViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
       setAssignOpen(false);
       setSelectedItemIds(new Set());
       toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
     } catch (e: any) {
-      console.error("Job PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
+      console.error("Job image generation failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "Try again.", variant: "destructive" });
     } finally {
       setGeneratingJob(false);
     }
@@ -657,7 +661,7 @@ const AdminQuotationPreview = () => {
               disabled={sharing}
               className="h-11 flex-1 sm:flex-initial"
             >
-              <Download className="mr-2 h-4 w-4" />PDF
+              <ImageIcon className="mr-2 h-4 w-4" />JPG
             </Button>
           )}
           <Button variant="secondary" onClick={handleDone} className="h-11 flex-1 sm:flex-initial">
@@ -747,7 +751,7 @@ const AdminQuotationPreview = () => {
             <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
             <Button onClick={generateAndAssignJob} disabled={generatingJob || workers.length === 0}>
               {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HardHat className="mr-2 h-4 w-4" />}
-              Generate compressed PDF & send
+              Generate JPG & send
             </Button>
           </DialogFooter>
         </DialogContent>

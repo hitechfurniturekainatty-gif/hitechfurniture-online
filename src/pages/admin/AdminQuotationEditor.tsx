@@ -22,12 +22,13 @@ import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
-  Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle,
+  Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart,
 } from "lucide-react";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
 // of blocking initial page paint on mobile.
 const loadPdfLib = () => import("@/lib/quotationPdf");
+const loadJpgLib = () => import("@/lib/pdfToJpg");
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
@@ -512,11 +513,13 @@ const AdminQuotationEditor = () => {
     if (!data) return null;
     try {
       const { generateQuotationPdf } = await loadPdfLib();
-      const blob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
-      return { blob, filename: `${data.quotation_id}.pdf` };
+      const pdfBlob = await generateQuotationPdf(data, mode === "share" ? SHARE_PDF_OPTIONS : undefined);
+      const { pdfBlobToJpgBlob } = await loadJpgLib();
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      return { blob, filename: `${data.quotation_id}.jpg` };
     } catch (e: any) {
-      console.error("PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
+      console.error("Image generation failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Re-upload item/measurement images.", variant: "destructive" });
       return null;
     }
   };
@@ -532,11 +535,11 @@ const AdminQuotationEditor = () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const downloadPdf = async (): Promise<boolean> => {
+  const downloadJpg = async (): Promise<boolean> => {
     const r = await buildPdfBlob("download");
     if (!r) return false;
     downloadBlob(r.blob, r.filename);
-    toast({ title: "PDF downloaded", description: "Check your Downloads folder." });
+    toast({ title: "Image downloaded", description: "Check your Downloads folder." });
     return true;
   };
 
@@ -563,15 +566,15 @@ const AdminQuotationEditor = () => {
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
-  // Shared helper: try native share with file (WhatsApp will attach the PDF directly).
+  // Shared helper: try native share with file (WhatsApp will attach the JPG directly).
   // Falls back to download + open chat link if the device doesn't support file sharing.
-  const sharePdfViaWhatsApp = async (
+  const shareJpgViaWhatsApp = async (
     blob: Blob,
     filename: string,
     phone: string | null,
     message: string,
   ): Promise<"shared" | "fallback"> => {
-    const file = new File([blob], filename, { type: "application/pdf" });
+    const file = new File([blob], filename, { type: "image/jpeg" });
     const navAny = navigator as any;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, "") : "";
 
@@ -584,11 +587,11 @@ const AdminQuotationEditor = () => {
       }
     }
 
-    // Fallback: download PDF + open WhatsApp chat
+    // Fallback: download JPG + open WhatsApp chat
     downloadBlob(blob, filename);
     toast({
-      title: "Compressed PDF downloaded",
-      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded PDF." : undefined,
+      title: "Image downloaded",
+      description: cleanPhone ? "Opening WhatsApp app now. If the file is not attached automatically, tap the paperclip and select the downloaded image." : undefined,
       duration: 8000,
     });
     if (cleanPhone) {
@@ -612,7 +615,7 @@ const AdminQuotationEditor = () => {
           return `Dear ${q.party_name},\n\nPlease find attached our quotation ${q.quotation_id} from Hitech Furniture & Interiors.\n\n${balanceLine}\n\nThank you.`;
         })();
 
-    await sharePdfViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
+    await shareJpgViaWhatsApp(r.blob, r.filename, q.party_phone, msg);
 
     if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
       await setStatus("sent", { silent: true });
@@ -659,9 +662,9 @@ const AdminQuotationEditor = () => {
         toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
         return;
       }
-      // generate worker-safe PDF (NO prices, NO bank, NO customer phone)
+      // generate worker-safe JPG (NO prices, NO bank, NO customer phone)
       const { generateJobWorkPdf } = await loadPdfLib();
-      const blob = await generateJobWorkPdf({
+      const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         worker_name: worker.name,
         date: new Date().toLocaleDateString("en-IN"),
@@ -678,17 +681,19 @@ const AdminQuotationEditor = () => {
           quantity: it.quantity,
         })),
       }, SHARE_PDF_OPTIONS);
-      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.pdf`;
+      const { pdfBlobToJpgBlob } = await loadJpgLib();
+      const blob = await pdfBlobToJpgBlob(pdfBlob);
+      const filename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}.jpg`;
       const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      await sharePdfViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
+      await shareJpgViaWhatsApp(blob, filename, worker.whatsapp_number, msg);
 
       setJobOpen(false);
       setSelectedItemIds(new Set());
       toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker.name}` });
     } catch (e: any) {
-      console.error("Job PDF generation failed:", e);
-      toast({ title: "PDF generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
+      console.error("Job image generation failed:", e);
+      toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
     } finally {
       setGeneratingJob(false);
     }
@@ -746,7 +751,7 @@ const AdminQuotationEditor = () => {
           </Button>
           {canEditPrice && (
             <>
-              <Button variant="outline" onClick={downloadPdf}><Download className="mr-2 h-4 w-4" />PDF</Button>
+              <Button variant="outline" onClick={downloadJpg}><ImageIcon className="mr-2 h-4 w-4" />JPG</Button>
               <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
               <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
             </>
@@ -1162,8 +1167,8 @@ const AdminQuotationEditor = () => {
             fully visible on narrow screens (was being clipped to a sliver before). */}
         {canEditPrice && (
           <div className="mb-2 grid grid-cols-3 gap-2">
-            <Button variant="outline" onClick={downloadPdf} className="h-11 px-2">
-              <Download className="mr-1.5 h-4 w-4" />PDF
+            <Button variant="outline" onClick={downloadJpg} className="h-11 px-2">
+              <ImageIcon className="mr-1.5 h-4 w-4" />JPG
             </Button>
             <Button variant="outline" onClick={shareWhatsApp} className="h-11 px-2">
               <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
@@ -1227,7 +1232,7 @@ const AdminQuotationEditor = () => {
             className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
-            <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker PDF will exclude prices, GST and customer phone.</p>
+            <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
             <div className="space-y-1.5">
               <Label>Worker *</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -1250,7 +1255,7 @@ const AdminQuotationEditor = () => {
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <Button onClick={generateAndSendJob} disabled={generatingJob || !selectedWorker} className="w-full sm:w-auto">
               {generatingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Generate PDF + WhatsApp
+              Generate JPG + WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>
