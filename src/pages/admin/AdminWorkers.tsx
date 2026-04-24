@@ -190,6 +190,7 @@ const AdminWorkers = () => {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
       return;
     }
+    setRows((prev) => prev.filter((x) => x.id !== w.id));
     toast({
       title: "Moved to Trash",
       description: w.user_id

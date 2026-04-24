@@ -222,6 +222,7 @@ const AdminProducts = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("products", p.id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    setProducts((prev) => prev.filter((x) => x.id !== p.id));
     toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
     load();
   };

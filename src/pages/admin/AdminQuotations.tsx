@@ -245,7 +245,11 @@ const AdminQuotations = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("quotations", q.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." }); load(); }
+    else {
+      setRows((prev) => prev.filter((r) => r.id !== q.id));
+      toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
+      load();
+    }
   };
 
   // All statuses we care about (order = lifecycle order)
