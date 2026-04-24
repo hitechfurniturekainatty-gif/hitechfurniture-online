@@ -175,6 +175,17 @@ const AdminWorkerDetail = () => {
     setEditingNoteId(null);
   };
 
+  const deleteJob = async (job: Job) => {
+    if (!confirm(`Delete this job assignment for ${job.quotation_code}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("job_work_orders").delete().eq("id", job.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Job deleted" });
+    setJobs((prev) => prev.filter((j) => j.id !== job.id));
+  };
+
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: jobs.length };
     for (const s of JOB_STATUSES) c[s.value] = jobs.filter((j) => j.status === s.value).length;
