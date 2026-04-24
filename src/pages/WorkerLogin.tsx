@@ -27,7 +27,23 @@ const WorkerLogin = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id);
-      if (roles?.some((r) => r.role === "worker")) navigate("/worker", { replace: true });
+      if (!roles?.some((r) => r.role === "worker")) return;
+      // Make sure their worker row hasn't been Trashed since last sign-in.
+      const { data: worker } = await supabase
+        .from("workers")
+        .select("id, deleted_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!worker || worker.deleted_at) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Account removed",
+          description: "Your worker account is no longer active. Contact the office.",
+          variant: "destructive",
+        });
+        return;
+      }
+      navigate("/worker", { replace: true });
     });
   }, [navigate]);
 
@@ -48,11 +64,33 @@ const WorkerLogin = () => {
       email: phoneToEmail(cleanPhone),
       password: pinToPassword(cleanPin),
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast({ title: "Login failed", description: "Wrong phone or PIN. Contact office.", variant: "destructive" });
       return;
     }
+    // Block sign-in if the worker has been Trashed (defense in depth — the
+    // edge function should have already revoked the auth user, but this catches
+    // any orphan session that survived).
+    const { data: { user: signedIn } } = await supabase.auth.getUser();
+    if (signedIn) {
+      const { data: worker } = await supabase
+        .from("workers")
+        .select("id, deleted_at")
+        .eq("user_id", signedIn.id)
+        .maybeSingle();
+      if (!worker || worker.deleted_at) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        toast({
+          title: "Account removed",
+          description: "Your worker account is no longer active. Contact the office.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setLoading(false);
     navigate("/worker", { replace: true });
   };
 
