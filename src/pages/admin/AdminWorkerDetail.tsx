@@ -76,6 +76,9 @@ const AdminWorkerDetail = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [historyByJob, setHistoryByJob] = useState<Record<string, StatusUpdate[]>>({});
   const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<string>("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -143,6 +146,33 @@ const AdminWorkerDetail = () => {
     setJobs((prev) =>
       prev.map((j) => (j.id === job.id ? { ...j, status: next, status_updated_at: new Date().toISOString() } : j)),
     );
+  };
+
+  const startEditNote = (job: Job) => {
+    setEditingNoteId(job.id);
+    setNoteDraft(job.notes ?? "");
+  };
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null);
+    setNoteDraft("");
+  };
+
+  const saveNote = async (job: Job) => {
+    setSavingNote(true);
+    const trimmed = noteDraft.trim() || null;
+    const { error } = await supabase
+      .from("job_work_orders")
+      .update({ notes: trimmed })
+      .eq("id", job.id);
+    setSavingNote(false);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Note saved" });
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, notes: trimmed } : j)));
+    setEditingNoteId(null);
   };
 
   const counts = useMemo(() => {
