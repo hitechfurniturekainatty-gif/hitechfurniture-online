@@ -187,7 +187,12 @@ const AdminTrips = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("trips", t.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Moved to Trash" }); load(); }
+    else {
+      setTrips((prev) => prev.filter((x) => x.id !== t.id));
+      setTripQs((prev) => prev.filter((x) => x.trip_id !== t.id));
+      toast({ title: "Moved to Trash" });
+      load();
+    }
   };
 
   const tripStops = (t: Trip) =>

@@ -314,7 +314,11 @@ const AdminServices = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("customer_services", row.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Moved to Trash" }); load(); }
+    else {
+      setServices((prev) => prev.filter((r) => r.id !== row.id));
+      toast({ title: "Moved to Trash" });
+      load();
+    }
   };
 
   const removeComplaint = async (row: ComplaintRow) => {
@@ -322,7 +326,11 @@ const AdminServices = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("customer_complaints", row.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Moved to Trash" }); load(); }
+    else {
+      setComplaints((prev) => prev.filter((r) => r.id !== row.id));
+      toast({ title: "Moved to Trash" });
+      load();
+    }
   };
 
   const filteredServices = useMemo(() => {

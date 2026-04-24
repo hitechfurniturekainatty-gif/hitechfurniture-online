@@ -211,6 +211,7 @@ const AdminRoutes = () => {
     const { error } = await softDelete("delivery_routes", r.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     else {
+      setRoutes((prev) => prev.filter((x) => x.id !== r.id));
       toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
       load();
     }
