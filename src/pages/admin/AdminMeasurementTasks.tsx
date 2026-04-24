@@ -13,9 +13,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, MapPin, Phone, Ruler, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { softDelete } from "@/lib/softDelete";
 
 type Task = {
   id: string;
@@ -34,7 +36,7 @@ type Task = {
 type StaffOpt = { user_id: string; email: string | null; display_name: string | null; whatsapp_number: string | null; role: string | null };
 
 const AdminMeasurementTasks = () => {
-  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
@@ -163,6 +165,17 @@ const AdminMeasurementTasks = () => {
     return s ? (s.display_name || s.email || id.slice(0, 8)) : id.slice(0, 8);
   };
 
+  const deleteTask = async (t: Task) => {
+    if (!confirm(`Delete task for "${t.customer_name}"? It will be moved to Trash for 30 days.`)) return;
+    const { error } = await softDelete("measurement_tasks", t.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTasks((prev) => prev.filter((x) => x.id !== t.id));
+    toast({ title: "Task moved to Trash" });
+  };
+
   const myTasks = tasks.filter((t) => t.assigned_to === user?.id);
   const otherTasks = tasks.filter((t) => t.assigned_to !== user?.id);
   const pending = (list: Task[]) => list.filter((t) => t.status !== "completed");
@@ -195,6 +208,11 @@ const AdminMeasurementTasks = () => {
           {t.draft_quotation_id && (
             <Button size="sm" variant="outline" asChild>
               <Link to={`/admin/quotations/${t.draft_quotation_id}`}>Open draft <ArrowRight className="ml-1 h-3 w-3" /></Link>
+            </Button>
+          )}
+          {isAdmin && (
+            <Button size="sm" variant="outline" className="text-destructive ml-auto" onClick={() => deleteTask(t)}>
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
