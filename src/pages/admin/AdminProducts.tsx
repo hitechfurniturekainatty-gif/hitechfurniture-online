@@ -218,10 +218,11 @@ const AdminProducts = () => {
   };
 
   const remove = async (p: Product) => {
-    if (!confirm(`Delete "${p.product_name}"?`)) return;
-    const { error } = await supabase.from("products").delete().eq("id", p.id);
+    if (!confirm(`Move "${p.product_name}" to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("products", p.id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Deleted" });
+    toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
     load();
   };
 

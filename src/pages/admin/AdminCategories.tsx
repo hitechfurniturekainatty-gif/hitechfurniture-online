@@ -85,10 +85,11 @@ const AdminCategories = () => {
   };
 
   const remove = async (table: "main_categories" | "sub_categories", id: string) => {
-    if (!confirm("Delete this? This cannot be undone.")) return;
-    const { error } = await supabase.from(table).delete().eq("id", id);
+    if (!confirm("Move this to Trash? You can restore it for 30 days.")) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete(table, id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Deleted" });
+    toast({ title: "Moved to Trash" });
     load();
   };
 

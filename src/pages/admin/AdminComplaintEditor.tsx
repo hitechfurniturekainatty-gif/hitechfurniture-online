@@ -238,10 +238,11 @@ const AdminComplaintEditor = () => {
   };
 
   const remove = async () => {
-    if (!cp || !confirm(`Delete ${cp.complaint_code}?`)) return;
-    const { error } = await supabase.from("customer_complaints").delete().eq("id", cp.id);
+    if (!cp || !confirm(`Move ${cp.complaint_code} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("customer_complaints", cp.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Deleted" }); navigate("/admin/services?tab=complaint"); }
+    else { toast({ title: "Moved to Trash" }); navigate("/admin/services?tab=complaint"); }
   };
 
   const headerBadges = useMemo(() => {

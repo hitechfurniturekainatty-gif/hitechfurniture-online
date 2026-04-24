@@ -247,10 +247,11 @@ const AdminServiceEditor = () => {
   };
 
   const remove = async () => {
-    if (!svc || !confirm(`Delete ${svc.service_code}?`)) return;
-    const { error } = await supabase.from("customer_services").delete().eq("id", svc.id);
+    if (!svc || !confirm(`Move ${svc.service_code} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("customer_services", svc.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Deleted" }); navigate("/admin/services"); }
+    else { toast({ title: "Moved to Trash" }); navigate("/admin/services"); }
   };
 
   const headerBadges = useMemo(() => {

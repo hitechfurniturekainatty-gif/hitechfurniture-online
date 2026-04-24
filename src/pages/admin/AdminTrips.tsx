@@ -183,10 +183,11 @@ const AdminTrips = () => {
   };
 
   const removeTrip = async (t: Trip) => {
-    if (!confirm(`Delete trip on ${t.trip_date}?`)) return;
-    const { error } = await supabase.from("trips").delete().eq("id", t.id);
+    if (!confirm(`Move the trip on ${t.trip_date} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("trips", t.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Trip deleted" }); load(); }
+    else { toast({ title: "Moved to Trash" }); load(); }
   };
 
   const tripStops = (t: Trip) =>

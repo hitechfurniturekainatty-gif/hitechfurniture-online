@@ -206,11 +206,12 @@ const AdminRoutes = () => {
   };
 
   const remove = async (r: RouteWithWaypoints) => {
-    if (!confirm(`Delete route "${r.name}"? Quotations tagged to it will become untagged.`)) return;
-    const { error } = await supabase.from("delivery_routes").delete().eq("id", r.id);
+    if (!confirm(`Move route "${r.name}" to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("delivery_routes", r.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     else {
-      toast({ title: "Route deleted" });
+      toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
       load();
     }
   };
