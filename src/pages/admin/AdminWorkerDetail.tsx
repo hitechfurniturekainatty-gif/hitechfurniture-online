@@ -11,9 +11,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart, History, Camera,
+  ShoppingCart, History, Camera, Pencil, Save, X,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
+import { Textarea } from "@/components/ui/textarea";
 
 type Worker = {
   id: string;
