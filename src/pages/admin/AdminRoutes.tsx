@@ -53,7 +53,7 @@ const AdminRoutes = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: r }, { data: w }] = await Promise.all([
-      supabase.from("delivery_routes").select("*").order("created_at", { ascending: false }),
+      supabase.from("delivery_routes").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("route_waypoints").select("*").order("display_order"),
     ]);
     const merged: RouteWithWaypoints[] = (r ?? []).map((row: any) => ({

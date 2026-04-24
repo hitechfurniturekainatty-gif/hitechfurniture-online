@@ -54,7 +54,7 @@ const AdminMeasurementTasks = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("measurement_tasks").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("measurement_tasks").select("*").is("deleted_at", null).order("created_at", { ascending: false });
     setTasks((data ?? []) as Task[]);
     setLoading(false);
   };

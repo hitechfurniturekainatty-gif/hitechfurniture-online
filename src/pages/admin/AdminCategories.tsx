@@ -39,8 +39,8 @@ const AdminCategories = () => {
 
   const load = async () => {
     const [{ data: m }, { data: s }] = await Promise.all([
-      supabase.from("main_categories").select("*").order("display_order"),
-      supabase.from("sub_categories").select("*").order("display_order"),
+      supabase.from("main_categories").select("*").is("deleted_at", null).order("display_order"),
+      supabase.from("sub_categories").select("*").is("deleted_at", null).order("display_order"),
     ]);
     setMainCats((m ?? []) as MainCat[]);
     setSubCats((s ?? []) as SubCat[]);
