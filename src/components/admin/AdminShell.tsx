@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
@@ -52,6 +52,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
     { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
     { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
+    { to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin },
   ].filter((l) => l.show);
 
   return (
