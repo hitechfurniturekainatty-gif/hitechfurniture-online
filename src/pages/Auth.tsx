@@ -7,15 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+
+// Worker logins are stored as synthetic email/password derived from phone + PIN.
+// Mirrors the mapping used in src/pages/WorkerLogin.tsx and the worker-create-login edge fn.
+const phoneToEmail = (phone: string) => `${phone.replace(/\D+/g, "")}@workers.local`;
+const pinToPassword = (pin: string) => `wkr_${pin.replace(/\D+/g, "")}_pin`;
+const isPhoneLike = (s: string) => /^[\d\s+\-()]+$/.test(s.trim()) && s.replace(/\D+/g, "").length >= 8;
 
 const Auth = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +31,7 @@ const Auth = () => {
       if (mode === "signup") {
         const redirectUrl = `${window.location.origin}/admin`;
         const { error } = await supabase.auth.signUp({
-          email,
+          email: identifier,
           password,
           options: { emailRedirectTo: redirectUrl, data: { display_name: name } },
         });
@@ -32,7 +39,12 @@ const Auth = () => {
         toast({ title: "Account created", description: "You can now sign in." });
         setMode("login");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        // Phone (digits) → worker login flow; otherwise → standard email login.
+        const useWorker = isPhoneLike(identifier);
+        const creds = useWorker
+          ? { email: phoneToEmail(identifier), password: pinToPassword(password) }
+          : { email: identifier, password };
+        const { error } = await supabase.auth.signInWithPassword(creds);
         if (error) throw error;
         // Role-aware redirect: fetch user's roles and route accordingly
         const { data: userData } = await supabase.auth.getUser();
@@ -54,9 +66,13 @@ const Auth = () => {
           const roles = (rolesData ?? []).map((r) => r.role as string);
           const isAdmin = roles.includes("admin");
           const isOffice = roles.includes("staff") || isAdmin;
-          if (isAdmin) navigate("/admin");
+          const isWorker = roles.includes("worker");
+          // Workers have a dedicated portal — never enter the admin shell.
+          if (isWorker && !isOffice && !isAdmin) navigate("/worker");
+          else if (isAdmin) navigate("/admin");
           else if (isOffice) navigate("/admin/my-work");
           else if (roles.includes("measurement_staff")) navigate("/admin/my-work");
+          else if (roles.includes("delivery")) navigate("/admin/my-trips");
           else navigate("/admin");
         } else {
           toast({ title: `Hi ${displayName}`, description: "Welcome to My Hitech 👋" });
