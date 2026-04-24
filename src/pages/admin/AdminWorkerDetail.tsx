@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart, History, Camera, Pencil, Save, X,
+  ShoppingCart, History, Camera, Pencil, Save, X, Trash2,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,7 +69,7 @@ const fmtDateTime = (iso: string) =>
 const AdminWorkerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isOfficeStaff } = useAuth();
+  const { isOfficeStaff, isAdmin } = useAuth();
   const [worker, setWorker] = useState<Worker | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,6 +175,17 @@ const AdminWorkerDetail = () => {
     setEditingNoteId(null);
   };
 
+  const deleteJob = async (job: Job) => {
+    if (!confirm(`Delete this job assignment for ${job.quotation_code}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("job_work_orders").delete().eq("id", job.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Job deleted" });
+    setJobs((prev) => prev.filter((j) => j.id !== job.id));
+  };
+
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: jobs.length };
     for (const s of JOB_STATUSES) c[s.value] = jobs.filter((j) => j.status === s.value).length;
@@ -265,11 +276,24 @@ const AdminWorkerDetail = () => {
                       <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                     </p>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="h-9">
-                    <Link to={`/admin/quotations/${job.quotation_id}`}>
-                      Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button asChild size="sm" variant="outline" className="h-9">
+                      <Link to={`/admin/quotations/${job.quotation_id}`}>
+                        Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => deleteJob(job)}
+                        aria-label="Delete job"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {isOfficeStaff && (
