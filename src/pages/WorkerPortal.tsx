@@ -33,6 +33,7 @@ type Job = {
   party_place: string;
   document_type: DocType;
   items: ItemBrief[];
+  last_office_edit: OfficeEdit | null;
 };
 
 type ItemBrief = {
@@ -43,6 +44,13 @@ type ItemBrief = {
   item_image_url: string | null;
   measurement_image_url: string | null;
   sketch_url: string | null;
+};
+
+type OfficeEdit = {
+  status: string;
+  note: string | null;
+  created_at: string;
+  editor_name: string | null;
 };
 
 const fmtDateTime = (iso: string) =>
