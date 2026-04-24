@@ -11,9 +11,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart, History, Camera,
+  ShoppingCart, History, Camera, Pencil, Save, X,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
+import { Textarea } from "@/components/ui/textarea";
 
 type Worker = {
   id: string;
@@ -75,6 +76,9 @@ const AdminWorkerDetail = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [historyByJob, setHistoryByJob] = useState<Record<string, StatusUpdate[]>>({});
   const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<string>("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -142,6 +146,33 @@ const AdminWorkerDetail = () => {
     setJobs((prev) =>
       prev.map((j) => (j.id === job.id ? { ...j, status: next, status_updated_at: new Date().toISOString() } : j)),
     );
+  };
+
+  const startEditNote = (job: Job) => {
+    setEditingNoteId(job.id);
+    setNoteDraft(job.notes ?? "");
+  };
+
+  const cancelEditNote = () => {
+    setEditingNoteId(null);
+    setNoteDraft("");
+  };
+
+  const saveNote = async (job: Job) => {
+    setSavingNote(true);
+    const trimmed = noteDraft.trim() || null;
+    const { error } = await supabase
+      .from("job_work_orders")
+      .update({ notes: trimmed })
+      .eq("id", job.id);
+    setSavingNote(false);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Note saved" });
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, notes: trimmed } : j)));
+    setEditingNoteId(null);
   };
 
   const counts = useMemo(() => {
@@ -233,7 +264,6 @@ const AdminWorkerDetail = () => {
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                     </p>
-                    {job.notes && <p className="mt-1 text-xs italic text-muted-foreground">"{job.notes}"</p>}
                   </div>
                   <Button asChild size="sm" variant="outline" className="h-9">
                     <Link to={`/admin/quotations/${job.quotation_id}`}>
@@ -241,6 +271,43 @@ const AdminWorkerDetail = () => {
                     </Link>
                   </Button>
                 </div>
+
+                {isOfficeStaff && (
+                  <div className="rounded-md border border-border/50 bg-muted/30 p-2">
+                    {editingNoteId === job.id ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          rows={2}
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          placeholder="Office note for the worker"
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => saveNote(job)} disabled={savingNote} className="h-8">
+                            {savingNote ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+                            Save
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={cancelEditNote} disabled={savingNote} className="h-8">
+                            <X className="mr-1 h-3.5 w-3.5" /> Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="flex-1 text-xs italic text-muted-foreground">
+                          {job.notes ? `"${job.notes}"` : "No office note"}
+                        </p>
+                        <Button size="sm" variant="ghost" onClick={() => startEditNote(job)} className="h-7 px-2">
+                          <Pencil className="mr-1 h-3 w-3" /> Edit
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!isOfficeStaff && job.notes && (
+                  <p className="text-xs italic text-muted-foreground">"{job.notes}"</p>
+                )}
 
                 {isOfficeStaff && (
                   <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">

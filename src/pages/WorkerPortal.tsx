@@ -33,6 +33,7 @@ type Job = {
   party_place: string;
   document_type: DocType;
   items: ItemBrief[];
+  last_office_edit: OfficeEdit | null;
 };
 
 type ItemBrief = {
@@ -43,6 +44,13 @@ type ItemBrief = {
   item_image_url: string | null;
   measurement_image_url: string | null;
   sketch_url: string | null;
+};
+
+type OfficeEdit = {
+  status: string;
+  note: string | null;
+  created_at: string;
+  editor_name: string | null;
 };
 
 const fmtDateTime = (iso: string) =>
@@ -105,6 +113,40 @@ const WorkerPortal = () => {
       for (const it of (items ?? []) as ItemBrief[]) itemsById[it.id] = it;
     }
 
+    // Pull latest office edits per job (status updates created by office staff/admin, not the worker)
+    const jobIds = (js ?? []).map((j: any) => j.id);
+    const lastOfficeEditByJob: Record<string, OfficeEdit> = {};
+    if (jobIds.length) {
+      const { data: updates } = await supabase
+        .from("worker_status_updates")
+        .select("job_id, status, note, created_at, created_by, worker_id")
+        .in("job_id", jobIds)
+        .order("created_at", { ascending: false });
+      // An office edit is one whose created_by is NOT the worker's linked user
+      const officeUpdates = (updates ?? []).filter((u: any) => u.created_by && u.created_by !== user!.id);
+      const editorIds = Array.from(new Set(officeUpdates.map((u: any) => u.created_by)));
+      let editorNames: Record<string, string> = {};
+      if (editorIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, email")
+          .in("user_id", editorIds);
+        for (const p of (profs ?? []) as any[]) {
+          editorNames[p.user_id] = p.display_name || p.email || "Office";
+        }
+      }
+      for (const u of officeUpdates as any[]) {
+        if (!lastOfficeEditByJob[u.job_id]) {
+          lastOfficeEditByJob[u.job_id] = {
+            status: u.status,
+            note: u.note,
+            created_at: u.created_at,
+            editor_name: editorNames[u.created_by] ?? "Office",
+          };
+        }
+      }
+    }
+
     setJobs((js ?? []).map((row: any) => ({
       id: row.id,
       status: row.status,
@@ -118,6 +160,7 @@ const WorkerPortal = () => {
       party_place: row.quotations?.party_place ?? "",
       document_type: (row.quotations?.document_type ?? "quotation") as DocType,
       items: (row.item_ids ?? []).map((id: string) => itemsById[id]).filter(Boolean),
+      last_office_edit: lastOfficeEditByJob[row.id] ?? null,
     })));
     setLoading(false);
   };
@@ -245,6 +288,22 @@ const WorkerPortal = () => {
             {filtered.map((job) => (
               <Card key={job.id} className="overflow-hidden">
                 <CardContent className="space-y-3 p-4">
+                  {job.last_office_edit && (
+                    <div className="-mx-4 -mt-4 mb-2 border-b border-primary/30 bg-primary/5 px-4 py-2 text-xs">
+                      <p className="flex flex-wrap items-center gap-1.5 font-medium text-primary">
+                        <Clock className="h-3 w-3" />
+                        Office updated this job
+                      </p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        Set to <span className="font-semibold text-foreground">{jobStatusLabel(job.last_office_edit.status)}</span>
+                        {" "}by <span className="font-medium text-foreground">{job.last_office_edit.editor_name}</span>
+                        {" "}· {fmtDateTime(job.last_office_edit.created_at)}
+                      </p>
+                      {job.last_office_edit.note && (
+                        <p className="mt-1 italic text-muted-foreground">"{job.last_office_edit.note}"</p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
