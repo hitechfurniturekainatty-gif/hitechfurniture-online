@@ -241,10 +241,11 @@ const AdminQuotations = () => {
   };
 
   const remove = async (q: Q) => {
-    if (!confirm(`Delete ${q.quotation_id}?`)) return;
-    const { error } = await supabase.from("quotations").delete().eq("id", q.id);
+    if (!confirm(`Move ${q.quotation_id} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("quotations", q.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Deleted" }); load(); }
+    else { toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." }); load(); }
   };
 
   // All statuses we care about (order = lifecycle order)

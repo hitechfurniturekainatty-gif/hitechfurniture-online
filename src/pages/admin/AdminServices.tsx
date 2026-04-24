@@ -310,17 +310,19 @@ const AdminServices = () => {
   };
 
   const removeService = async (row: ServiceRow) => {
-    if (!confirm(`Delete ${row.service_code}?`)) return;
-    const { error } = await supabase.from("customer_services").delete().eq("id", row.id);
+    if (!confirm(`Move ${row.service_code} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("customer_services", row.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Deleted" }); load(); }
+    else { toast({ title: "Moved to Trash" }); load(); }
   };
 
   const removeComplaint = async (row: ComplaintRow) => {
-    if (!confirm(`Delete ${row.complaint_code}?`)) return;
-    const { error } = await supabase.from("customer_complaints").delete().eq("id", row.id);
+    if (!confirm(`Move ${row.complaint_code} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("customer_complaints", row.id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else { toast({ title: "Deleted" }); load(); }
+    else { toast({ title: "Moved to Trash" }); load(); }
   };
 
   const filteredServices = useMemo(() => {

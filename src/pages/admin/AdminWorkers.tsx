@@ -168,13 +168,14 @@ const AdminWorkers = () => {
   };
 
   const remove = async (w: Worker) => {
-    if (!confirm(`Remove ${w.name}?`)) return;
-    const { error } = await supabase.from("workers").delete().eq("id", w.id);
+    if (!confirm(`Move ${w.name} to Trash? You can restore them for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("workers", w.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Worker removed" });
+    toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
     load();
   };
 

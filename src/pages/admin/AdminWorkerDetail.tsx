@@ -176,13 +176,14 @@ const AdminWorkerDetail = () => {
   };
 
   const deleteJob = async (job: Job) => {
-    if (!confirm(`Delete this job assignment for ${job.quotation_code}? This cannot be undone.`)) return;
-    const { error } = await supabase.from("job_work_orders").delete().eq("id", job.id);
+    if (!confirm(`Move this job assignment for ${job.quotation_code} to Trash? You can restore it for 30 days.`)) return;
+    const { softDelete } = await import("@/lib/softDelete");
+    const { error } = await softDelete("job_work_orders", job.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Job deleted" });
+    toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
     setJobs((prev) => prev.filter((j) => j.id !== job.id));
   };
 
