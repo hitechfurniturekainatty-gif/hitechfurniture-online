@@ -113,6 +113,40 @@ const WorkerPortal = () => {
       for (const it of (items ?? []) as ItemBrief[]) itemsById[it.id] = it;
     }
 
+    // Pull latest office edits per job (status updates created by office staff/admin, not the worker)
+    const jobIds = (js ?? []).map((j: any) => j.id);
+    const lastOfficeEditByJob: Record<string, OfficeEdit> = {};
+    if (jobIds.length) {
+      const { data: updates } = await supabase
+        .from("worker_status_updates")
+        .select("job_id, status, note, created_at, created_by, worker_id")
+        .in("job_id", jobIds)
+        .order("created_at", { ascending: false });
+      // An office edit is one whose created_by is NOT the worker's linked user
+      const officeUpdates = (updates ?? []).filter((u: any) => u.created_by && u.created_by !== user!.id);
+      const editorIds = Array.from(new Set(officeUpdates.map((u: any) => u.created_by)));
+      let editorNames: Record<string, string> = {};
+      if (editorIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, email")
+          .in("user_id", editorIds);
+        for (const p of (profs ?? []) as any[]) {
+          editorNames[p.user_id] = p.display_name || p.email || "Office";
+        }
+      }
+      for (const u of officeUpdates as any[]) {
+        if (!lastOfficeEditByJob[u.job_id]) {
+          lastOfficeEditByJob[u.job_id] = {
+            status: u.status,
+            note: u.note,
+            created_at: u.created_at,
+            editor_name: editorNames[u.created_by] ?? "Office",
+          };
+        }
+      }
+    }
+
     setJobs((js ?? []).map((row: any) => ({
       id: row.id,
       status: row.status,
@@ -126,6 +160,7 @@ const WorkerPortal = () => {
       party_place: row.quotations?.party_place ?? "",
       document_type: (row.quotations?.document_type ?? "quotation") as DocType,
       items: (row.item_ids ?? []).map((id: string) => itemsById[id]).filter(Boolean),
+      last_office_edit: lastOfficeEditByJob[row.id] ?? null,
     })));
     setLoading(false);
   };
