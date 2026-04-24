@@ -122,12 +122,14 @@ const AdminServices = () => {
         .select(
           "id, service_code, customer_name, customer_place, customer_phone, item_description, estimated_cost, status, created_at, quotation_id",
         )
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase
         .from("customer_complaints")
         .select(
           "id, complaint_code, customer_name, customer_place, customer_phone, issue_description, paid_parts_amount, status, created_at, service_quotation_id, original_quotation_code",
         )
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
     ]);
     setServices((svcRes.data ?? []) as ServiceRow[]);

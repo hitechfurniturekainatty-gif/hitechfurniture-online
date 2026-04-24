@@ -100,6 +100,7 @@ const AdminProducts = () => {
     const { data } = await supabase
       .from("products")
       .select("*, product_images(id, image_url, display_order)")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     setProducts((data ?? []) as Product[]);
   };

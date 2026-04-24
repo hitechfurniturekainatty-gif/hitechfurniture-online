@@ -62,7 +62,7 @@ const AdminTrips = () => {
     const [{ data: r }, { data: w }, { data: t }, { data: tq }, { data: q }] = await Promise.all([
       supabase.from("delivery_routes").select("*").eq("is_active", true).order("name"),
       supabase.from("route_waypoints").select("*").order("display_order"),
-      supabase.from("trips").select("*").order("trip_date", { ascending: false }),
+      supabase.from("trips").select("*").is("deleted_at", null).order("trip_date", { ascending: false }),
       supabase.from("trip_quotations").select("*").order("stop_order"),
       supabase
         .from("quotations")
