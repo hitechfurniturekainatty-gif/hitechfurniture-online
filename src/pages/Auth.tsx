@@ -95,11 +95,11 @@ const Auth = () => {
         <Card className="w-full max-w-md shadow-elegant border-border/60">
           <CardHeader>
             <CardTitle className="font-display text-2xl">
-              {mode === "login" ? "Staff sign in" : "Create your account"}
+              {mode === "login" ? "Sign in" : "Create your account"}
             </CardTitle>
             <CardDescription>
               {mode === "login"
-                ? "Access the catalog dashboard."
+                ? "Staff use email & password. Workers use phone & PIN."
                 : "First account becomes admin automatically."}
             </CardDescription>
           </CardHeader>
@@ -112,12 +112,41 @@ const Auth = () => {
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Label htmlFor="identifier">{mode === "signup" ? "Email" : "Email or phone"}</Label>
+                <Input
+                  id="identifier"
+                  type={mode === "signup" ? "email" : "text"}
+                  inputMode={mode === "login" ? "email" : undefined}
+                  autoComplete={mode === "login" ? "username" : "email"}
+                  placeholder={mode === "login" ? "you@example.com or 9526610404" : "you@example.com"}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Label htmlFor="password">{mode === "login" && isPhoneLike(identifier) ? "PIN" : "Password"}</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    inputMode={mode === "login" && isPhoneLike(identifier) ? "numeric" : undefined}
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    minLength={mode === "signup" ? 6 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
