@@ -23,6 +23,8 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           customer_place: string
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_place: string | null
           delivery_route_id: string | null
           id: string
@@ -45,6 +47,8 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           customer_place: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           id?: string
@@ -67,6 +71,8 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           customer_place?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           id?: string
@@ -113,6 +119,8 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           customer_place: string
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_place: string | null
           delivery_route_id: string | null
           estimated_cost: number
@@ -133,6 +141,8 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           customer_place: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           estimated_cost?: number
@@ -153,6 +163,8 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           customer_place?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           estimated_cost?: number
@@ -188,6 +200,8 @@ export type Database = {
           color: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           destination_lat: number
           destination_lng: number
           destination_name: string
@@ -200,6 +214,8 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           destination_lat: number
           destination_lng: number
           destination_name: string
@@ -212,6 +228,8 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           destination_lat?: number
           destination_lng?: number
           destination_name?: string
@@ -226,6 +244,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_urgent: boolean
           item_ids: string[]
@@ -242,6 +262,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_urgent?: boolean
           item_ids?: string[]
@@ -258,6 +280,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_urgent?: boolean
           item_ids?: string[]
@@ -305,6 +329,8 @@ export type Database = {
       main_categories: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           display_order: number
           id: string
           image_url: string | null
@@ -314,6 +340,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
@@ -323,6 +351,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
@@ -342,6 +372,8 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           customer_place: string
+          deleted_at: string | null
+          deleted_by: string | null
           draft_quotation_id: string | null
           id: string
           requirement: string | null
@@ -357,6 +389,8 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           customer_place: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           draft_quotation_id?: string | null
           id?: string
           requirement?: string | null
@@ -372,6 +406,8 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           customer_place?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           draft_quotation_id?: string | null
           id?: string
           requirement?: string | null
@@ -425,6 +461,8 @@ export type Database = {
           available_colors: string[] | null
           cost_price: number | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           dimensions: string | null
           id: string
@@ -445,6 +483,8 @@ export type Database = {
           available_colors?: string[] | null
           cost_price?: number | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           dimensions?: string | null
           id?: string
@@ -465,6 +505,8 @@ export type Database = {
           available_colors?: string[] | null
           cost_price?: number | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           dimensions?: string | null
           id?: string
@@ -617,6 +659,8 @@ export type Database = {
           advance_amount: number
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_place: string | null
           delivery_route_id: string | null
           discount_amount: number
@@ -646,6 +690,8 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
@@ -675,6 +721,8 @@ export type Database = {
           advance_amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
@@ -806,6 +854,8 @@ export type Database = {
       sub_categories: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           display_order: number
           id: string
           image_url: string | null
@@ -816,6 +866,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
@@ -826,6 +878,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
@@ -891,6 +945,8 @@ export type Database = {
           assigned_driver_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           notes: string | null
           route_id: string | null
@@ -902,6 +958,8 @@ export type Database = {
           assigned_driver_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           route_id?: string | null
@@ -913,6 +971,8 @@ export type Database = {
           assigned_driver_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           route_id?: string | null
@@ -1003,6 +1063,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_active: boolean
           login_phone: string | null
@@ -1017,6 +1079,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_active?: boolean
           login_phone?: string | null
@@ -1031,6 +1095,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_active?: boolean
           login_phone?: string | null
@@ -1064,6 +1130,13 @@ export type Database = {
         Returns: string
       }
       next_service_id: { Args: never; Returns: string }
+      purge_old_trash: {
+        Args: never
+        Returns: {
+          removed: number
+          table_name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"
