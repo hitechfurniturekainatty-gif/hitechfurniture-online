@@ -169,13 +169,33 @@ const AdminWorkers = () => {
 
   const remove = async (w: Worker) => {
     if (!confirm(`Move ${w.name} to Trash? You can restore them for 30 days.`)) return;
+    // 1) Revoke their app login first so they can't sign in any more.
+    if (w.user_id) {
+      const { data, error } = await supabase.functions.invoke("worker-revoke-login", {
+        body: { worker_id: w.id },
+      });
+      if (error || (data as any)?.error) {
+        toast({
+          title: "Couldn't revoke login",
+          description: (data as any)?.error || error?.message || "Try again",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    // 2) Soft-delete the worker row.
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete("workers", w.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Moved to Trash", description: "Restore from Admin → Trash within 30 days." });
+    toast({
+      title: "Moved to Trash",
+      description: w.user_id
+        ? "Login revoked. Restore from Admin → Trash within 30 days."
+        : "Restore from Admin → Trash within 30 days.",
+    });
     load();
   };
 
