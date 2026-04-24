@@ -780,6 +780,12 @@ const AdminQuotationEditor = () => {
 
   return (
     <AdminShell>
+      {/*
+        Editor surface: white background with primary-color text for
+        comfortable, low-eye-strain reading while building a quotation.
+        Wraps the whole editor; cards inside inherit the white surface.
+      */}
+      <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
       {/* Top bar */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
         <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
@@ -1340,6 +1346,7 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </AdminShell>
   );
 };

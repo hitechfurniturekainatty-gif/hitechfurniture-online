@@ -7,7 +7,7 @@ import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, Fi
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
-  const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, signOut } = useAuth();
+  const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -19,6 +19,11 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   }
   if (!user) {
     navigate("/auth", { replace: true });
+    return null;
+  }
+  // Workers must never see the admin dashboard. Their portal is /worker.
+  if (isWorker && !isOfficeStaff && !isAdmin && !isMeasurementStaff && !isDelivery) {
+    navigate("/worker", { replace: true });
     return null;
   }
   if (!isStaff) {

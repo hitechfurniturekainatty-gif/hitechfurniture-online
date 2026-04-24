@@ -7,15 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+
+// Worker logins are stored as synthetic email/password derived from phone + PIN.
+// Mirrors the mapping used in src/pages/WorkerLogin.tsx and the worker-create-login edge fn.
+const phoneToEmail = (phone: string) => `${phone.replace(/\D+/g, "")}@workers.local`;
+const pinToPassword = (pin: string) => `wkr_${pin.replace(/\D+/g, "")}_pin`;
+const isPhoneLike = (s: string) => /^[\d\s+\-()]+$/.test(s.trim()) && s.replace(/\D+/g, "").length >= 8;
 
 const Auth = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +31,7 @@ const Auth = () => {
       if (mode === "signup") {
         const redirectUrl = `${window.location.origin}/admin`;
         const { error } = await supabase.auth.signUp({
-          email,
+          email: identifier,
           password,
           options: { emailRedirectTo: redirectUrl, data: { display_name: name } },
         });
@@ -32,7 +39,12 @@ const Auth = () => {
         toast({ title: "Account created", description: "You can now sign in." });
         setMode("login");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        // Phone (digits) → worker login flow; otherwise → standard email login.
+        const useWorker = isPhoneLike(identifier);
+        const creds = useWorker
+          ? { email: phoneToEmail(identifier), password: pinToPassword(password) }
+          : { email: identifier, password };
+        const { error } = await supabase.auth.signInWithPassword(creds);
         if (error) throw error;
         // Role-aware redirect: fetch user's roles and route accordingly
         const { data: userData } = await supabase.auth.getUser();
@@ -54,9 +66,13 @@ const Auth = () => {
           const roles = (rolesData ?? []).map((r) => r.role as string);
           const isAdmin = roles.includes("admin");
           const isOffice = roles.includes("staff") || isAdmin;
-          if (isAdmin) navigate("/admin");
+          const isWorker = roles.includes("worker");
+          // Workers have a dedicated portal — never enter the admin shell.
+          if (isWorker && !isOffice && !isAdmin) navigate("/worker");
+          else if (isAdmin) navigate("/admin");
           else if (isOffice) navigate("/admin/my-work");
           else if (roles.includes("measurement_staff")) navigate("/admin/my-work");
+          else if (roles.includes("delivery")) navigate("/admin/my-trips");
           else navigate("/admin");
         } else {
           toast({ title: `Hi ${displayName}`, description: "Welcome to My Hitech 👋" });
@@ -79,11 +95,11 @@ const Auth = () => {
         <Card className="w-full max-w-md shadow-elegant border-border/60">
           <CardHeader>
             <CardTitle className="font-display text-2xl">
-              {mode === "login" ? "Staff sign in" : "Create your account"}
+              {mode === "login" ? "Sign in" : "Create your account"}
             </CardTitle>
             <CardDescription>
               {mode === "login"
-                ? "Access the catalog dashboard."
+                ? "Staff use email & password. Workers use phone & PIN."
                 : "First account becomes admin automatically."}
             </CardDescription>
           </CardHeader>
@@ -96,12 +112,41 @@ const Auth = () => {
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Label htmlFor="identifier">{mode === "signup" ? "Email" : "Email or phone"}</Label>
+                <Input
+                  id="identifier"
+                  type={mode === "signup" ? "email" : "text"}
+                  inputMode={mode === "login" ? "email" : undefined}
+                  autoComplete={mode === "login" ? "username" : "email"}
+                  placeholder={mode === "login" ? "you@example.com or 9526610404" : "you@example.com"}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Label htmlFor="password">{mode === "login" && isPhoneLike(identifier) ? "PIN" : "Password"}</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    inputMode={mode === "login" && isPhoneLike(identifier) ? "numeric" : undefined}
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    minLength={mode === "signup" ? 6 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
