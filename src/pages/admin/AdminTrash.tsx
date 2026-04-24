@@ -155,15 +155,15 @@ const AdminTrash = () => {
       ) : totals._all === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">Trash is empty.</CardContent></Card>
       ) : (
-        <Tabs defaultValue={TABLES[0].key}>
+        <Tabs defaultValue={(TABLES.find((t) => (totals[t.key] ?? 0) > 0) ?? TABLES[0]).key}>
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {TABLES.map((t) => (
+            {TABLES.filter((t) => (totals[t.key] ?? 0) > 0).map((t) => (
               <TabsTrigger key={t.key} value={t.key} className="whitespace-nowrap">
                 {TRASH_LABELS[t.key]} ({totals[t.key] ?? 0})
               </TabsTrigger>
             ))}
           </TabsList>
-          {TABLES.map((t) => (
+          {TABLES.filter((t) => (totals[t.key] ?? 0) > 0).map((t) => (
             <TabsContent key={t.key} value={t.key} className="mt-4 grid gap-2">
               {(data[t.key] ?? []).length === 0 ? (
                 <p className="py-6 text-center text-muted-foreground">No items in this category.</p>
