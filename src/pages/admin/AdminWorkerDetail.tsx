@@ -276,11 +276,24 @@ const AdminWorkerDetail = () => {
                       <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                     </p>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="h-9">
-                    <Link to={`/admin/quotations/${job.quotation_id}`}>
-                      Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button asChild size="sm" variant="outline" className="h-9">
+                      <Link to={`/admin/quotations/${job.quotation_id}`}>
+                        Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => deleteJob(job)}
+                        aria-label="Delete job"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {isOfficeStaff && (
