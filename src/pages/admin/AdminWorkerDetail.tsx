@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, ArrowRight, HardHat, Loader2, MessageCircle, FileText, Clock,
-  ShoppingCart, History, Camera, Pencil, Save, X,
+  ShoppingCart, History, Camera, Pencil, Save, X, Trash2,
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,7 +69,7 @@ const fmtDateTime = (iso: string) =>
 const AdminWorkerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isOfficeStaff } = useAuth();
+  const { isOfficeStaff, isAdmin } = useAuth();
   const [worker, setWorker] = useState<Worker | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
