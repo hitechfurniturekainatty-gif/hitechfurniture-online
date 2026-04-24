@@ -89,6 +89,8 @@ const AdminCategories = () => {
     const { softDelete } = await import("@/lib/softDelete");
     const { error } = await softDelete(table, id);
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    if (table === "main_categories") setMainCats((prev) => prev.filter((c) => c.id !== id));
+    else setSubCats((prev) => prev.filter((c) => c.id !== id));
     toast({ title: "Moved to Trash" });
     load();
   };
