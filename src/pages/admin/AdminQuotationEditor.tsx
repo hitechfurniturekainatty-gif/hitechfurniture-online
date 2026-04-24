@@ -1346,6 +1346,7 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </AdminShell>
   );
 };
