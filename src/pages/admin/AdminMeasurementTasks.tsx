@@ -13,9 +13,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, MapPin, Phone, Ruler, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
+import { softDelete } from "@/lib/softDelete";
 
 type Task = {
   id: string;
@@ -34,7 +36,7 @@ type Task = {
 type StaffOpt = { user_id: string; email: string | null; display_name: string | null; whatsapp_number: string | null; role: string | null };
 
 const AdminMeasurementTasks = () => {
-  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
