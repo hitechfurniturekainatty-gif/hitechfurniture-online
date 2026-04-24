@@ -288,6 +288,22 @@ const WorkerPortal = () => {
             {filtered.map((job) => (
               <Card key={job.id} className="overflow-hidden">
                 <CardContent className="space-y-3 p-4">
+                  {job.last_office_edit && (
+                    <div className="-mx-4 -mt-4 mb-2 border-b border-primary/30 bg-primary/5 px-4 py-2 text-xs">
+                      <p className="flex flex-wrap items-center gap-1.5 font-medium text-primary">
+                        <Clock className="h-3 w-3" />
+                        Office updated this job
+                      </p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        Set to <span className="font-semibold text-foreground">{jobStatusLabel(job.last_office_edit.status)}</span>
+                        {" "}by <span className="font-medium text-foreground">{job.last_office_edit.editor_name}</span>
+                        {" "}· {fmtDateTime(job.last_office_edit.created_at)}
+                      </p>
+                      {job.last_office_edit.note && (
+                        <p className="mt-1 italic text-muted-foreground">"{job.last_office_edit.note}"</p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
