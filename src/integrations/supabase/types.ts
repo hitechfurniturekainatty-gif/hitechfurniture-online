@@ -567,6 +567,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quotation_attached_notes: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          display_order: number
+          file_type: string
+          file_url: string
+          id: string
+          quotation_id: string
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          file_type?: string
+          file_url: string
+          id?: string
+          quotation_id: string
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          quotation_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quotation_counters: {
         Row: {
           last_serial: number
