@@ -464,18 +464,18 @@ const AdminServices = () => {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="service" className="gap-1.5">
+        <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger value="service" className="gap-1.5 whitespace-nowrap">
             <Wrench className="h-4 w-4" /> Customer Service ({services.length})
           </TabsTrigger>
-          <TabsTrigger value="complaint" className="gap-1.5">
+          <TabsTrigger value="complaint" className="gap-1.5 whitespace-nowrap">
             <AlertTriangle className="h-4 w-4" /> Customer Complaint ({complaints.length})
           </TabsTrigger>
         </TabsList>
 
         {/* Toolbar */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
+          <div className="relative w-full min-w-[180px] flex-1 sm:w-auto">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -485,7 +485,7 @@ const AdminServices = () => {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {(tab === "service" ? SERVICE_STATUSES : COMPLAINT_STATUSES).map((s) => (
