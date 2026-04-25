@@ -113,9 +113,9 @@ export const ImageUploader = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
+    <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
+      <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
           Upload, capture, paste a URL — or generate one with AI.
         </p>
         <AiImageDialog
@@ -123,16 +123,16 @@ export const ImageUploader = ({
           existingImageUrls={value.map((v) => v.url)}
         />
       </div>
-      <Tabs defaultValue="upload">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="upload"><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload</TabsTrigger>
-          <TabsTrigger value="camera"><Camera className="mr-1.5 h-3.5 w-3.5" /> Camera</TabsTrigger>
-          <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-3.5 w-3.5" /> URL</TabsTrigger>
+      <Tabs defaultValue="upload" className="min-w-0 max-w-full">
+        <TabsList className="grid w-full min-w-0 grid-cols-3">
+          <TabsTrigger value="upload" className="min-w-0 px-2 text-xs sm:text-sm"><Upload className="mr-1 h-3.5 w-3.5 shrink-0" /> <span className="truncate">Upload</span></TabsTrigger>
+          <TabsTrigger value="camera" className="min-w-0 px-2 text-xs sm:text-sm"><Camera className="mr-1 h-3.5 w-3.5 shrink-0" /> <span className="truncate">Camera</span></TabsTrigger>
+          <TabsTrigger value="url" className="min-w-0 px-2 text-xs sm:text-sm"><LinkIcon className="mr-1 h-3.5 w-3.5 shrink-0" /> <span className="truncate">URL</span></TabsTrigger>
         </TabsList>
         <TabsContent value="upload">
           <div
             {...getRootProps()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-smooth ${
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition-smooth sm:p-6 ${
               isDragActive ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-primary/50"
             }`}
           >
@@ -165,14 +165,14 @@ export const ImageUploader = ({
           </div>
         </TabsContent>
         <TabsContent value="url">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder="https://example.com/image.jpg"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addUrl())}
             />
-            <Button type="button" onClick={addUrl}>Add</Button>
+            <Button type="button" onClick={addUrl} className="w-full sm:w-auto">Add</Button>
           </div>
         </TabsContent>
       </Tabs>

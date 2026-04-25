@@ -202,9 +202,9 @@ export const AiImageDialog = ({
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="w-full min-w-0 gap-1.5 sm:w-auto">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Generate with AI
+          <span className="truncate">Generate with AI</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">

@@ -157,12 +157,12 @@ const AdminCategories = () => {
         <p className="mt-1 text-sm text-muted-foreground sm:text-base">Organize your catalog with main categories and sub-categories.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="px-4 sm:px-6">
             <CardTitle className="font-display">Main categories</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Input
@@ -223,11 +223,11 @@ const AdminCategories = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="px-4 sm:px-6">
             <CardTitle className="font-display">Sub-categories</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="space-y-3">
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Parent category</Label>
