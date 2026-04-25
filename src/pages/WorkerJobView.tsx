@@ -104,11 +104,6 @@ const WorkerJobView = () => {
   }
   if (!job) return null;
 
-  const sitePhotos = (job && items
-    ? items
-    : []
-  );
-
   return (
     <div className="min-h-[100dvh] bg-muted/30">
       {/* Sticky header */}
