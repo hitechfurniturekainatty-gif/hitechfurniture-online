@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 
 type QItem = {
   id: string;
@@ -754,6 +755,9 @@ const AdminQuotationPreview = () => {
               pdfTooltip="PDF — full quotation for customer"
               jpgTooltip="JPG — high-res images for WhatsApp"
             />
+          )}
+          {canShare && q && (
+            <AttachedNotesButton quotationId={q.id} className="h-11 flex-1 sm:flex-initial" />
           )}
           <Button variant="secondary" onClick={handleDone} className="h-11 flex-1 sm:flex-initial">
             <Check className="mr-2 h-4 w-4" />Done
