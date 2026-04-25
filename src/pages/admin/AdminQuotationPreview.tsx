@@ -762,12 +762,12 @@ const AdminQuotationPreview = () => {
       </div>
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Assign job work</DialogTitle>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="font-display text-xl sm:text-2xl">Assign job work</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="space-y-1.5">
               <Label>Worker</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -838,8 +838,8 @@ const AdminQuotationPreview = () => {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob}>Cancel</Button>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+            <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
               disabled={workers.length === 0 || !selectedWorker}
