@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Upload, X, Link as LinkIcon, Camera } from "lucide-react";
+import { Loader2, Upload, X, Link as LinkIcon, Camera, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { compressImage } from "@/lib/imageCompression";
+import { compressProductImage } from "@/lib/imageCompression";
 import { AiImageDialog } from "@/components/admin/AiImageDialog";
 
 export type UploadedImage = { url: string; path: string };
@@ -43,8 +43,9 @@ export const ImageUploader = ({
 
   const uploadOne = useCallback(async (file: File, previewId: string, previewUrl: string) => {
     try {
-      const compressed = await compressImage(file);
-      const ext = (compressed.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+      // Catalog images are forced to 1080×1080 WebP at 100–300 KB.
+      const compressed = await compressProductImage(file);
+      const ext = (compressed.type.split("/")[1] || "webp").replace("jpeg", "jpg");
       const path = `products/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("product-images")
@@ -94,6 +95,16 @@ export const ImageUploader = ({
     next.splice(i, 1);
     onChange(next);
   };
+
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= value.length || from === to) return;
+    const next = [...value];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    onChange(next);
+  };
+
+  const makeCover = (i: number) => move(i, 0);
 
   const uploading = pending.length > 0;
 
@@ -167,6 +178,12 @@ export const ImageUploader = ({
       </Tabs>
 
       {(value.length > 0 || pending.length > 0) && (
+        <>
+        {value.length > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            First image is the catalog thumbnail (Straight view). Use the arrows to reorder, or tap the star to make any angle the cover.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {value.map((img, i) => (
             <div key={img.path} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
@@ -174,14 +191,48 @@ export const ImageUploader = ({
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="absolute right-1 top-1 rounded-full bg-foreground/80 p-1 text-background opacity-0 transition-smooth group-hover:opacity-100"
+                className="absolute right-1 top-1 rounded-full bg-foreground/80 p-1 text-background opacity-90 transition-smooth hover:bg-foreground sm:opacity-0 sm:group-hover:opacity-100"
+                aria-label="Remove image"
               >
                 <X className="h-3 w-3" />
               </button>
-              {i === 0 && (
+              {i === 0 ? (
                 <span className="absolute left-1 top-1 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent-foreground">
                   Cover
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => makeCover(i)}
+                  className="absolute left-1 top-1 rounded-full bg-foreground/70 p-1 text-background opacity-90 transition-smooth hover:bg-accent hover:text-accent-foreground sm:opacity-0 sm:group-hover:opacity-100"
+                  title="Make this the cover (Straight view)"
+                  aria-label="Make cover"
+                >
+                  <Star className="h-3 w-3" />
+                </button>
+              )}
+              {value.length > 1 && (
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-foreground/55 px-1 py-0.5 opacity-90 transition-smooth sm:opacity-0 sm:group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => move(i, i - 1)}
+                    disabled={i === 0}
+                    className="rounded p-0.5 text-background hover:bg-background/20 disabled:opacity-30"
+                    aria-label="Move left"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[10px] font-medium text-background">{i + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => move(i, i + 1)}
+                    disabled={i === value.length - 1}
+                    className="rounded p-0.5 text-background hover:bg-background/20 disabled:opacity-30"
+                    aria-label="Move right"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -194,6 +245,7 @@ export const ImageUploader = ({
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );
