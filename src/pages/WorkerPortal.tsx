@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2, Eye } from "lucide-react";
 import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
@@ -429,6 +429,15 @@ const WorkerPortal = () => {
                     >
                       <CheckCircle2 className="mr-1.5 h-4 w-4" />
                       Update status
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => navigate(`/worker/job/${job.id}`)}
+                      className="h-11 flex-1 min-w-[100px]"
+                    >
+                      <Eye className="mr-1.5 h-4 w-4" />
+                      View
                     </Button>
                     <DownloadShareMenu
                       onPdf={() => downloadJobSheet(job, "pdf")}
