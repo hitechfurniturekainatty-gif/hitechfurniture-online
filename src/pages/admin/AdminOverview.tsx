@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
 
 const QUOTATION_STATUSES = ["draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+
+type UpcomingDelivery = {
+  id: string;
+  quotation_id: string;
+  party_name: string;
+  party_place: string | null;
+  expected_delivery_date: string;
+  status: string;
+  total: number;
+};
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
@@ -20,6 +30,7 @@ const AdminOverview = () => {
     openServices: 0, openComplaints: 0,
   });
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
 
   useEffect(() => {
     const run = async () => {
@@ -63,9 +74,32 @@ const AdminOverview = () => {
         statusResults.forEach((x) => { map[x.s] = x.count; });
         setStatusCounts(map);
       }
+
+      // Upcoming deliveries (today → +2 days). Admin: all; staff: only their own
+      if (user?.id && (isAdmin || isOfficeStaff || isMeasurementStaff)) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const in2 = new Date(today);
+        in2.setDate(in2.getDate() + 2);
+        const fromStr = today.toISOString().slice(0, 10);
+        const toStr = in2.toISOString().slice(0, 10);
+        let q = supabase
+          .from("quotations")
+          .select("id, quotation_id, party_name, party_place, expected_delivery_date, status, total, created_by")
+          .is("deleted_at", null)
+          .not("expected_delivery_date", "is", null)
+          .gte("expected_delivery_date", fromStr)
+          .lte("expected_delivery_date", toStr)
+          .not("status", "in", "(completed,rejected)")
+          .order("expected_delivery_date", { ascending: true })
+          .limit(50);
+        if (!isAdmin) q = q.eq("created_by", user.id);
+        const { data } = await q;
+        setUpcoming((data ?? []) as UpcomingDelivery[]);
+      }
     };
     run();
-  }, [user?.id, isMeasurementStaff, isOfficeStaff]);
+  }, [user?.id, isMeasurementStaff, isOfficeStaff, isAdmin]);
 
   // Measurement-only staff: redirect to personal page
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) {
@@ -149,6 +183,62 @@ const AdminOverview = () => {
           {isMeasurementStaff && !isOfficeStaff ? "Your assigned measurement tasks." : "Quick snapshot of your business."}
         </p>
       </div>
+
+      {upcoming.length > 0 && (
+        <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+              <CalendarClock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              Upcoming deliveries (next 2 days)
+              <Badge variant="secondary" className="ml-1">{upcoming.length}</Badge>
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/quotations">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upcoming.map((q) => {
+              const d = new Date(q.expected_delivery_date + "T00:00:00");
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+              const dueLabel = days <= 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
+              const dueTone = days <= 0
+                ? "bg-destructive/15 text-destructive border-destructive/30"
+                : days === 1
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                : "bg-muted text-foreground border-border";
+              return (
+                <Link
+                  key={q.id}
+                  to={`/admin/quotations/${q.id}`}
+                  className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium text-foreground">{q.party_name}</span>
+                      {q.party_place && (
+                        <span className="truncate text-xs text-muted-foreground">· {q.party_place}</span>
+                      )}
+                      <Badge variant={statusBadgeVariant(q.status)} className="text-[10px]">
+                        {statusLabel(q.status)}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.quotation_id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${dueTone}`}>
+                      {dueLabel}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {d.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-6">
         {groups.map((g) => (
