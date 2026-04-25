@@ -70,7 +70,7 @@ const Catalog = () => {
   const filtered = useMemo(() => {
     return products.filter((p) => {
       if (activeCat && p.main_category_id !== activeCat.id) return false;
-      if (activeSubSlug) {
+      if (activeSubSlug && activeSubSlug !== "__all__") {
         const sub = subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id);
         if (sub && p.sub_category_id !== sub.id) return false;
       }
@@ -113,10 +113,26 @@ const Catalog = () => {
     return m;
   }, [products]);
 
-  // Landing mode = no category chosen and no active search. The user lands on
-  // /catalog from "View all" and first picks a category, then sees the
-  // matching products list (matching the requested two-step flow).
+  // Three-step navigation:
+  //  1. Landing (no cat, no search)         → show main categories
+  //  2. Sub-category picker (cat, no sub)   → show sub-categories of that main
+  //     (if the main has no subs, fall through to products directly)
+  //  3. Products (cat + sub, OR search)     → show filtered product grid
   const isLandingView = !activeCatSlug && !deferredSearch.trim();
+  const isSubPickerView =
+    !!activeCatSlug &&
+    !activeSubSlug &&
+    !deferredSearch.trim() &&
+    subsForActive.length > 0;
+
+  // Count products per sub-category for the sub-picker tiles.
+  const productCountBySub = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const p of products) {
+      if (p.sub_category_id) m[p.sub_category_id] = (m[p.sub_category_id] ?? 0) + 1;
+    }
+    return m;
+  }, [products]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,12 +142,20 @@ const Catalog = () => {
         <div className="container-page py-10 md:py-14">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Live Catalog</p>
           <h1 className="font-display text-3xl text-foreground md:text-5xl">
-            {isLandingView ? "Shop by category" : activeCat ? activeCat.name : "Browse our collection"}
+            {isLandingView
+              ? "Shop by category"
+              : isSubPickerView
+                ? activeCat?.name
+                : activeCat
+                  ? activeCat.name
+                  : "Browse our collection"}
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
             {isLandingView
-              ? "Pick a category to see the pieces inside. You can also search by name or product code."
-              : "Filter by sub-category, search by name or product code, and tap any piece for full details and a WhatsApp inquiry."}
+              ? "Pick a category to see what's inside. You can also search by name or product code."
+              : isSubPickerView
+                ? "Choose a sub-category to see the matching pieces."
+                : "Filter by sub-category, search by name or product code, and tap any piece for full details and a WhatsApp inquiry."}
           </p>
         </div>
       </div>
@@ -153,8 +177,7 @@ const Catalog = () => {
           )}
         </div>
 
-        {/* Landing view: only show categories. Once one is picked we switch
-            to the filtered product grid below. */}
+        {/* STEP 1 — Landing: main categories grid */}
         {isLandingView ? (
           loading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -201,17 +224,67 @@ const Catalog = () => {
               ))}
             </div>
           )
+        ) : isSubPickerView ? (
+          /* STEP 2 — Sub-category picker for the chosen main category */
+          <>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setCat(null)}>
+                <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setSub("__all__")}>
+                View all {activeCat?.name}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {/* "All in category" tile so users can browse everything */}
+              <button
+                type="button"
+                onClick={() => {
+                  // Clearing sub keeps cat active → product grid shows all in main
+                  const next = new URLSearchParams(params);
+                  next.set("cat", activeCatSlug!);
+                  next.set("sub", "__all__");
+                  setParams(next, { replace: true });
+                }}
+                className="img-frame group relative flex aspect-square flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary/15 to-accent/10 p-4 text-center transition-smooth hover:shadow-product"
+              >
+                <span className="font-display text-xl text-primary">All</span>
+                <span className="mt-1 text-xs text-muted-foreground">{activeCat?.name}</span>
+                <span className="mt-2 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                  {productCountByCat[activeCat?.id ?? ""] ?? 0} pieces
+                </span>
+              </button>
+              {subsForActive.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSub(s.slug)}
+                  className="img-frame group relative flex aspect-square flex-col items-center justify-center overflow-hidden bg-card p-4 text-center transition-smooth hover:shadow-product"
+                >
+                  <span className="font-display text-base text-foreground">{s.name}</span>
+                  <span className="mt-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                    {productCountBySub[s.id] ?? 0} pieces
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
+          /* STEP 3 — Product list (cat + sub OR search) */
           <>
             {/* Back to all categories */}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setCat(null); setSearch(""); }}
-              >
-                <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => { setCat(null); setSearch(""); }}>
+                  <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
+                </Button>
+                {activeCat && subsForActive.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setSub(null)}>
+                    <ArrowLeft className="mr-1.5 h-4 w-4" /> {activeCat.name} sub-categories
+                  </Button>
+                )}
+              </div>
               {(activeSubSlug || search) && (
                 <Button variant="ghost" size="sm" onClick={() => { setSub(null); setSearch(""); }}>
                   <X className="mr-1 h-3 w-3" /> Clear sub-filter
@@ -243,8 +316,8 @@ const Catalog = () => {
           </>
         )}
 
-        {/* Product grid — only in non-landing view */}
-        {!isLandingView && (loading ? (
+        {/* Product grid — only when we're past the picker steps */}
+        {!isLandingView && !isSubPickerView && (loading ? (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-muted" />
