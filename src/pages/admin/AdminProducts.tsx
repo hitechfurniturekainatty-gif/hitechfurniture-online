@@ -40,6 +40,7 @@ type Product = {
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { id: string; image_url: string; display_order: number }[];
+  deleted_at?: string | null;
 };
 
 type FormState = {
@@ -102,7 +103,11 @@ const AdminProducts = () => {
       .select("*, product_images(id, image_url, display_order)")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
-    setProducts((data ?? []) as Product[]);
+    // Defensive: filter out anything with a deleted_at timestamp at the
+    // client level too, so a stale cache or replication lag can never
+    // inflate the catalog count.
+    const safe = ((data ?? []) as Product[]).filter((p) => !p.deleted_at);
+    setProducts(safe);
   };
 
   useEffect(() => {
@@ -241,7 +246,14 @@ const AdminProducts = () => {
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            {products.length} items in your catalog
+            {/* Show the count of what is actually visible in the list so the
+                header never disagrees with the rendered rows. When a search
+                or low-stock filter is active, also show the total in brackets. */}
+            {filtered.length} {filtered.length === 1 ? "item" : "items"}
+            {(search || showLowStockOnly) && filtered.length !== products.length && (
+              <span className="text-muted-foreground/70"> of {products.length}</span>
+            )}
+            {" "}in your catalog
             {lowStockCount > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-destructive">
                 · <AlertTriangle className="h-3.5 w-3.5" /> {lowStockCount} low stock
