@@ -130,14 +130,15 @@ export const ImageCropDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+          <DialogTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
             <CropIcon className="h-4 w-4" /> Crop image
           </DialogTitle>
         </DialogHeader>
 
-        <div ref={stageRef} className="relative h-[55vh] w-full overflow-hidden rounded-md bg-muted">
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
+        <div ref={stageRef} className="relative h-[45vh] w-full overflow-hidden rounded-md bg-muted sm:h-[55vh]">
           {src && (
             <Cropper
               image={src}
@@ -225,15 +226,16 @@ export const ImageCropDialog = ({
             />
           </div>
         </div>
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button type="button" variant="ghost" onClick={close} disabled={busy}>
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:gap-2 sm:px-6 sm:py-4">
+          <Button type="button" variant="ghost" onClick={close} disabled={busy} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="button" variant="outline" onClick={useAsIs} disabled={busy}>
+          <Button type="button" variant="outline" onClick={useAsIs} disabled={busy} className="w-full sm:w-auto">
             Use as-is
           </Button>
-          <Button type="button" onClick={apply} disabled={busy || !pixels}>
+          <Button type="button" onClick={apply} disabled={busy || !pixels} className="w-full sm:w-auto">
             {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CropIcon className="mr-1.5 h-3.5 w-3.5" />}
             Crop & upload
           </Button>
