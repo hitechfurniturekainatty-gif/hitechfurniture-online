@@ -639,9 +639,9 @@ const AdminServices = () => {
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setCpOpen(false)}>Cancel</Button>
-                  <Button onClick={createComplaint} disabled={creating}>
+                <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+                  <Button variant="outline" onClick={() => setCpOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                  <Button onClick={createComplaint} disabled={creating} className="w-full sm:w-auto">
                     {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Log Complaint
                   </Button>
                 </DialogFooter>
