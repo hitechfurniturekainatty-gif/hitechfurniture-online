@@ -12,11 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon } from "lucide-react";
+import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { downloadBlob } from "@/lib/pdf";
 
 type WorkerRow = { id: string; name: string; trade: string | null };
 
@@ -68,6 +70,7 @@ const WorkerPortal = () => {
   const [note, setNote] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingJobId, setDownloadingJobId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -237,6 +240,64 @@ const WorkerPortal = () => {
     navigate("/worker/login", { replace: true });
   };
 
+  // Download the worker-safe job sheet (no prices, no customer phone) as
+  // either a multi-page PDF or page-by-page JPG images that are easy to share
+  // on WhatsApp from the phone.
+  const downloadJobSheet = async (job: Job, format: "pdf" | "jpg") => {
+    if (!job.items.length) {
+      toast({ title: "No items on this job", variant: "destructive" });
+      return;
+    }
+    setDownloadingJobId(job.id);
+    try {
+      // Need full item details for catalog fields (load list only carries a brief).
+      const { data: fullItems, error } = await supabase
+        .from("quotation_items")
+        .select("id, description, quantity, measurement, item_image_url, measurement_image_url, sketch_url, catalog_text, catalog_image_url, site_photos")
+        .in("id", job.item_ids);
+      if (error) throw error;
+
+      const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      // Smaller images keep the rasterised JPGs phone-friendly for WhatsApp.
+      const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
+      const pdfBlob = await generateJobWorkPdf({
+        quotation_id: job.quotation_code,
+        worker_name: worker?.name ?? "Worker",
+        date: new Date().toLocaleDateString("en-IN"),
+        notes: job.notes,
+        items: (fullItems ?? []).map((it: any) => ({
+          description: it.description,
+          item_image_url: it.item_image_url,
+          measurement: it.measurement,
+          measurement_image_url: it.measurement_image_url,
+          catalog_text: it.catalog_text,
+          catalog_image_url: it.catalog_image_url,
+          sketch_url: it.sketch_url,
+          site_photos: it.site_photos,
+          quantity: it.quantity,
+        })),
+      }, format === "jpg" ? COMPRESSED_PDF_OPTIONS : undefined);
+
+      const baseFilename = `JobWork-${job.quotation_code}`;
+      if (format === "pdf") {
+        downloadBlob(pdfBlob, `${baseFilename}.pdf`);
+        toast({ title: "PDF downloaded", description: baseFilename });
+      } else {
+        const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+        const blobs = await pdfBlobToJpgPages(pdfBlob);
+        blobs.forEach((b, i) => {
+          const name = blobs.length === 1 ? `${baseFilename}.jpg` : `${baseFilename}-p${i + 1}.jpg`;
+          downloadBlob(b, name);
+        });
+        toast({ title: "Images downloaded", description: `${blobs.length} page(s)` });
+      }
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setDownloadingJobId(null);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center">
@@ -266,12 +327,12 @@ const WorkerPortal = () => {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-4">
-        <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          <Stat label="Active" value={counts.active} />
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <Stat label="Active" value={counts.active} tone="primary" />
           <Stat label="Assigned" value={counts.assigned ?? 0} />
           <Stat label="In Progress" value={counts.in_progress ?? 0} />
           <Stat label="Ready" value={counts.ready ?? 0} />
-          <Stat label="Done" value={counts.delivered ?? 0} />
+          <Stat label="Done" value={counts.delivered ?? 0} tone="success" />
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
@@ -361,13 +422,23 @@ const WorkerPortal = () => {
 
                   <div className="flex flex-wrap gap-2 border-t border-border/50 pt-3">
                     <Button
-                      size="sm"
+                      size="lg"
                       onClick={() => openUpdate(job)}
                       disabled={updating === job.id}
-                      className="flex-1"
+                      className="h-11 flex-1 min-w-[140px]"
                     >
+                      <CheckCircle2 className="mr-1.5 h-4 w-4" />
                       Update status
                     </Button>
+                    <DownloadShareMenu
+                      onPdf={() => downloadJobSheet(job, "pdf")}
+                      onJpg={() => downloadJobSheet(job, "jpg")}
+                      busy={downloadingJobId === job.id}
+                      label="Download"
+                      triggerClassName="h-11"
+                      pdfTooltip="PDF — full job sheet"
+                      jpgTooltip="JPG — easy to share on WhatsApp"
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -434,8 +505,24 @@ const WorkerPortal = () => {
   );
 };
 
-const Stat = ({ label, value }: { label: string; value: number }) => (
-  <div className="rounded-lg border border-border bg-card px-2 py-2 text-center">
+const Stat = ({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "primary" | "success";
+}) => (
+  <div
+    className={
+      tone === "primary"
+        ? "rounded-lg border border-primary/40 bg-primary/10 px-2 py-2 text-center"
+        : tone === "success"
+        ? "rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-2 text-center"
+        : "rounded-lg border border-border bg-card px-2 py-2 text-center"
+    }
+  >
     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
     <p className="font-display text-lg font-semibold">{value}</p>
   </div>
