@@ -37,6 +37,7 @@ import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/li
 import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 
 type QItem = {
   id: string;
@@ -828,6 +829,7 @@ const AdminQuotationEditor = () => {
               />
               <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
               <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
+              <AttachedNotesButton quotationId={q.id} />
             </>
           )}
         </div>
@@ -1255,6 +1257,11 @@ const AdminQuotationEditor = () => {
             <Button variant="secondary" onClick={openJobDialog} className="h-11 px-2">
               <HardHat className="mr-1.5 h-4 w-4" />Assign
             </Button>
+          </div>
+        )}
+        {canEditPrice && (
+          <div className="mb-2">
+            <AttachedNotesButton quotationId={q.id} className="h-11 w-full" />
           </div>
         )}
         {/* Row 2 (bottom): primary Save action sits closest to thumb. */}
