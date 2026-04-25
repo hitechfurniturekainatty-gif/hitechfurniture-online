@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MessageCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
 import { downloadBlob, generateProductPdf } from "@/lib/pdf";
 import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
@@ -35,6 +36,26 @@ const ProductDetail = () => {
   const [activeImg, setActiveImg] = useState(0);
   const [generatingJpg, setGeneratingJpg] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
+  // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => setActiveImg(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", onSelect);
+    onSelect();
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi]);
+
+  const scrollTo = useCallback(
+    (i: number) => {
+      emblaApi?.scrollTo(i);
+      setActiveImg(i);
+    },
+    [emblaApi],
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -75,7 +96,7 @@ const ProductDetail = () => {
   }
 
   const images = [...product.product_images].sort((a, b) => a.display_order - b.display_order);
-  const cover = images[activeImg]?.image_url;
+  const cover = images[activeImg]?.image_url ?? images[0]?.image_url;
   const onOffer = product.offer_price && product.offer_price < product.mrp;
   const inStock = product.stock_quantity > 0;
 
@@ -222,29 +243,90 @@ Please share more details.`;
       <div className="container-page grid gap-10 pb-20 md:grid-cols-2 md:gap-14">
         {/* Gallery */}
         <div>
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-transparent">
-            {cover ? (
-              <img
-                src={cover}
-                alt={product.product_name}
-                decoding="async"
-                className="h-full w-full object-contain object-center"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">No image</div>
-            )}
-          </div>
+          {images.length === 0 ? (
+            <div className="flex aspect-square items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              No image
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Swipeable carousel — touch + mouse drag, lazy-loads non-cover slides. */}
+              <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
+                <div className="flex">
+                  {images.map((img, i) => (
+                    <div key={i} className="relative min-w-0 flex-[0_0_100%]">
+                      <div className="aspect-square">
+                        <img
+                          src={img.image_url}
+                          alt={`${product.product_name} — view ${i + 1}`}
+                          // Cover loads eagerly; extra angles wait until the
+                          // user swipes or the browser idles.
+                          loading={i === 0 ? "eager" : "lazy"}
+                          fetchPriority={i === 0 ? "high" : "low"}
+                          decoding="async"
+                          className="h-full w-full object-contain object-center"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {images.length > 1 && (
+                <>
+                  {/* Desktop arrows — hidden on touch where swipe is natural. */}
+                  <button
+                    type="button"
+                    onClick={() => scrollTo(Math.max(0, activeImg - 1))}
+                    disabled={activeImg === 0}
+                    aria-label="Previous image"
+                    className="absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-background/85 p-2 text-foreground shadow-md transition-smooth hover:bg-background disabled:opacity-30 sm:block"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollTo(Math.min(images.length - 1, activeImg + 1))}
+                    disabled={activeImg === images.length - 1}
+                    aria-label="Next image"
+                    className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-background/85 p-2 text-foreground shadow-md transition-smooth hover:bg-background disabled:opacity-30 sm:block"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+
+                  {/* Pagination dots — quick visual feedback during swipes. */}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                    {images.map((_, i) => (
+                      <span
+                        key={i}
+                        className={`h-1.5 rounded-full transition-all ${
+                          activeImg === i ? "w-6 bg-primary" : "w-1.5 bg-foreground/30"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {images.length > 1 && (
             <div className="mt-4 grid grid-cols-5 gap-3">
               {images.map((img, i) => (
                 <button
                   key={i}
-                  onClick={() => setActiveImg(i)}
+                  onClick={() => scrollTo(i)}
                   className={`relative aspect-square overflow-hidden rounded-xl bg-transparent transition-smooth ${
                     activeImg === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "ring-1 ring-border/40"
                   }`}
+                  aria-label={`Show image ${i + 1}`}
                 >
-                  <img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
+                  <img
+                    src={img.image_url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-contain object-center"
+                  />
                 </button>
               ))}
             </div>
