@@ -501,11 +501,11 @@ const AdminServices = () => {
               <DialogTrigger asChild>
                 <Button><Plus className="mr-1 h-4 w-4" /> New Service</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>New Customer Service</DialogTitle>
+              <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+                <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+                  <DialogTitle className="font-display text-xl sm:text-2xl">New Customer Service</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
                   <div className="flex justify-end">
                     <ContactPicker
                       onPick={(c) =>
@@ -567,9 +567,9 @@ const AdminServices = () => {
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setSvcOpen(false)}>Cancel</Button>
-                  <Button onClick={createService} disabled={creating}>
+                <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+                  <Button variant="outline" onClick={() => setSvcOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                  <Button onClick={createService} disabled={creating} className="w-full sm:w-auto">
                     {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Service
                   </Button>
                 </DialogFooter>
@@ -580,11 +580,11 @@ const AdminServices = () => {
               <DialogTrigger asChild>
                 <Button variant="default"><Plus className="mr-1 h-4 w-4" /> New Complaint</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>New Customer Complaint</DialogTitle>
+              <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
+                <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+                  <DialogTitle className="font-display text-xl sm:text-2xl">New Customer Complaint</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
                   <div className="flex justify-end">
                     <ContactPicker
                       onPick={(c) =>
