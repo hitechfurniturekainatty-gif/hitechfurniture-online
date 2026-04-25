@@ -24,14 +24,14 @@ const AdminOverview = () => {
   useEffect(() => {
     const run = async () => {
       const queries = [
-        supabase.from("products").select("id", { count: "exact", head: true }).then((r) => r),
-        supabase.from("main_categories").select("id", { count: "exact", head: true }).then((r) => r),
-        supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 5).then((r) => r),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).then((r) => r),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", "draft").then((r) => r),
-        supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true).then((r) => r),
-        supabase.from("customer_services").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,cancelled,converted)").then((r) => r),
-        supabase.from("customer_complaints").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,cancelled)").then((r) => r),
+        supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
+        supabase.from("main_categories").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
+        supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).lte("stock_quantity", 5).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "draft").then((r) => r),
+        supabase.from("workers").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_active", true).then((r) => r),
+        supabase.from("customer_services").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(resolved,cancelled,converted)").then((r) => r),
+        supabase.from("customer_complaints").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(resolved,cancelled)").then((r) => r),
       ];
       if (user?.id && isMeasurementStaff) {
         queries.push(
@@ -56,7 +56,7 @@ const AdminOverview = () => {
       if (isOfficeStaff) {
         const statusResults = await Promise.all(
           QUOTATION_STATUSES.map((s) =>
-            supabase.from("quotations").select("id", { count: "exact", head: true }).eq("status", s).then((r) => ({ s, count: r.count ?? 0 }))
+            supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", s).then((r) => ({ s, count: r.count ?? 0 }))
           )
         );
         const map: Record<string, number> = {};
