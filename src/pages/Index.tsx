@@ -38,6 +38,7 @@ const Index = () => {
         .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
         .eq("is_published", true)
         .eq("is_featured", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(8),
     ]).then(([cats, prods]) => {

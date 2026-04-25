@@ -50,6 +50,7 @@ const Catalog = () => {
         .from("products")
         .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
         .eq("is_published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
     ]).then(([mc, sc, pr]) => {
       if (cancelled) return;

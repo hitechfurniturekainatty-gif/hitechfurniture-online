@@ -64,6 +64,7 @@ const ProductDetail = () => {
       .select("id, product_name, product_code, description, mrp, offer_price, available_colors, material, dimensions, stock_quantity, main_category_id, product_images(image_url, display_order), main_categories(name, slug)")
       .eq("id", id)
       .eq("is_published", true)
+      .is("deleted_at", null)
       .maybeSingle()
       .then(({ data }) => {
         setProduct(data as Product | null);
