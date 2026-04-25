@@ -272,8 +272,25 @@ export const FloatingNotesWindow = ({ open, notes, onClose }: Props) => {
 
       {/* Caption */}
       {note.caption && (
-        <div className="shrink-0 border-t border-border bg-background px-3 py-1.5 text-xs italic text-muted-foreground">
-          "{note.caption}"
+        <div
+          className="flex shrink-0 cursor-move select-none items-center gap-1.5 border-t border-border bg-muted/70 px-3 py-1.5 text-xs italic text-muted-foreground"
+          onPointerDown={onPointerDown("move")}
+          title="Drag to move window"
+        >
+          <GripHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">"{note.caption}"</span>
+        </div>
+      )}
+
+      {/* Bottom drag handle (always present, even without a caption) */}
+      {!note.caption && (
+        <div
+          className="flex shrink-0 cursor-move select-none items-center justify-center gap-1 border-t border-border bg-muted/70 px-3 py-1"
+          onPointerDown={onPointerDown("move")}
+          title="Drag to move window"
+          aria-label="Drag handle"
+        >
+          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       )}
 
