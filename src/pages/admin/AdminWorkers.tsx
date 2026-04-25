@@ -389,7 +389,7 @@ const AdminWorkers = () => {
       </Dialog>
 
       <Dialog open={!!loginWorker} onOpenChange={(o) => { if (!o) { setLoginWorker(null); setLastCreds(null); } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-primary" />
