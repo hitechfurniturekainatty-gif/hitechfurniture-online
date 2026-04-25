@@ -257,7 +257,9 @@ const WorkerPortal = () => {
         .in("id", job.item_ids);
       if (error) throw error;
 
-      const { generateJobWorkPdf, COMPRESSED_PDF_OPTIONS } = await import("@/lib/quotationPdf");
+      const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      // Smaller images keep the rasterised JPGs phone-friendly for WhatsApp.
+      const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: job.quotation_code,
         worker_name: worker?.name ?? "Worker",
