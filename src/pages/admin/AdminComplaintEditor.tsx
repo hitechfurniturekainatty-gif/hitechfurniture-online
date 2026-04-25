@@ -296,7 +296,7 @@ const AdminComplaintEditor = () => {
             <DialogTrigger asChild>
               <Button variant="outline"><HardHat className="mr-1 h-4 w-4" /> Assign Technician</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto">
               <DialogHeader><DialogTitle>Assign Technician (URGENT SERVICE)</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div>
