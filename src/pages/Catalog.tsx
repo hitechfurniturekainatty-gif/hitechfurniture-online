@@ -70,7 +70,7 @@ const Catalog = () => {
   const filtered = useMemo(() => {
     return products.filter((p) => {
       if (activeCat && p.main_category_id !== activeCat.id) return false;
-      if (activeSubSlug) {
+      if (activeSubSlug && activeSubSlug !== "__all__") {
         const sub = subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id);
         if (sub && p.sub_category_id !== sub.id) return false;
       }
