@@ -1,14 +1,15 @@
-import { ReactNode } from "react";
-import { Link, NavLink as RRNavLink, useNavigate } from "react-router-dom";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, Wallet } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, Wallet, ChevronDown, Briefcase, Boxes, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -38,24 +39,88 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  const links = [
-    { to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff },
-    { to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true },
-    { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
-    { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
-    { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
-    { to: "/admin/receivables", label: "Receivables", icon: Wallet, show: isAdmin },
-    { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff },
-    { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff },
-    { to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff },
-    { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
-    { to: "/admin/workers", label: "Workers", icon: HardHat, show: isAdmin },
-    { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
-    { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
-    { to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin },
-    { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
-    { to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin },
-  ].filter((l) => l.show);
+  type LinkItem = { to: string; end?: boolean; label: string; icon: any; show: boolean };
+  type GroupItem = { kind: "group"; id: string; label: string; icon: any; children: LinkItem[] };
+  type SoloItem = { kind: "solo" } & LinkItem;
+  type NavEntry = GroupItem | SoloItem;
+
+  const filt = (arr: LinkItem[]) => arr.filter((l) => l.show);
+
+  const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff };
+  const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
+  const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
+  const receivables: SoloItem = { kind: "solo", to: "/admin/receivables", label: "Receivables", icon: Wallet, show: isAdmin };
+  const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
+  const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
+
+  const operations: GroupItem = {
+    kind: "group", id: "operations", label: "Operations", icon: Briefcase,
+    children: filt([
+      { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
+      { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
+      { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
+    ]),
+  };
+  const inventory: GroupItem = {
+    kind: "group", id: "inventory", label: "Inventory", icon: Boxes,
+    children: filt([
+      { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
+      { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
+    ]),
+  };
+  const logistics: GroupItem = {
+    kind: "group", id: "logistics", label: "Logistics & Delivery", icon: Map,
+    children: filt([
+      { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff },
+      { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff },
+      { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
+    ]),
+  };
+  const team: GroupItem = {
+    kind: "group", id: "team", label: "Team Management", icon: UsersRound,
+    children: filt([
+      { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
+      { to: "/admin/workers", label: "Workers", icon: HardHat, show: isAdmin },
+    ]),
+  };
+
+  const navEntries: NavEntry[] = [
+    overview,
+    myWork,
+    myTrips,
+    operations,
+    receivables,
+    inventory,
+    logistics,
+    team,
+    homePage,
+    trash,
+  ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
+
+  const isActiveTo = (to: string, end?: boolean) =>
+    end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    navEntries.forEach((e) => {
+      if (e.kind === "group") init[e.id] = e.children.some((c) => isActiveTo(c.to, c.end));
+    });
+    return init;
+  });
+
+  // Auto-open the group containing the current route on navigation.
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      navEntries.forEach((e) => {
+        if (e.kind === "group" && e.children.some((c) => isActiveTo(c.to, c.end))) {
+          next[e.id] = true;
+        }
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
@@ -87,21 +152,63 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
             className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Admin navigation"
           >
-            {links.map((l) => (
-              <RRNavLink
-                key={l.to}
-                to={l.to}
-                end={l.end}
-                className={({ isActive }) =>
-                  cn(
-                    "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
-                    isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
-                  )
-                }
-              >
-                <l.icon className="h-4 w-4" /> {l.label}
-              </RRNavLink>
-            ))}
+            {navEntries.map((entry) => {
+              if (entry.kind === "solo") {
+                return (
+                  <RRNavLink
+                    key={entry.to}
+                    to={entry.to}
+                    end={entry.end}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                        isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                      )
+                    }
+                  >
+                    <entry.icon className="h-4 w-4" /> {entry.label}
+                  </RRNavLink>
+                );
+              }
+              const open = !!openGroups[entry.id];
+              const groupActive = entry.children.some((c) => isActiveTo(c.to, c.end));
+              return (
+                <div key={entry.id} className="shrink-0 md:w-full">
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroups((p) => ({ ...p, [entry.id]: !p[entry.id] }))}
+                    aria-expanded={open}
+                    className={cn(
+                      "flex min-h-[44px] w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                      groupActive ? "bg-muted text-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                    )}
+                  >
+                    <entry.icon className="h-4 w-4" />
+                    <span className="flex-1 text-left">{entry.label}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+                  </button>
+                  {open && (
+                    <div className="mt-1 flex gap-1 md:ml-3 md:mt-1 md:flex-col md:border-l md:border-border md:pl-2">
+                      {entry.children.map((c) => (
+                        <RRNavLink
+                          key={c.to}
+                          to={c.to}
+                          end={c.end}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-smooth",
+                              isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                            )
+                          }
+                        >
+                          <c.icon className="h-4 w-4" /> {c.label}
+                        </RRNavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
           <p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">
             Role: <span className="font-semibold text-foreground">{
