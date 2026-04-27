@@ -214,8 +214,7 @@ export default function AdminReceivables() {
 
   const handleWhatsApp = (phone: string, _customer: string, amount: string) => {
     if (!phone) return;
-    const name = (_customer || "sir/madam").trim() || "sir/madam";
-    const msg = `Hello ${name}, this is Hitech Furniture and Interiors. Your pending balance is ${amount}. Kindly settle this at your earliest convenience. Thank you!`;
+    const msg = `Hello sir/madam, this is Hitech Furniture and Interiors. Your pending balance is ${amount}. Kindly settle this at your earliest convenience. Thank you!`;
     openWhatsAppApp(`91${phone}`, msg);
   };
 
