@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
-import { downloadBlob, generateProductPdf } from "@/lib/pdf";
-import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
+// PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
+// handlers below — keeping them out of the main bundle dramatically improves
+// first paint on the catalog/product pages.
 import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
@@ -133,6 +134,10 @@ Please share more details.`;
   };
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
+    const [{ generateProductPdf }, { pdfBlobToJpgBlob }] = await Promise.all([
+      import("@/lib/pdf"),
+      import("@/lib/pdfToJpg"),
+    ]);
     const pdfBlob = await generateProductPdf({
       product_name: product.product_name,
       product_code: product.product_code,
@@ -151,6 +156,7 @@ Please share more details.`;
     setGeneratingJpg(true);
     try {
       const blob = await buildBrochureJpgBlob();
+      const { downloadBlob } = await import("@/lib/pdf");
       downloadBlob(blob, `${product.product_code}-brochure.jpg`);
       toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
     } catch (e) {
@@ -166,6 +172,7 @@ Please share more details.`;
   const handleDownloadPdf = async () => {
     setGeneratingJpg(true);
     try {
+      const { generateProductPdf, downloadBlob } = await import("@/lib/pdf");
       const pdfBlob = await generateProductPdf({
         product_name: product.product_name,
         product_code: product.product_code,
@@ -224,6 +231,7 @@ Please share more details.`;
       }
 
       // Desktop fallback: download JPG + open WhatsApp chat
+      const { downloadBlob } = await import("@/lib/pdf");
       downloadBlob(blob, filename);
       await new Promise((r) => setTimeout(r, 250));
       openWaChat();
