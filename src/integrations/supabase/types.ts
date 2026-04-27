@@ -289,6 +289,7 @@ export type Database = {
           eyebrow: string | null
           id: string
           image_url: string | null
+          image_urls: string | null
           is_visible: boolean
           section_key: string
           style_preset: string
@@ -305,6 +306,7 @@ export type Database = {
           eyebrow?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string | null
           is_visible?: boolean
           section_key: string
           style_preset?: string
@@ -321,6 +323,7 @@ export type Database = {
           eyebrow?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string | null
           is_visible?: boolean
           section_key?: string
           style_preset?: string
