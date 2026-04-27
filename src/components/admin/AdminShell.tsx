@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
@@ -44,6 +44,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
     { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
     { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
+    { to: "/admin/receivables", label: "Receivables", icon: Wallet, show: isAdmin },
     { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff },
     { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff },
     { to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff },
