@@ -192,7 +192,7 @@ export default function AdminReceivables() {
 
   const handleWhatsApp = (phone: string, _customer: string, amount: string) => {
     if (!phone) return;
-    const msg = `Hello sir/madam, this is Hitech Furniture. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
+    const msg = `Hello sir/madam, this is Hitech Furniture and Interiors. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
     openWhatsAppApp(`91${phone}`, msg);
   };
 
