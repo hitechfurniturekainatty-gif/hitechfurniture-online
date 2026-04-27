@@ -17,12 +17,12 @@ import { Phone, MessageCircle, Trash2, ShieldAlert, Loader2, Sparkles } from "lu
  * "Strictly Admin-Only" requirement without any new RLS surface.
  *
  * Expected row format (whitespace/tabs/symbols tolerated):
- *   [Bill/Quotation No]  [Customer Name]  [Place]  [Pending Amount]  [10-digit Phone]
+ *   [Quotation No]  [Customer Name]  [Place]  [10-digit Phone]  [Pending Amount]
  *
- * Heuristic: phone = last 10-digit run in the line. Amount = last numeric
- * token before the phone (commas/decimals allowed). Bill no = first token.
- * Everything in between = customer name + place (split on the last single
- * word if a clear gap exists, otherwise place is left blank).
+ * Heuristic: phone = the 10-digit run in the line (works whether it's before
+ * or after the amount). Amount = remaining numeric token (commas/decimals
+ * allowed). Quotation No = first token. Last remaining word = place,
+ * everything else in the middle = customer name.
  */
 
 type ParsedRow = {
@@ -219,12 +219,12 @@ export default function AdminReceivables() {
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={`Paste rows here, one per line. Example:\nQ-2025-001    Rahul Kumar    Kalpetta    12,500.00    9876543210`}
+              placeholder={`Paste rows here, one per line. Example:\nQ-2025-001    Rahul Kumar    Kalpetta    9876543210    12,500.00`}
               className="min-h-[140px] font-mono text-sm"
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                Order: <span className="font-medium">Bill No → Customer → Place → Amount → 10-digit Phone</span>
+                Order: <span className="font-medium">Quotation No → Customer → Place → 10-digit Phone → Amount</span>
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setText("")} disabled={!text}>Clear input</Button>
