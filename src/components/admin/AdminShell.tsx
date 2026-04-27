@@ -17,6 +17,25 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // flips from true → false.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
+  // Auto-open the sidebar group containing the current route. Declared at the
+  // top of the component (before early returns) so hook order stays stable.
+  useEffect(() => {
+    const path = location.pathname;
+    const groups: Record<string, string[]> = {
+      operations: ["/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
+      inventory: ["/admin/categories", "/admin/products"],
+      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
+      team: ["/admin/staff", "/admin/workers"],
+    };
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const [id, paths] of Object.entries(groups)) {
+        if (paths.some((p) => path === p || path.startsWith(p + "/"))) next[id] = true;
+      }
+      return next;
+    });
+  }, [location.pathname]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
