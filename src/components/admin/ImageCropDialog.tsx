@@ -130,7 +130,14 @@ export const ImageCropDialog = ({
   };
 
   const apply = async () => {
-    if (!src || !pixels || !file) return;
+    if (!file) return;
+    // If react-easy-crop hasn't fired onCropComplete yet (rare race on slow
+    // devices), fall back to using the original file so the user is never
+    // stuck with a disabled "Crop & upload" button.
+    if (!src || !pixels) {
+      onConfirm(file);
+      return;
+    }
     setBusy(true);
     try {
       const out = await getCroppedFile(src, pixels, rotation, file.name);
@@ -247,7 +254,7 @@ export const ImageCropDialog = ({
           <Button type="button" variant="outline" onClick={useAsIs} disabled={busy} className="w-full sm:w-auto">
             Use as-is
           </Button>
-          <Button type="button" onClick={apply} disabled={busy || !pixels} className="w-full sm:w-auto">
+          <Button type="button" onClick={apply} disabled={busy} className="w-full sm:w-auto">
             {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CropIcon className="mr-1.5 h-3.5 w-3.5" />}
             Crop & upload
           </Button>
