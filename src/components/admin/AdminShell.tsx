@@ -11,6 +11,31 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // IMPORTANT: All hooks must run on every render, BEFORE any early returns
+  // below (loading / !user / !isStaff). Otherwise React throws
+  // "Rendered more hooks than during the previous render" when `loading`
+  // flips from true → false.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Auto-open the sidebar group containing the current route. Declared at the
+  // top of the component (before early returns) so hook order stays stable.
+  useEffect(() => {
+    const path = location.pathname;
+    const groups: Record<string, string[]> = {
+      operations: ["/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
+      inventory: ["/admin/categories", "/admin/products"],
+      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
+      team: ["/admin/staff", "/admin/workers"],
+    };
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const [id, paths] of Object.entries(groups)) {
+        if (paths.some((p) => path === p || path.startsWith(p + "/"))) next[id] = true;
+      }
+      return next;
+    });
+  }, [location.pathname]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -99,28 +124,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   const isActiveTo = (to: string, end?: boolean) =>
     end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
-
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    navEntries.forEach((e) => {
-      if (e.kind === "group") init[e.id] = e.children.some((c) => isActiveTo(c.to, c.end));
-    });
-    return init;
-  });
-
-  // Auto-open the group containing the current route on navigation.
-  useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      navEntries.forEach((e) => {
-        if (e.kind === "group" && e.children.some((c) => isActiveTo(c.to, c.end))) {
-          next[e.id] = true;
-        }
-      });
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
