@@ -45,11 +45,23 @@ async function getCroppedFile(
   rctx.rotate(radians);
   rctx.drawImage(image, -image.width / 2, -image.height / 2);
 
+  // Clamp the requested crop to the rotated bitmap bounds. With manual mode
+  // (restrictPosition={false}) react-easy-crop can return negative offsets or
+  // sizes that overflow the image — drawing those produces a blank canvas.
+  const sx = Math.max(0, Math.floor(area.x));
+  const sy = Math.max(0, Math.floor(area.y));
+  const sw = Math.max(1, Math.min(Math.floor(area.width), Math.floor(bBoxW - sx)));
+  const sh = Math.max(1, Math.min(Math.floor(area.height), Math.floor(bBoxH - sy)));
+
   const out = document.createElement("canvas");
-  out.width = area.width;
-  out.height = area.height;
+  out.width = sw;
+  out.height = sh;
   const octx = out.getContext("2d")!;
-  octx.drawImage(rotCanvas, area.x, area.y, area.width, area.height, 0, 0, area.width, area.height);
+  // White backdrop in case the source has transparency or the crop slightly
+  // overflows after clamping.
+  octx.fillStyle = "#ffffff";
+  octx.fillRect(0, 0, sw, sh);
+  octx.drawImage(rotCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
   const blob: Blob = await new Promise((res) => out.toBlob((b) => res(b!), "image/jpeg", 0.92));
   const safeName = fileName.replace(/\.(png|jpe?g|webp|gif|bmp|tiff?)$/i, "") + "_cropped.jpg";
