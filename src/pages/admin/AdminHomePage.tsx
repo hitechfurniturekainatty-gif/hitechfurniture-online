@@ -374,7 +374,7 @@ const AdminHomePage = () => {
                   </div>
                   <div className="grid gap-4 md:grid-cols-[200px_1fr]">
                     <div>
-                      <Label className="mb-2 block text-xs">Image (optional)</Label>
+                      <Label className="mb-2 block text-xs">Cover image (optional)</Label>
                       <SingleImagePicker
                         value={s.image_url || null}
                         onChange={async (url) => {
@@ -392,6 +392,27 @@ const AdminHomePage = () => {
                         bucket="homepage-media"
                         folder="sections"
                       />
+                      <Label className="mb-2 mt-4 block text-xs">
+                        Gallery (auto-rotates every 3s)
+                      </Label>
+                      <MultiImagePicker
+                        value={s.image_urls}
+                        onChange={async (joined) => {
+                          updateSectionField(s.id, { image_urls: joined });
+                          const { error } = await supabase
+                            .from("homepage_sections")
+                            .update({ image_urls: joined })
+                            .eq("id", s.id);
+                          if (error) {
+                            toast({ title: "Gallery save failed", description: error.message, variant: "destructive" });
+                          }
+                        }}
+                        bucket="homepage-media"
+                        folder="sections"
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Add 2+ images to show a slideshow. With one image, the cover above is used.
+                      </p>
                     </div>
                     <div className="space-y-3">
                       <div className="grid gap-3 md:grid-cols-2">
