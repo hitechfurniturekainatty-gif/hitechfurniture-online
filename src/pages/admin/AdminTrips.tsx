@@ -351,7 +351,7 @@ const AdminTrips = () => {
                     {draft.route_id ? "No unassigned quotations on this route." : "Pick a route to see quotations."}
                   </p>
                 )}
-                {filteredForRoute.map((p, i) => {
+                {filteredForRoute.map((p) => {
                   const checked = draft.selectedQs.includes(p.id);
                   return (
                     <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded p-2 text-sm hover:bg-muted">
@@ -368,6 +368,12 @@ const AdminTrips = () => {
                       />
                       <span className="font-mono text-xs">{p.quotation_id}</span>
                       <span className="truncate">{p.party_name} ({p.delivery_place || p.party_place})</span>
+                      {p.expected_delivery_date && (
+                        <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {p.expected_delivery_date}
+                        </span>
+                      )}
                       <span className="ml-auto font-display text-xs">{formatINR(p.total)}</span>
                     </label>
                   );
