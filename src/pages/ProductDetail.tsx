@@ -12,6 +12,8 @@ import { downloadBlob, generateProductPdf } from "@/lib/pdf";
 import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
 import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { useHomepageSettings } from "@/hooks/useHomepageSettings";
+import { openWhatsAppApp } from "@/lib/whatsapp";
 
 type Product = {
   id: string;
@@ -36,6 +38,8 @@ const ProductDetail = () => {
   const [activeImg, setActiveImg] = useState(0);
   const [generatingJpg, setGeneratingJpg] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
+  const homepage = useHomepageSettings();
+  const waNumber = (homepage?.whatsapp_number ?? "").replace(/[^0-9]/g, "");
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
 
@@ -106,15 +110,27 @@ const ProductDetail = () => {
   // platform does NOT allow attaching files via a URL scheme — only the native Share
   // Sheet on the user's device can attach files to a chat).
   const productUrl = `${window.location.origin}/product/${product.id}`;
+  const priceLine = onOffer
+    ? `Price: ${formatINR(product.offer_price!)} (MRP ${formatINR(product.mrp)})`
+    : `MRP: ${formatINR(product.mrp)}`;
+  const descLine = product.description ? `\n${product.description}\n` : "";
   const whatsappMsg = `Hello, I'm interested in this product:
 
 Product: ${product.product_name}
 Code: ${product.product_code}
-MRP: ${formatINR(onOffer ? product.offer_price! : product.mrp)}
-
+${priceLine}
+${descLine}
 View / brochure: ${productUrl}
 
 Please share more details.`;
+
+  const openWaChat = () => {
+    if (waNumber) {
+      openWhatsAppApp(waNumber, whatsappMsg);
+    } else {
+      window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
+    }
+  };
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
     const pdfBlob = await generateProductPdf({
@@ -210,7 +226,7 @@ Please share more details.`;
       // Desktop fallback: download JPG + open WhatsApp chat
       downloadBlob(blob, filename);
       await new Promise((r) => setTimeout(r, 250));
-      window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
+      openWaChat();
 
       toast({
         title: "Brochure ready ✓",
@@ -225,7 +241,7 @@ Please share more details.`;
         description: "Opening WhatsApp without the image — please try again to attach it.",
         variant: "destructive",
       });
-      window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
+      openWaChat();
     } finally {
       setSendingWa(false);
     }
