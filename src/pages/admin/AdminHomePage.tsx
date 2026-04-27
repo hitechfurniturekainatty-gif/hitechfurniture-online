@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
+import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, Save, Eye, EyeOff } from "lucide-react";
 import {
@@ -178,6 +179,7 @@ const AdminHomePage = () => {
         cta_label: section.cta_label,
         cta_link: section.cta_link,
         image_url: section.image_url,
+        image_urls: section.image_urls,
         style_preset: section.style_preset,
         text_align: section.text_align,
         display_order: section.display_order,
