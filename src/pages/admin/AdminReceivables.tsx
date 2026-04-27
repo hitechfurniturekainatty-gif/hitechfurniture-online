@@ -16,13 +16,13 @@ import { Phone, MessageCircle, Trash2, ShieldAlert, Loader2, Sparkles } from "lu
  * written to localStorage. Refresh = clean slate. This satisfies the
  * "Strictly Admin-Only" requirement without any new RLS surface.
  *
- * Expected row format (whitespace/tabs/symbols tolerated):
- *   [Quotation No]  [Customer Name]  [Place]  [10-digit Phone]  [Pending Amount]
- *
- * Heuristic: phone = the 10-digit run in the line (works whether it's before
- * or after the amount). Amount = remaining numeric token (commas/decimals
- * allowed). Quotation No = first token. Last remaining word = place,
- * everything else in the middle = customer name.
+ * Smart parser — tolerates inconsistent paste formats from Excel, PDF, or
+ * plain text. For each non-empty line we extract:
+ *   • Phone  → any 10-digit run (ignores +91/0 prefixes, spaces, dashes)
+ *   • Amount → the last numeric token on the line (commas/decimals OK)
+ *   • Name   → the leading text before phone/amount/quotation tokens
+ *   • Bill # → first token if it looks like a quotation/bill code
+ *   • Place  → trailing word left over after name extraction (optional)
  */
 
 type ParsedRow = {
@@ -37,35 +37,50 @@ type ParsedRow = {
   raw: string;
 };
 
-const PHONE_RE = /(\d{10})(?!\d)/g;
+// Phone: 10 consecutive digits, possibly broken up by spaces/dashes/dots.
+// We strip separators first, then match. The original index is tracked so
+// we can splice the matched substring out of the cleaned line.
+const PHONE_DIGIT_RE = /(?:\d[\s\-.]*){10}/g;
 const AMOUNT_RE = /-?\d{1,3}(?:[,\s]\d{2,3})*(?:\.\d+)?|-?\d+(?:\.\d+)?/g;
+const BILLNO_RE = /^[A-Za-z]{1,4}[-/]?\d+[-/]?\d*$|^\d{2,}$/;
 
 function cleanLine(line: string) {
   return line
     .replace(/\u00A0/g, " ") // nbsp
     .replace(/[\t\r]+/g, " ")
-    .replace(/[|;]+/g, " ")
+    .replace(/[|;,*]+/g, " ") // tolerate pipe/semicolon/asterisk separators
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
 function extractPhone(line: string): { phone: string; rest: string } {
-  let lastMatch: RegExpExecArray | null = null;
+  // Find the longest 10-digit run, even if separated by spaces/dashes.
+  let chosen: { start: number; end: number; digits: string } | null = null;
   let m: RegExpExecArray | null;
-  PHONE_RE.lastIndex = 0;
-  while ((m = PHONE_RE.exec(line)) !== null) lastMatch = m;
-  if (!lastMatch) return { phone: "", rest: line };
-  const phone = lastMatch[1];
-  const rest = (line.slice(0, lastMatch.index) + line.slice(lastMatch.index + phone.length)).trim();
-  return { phone, rest };
+  PHONE_DIGIT_RE.lastIndex = 0;
+  while ((m = PHONE_DIGIT_RE.exec(line)) !== null) {
+    const digits = m[0].replace(/\D/g, "");
+    if (digits.length === 10) {
+      chosen = { start: m.index, end: m.index + m[0].length, digits };
+    }
+  }
+  if (!chosen) {
+    // Fallback: collapse all non-digits and look for any 10-digit window.
+    const digitsOnly = line.replace(/\D/g, "");
+    const match = digitsOnly.match(/\d{10}/);
+    if (match) return { phone: match[0], rest: line.replace(/\d/g, " ").replace(/\s{2,}/g, " ").trim() };
+    return { phone: "", rest: line };
+  }
+  const rest = (line.slice(0, chosen.start) + " " + line.slice(chosen.end)).replace(/\s{2,}/g, " ").trim();
+  return { phone: chosen.digits, rest };
 }
 
 function extractAmount(rest: string): { amount: number | null; amountRaw: string; rest: string } {
+  // Amount = the LAST numeric token on the line (per spec).
   let lastMatch: RegExpExecArray | null = null;
   let m: RegExpExecArray | null;
   AMOUNT_RE.lastIndex = 0;
   while ((m = AMOUNT_RE.exec(rest)) !== null) {
-    // skip pure 1-2 digit tokens that look like serial numbers in the middle
     const t = m[0].replace(/[,\s]/g, "");
     if (t.length >= 2 || t.includes(".")) lastMatch = m;
   }
@@ -79,10 +94,17 @@ function extractAmount(rest: string): { amount: number | null; amountRaw: string
 function splitCustomerPlace(rest: string): { billNo: string; customer: string; place: string } {
   const tokens = rest.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return { billNo: "", customer: "", place: "" };
-  const billNo = tokens.shift() ?? "";
+  // Only treat the first token as a bill/quotation number if it actually
+  // looks like one (alphanumeric code or pure digits). Otherwise leading
+  // text belongs to the customer name — per spec, "leading text = name".
+  let billNo = "";
+  if (tokens.length > 1 && BILLNO_RE.test(tokens[0])) {
+    billNo = tokens.shift() as string;
+  }
   if (tokens.length === 0) return { billNo, customer: "", place: "" };
   if (tokens.length === 1) return { billNo, customer: tokens[0], place: "" };
-  // Heuristic: last token is the place, everything else is the customer name.
+  if (tokens.length === 2) return { billNo, customer: tokens[0], place: tokens[1] };
+  // 3+ tokens: last token is place, rest is customer name.
   const place = tokens.pop() as string;
   const customer = tokens.join(" ");
   return { billNo, customer, place };
@@ -192,7 +214,8 @@ export default function AdminReceivables() {
 
   const handleWhatsApp = (phone: string, _customer: string, amount: string) => {
     if (!phone) return;
-    const msg = `Hello sir/madam, this is Hitech Furniture and Interiors. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
+    const name = (_customer || "sir/madam").trim() || "sir/madam";
+    const msg = `Hello ${name}, this is Hitech Furniture and Interiors. Your pending balance is ${amount}. Kindly settle this at your earliest convenience. Thank you!`;
     openWhatsAppApp(`91${phone}`, msg);
   };
 
@@ -219,12 +242,12 @@ export default function AdminReceivables() {
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={`Paste rows here, one per line. Example:\nQ-2025-001    Rahul Kumar    Kalpetta    9876543210    12,500.00`}
+              placeholder={`Paste rows from Excel, PDF, or plain text — one per line.\nFormat is flexible. Examples:\nRahul Kumar  9876543210  12,500\nQ-2025-001 | Anjali Menon | Kalpetta | +91 98765 43210 | 8,200.00`}
               className="min-h-[140px] font-mono text-sm"
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                Order: <span className="font-medium">Quotation No → Customer → Place → 10-digit Phone → Amount</span>
+                Smart parser: detects <span className="font-medium">Name</span>, any <span className="font-medium">10-digit Phone</span>, and the trailing <span className="font-medium">Balance</span> — even with irregular spacing or symbols.
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setText("")} disabled={!text}>Clear input</Button>
