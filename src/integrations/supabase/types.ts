@@ -240,6 +240,156 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_hero_slides: {
+        Row: {
+          created_at: string
+          cta_label: string | null
+          cta_link: string | null
+          display_order: number
+          headline: string | null
+          id: string
+          image_url: string
+          is_visible: boolean
+          subheadline: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          display_order?: number
+          headline?: string | null
+          id?: string
+          image_url: string
+          is_visible?: boolean
+          subheadline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          display_order?: number
+          headline?: string | null
+          id?: string
+          image_url?: string
+          is_visible?: boolean
+          subheadline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homepage_sections: {
+        Row: {
+          body: string | null
+          created_at: string
+          cta_label: string | null
+          cta_link: string | null
+          display_order: number
+          eyebrow: string | null
+          id: string
+          image_url: string | null
+          is_visible: boolean
+          section_key: string
+          style_preset: string
+          text_align: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          display_order?: number
+          eyebrow?: string | null
+          id?: string
+          image_url?: string | null
+          is_visible?: boolean
+          section_key: string
+          style_preset?: string
+          text_align?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          display_order?: number
+          eyebrow?: string | null
+          id?: string
+          image_url?: string | null
+          is_visible?: boolean
+          section_key?: string
+          style_preset?: string
+          text_align?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homepage_settings: {
+        Row: {
+          address_lines: string[]
+          brand_tagline: string
+          contact_email: string | null
+          contact_phone: string | null
+          contact_phone_secondary: string | null
+          created_at: string
+          facebook_url: string | null
+          footer_about: string | null
+          google_maps_embed_url: string | null
+          google_maps_url: string | null
+          id: string
+          instagram_url: string | null
+          managing_partner: string | null
+          singleton: boolean
+          updated_at: string
+          whatsapp_default_message: string
+          whatsapp_number: string
+        }
+        Insert: {
+          address_lines?: string[]
+          brand_tagline?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_phone_secondary?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          footer_about?: string | null
+          google_maps_embed_url?: string | null
+          google_maps_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          managing_partner?: string | null
+          singleton?: boolean
+          updated_at?: string
+          whatsapp_default_message?: string
+          whatsapp_number?: string
+        }
+        Update: {
+          address_lines?: string[]
+          brand_tagline?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_phone_secondary?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          footer_about?: string | null
+          google_maps_embed_url?: string | null
+          google_maps_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          managing_partner?: string | null
+          singleton?: boolean
+          updated_at?: string
+          whatsapp_default_message?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
       job_work_orders: {
         Row: {
           created_at: string
