@@ -125,24 +125,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const isActiveTo = (to: string, end?: boolean) =>
     end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
 
-  // Auto-open the group containing the current route on navigation.
-  // (Hook is declared at top of component to satisfy rules-of-hooks; this
-  // effect runs every render but the early returns above never execute when
-  // we reach this point, so navEntries is always defined here.)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      navEntries.forEach((e) => {
-        if (e.kind === "group" && e.children.some((c) => isActiveTo(c.to, c.end))) {
-          next[e.id] = true;
-        }
-      });
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
   return (
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
