@@ -134,6 +134,10 @@ Please share more details.`;
   };
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
+    const [{ generateProductPdf }, { pdfBlobToJpgBlob }] = await Promise.all([
+      import("@/lib/pdf"),
+      import("@/lib/pdfToJpg"),
+    ]);
     const pdfBlob = await generateProductPdf({
       product_name: product.product_name,
       product_code: product.product_code,
@@ -152,6 +156,7 @@ Please share more details.`;
     setGeneratingJpg(true);
     try {
       const blob = await buildBrochureJpgBlob();
+      const { downloadBlob } = await import("@/lib/pdf");
       downloadBlob(blob, `${product.product_code}-brochure.jpg`);
       toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
     } catch (e) {
@@ -167,6 +172,7 @@ Please share more details.`;
   const handleDownloadPdf = async () => {
     setGeneratingJpg(true);
     try {
+      const { generateProductPdf, downloadBlob } = await import("@/lib/pdf");
       const pdfBlob = await generateProductPdf({
         product_name: product.product_name,
         product_code: product.product_code,
@@ -225,6 +231,7 @@ Please share more details.`;
       }
 
       // Desktop fallback: download JPG + open WhatsApp chat
+      const { downloadBlob } = await import("@/lib/pdf");
       downloadBlob(blob, filename);
       await new Promise((r) => setTimeout(r, 250));
       openWaChat();
