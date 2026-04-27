@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Truck, Trash2, Save, Calendar } from "lucide-react";
+import { Loader2, Plus, Truck, Trash2, Save, Calendar, FileText } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { formatINR } from "@/lib/brand";
@@ -35,6 +35,7 @@ type PendingQ = {
   delivery_place: string | null;
   total: number;
   status: string;
+  expected_delivery_date: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
 
@@ -66,8 +67,12 @@ const AdminTrips = () => {
       supabase.from("trip_quotations").select("*").order("stop_order"),
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, delivery_route_id, delivery_place, total, status")
-        .in("status", ["accepted", "completed"]),
+        .select("id, quotation_id, party_name, party_place, delivery_route_id, delivery_place, total, status, expected_delivery_date")
+        // Only quotations the customer has accepted AND with a delivery date set
+        // are ready to be grouped into a delivery trip.
+        .eq("status", "accepted")
+        .not("expected_delivery_date", "is", null)
+        .order("expected_delivery_date", { ascending: true }),
     ]);
     const merged: RouteWithWaypoints[] = (r ?? []).map((row: any) => ({
       id: row.id,
