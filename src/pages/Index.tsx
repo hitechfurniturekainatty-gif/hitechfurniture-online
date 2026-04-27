@@ -64,11 +64,12 @@ const Index = () => {
       setSettings(hp.settings);
     });
 
-    // Prefetch the catalog chunk while the browser is idle so navigating
-    // from home → catalog feels instant on mobile.
-    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    // Prefetch downstream chunks well after first paint, so they never
+    // compete with the LCP image / hero. ProductDetail no longer drags the
+    // PDF lib (loaded on-demand inside its handlers), so this stays cheap.
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
     const prefetch = () => { import("./Catalog.tsx"); import("./ProductDetail.tsx"); };
-    if (idle) idle(prefetch); else setTimeout(prefetch, 1500);
+    if (idle) idle(prefetch, { timeout: 4000 }); else setTimeout(prefetch, 3000);
 
     return () => { cancelled = true; };
   }, []);
