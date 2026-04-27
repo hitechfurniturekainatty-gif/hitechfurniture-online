@@ -91,7 +91,18 @@ const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Bal
 8. Warranty as per manufacturer terms; does not cover misuse or natural wear.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
-type Product = { id: string; product_name: string; product_code: string; mrp: number; offer_price: number | null; product_images: { image_url: string }[] };
+type Product = {
+  id: string;
+  product_name: string;
+  product_code: string;
+  mrp: number;
+  offer_price: number | null;
+  main_category_id: string;
+  sub_category_id: string | null;
+  product_images: { image_url: string }[];
+};
+type MainCat = { id: string; name: string; image_url: string | null };
+type SubCat = { id: string; main_category_id: string; name: string };
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Full quotation lifecycle (kept lowercase to match DB defaults)
@@ -148,6 +159,12 @@ const AdminQuotationEditor = () => {
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [mainCats, setMainCats] = useState<MainCat[]>([]);
+  const [subCats, setSubCats] = useState<SubCat[]>([]);
+  // Catalog picker drill-down: null → main grid; mainId set + subId null → sub grid;
+  // both set → models grid. A search overrides the drill-down and shows results flat.
+  const [pickerMainId, setPickerMainId] = useState<string | null>(null);
+  const [pickerSubId, setPickerSubId] = useState<string | null>(null);
 
   const [jobOpen, setJobOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -259,17 +276,36 @@ const AdminQuotationEditor = () => {
   };
 
   const loadProducts = async () => {
-    const { data } = await supabase
-      .from("products")
-      .select("id, product_name, product_code, mrp, offer_price, product_images(image_url)")
-      .eq("is_published", true)
-      .order("product_name", { ascending: true })
-      .limit(200);
-    setProducts((data ?? []) as Product[]);
+    const [{ data: pr }, { data: mc }, { data: sc }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("id, product_name, product_code, mrp, offer_price, main_category_id, sub_category_id, product_images(image_url)")
+        .eq("is_published", true)
+        .is("deleted_at", null)
+        .order("product_name", { ascending: true })
+        .limit(500),
+      supabase
+        .from("main_categories")
+        .select("id, name, image_url")
+        .is("deleted_at", null)
+        .order("display_order"),
+      supabase
+        .from("sub_categories")
+        .select("id, main_category_id, name")
+        .is("deleted_at", null)
+        .order("display_order"),
+    ]);
+    setProducts((pr ?? []) as Product[]);
+    setMainCats((mc ?? []) as MainCat[]);
+    setSubCats((sc ?? []) as SubCat[]);
   };
 
   const openProductPicker = async () => {
     await loadProducts();
+    // Always open at Step 1 — the "View All" main-category grid.
+    setPickerMainId(null);
+    setPickerSubId(null);
+    setProductSearch("");
     setProductPickerOpen(true);
   };
 
