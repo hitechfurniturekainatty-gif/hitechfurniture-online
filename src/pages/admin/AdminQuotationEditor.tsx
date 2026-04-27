@@ -1312,7 +1312,30 @@ const AdminQuotationEditor = () => {
       <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-            <DialogTitle>Add from product catalog</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {(pickerMainId || pickerSubId) && !productSearch && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="-ml-2 h-8 px-2"
+                  onClick={() => {
+                    if (pickerSubId) setPickerSubId(null);
+                    else setPickerMainId(null);
+                  }}
+                >
+                  <ArrowLeft className="mr-1 h-4 w-4" /> Back
+                </Button>
+              )}
+              <span>
+                {productSearch
+                  ? "Search results"
+                  : pickerSubId
+                    ? subCats.find((s) => s.id === pickerSubId)?.name ?? "Models"
+                    : pickerMainId
+                      ? mainCats.find((m) => m.id === pickerMainId)?.name ?? "Sub-categories"
+                      : "Pick from catalog"}
+              </span>
+            </DialogTitle>
           </DialogHeader>
           <div
             className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6"
@@ -1320,25 +1343,137 @@ const AdminQuotationEditor = () => {
           >
             <div className="relative mb-3 shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
+              <Input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search by name or code (or browse below)…"
+                className="pl-9"
+              />
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto">
-              {products
-                .filter((p) => !productSearch || `${p.product_name} ${p.product_code}`.toLowerCase().includes(productSearch.toLowerCase()))
-                .map((p) => (
-                  <button key={p.id} type="button" onClick={() => addFromProduct(p)}
-                    className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:bg-muted">
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                      {p.product_images?.[0] && <img src={p.product_images[0].image_url} alt="" className="h-full w-full object-contain p-0.5" />}
+            <div className="flex-1 overflow-y-auto">
+              {/* SEARCH MODE — flat results across catalog */}
+              {productSearch ? (
+                <div className="space-y-2">
+                  {products
+                    .filter((p) =>
+                      `${p.product_name} ${p.product_code}`
+                        .toLowerCase()
+                        .includes(productSearch.toLowerCase()),
+                    )
+                    .map((p) => (
+                      <ProductRow key={p.id} p={p} onPick={addFromProduct} />
+                    ))}
+                  {products.filter((p) =>
+                    `${p.product_name} ${p.product_code}`
+                      .toLowerCase()
+                      .includes(productSearch.toLowerCase()),
+                  ).length === 0 && (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                      No matches.
+                    </p>
+                  )}
+                </div>
+              ) : !pickerMainId ? (
+                /* STEP 1 — Main categories grid (the "View All" landing) */
+                mainCats.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No categories yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {mainCats.map((m) => {
+                      const count = products.filter((p) => p.main_category_id === m.id).length;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setPickerMainId(m.id)}
+                          className="group relative flex aspect-square flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-border bg-card p-3 text-center transition-smooth hover:border-primary hover:shadow"
+                        >
+                          {m.image_url ? (
+                            <img
+                              src={m.image_url}
+                              alt={m.name}
+                              loading="lazy"
+                              className="absolute inset-0 h-full w-full object-contain p-3 opacity-90"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
+                          )}
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
+                          <span className="relative z-10 mt-auto font-display text-sm font-semibold text-background">
+                            {m.name}
+                          </span>
+                          <span className="relative z-10 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              ) : !pickerSubId ? (
+                /* STEP 2 — Sub-categories of the chosen main */
+                (() => {
+                  const subs = subCats.filter((s) => s.main_category_id === pickerMainId);
+                  return (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() => setPickerSubId("__all__")}
+                        className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-border bg-gradient-to-br from-primary/10 to-accent/10 p-3 text-center transition-smooth hover:border-primary"
+                      >
+                        <span className="font-display text-base text-primary">All</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {products.filter((p) => p.main_category_id === pickerMainId).length} models
+                        </span>
+                      </button>
+                      {subs.map((s) => {
+                        const count = products.filter(
+                          (p) => p.sub_category_id === s.id,
+                        ).length;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setPickerSubId(s.id)}
+                            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card p-3 text-center transition-smooth hover:border-primary hover:shadow"
+                          >
+                            <span className="font-display text-sm">{s.name}</span>
+                            <span className="text-[11px] text-muted-foreground">{count} models</span>
+                          </button>
+                        );
+                      })}
+                      {subs.length === 0 && (
+                        <p className="col-span-full py-6 text-center text-sm text-muted-foreground">
+                          No sub-categories — tap "All" to browse models.
+                        </p>
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-sm">{p.product_name}</p>
-                      <p className="text-xs text-muted-foreground">{p.product_code}</p>
+                  );
+                })()
+              ) : (
+                /* STEP 3 — Models in the chosen sub (or all under main) */
+                (() => {
+                  const list = products.filter((p) => {
+                    if (p.main_category_id !== pickerMainId) return false;
+                    if (pickerSubId !== "__all__" && p.sub_category_id !== pickerSubId) return false;
+                    return true;
+                  });
+                  return (
+                    <div className="space-y-2">
+                      {list.map((p) => (
+                        <ProductRow key={p.id} p={p} onPick={addFromProduct} />
+                      ))}
+                      {list.length === 0 && (
+                        <p className="py-6 text-center text-sm text-muted-foreground">
+                          No models in this section yet.
+                        </p>
+                      )}
                     </div>
-                    <span className="font-mono text-sm">{formatINR(p.offer_price ?? p.mrp)}</span>
-                  </button>
-                ))}
-              {products.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No products in catalog yet.</p>}
+                  );
+                })()
+              )}
             </div>
           </div>
         </DialogContent>
