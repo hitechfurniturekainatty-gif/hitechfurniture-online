@@ -192,7 +192,8 @@ export default function AdminReceivables() {
 
   const handleWhatsApp = (phone: string, customer: string, amount: string) => {
     if (!phone) return;
-    const msg = `Hello ${customer || ""}, gentle reminder: a payment of ${amount} is pending. Kindly arrange at your earliest. Thank you.`;
+    const greeting = customer ? `Hello ${customer}` : "Hello sir/madam";
+    const msg = `${greeting}, this is Hitech Furniture. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
     openWhatsAppApp(`91${phone}`, msg);
   };
 
