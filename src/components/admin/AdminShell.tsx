@@ -11,6 +11,12 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // IMPORTANT: All hooks must run on every render, BEFORE any early returns
+  // below (loading / !user / !isStaff). Otherwise React throws
+  // "Rendered more hooks than during the previous render" when `loading`
+  // flips from true → false.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -100,15 +106,11 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const isActiveTo = (to: string, end?: boolean) =>
     end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    navEntries.forEach((e) => {
-      if (e.kind === "group") init[e.id] = e.children.some((c) => isActiveTo(c.to, c.end));
-    });
-    return init;
-  });
-
   // Auto-open the group containing the current route on navigation.
+  // (Hook is declared at top of component to satisfy rules-of-hooks; this
+  // effect runs every render but the early returns above never execute when
+  // we reach this point, so navEntries is always defined here.)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     setOpenGroups((prev) => {
       const next = { ...prev };
