@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
-import { downloadBlob, generateProductPdf } from "@/lib/pdf";
-import { pdfBlobToJpgBlob } from "@/lib/pdfToJpg";
+// PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
+// handlers below — keeping them out of the main bundle dramatically improves
+// first paint on the catalog/product pages.
 import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
