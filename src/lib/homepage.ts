@@ -68,7 +68,12 @@ export async function fetchHomepageData() {
 
   return {
     settings: (settingsRes.data ?? null) as HomepageSettings | null,
-    slides: ((slidesRes.data ?? []) as HeroSlide[]).filter((s) => s.is_visible),
+    // A slide with no image_url is effectively empty — drop it so the
+    // homepage falls back to the rich default hero instead of rendering a
+    // blank coloured strip where the slider would be.
+    slides: ((slidesRes.data ?? []) as HeroSlide[]).filter(
+      (s) => s.is_visible && typeof s.image_url === "string" && s.image_url.trim().length > 0,
+    ),
     sections: ((sectionsRes.data ?? []) as HomepageSection[]).filter((s) => s.is_visible),
   };
 }
