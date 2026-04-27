@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Truck, Trash2, Save, Calendar } from "lucide-react";
+import { Loader2, Plus, Truck, Trash2, Save, Calendar, FileText } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { formatINR } from "@/lib/brand";
@@ -35,6 +35,7 @@ type PendingQ = {
   delivery_place: string | null;
   total: number;
   status: string;
+  expected_delivery_date: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
 
@@ -66,8 +67,12 @@ const AdminTrips = () => {
       supabase.from("trip_quotations").select("*").order("stop_order"),
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, delivery_route_id, delivery_place, total, status")
-        .in("status", ["accepted", "completed"]),
+        .select("id, quotation_id, party_name, party_place, delivery_route_id, delivery_place, total, status, expected_delivery_date")
+        // Only quotations the customer has accepted AND with a delivery date set
+        // are ready to be grouped into a delivery trip.
+        .eq("status", "accepted")
+        .not("expected_delivery_date", "is", null)
+        .order("expected_delivery_date", { ascending: true }),
     ]);
     const merged: RouteWithWaypoints[] = (r ?? []).map((row: any) => ({
       id: row.id,
@@ -127,9 +132,15 @@ const AdminTrips = () => {
   const unassigned = pending.filter((p) => !assignedQids.has(p.id));
 
   const filteredForRoute = useMemo(() => {
-    if (!draft.route_id) return unassigned;
-    return unassigned.filter((p) => p.delivery_route_id === draft.route_id);
-  }, [draft.route_id, unassigned]);
+    let list = unassigned;
+    if (draft.route_id) list = list.filter((p) => p.delivery_route_id === draft.route_id);
+    if (draft.trip_date) {
+      // Show quotations whose expected delivery is on or before the trip date,
+      // so a Friday trip can carry overdue Wednesday/Thursday orders too.
+      list = list.filter((p) => !p.expected_delivery_date || p.expected_delivery_date <= draft.trip_date);
+    }
+    return list;
+  }, [draft.route_id, draft.trip_date, unassigned]);
 
   const startNew = () => {
     setDraft({
@@ -267,7 +278,16 @@ const AdminTrips = () => {
                         ) : (
                           <span className="text-muted-foreground">Quotation removed</span>
                         )}
-                        {s.delivered_at && <Badge variant="default" className="ml-auto text-[10px]">Delivered</Badge>}
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                          {s.q && (
+                            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                              <Link to={`/delivery-note/${s.q.id}`}>
+                                <FileText className="mr-1 h-3 w-3" /> Slip
+                              </Link>
+                            </Button>
+                          )}
+                          {s.delivered_at && <Badge variant="default" className="text-[10px]">Delivered</Badge>}
+                        </div>
                       </li>
                     ))}
                   </ol>
@@ -331,7 +351,7 @@ const AdminTrips = () => {
                     {draft.route_id ? "No unassigned quotations on this route." : "Pick a route to see quotations."}
                   </p>
                 )}
-                {filteredForRoute.map((p, i) => {
+                {filteredForRoute.map((p) => {
                   const checked = draft.selectedQs.includes(p.id);
                   return (
                     <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded p-2 text-sm hover:bg-muted">
@@ -348,6 +368,12 @@ const AdminTrips = () => {
                       />
                       <span className="font-mono text-xs">{p.quotation_id}</span>
                       <span className="truncate">{p.party_name} ({p.delivery_place || p.party_place})</span>
+                      {p.expected_delivery_date && (
+                        <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {p.expected_delivery_date}
+                        </span>
+                      )}
                       <span className="ml-auto font-display text-xs">{formatINR(p.total)}</span>
                     </label>
                   );

@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, MessageCircle, Check, MapPin, Truck } from "lucide-react";
+import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
@@ -21,6 +22,7 @@ type Trip = {
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
 type Q = { id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null; delivery_place: string | null };
+type QExt = Q & { expected_delivery_date: string | null };
 
 const AdminMyTrips = () => {
   const { user, isDelivery, isOfficeStaff } = useAuth();
@@ -68,7 +70,7 @@ const AdminMyTrips = () => {
       if (qids.length) {
         const { data: qs } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place")
+          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
       } else {
@@ -233,6 +235,13 @@ const AdminMyTrips = () => {
                               </a>
                             </Button>
                           </>
+                        )}
+                        {s.q && (
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/delivery-note/${s.q.id}`}>
+                              <FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip
+                            </Link>
+                          </Button>
                         )}
                         {!s.delivered_at && (
                           <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto">

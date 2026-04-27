@@ -39,6 +39,7 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
 const WorkerJobView = lazy(() => import("./pages/WorkerJobView.tsx"));
+const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
+            <Route path="/delivery-note/:id" element={<DeliveryNote />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
