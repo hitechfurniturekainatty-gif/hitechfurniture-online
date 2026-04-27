@@ -132,9 +132,15 @@ const AdminTrips = () => {
   const unassigned = pending.filter((p) => !assignedQids.has(p.id));
 
   const filteredForRoute = useMemo(() => {
-    if (!draft.route_id) return unassigned;
-    return unassigned.filter((p) => p.delivery_route_id === draft.route_id);
-  }, [draft.route_id, unassigned]);
+    let list = unassigned;
+    if (draft.route_id) list = list.filter((p) => p.delivery_route_id === draft.route_id);
+    if (draft.trip_date) {
+      // Show quotations whose expected delivery is on or before the trip date,
+      // so a Friday trip can carry overdue Wednesday/Thursday orders too.
+      list = list.filter((p) => !p.expected_delivery_date || p.expected_delivery_date <= draft.trip_date);
+    }
+    return list;
+  }, [draft.route_id, draft.trip_date, unassigned]);
 
   const startNew = () => {
     setDraft({
@@ -271,6 +277,13 @@ const AdminTrips = () => {
                           </Link>
                         ) : (
                           <span className="text-muted-foreground">Quotation removed</span>
+                        )}
+                        {s.q && (
+                          <Button asChild size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs">
+                            <Link to={`/delivery-note/${s.q.id}`}>
+                              <FileText className="mr-1 h-3 w-3" /> Slip
+                            </Link>
+                          </Button>
                         )}
                         {s.delivered_at && <Badge variant="default" className="ml-auto text-[10px]">Delivered</Badge>}
                       </li>
