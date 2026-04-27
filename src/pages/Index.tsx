@@ -10,6 +10,7 @@ import heroImgWebpSm from "@/assets/hero-living-sm.webp";
 import heroImgJpg from "@/assets/hero-living.jpg";
 import { BRAND_TAGLINE } from "@/lib/brand";
 import { HeroSlider } from "@/components/HeroSlider";
+import { SectionSlideshow } from "@/components/SectionSlideshow";
 import {
   alignClass,
   fetchHomepageData,
@@ -279,7 +280,13 @@ const DynamicSection = ({ section }: { section: HomepageSection }) => {
   }
 
   // Two-column when an image is supplied; single column otherwise.
-  if (section.image_url) {
+  const galleryUrls = (section.image_urls ?? "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hasGallery = galleryUrls.length > 0;
+
+  if (hasGallery || section.image_url) {
     return (
       <section className="grid items-center gap-10 md:grid-cols-2">
         <div className={align}>
@@ -288,15 +295,19 @@ const DynamicSection = ({ section }: { section: HomepageSection }) => {
           {section.body && <p className={cn("mt-4 whitespace-pre-line", cls.body)}>{section.body}</p>}
           {cta}
         </div>
-        <div className="overflow-hidden rounded-3xl shadow-product">
-          <img
-            src={section.image_url}
-            alt={section.title ?? ""}
-            loading="lazy"
-            decoding="async"
-            className="aspect-[4/3] w-full object-cover"
-          />
-        </div>
+        {hasGallery ? (
+          <SectionSlideshow images={galleryUrls} alt={section.title ?? ""} />
+        ) : (
+          <div className="overflow-hidden rounded-3xl shadow-product">
+            <img
+              src={section.image_url!}
+              alt={section.title ?? ""}
+              loading="lazy"
+              decoding="async"
+              className="aspect-[4/3] w-full object-cover"
+            />
+          </div>
+        )}
       </section>
     );
   }

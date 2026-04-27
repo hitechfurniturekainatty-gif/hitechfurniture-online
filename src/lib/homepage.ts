@@ -37,6 +37,10 @@ export type HomepageSection = {
   cta_label: string | null;
   cta_link: string | null;
   image_url: string | null;
+  // Newline-joined list of additional gallery images. When set, the section
+  // renders an auto-rotating slideshow (3s per image) instead of the single
+  // `image_url`.
+  image_urls: string | null;
   style_preset: "default" | "elegant" | "bold" | "minimal";
   text_align: "left" | "center" | "right";
   display_order: number;
