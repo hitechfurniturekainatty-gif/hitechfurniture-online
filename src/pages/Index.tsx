@@ -9,6 +9,16 @@ import heroImgWebp from "@/assets/hero-living.webp";
 import heroImgWebpSm from "@/assets/hero-living-sm.webp";
 import heroImgJpg from "@/assets/hero-living.jpg";
 import { BRAND_TAGLINE } from "@/lib/brand";
+import { HeroSlider } from "@/components/HeroSlider";
+import {
+  alignClass,
+  fetchHomepageData,
+  HeroSlide,
+  HomepageSection,
+  HomepageSettings,
+  presetClasses,
+} from "@/lib/homepage";
+import { cn } from "@/lib/utils";
 
 // Below-the-fold — loaded lazily so the home page's initial JS payload is smaller on mobile.
 const SiteFooter = lazy(() =>
@@ -23,6 +33,9 @@ type Cat = { id: string; name: string; slug: string; image_url: string | null };
 const Index = () => {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [sections, setSections] = useState<HomepageSection[]>([]);
+  const [settings, setSettings] = useState<HomepageSettings | null>(null);
 
   useEffect(() => {
     // Fire both queries in parallel — saves one full round-trip on mobile.
@@ -41,10 +54,14 @@ const Index = () => {
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(8),
-    ]).then(([cats, prods]) => {
+      fetchHomepageData(),
+    ]).then(([cats, prods, hp]) => {
       if (cancelled) return;
       setCategories(cats.data ?? []);
       setFeatured((prods.data ?? []) as ProductCardData[]);
+      setSlides(hp.slides);
+      setSections(hp.sections);
+      setSettings(hp.settings);
     });
 
     // Prefetch the catalog chunk while the browser is idle so navigating
@@ -56,33 +73,44 @@ const Index = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const heroIntro = sections.find((s) => s.section_key === "hero_intro");
+  // All sections except hero_intro render below the hero. Honour admin display_order.
+  const belowSections = sections.filter((s) => s.section_key !== "hero_intro");
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
-      {/* Hero */}
+      {/* Dynamic hero slider — falls back to the classic split hero if admin hasn't added slides yet. */}
+      {slides.length > 0 ? (
+        <HeroSlider slides={slides} />
+      ) : (
       <section className="relative overflow-hidden">
         <div className="container-page grid items-center gap-12 py-16 md:grid-cols-2 md:py-24 lg:py-28">
           <div className="animate-fade-up">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-              Live Catalog · Updated Daily
+              {heroIntro?.eyebrow || "Live Catalog · Updated Daily"}
             </p>
             <h1 className="font-display text-4xl leading-[1.05] text-foreground md:text-6xl lg:text-7xl">
-              Furniture, <em className="text-primary not-italic font-display">crafted</em>
-              <br />for the way you live.
+              {heroIntro?.title || (
+                <>
+                  Furniture, <em className="text-primary not-italic font-display">crafted</em>
+                  <br />for the way you live.
+                </>
+              )}
             </h1>
             <p className="mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
-              {BRAND_TAGLINE} Browse our complete collection of sofas, beds, wardrobes and bespoke interiors — with live pricing and instant WhatsApp inquiry.
+              {heroIntro?.body || `${BRAND_TAGLINE} Browse our complete collection of sofas, beds, wardrobes and bespoke interiors — with live pricing and instant WhatsApp inquiry.`}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="group">
-                <Link to="/catalog">
-                  Explore catalog
+                <Link to={heroIntro?.cta_link || "/catalog"}>
+                  {heroIntro?.cta_label || "Explore catalog"}
                   <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="https://wa.me/919526610404" target="_blank" rel="noopener">Chat on WhatsApp</a>
+                <a href={`https://wa.me/${settings?.whatsapp_number || "919526610404"}`} target="_blank" rel="noopener">Chat on WhatsApp</a>
               </Button>
             </div>
           </div>
@@ -108,6 +136,14 @@ const Index = () => {
           </div>
         </div>
       </section>
+      )}
+
+      {/* Optional intro copy block when the slider IS shown — keeps eyebrow/title/body editable from admin */}
+      {slides.length > 0 && heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) && (
+        <section className="container-page py-12 md:py-16">
+          <DynamicSection section={heroIntro} />
+        </section>
+      )}
 
       {/* Categories */}
       <section className="container-page py-16 md:py-20">
@@ -186,21 +222,14 @@ const Index = () => {
         )}
       </section>
 
-      {/* CTA banner */}
-      <section className="container-page pb-20">
-        <div className="hero-bg relative overflow-hidden rounded-3xl px-8 py-14 text-center text-primary-foreground md:px-16 md:py-20">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-accent">Made to order</p>
-          <h2 className="mx-auto max-w-2xl font-display text-3xl md:text-5xl">
-            Have something specific in mind?
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-primary-foreground/80">
-            Send us a photo or sketch on WhatsApp and our team will craft it to your dimensions.
-          </p>
-          <Button asChild size="lg" variant="secondary" className="mt-8">
-            <a href="https://wa.me/919526610404" target="_blank" rel="noopener">Start a conversation</a>
-          </Button>
+      {/* Admin-managed sections (made-to-order, about, find-us, etc.) */}
+      {belowSections.length > 0 && (
+        <div className="container-page space-y-16 pb-20 md:space-y-20">
+          {belowSections.map((sec) => (
+            <DynamicSection key={sec.id} section={sec} />
+          ))}
         </div>
-      </section>
+      )}
 
       <Suspense fallback={null}>
         <SiteFooter />
@@ -211,3 +240,72 @@ const Index = () => {
 };
 
 export default Index;
+
+// ---------- helpers ----------
+
+const DynamicSection = ({ section }: { section: HomepageSection }) => {
+  const cls = presetClasses(section.style_preset);
+  const align = alignClass(section.text_align);
+  const isHttp = section.cta_link?.startsWith("http");
+  const cta = section.cta_label && section.cta_link ? (
+    isHttp ? (
+      <Button asChild size="lg" className="mt-6">
+        <a href={section.cta_link} target="_blank" rel="noopener">{section.cta_label}</a>
+      </Button>
+    ) : (
+      <Button asChild size="lg" className="mt-6">
+        <Link to={section.cta_link}>{section.cta_label}</Link>
+      </Button>
+    )
+  ) : null;
+
+  // Featured ("bold") preset uses a dark gradient banner like the old made-to-order card.
+  if (section.style_preset === "bold") {
+    return (
+      <section className={cn("hero-bg relative overflow-hidden rounded-3xl px-6 py-14 text-primary-foreground md:px-16 md:py-20", align)}>
+        {section.eyebrow && (
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-accent">{section.eyebrow}</p>
+        )}
+        {section.title && (
+          <h2 className="mx-auto max-w-2xl font-display text-3xl md:text-5xl">{section.title}</h2>
+        )}
+        {section.body && (
+          <p className="mx-auto mt-4 max-w-xl text-primary-foreground/80 whitespace-pre-line">{section.body}</p>
+        )}
+        {cta && <div className={cn(section.text_align === "center" ? "flex justify-center" : "")}>{cta}</div>}
+      </section>
+    );
+  }
+
+  // Two-column when an image is supplied; single column otherwise.
+  if (section.image_url) {
+    return (
+      <section className="grid items-center gap-10 md:grid-cols-2">
+        <div className={align}>
+          {section.eyebrow && <p className={cn("mb-3", cls.eyebrow)}>{section.eyebrow}</p>}
+          {section.title && <h2 className={cls.title}>{section.title}</h2>}
+          {section.body && <p className={cn("mt-4 whitespace-pre-line", cls.body)}>{section.body}</p>}
+          {cta}
+        </div>
+        <div className="overflow-hidden rounded-3xl shadow-product">
+          <img
+            src={section.image_url}
+            alt={section.title ?? ""}
+            loading="lazy"
+            decoding="async"
+            className="aspect-[4/3] w-full object-cover"
+          />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={cn("mx-auto max-w-3xl", align)}>
+      {section.eyebrow && <p className={cn("mb-3", cls.eyebrow)}>{section.eyebrow}</p>}
+      {section.title && <h2 className={cls.title}>{section.title}</h2>}
+      {section.body && <p className={cn("mt-4 whitespace-pre-line", cls.body)}>{section.body}</p>}
+      {cta && <div className={cn(section.text_align === "center" ? "flex justify-center" : "")}>{cta}</div>}
+    </section>
+  );
+};
