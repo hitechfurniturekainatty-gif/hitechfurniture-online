@@ -278,14 +278,16 @@ const AdminTrips = () => {
                         ) : (
                           <span className="text-muted-foreground">Quotation removed</span>
                         )}
-                        {s.q && (
-                          <Button asChild size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs">
-                            <Link to={`/delivery-note/${s.q.id}`}>
-                              <FileText className="mr-1 h-3 w-3" /> Slip
-                            </Link>
-                          </Button>
-                        )}
-                        {s.delivered_at && <Badge variant="default" className="ml-auto text-[10px]">Delivered</Badge>}
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                          {s.q && (
+                            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                              <Link to={`/delivery-note/${s.q.id}`}>
+                                <FileText className="mr-1 h-3 w-3" /> Slip
+                              </Link>
+                            </Button>
+                          )}
+                          {s.delivered_at && <Badge variant="default" className="text-[10px]">Delivered</Badge>}
+                        </div>
                       </li>
                     ))}
                   </ol>
