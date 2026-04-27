@@ -104,13 +104,7 @@ export async function generateProductPdf(p: PdfProduct): Promise<Blob> {
   return await pdf(doc).toBlob();
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+// Re-export the lightweight helper so existing imports of `@/lib/pdf` keep
+// working; new code should import from `@/lib/downloadBlob` directly to avoid
+// pulling in the heavy @react-pdf/renderer bundle.
+export { downloadBlob } from "./downloadBlob";

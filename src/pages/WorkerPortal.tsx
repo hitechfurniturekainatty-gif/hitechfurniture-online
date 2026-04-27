@@ -18,7 +18,7 @@ import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
-import { downloadBlob } from "@/lib/pdf";
+import { downloadBlob } from "@/lib/downloadBlob";
 
 type WorkerRow = { id: string; name: string; trade: string | null };
 
