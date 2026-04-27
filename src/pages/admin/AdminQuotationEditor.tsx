@@ -131,6 +131,35 @@ export const statusBadgeVariant = (s: string): "default" | "secondary" | "destru
   }
 };
 
+const ProductRow = ({
+  p,
+  onPick,
+}: {
+  p: Product;
+  onPick: (p: Product) => void;
+}) => (
+  <button
+    type="button"
+    onClick={() => onPick(p)}
+    className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:border-primary hover:bg-muted"
+  >
+    <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+      {p.product_images?.[0] && (
+        <img
+          src={p.product_images[0].image_url}
+          alt=""
+          className="h-full w-full object-contain p-0.5"
+        />
+      )}
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-medium">{p.product_name}</p>
+      <p className="text-xs text-muted-foreground">{p.product_code}</p>
+    </div>
+    <span className="font-mono text-sm">{formatINR(p.offer_price ?? p.mrp)}</span>
+  </button>
+);
+
 export const statusLabel = (s: string) => {
   const map: Record<string, string> = {
     draft: "Pending",
