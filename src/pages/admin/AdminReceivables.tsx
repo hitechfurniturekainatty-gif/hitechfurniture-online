@@ -190,10 +190,9 @@ export default function AdminReceivables() {
     window.location.href = `tel:+91${phone}`;
   };
 
-  const handleWhatsApp = (phone: string, customer: string, amount: string) => {
+  const handleWhatsApp = (phone: string, _customer: string, amount: string) => {
     if (!phone) return;
-    const greeting = customer ? `Hello ${customer}` : "Hello sir/madam";
-    const msg = `${greeting}, this is Hitech Furniture. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
+    const msg = `Hello sir/madam, this is Hitech Furniture. Your remaining balance is ${amount}. Please settle it at your earliest convenience. Thank you!`;
     openWhatsAppApp(`91${phone}`, msg);
   };
 
