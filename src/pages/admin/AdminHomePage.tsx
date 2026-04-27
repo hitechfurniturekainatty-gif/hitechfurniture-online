@@ -262,7 +262,21 @@ const AdminHomePage = () => {
                       <Label className="mb-2 block text-xs">Image (recommended 1600×900)</Label>
                       <SingleImagePicker
                         value={s.image_url || null}
-                        onChange={(url) => updateSlideField(s.id, { image_url: url || "" })}
+                        onChange={async (url) => {
+                          const next = url || "";
+                          updateSlideField(s.id, { image_url: next });
+                          // Persist immediately so the uploaded banner can never
+                          // be lost by forgetting to click "Save".
+                          const { error } = await supabase
+                            .from("homepage_hero_slides")
+                            .update({ image_url: next })
+                            .eq("id", s.id);
+                          if (error) {
+                            toast({ title: "Image save failed", description: error.message, variant: "destructive" });
+                          } else if (next) {
+                            toast({ title: "Banner image saved" });
+                          }
+                        }}
                         bucket="homepage-media"
                         folder="hero"
                       />
@@ -361,7 +375,18 @@ const AdminHomePage = () => {
                       <Label className="mb-2 block text-xs">Image (optional)</Label>
                       <SingleImagePicker
                         value={s.image_url || null}
-                        onChange={(url) => updateSectionField(s.id, { image_url: url })}
+                        onChange={async (url) => {
+                          updateSectionField(s.id, { image_url: url });
+                          const { error } = await supabase
+                            .from("homepage_sections")
+                            .update({ image_url: url })
+                            .eq("id", s.id);
+                          if (error) {
+                            toast({ title: "Image save failed", description: error.message, variant: "destructive" });
+                          } else if (url) {
+                            toast({ title: "Section image saved" });
+                          }
+                        }}
                         bucket="homepage-media"
                         folder="sections"
                       />
