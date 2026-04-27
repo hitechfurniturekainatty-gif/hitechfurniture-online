@@ -41,8 +41,10 @@ const AdminLogistics = () => {
       supabase.from("route_waypoints").select("*").order("display_order"),
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, total")
-        .in("status", ["accepted", "completed"]),
+        .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, total, expected_delivery_date")
+        // Accepted orders with a delivery date set are ready to schedule.
+        .eq("status", "accepted")
+        .not("expected_delivery_date", "is", null),
       supabase
         .from("trip_quotations")
         .select("quotation_id, delivered_at, trip_id, trips!inner(status)"),
