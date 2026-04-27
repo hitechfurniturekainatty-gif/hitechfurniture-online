@@ -36,6 +36,7 @@ const AdminServiceEditor = lazy(() => import("./pages/admin/AdminServiceEditor.t
 const AdminComplaintEditor = lazy(() => import("./pages/admin/AdminComplaintEditor.tsx"));
 const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
 const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
+const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
             <Route path="/admin/trash" element={<AdminTrash />} />
             <Route path="/admin/home-page" element={<AdminHomePage />} />
+            <Route path="/admin/receivables" element={<AdminReceivables />} />
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
