@@ -18,17 +18,32 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // Triple-tap on the admin logo opens the hidden Backlog area.
-  // Works on both desktop (clicks) and mobile (taps) within ~600ms window.
+  // Works on both desktop (clicks) and mobile (taps) within a ~700ms window.
+  // We always preventDefault on the logo link so the first/second click does
+  // not navigate to "/" before the third tap is registered. A short timer
+  // performs the normal navigation if fewer than 3 taps happen in the window.
   const tapsRef = useRef<number[]>([]);
+  const tapTimerRef = useRef<number | null>(null);
   const handleLogoTap = (e: React.MouseEvent) => {
+    e.preventDefault();
     const now = Date.now();
-    tapsRef.current = tapsRef.current.filter((t) => now - t < 600);
+    tapsRef.current = tapsRef.current.filter((t) => now - t < 700);
     tapsRef.current.push(now);
+    if (tapTimerRef.current) {
+      window.clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
+    }
     if (tapsRef.current.length >= 3) {
-      e.preventDefault();
       tapsRef.current = [];
       navigate("/admin/backlog");
+      return;
     }
+    // Fall back to normal "go home" navigation if the user didn't triple-tap.
+    tapTimerRef.current = window.setTimeout(() => {
+      tapsRef.current = [];
+      tapTimerRef.current = null;
+      navigate("/");
+    }, 350);
   };
 
   // Auto-open the sidebar group containing the current route. Declared at the
