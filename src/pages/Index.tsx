@@ -85,7 +85,49 @@ const Index = () => {
 
       {/* Dynamic hero slider — falls back to the classic split hero if admin hasn't added slides yet. */}
       {slides.length > 0 ? (
-        <HeroSlider slides={slides} />
+        heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) ? (
+          // Old-model split layout: slider on the left, intro frame on the right (desktop).
+          // On mobile they stack — slider first, then intro.
+          <section className="container-page py-8 md:py-12">
+            <div className="grid items-stretch gap-6 md:grid-cols-2 lg:gap-8">
+              <div className="overflow-hidden rounded-3xl shadow-product">
+                <HeroSlider slides={slides} />
+              </div>
+              <div className="flex animate-fade-up flex-col justify-center rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-10">
+                {heroIntro.eyebrow && (
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+                    {heroIntro.eyebrow}
+                  </p>
+                )}
+                {heroIntro.title && (
+                  <h1 className="font-display text-3xl leading-[1.1] text-foreground md:text-4xl lg:text-5xl">
+                    {heroIntro.title}
+                  </h1>
+                )}
+                {heroIntro.body && (
+                  <p className="mt-4 max-w-xl whitespace-pre-line text-base text-muted-foreground">
+                    {heroIntro.body}
+                  </p>
+                )}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button asChild size="lg" className="group">
+                    <Link to={heroIntro.cta_link || "/catalog"}>
+                      {heroIntro.cta_label || "Explore catalog"}
+                      <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <a href={`https://wa.me/${settings?.whatsapp_number || "919526610404"}`} target="_blank" rel="noopener">
+                      Chat on WhatsApp
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <HeroSlider slides={slides} />
+        )
       ) : (
       <section className="relative overflow-hidden">
         <div className="container-page grid items-center gap-12 py-16 md:grid-cols-2 md:py-24 lg:py-28">
@@ -140,12 +182,8 @@ const Index = () => {
       </section>
       )}
 
-      {/* Optional intro copy block when the slider IS shown — keeps eyebrow/title/body editable from admin */}
-      {slides.length > 0 && heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) && (
-        <section className="container-page py-12 md:py-16">
-          <DynamicSection section={heroIntro} />
-        </section>
-      )}
+      {/* heroIntro is now rendered inline alongside the slider (above), so no
+          separate intro section is needed when slides exist. */}
 
       {/* Categories */}
       <section className="container-page py-16 md:py-20">
