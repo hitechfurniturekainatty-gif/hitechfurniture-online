@@ -132,6 +132,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     logistics,
     team,
     homePage,
+    backlog,
     trash,
   ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
 
