@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, Wallet, ChevronDown, Briefcase, Boxes, UsersRound } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
@@ -74,7 +74,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff };
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
-  const receivables: SoloItem = { kind: "solo", to: "/admin/receivables", label: "Receivables", icon: Wallet, show: isAdmin };
   const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
   const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
 
@@ -114,7 +113,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     myWork,
     myTrips,
     operations,
-    receivables,
     inventory,
     logistics,
     team,
