@@ -63,7 +63,7 @@ export const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
                 <img
                   src={slide.image_url}
                   alt={slide.headline ?? "Banner"}
-                  className="absolute inset-0 h-full w-full object-cover md:object-contain"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding="async"
                   fetchPriority={i === 0 ? "high" : "auto"}
