@@ -89,6 +89,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
+  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin };
   const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
 
   const operations: GroupItem = {
