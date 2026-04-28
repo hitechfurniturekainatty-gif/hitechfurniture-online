@@ -55,7 +55,10 @@ export function isBacklogMenuRevealed(): boolean {
 }
 
 export function lockBacklog() {
-  try { sessionStorage.removeItem(SS_KEY); } catch { /* ignore */ }
+  try {
+    sessionStorage.removeItem(SS_KEY);
+    sessionStorage.removeItem(SS_KEY + "_reveal");
+  } catch { /* ignore */ }
 }
 
 /**
