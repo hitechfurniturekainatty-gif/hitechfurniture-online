@@ -185,6 +185,32 @@ const Index = () => {
       {/* heroIntro is now rendered inline alongside the slider (above), so no
           separate intro section is needed when slides exist. */}
 
+      {/* Brand story — static "About us" block shown on every visit. */}
+      <section className="container-page py-12 md:py-16">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:p-12">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+            14+ Years of Craftsmanship
+          </p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">
+            Welcome to <span className="text-primary">Hitech Furniture &amp; Interiors</span>
+          </h2>
+          <p className="mx-auto mt-2 text-sm font-medium text-muted-foreground md:text-base">
+            Kalpetta, Wayanad · Retail &amp; Wholesale
+          </p>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            We are a trusted retail and wholesale furniture shop dedicated to providing high-quality
+            solutions for homes and businesses. Our specialty is{" "}
+            <span className="font-semibold text-foreground">complete customization</span> — we manufacture
+            all types of custom furniture tailored exactly to your space, style, and requirements.
+          </p>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            Whether you are looking for a single statement piece, exploring functional designs with
+            natural wood textures, or placing a bulk wholesale order, our expert interior design team
+            is here to bring your vision to life.
+          </p>
+        </div>
+      </section>
+
       {/* Categories */}
       <section className="container-page py-16 md:py-20">
         <div className="mb-10 flex items-end justify-between gap-6">
