@@ -72,6 +72,21 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     }, 350);
   };
 
+  // Triple-tap on the "Overview" sidebar item also reveals the Backlog menu.
+  // This is the primary trigger admins use — easier to hit than the logo.
+  const overviewTapsRef = useRef<number[]>([]);
+  const handleOverviewTap = (e: React.MouseEvent) => {
+    const now = Date.now();
+    overviewTapsRef.current = overviewTapsRef.current.filter((t) => now - t < 700);
+    overviewTapsRef.current.push(now);
+    if (overviewTapsRef.current.length >= 3) {
+      overviewTapsRef.current = [];
+      revealBacklogMenu();
+      setBacklogUnlocked(true);
+    }
+    // Don't preventDefault — normal navigation to /admin still happens.
+  };
+
   // Auto-open the sidebar group containing the current route. Declared at the
   // top of the component (before early returns) so hook order stays stable.
   useEffect(() => {
@@ -220,6 +235,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
                     key={entry.to}
                     to={entry.to}
                     end={entry.end}
+                    onClick={entry.to === "/admin" && entry.end ? handleOverviewTap : undefined}
                     className={({ isActive }) =>
                       cn(
                         "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
