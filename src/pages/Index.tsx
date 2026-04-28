@@ -41,12 +41,17 @@ const Index = () => {
   useEffect(() => {
     // Fire both queries in parallel — saves one full round-trip on mobile.
     let cancelled = false;
-    Promise.all([
-      supabase
+    const loadCategories = async () => {
+      const { data } = await supabase
         .from("main_categories")
         .select("id, name, slug, image_url")
+        .is("deleted_at", null)
         .order("display_order", { ascending: true })
-        .limit(6),
+        .limit(6);
+      if (!cancelled) setCategories(data ?? []);
+    };
+    Promise.all([
+      loadCategories(),
       supabase
         .from("products")
         .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
@@ -56,14 +61,23 @@ const Index = () => {
         .order("created_at", { ascending: false })
         .limit(8),
       fetchHomepageData(),
-    ]).then(([cats, prods, hp]) => {
+    ]).then(([_cats, prods, hp]) => {
       if (cancelled) return;
-      setCategories(cats.data ?? []);
       setFeatured((prods.data ?? []) as ProductCardData[]);
       setSlides(hp.slides);
       setSections(hp.sections);
       setSettings(hp.settings);
     });
+
+    // Realtime: when admin reorders / edits / adds main categories, refresh instantly.
+    const channel = supabase
+      .channel("home-main-categories")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "main_categories" },
+        () => { loadCategories(); },
+      )
+      .subscribe();
 
     // Prefetch downstream chunks well after first paint, so they never
     // compete with the LCP image / hero. ProductDetail no longer drags the
@@ -72,7 +86,10 @@ const Index = () => {
     const prefetch = () => { import("./Catalog.tsx"); import("./ProductDetail.tsx"); };
     if (idle) idle(prefetch, { timeout: 4000 }); else setTimeout(prefetch, 3000);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const heroIntro = sections.find((s) => s.section_key === "hero_intro");
