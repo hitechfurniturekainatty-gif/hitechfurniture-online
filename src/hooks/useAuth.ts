@@ -26,6 +26,9 @@ export function useAuth() {
       } else {
         setRoles([]);
         setLoading(false);
+        // Auto-lock the Backlog (Receivables) area on sign-out so the
+        // 15-minute unlock window doesn't carry over to the next user.
+        try { sessionStorage.removeItem("backlog_unlock_until"); } catch { /* ignore */ }
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {

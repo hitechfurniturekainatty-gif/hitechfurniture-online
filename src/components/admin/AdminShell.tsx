@@ -1,9 +1,9 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
@@ -16,6 +16,20 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // "Rendered more hooks than during the previous render" when `loading`
   // flips from true → false.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Triple-tap on the admin logo opens the hidden Backlog area.
+  // Works on both desktop (clicks) and mobile (taps) within ~600ms window.
+  const tapsRef = useRef<number[]>([]);
+  const handleLogoTap = (e: React.MouseEvent) => {
+    const now = Date.now();
+    tapsRef.current = tapsRef.current.filter((t) => now - t < 600);
+    tapsRef.current.push(now);
+    if (tapsRef.current.length >= 3) {
+      e.preventDefault();
+      tapsRef.current = [];
+      navigate("/admin/backlog");
+    }
+  };
 
   // Auto-open the sidebar group containing the current route. Declared at the
   // top of the component (before early returns) so hook order stays stable.
@@ -75,6 +89,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
+  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin };
   const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
 
   const operations: GroupItem = {
@@ -117,6 +132,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     logistics,
     team,
     homePage,
+    backlog,
     trash,
   ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
 
@@ -127,7 +143,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
         <div className="container-page flex items-center justify-between gap-2 py-3 md:py-4">
-          <Link to="/" className="flex min-w-0 items-center gap-3">
+          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={handleLogoTap}>
             <Logo className="h-11 w-auto sm:h-12 md:h-14" />
             <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
           </Link>
