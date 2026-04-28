@@ -141,7 +141,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     <div className="min-h-screen overflow-x-hidden bg-secondary/30">
       <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
         <div className="container-page flex items-center justify-between gap-2 py-3 md:py-4">
-          <Link to="/" className="flex min-w-0 items-center gap-3">
+          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={handleLogoTap}>
             <Logo className="h-11 w-auto sm:h-12 md:h-14" />
             <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
           </Link>
