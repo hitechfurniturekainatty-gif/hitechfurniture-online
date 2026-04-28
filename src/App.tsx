@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
+import { BacklogShortcut } from "@/components/admin/BacklogShortcut";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
@@ -37,6 +38,7 @@ const AdminComplaintEditor = lazy(() => import("./pages/admin/AdminComplaintEdit
 const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
 const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
 const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
+const AdminBacklog = lazy(() => import("./pages/admin/AdminBacklog.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
@@ -70,6 +72,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <BacklogShortcut />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -96,7 +99,9 @@ const App = () => (
             <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
             <Route path="/admin/trash" element={<AdminTrash />} />
             <Route path="/admin/home-page" element={<AdminHomePage />} />
-            <Route path="/admin/receivables" element={<AdminReceivables />} />
+            <Route path="/admin/backlog" element={<AdminBacklog />} />
+            {/* Legacy direct path also gated by Backlog */}
+            <Route path="/admin/receivables" element={<AdminBacklog />} />
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
