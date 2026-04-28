@@ -30,6 +30,30 @@ function unlockNow() {
   }
 }
 
+/**
+ * Reveal the Backlog menu item without navigating into the gated page.
+ * NOTE: this only flips the sidebar visibility flag — the gated route still
+ * requires the PIN on first entry within the 15-minute window.
+ */
+export function revealBacklogMenu() {
+  try {
+    // Mark a short visibility window so the sidebar shows the Backlog item.
+    // The actual page entry will still prompt for the PIN.
+    sessionStorage.setItem(SS_KEY + "_reveal", String(Date.now() + UNLOCK_MS));
+  } catch { /* ignore */ }
+}
+
+export function isBacklogMenuRevealed(): boolean {
+  try {
+    if (isBacklogUnlocked()) return true;
+    const v = sessionStorage.getItem(SS_KEY + "_reveal");
+    if (!v) return false;
+    return Number(v) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 export function lockBacklog() {
   try { sessionStorage.removeItem(SS_KEY); } catch { /* ignore */ }
 }
