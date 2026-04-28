@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
 const SS_KEY = "backlog_unlock_until";
-const UNLOCK_MS = 30 * 60 * 1000; // 30 minutes
+const UNLOCK_MS = 15 * 60 * 1000; // 15 minutes
 
 export function isBacklogUnlocked(): boolean {
   try {
@@ -171,7 +171,7 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
                 {pinSet === false ? "Set PIN & unlock" : "Unlock"}
               </Button>
               <p className="text-center text-[11px] text-muted-foreground">
-                Unlocked for 30 minutes after correct PIN.
+                Unlocked for 15 minutes after correct PIN. Auto-locks on sign-out.
               </p>
             </form>
           </CardContent>
