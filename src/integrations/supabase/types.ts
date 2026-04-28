@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       customer_complaints: {
         Row: {
           complaint_code: string
@@ -961,6 +982,51 @@ export type Database = {
           },
         ]
       }
+      receivables: {
+        Row: {
+          batch: number
+          bill_no: string | null
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          id: string
+          notes: string | null
+          pending_amount: number
+          phone: string | null
+          place: string | null
+          raw_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch?: number
+          bill_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          pending_amount?: number
+          phone?: string | null
+          place?: string | null
+          raw_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch?: number
+          bill_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          pending_amount?: number
+          phone?: string | null
+          place?: string | null
+          raw_text?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       route_waypoints: {
         Row: {
           created_at: string
@@ -1304,6 +1370,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      backlog_pin_is_set: { Args: never; Returns: boolean }
       current_worker_id: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1326,6 +1393,8 @@ export type Database = {
           table_name: string
         }[]
       }
+      set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
+      verify_backlog_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"
