@@ -46,8 +46,7 @@ const Index = () => {
         .from("main_categories")
         .select("id, name, slug, image_url")
         .is("deleted_at", null)
-        .order("display_order", { ascending: true })
-        .limit(6);
+        .order("display_order", { ascending: true });
       if (!cancelled) setCategories(data ?? []);
     };
     Promise.all([
