@@ -23,13 +23,13 @@ export const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
 
   return (
     <section
-      className="relative overflow-hidden"
+      className="relative h-full overflow-hidden bg-muted"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
       aria-label="Featured banners"
     >
-      <div className="relative aspect-[16/9] w-full md:aspect-[21/9]">
+      <div className="relative aspect-[16/9] w-full md:aspect-auto md:h-full md:min-h-[360px]">
         {slides.map((slide, i) => {
           const isHttp = slide.cta_link?.startsWith("http");
           const cta = slide.cta_label && slide.cta_link ? (
@@ -63,7 +63,7 @@ export const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
                 <img
                   src={slide.image_url}
                   alt={slide.headline ?? "Banner"}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover md:object-contain"
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding="async"
                   fetchPriority={i === 0 ? "high" : "auto"}
