@@ -13,6 +13,7 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
 
 type Role = "admin" | "staff" | "measurement_staff" | "delivery";
 type StaffRow = {
