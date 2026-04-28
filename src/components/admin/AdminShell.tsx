@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isBacklogUnlocked, lockBacklog } from "@/components/admin/BacklogGate";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
@@ -16,6 +17,26 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // "Rendered more hooks than during the previous render" when `loading`
   // flips from true → false.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Track Backlog unlock state so the sidebar item disappears the moment the
+  // 15-minute window expires (or the admin signs out). Re-check every 5s.
+  const [backlogUnlocked, setBacklogUnlocked] = useState<boolean>(() => isBacklogUnlocked());
+  useEffect(() => {
+    const tick = () => setBacklogUnlocked(isBacklogUnlocked());
+    tick();
+    const id = window.setInterval(tick, 5000);
+    const onVis = () => tick();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "backlog_unlock_until") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   // Triple-tap on the admin logo opens the hidden Backlog area.
   // Works on both desktop (clicks) and mobile (taps) within a ~700ms window.
@@ -104,7 +125,10 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
-  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin };
+  // Only show Backlog in the sidebar while it is currently unlocked. After the
+  // 15-min auto-lock or sign-out, the menu disappears entirely — the area is
+  // then only reachable again via the triple-tap on the logo.
+  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin && backlogUnlocked };
   const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
 
   const operations: GroupItem = {
@@ -169,10 +193,10 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
             <Button asChild size="default" variant="ghost" className="hidden sm:inline-flex text-base">
               <Link to="/" target="_blank"><ExternalLink className="mr-1 h-5 w-5" /> View site</Link>
             </Button>
-            <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => signOut().then(() => navigate("/auth"))}>
+            <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
               <LogOut className="h-5 w-5" />
             </Button>
-            <Button size="default" variant="ghost" className="hidden sm:inline-flex text-base" onClick={() => signOut().then(() => navigate("/auth"))}>
+            <Button size="default" variant="ghost" className="hidden sm:inline-flex text-base" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
               <LogOut className="mr-1 h-5 w-5" /> Sign out
             </Button>
           </div>
