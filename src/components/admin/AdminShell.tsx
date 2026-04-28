@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isBacklogUnlocked, lockBacklog } from "@/components/admin/BacklogGate";
+import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
@@ -20,9 +20,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   // Track Backlog unlock state so the sidebar item disappears the moment the
   // 15-minute window expires (or the admin signs out). Re-check every 5s.
-  const [backlogUnlocked, setBacklogUnlocked] = useState<boolean>(() => isBacklogUnlocked());
+  const [backlogUnlocked, setBacklogUnlocked] = useState<boolean>(() => isBacklogMenuRevealed());
   useEffect(() => {
-    const tick = () => setBacklogUnlocked(isBacklogUnlocked());
+    const tick = () => setBacklogUnlocked(isBacklogMenuRevealed());
     tick();
     const id = window.setInterval(tick, 5000);
     const onVis = () => tick();
@@ -56,7 +56,12 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     }
     if (tapsRef.current.length >= 3) {
       tapsRef.current = [];
-      navigate("/admin/backlog");
+      // Reveal the Backlog menu in the sidebar but route the user to the
+      // Overview page — safer if anyone is watching the screen. Admin can
+      // then click "Backlog" from the sidebar when ready.
+      revealBacklogMenu();
+      setBacklogUnlocked(true);
+      navigate("/admin");
       return;
     }
     // Fall back to normal "go home" navigation if the user didn't triple-tap.
