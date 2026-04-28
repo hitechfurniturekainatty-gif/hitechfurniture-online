@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus, Loader2, ImageIcon, Pencil } from "lucide-react";
+import { Trash2, Plus, Loader2, ImageIcon, Pencil, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 
@@ -36,6 +36,8 @@ const AdminCategories = () => {
   const [editMain, setEditMain] = useState<EditMainState>(null);
   const [editSub, setEditSub] = useState<EditSubState>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const load = async () => {
     const [{ data: m }, { data: s }] = await Promise.all([
@@ -47,6 +49,49 @@ const AdminCategories = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Persist a new order for main categories. Optimistic UI + parallel writes.
+  const persistMainOrder = async (next: MainCat[]) => {
+    const prev = mainCats;
+    const withOrder = next.map((c, i) => ({ ...c, display_order: i }));
+    setMainCats(withOrder);
+    setReordering(true);
+    const updates = withOrder
+      .filter((c, i) => prev.find((o) => o.id === c.id)?.display_order !== i)
+      .map((c) =>
+        supabase.from("main_categories").update({ display_order: c.display_order }).eq("id", c.id)
+      );
+    const results = await Promise.all(updates);
+    setReordering(false);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      toast({ title: "Reorder failed", description: failed.error.message, variant: "destructive" });
+      load();
+    } else {
+      toast({ title: "Order saved" });
+    }
+  };
+
+  const moveMain = (id: string, dir: -1 | 1) => {
+    const idx = mainCats.findIndex((c) => c.id === id);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= mainCats.length) return;
+    const next = [...mainCats];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    persistMainOrder(next);
+  };
+
+  const onDropMain = (targetId: string) => {
+    if (!dragId || dragId === targetId) { setDragId(null); return; }
+    const from = mainCats.findIndex((c) => c.id === dragId);
+    const to = mainCats.findIndex((c) => c.id === targetId);
+    if (from < 0 || to < 0) { setDragId(null); return; }
+    const next = [...mainCats];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setDragId(null);
+    persistMainOrder(next);
+  };
 
   const addMain = async () => {
     if (!newMain.trim()) return;
@@ -161,6 +206,7 @@ const AdminCategories = () => {
         <Card className="min-w-0 overflow-hidden">
           <CardHeader className="px-4 sm:px-6">
             <CardTitle className="font-display">Main categories</CardTitle>
+            <p className="text-xs text-muted-foreground">Drag the handle (or use arrows) to reorder. Top items appear first on the homepage and catalog.</p>
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="space-y-3">
@@ -188,11 +234,23 @@ const AdminCategories = () => {
                   No categories yet.
                 </li>
               )}
-              {mainCats.map((c) => (
+              {mainCats.map((c, idx) => (
                 <li
                   key={c.id}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-background p-3"
+                  draggable
+                  onDragStart={() => setDragId(c.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); onDropMain(c.id); }}
+                  onDragEnd={() => setDragId(null)}
+                  className={`flex items-center gap-3 rounded-lg border border-border bg-background p-3 transition-opacity ${dragId === c.id ? "opacity-50" : ""}`}
                 >
+                  <button
+                    type="button"
+                    aria-label="Drag to reorder"
+                    className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                     {c.image_url ? (
                       <img src={c.image_url} alt={c.name} className="h-full w-full object-contain p-1" loading="lazy" />
@@ -208,6 +266,14 @@ const AdminCategories = () => {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {subCats.filter((s) => s.main_category_id === c.id).length} sub-categories
                     </p>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveMain(c.id, -1)} disabled={idx === 0 || reordering} aria-label="Move up">
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveMain(c.id, 1)} disabled={idx === mainCats.length - 1 || reordering} aria-label="Move down">
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                   <Button size="icon" variant="ghost" onClick={() => startEditMain(c)}>
                     <Pencil className="h-4 w-4" />
