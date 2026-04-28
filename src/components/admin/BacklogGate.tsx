@@ -61,6 +61,21 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
     return () => { alive = false; };
   }, [isAdmin]);
 
+  // Re-evaluate the unlock state on a short interval so the 15-minute window
+  // is enforced in real time without requiring a page refresh. Also react to
+  // sign-out events from other tabs (sessionStorage cleared) and to the tab
+  // becoming visible again.
+  useEffect(() => {
+    const tick = () => setUnlocked(isBacklogUnlocked());
+    const id = window.setInterval(tick, 3000);
+    const onVis = () => tick();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
   if (authLoading || (isAdmin && pinSet === null && !unlocked)) {
     return (
       <AdminShell>
