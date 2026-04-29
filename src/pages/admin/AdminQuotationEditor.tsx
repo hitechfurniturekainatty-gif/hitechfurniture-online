@@ -414,6 +414,7 @@ const AdminQuotationEditor = () => {
           site_photos: it.site_photos,
           quantity: Number(it.quantity) || 0,
           unit_price: canEditPrice ? Number(it.unit_price) || 0 : 0,
+          amount: (Number(it.quantity) || 0) * (canEditPrice ? Number(it.unit_price) || 0 : 0),
           display_order: it.display_order,
           product_id: it.product_id,
         },
@@ -444,6 +445,40 @@ const AdminQuotationEditor = () => {
 
     setItems(updated);
     setHeaderDirty(false);
+
+    // Always recompute and persist header totals from the freshly saved items.
+    // Without this, the quotations list (which reads `total`) shows stale
+    // amounts when items are added/edited without touching header fields.
+    {
+      const newSubtotal = updated.reduce(
+        (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
+        0,
+      );
+      const newDiscount = Math.min(
+        Math.max(0, Number(q.discount_amount) || 0),
+        newSubtotal,
+      );
+      const taxable = Math.max(0, newSubtotal - newDiscount);
+      const newGst = taxable * ((Number(q.gst_percent) || 0) / 100);
+      const newTotal = taxable + newGst;
+      const { error: totErr } = await supabase
+        .from("quotations")
+        .update({
+          subtotal: newSubtotal,
+          gst_amount: newGst,
+          total: newTotal,
+        })
+        .eq("id", q.id);
+      if (totErr) {
+        setSaving(false);
+        toast({ title: "Total update failed", description: totErr.message, variant: "destructive" });
+        return null;
+      }
+      setQ((prev) =>
+        prev ? { ...prev, subtotal: newSubtotal, gst_amount: newGst, total: newTotal } : prev,
+      );
+    }
+
     setSaving(false);
 
     // Auto-advance status based on content + role
