@@ -198,7 +198,7 @@ export default function AdminReceivables() {
     const payload = draft.map((d) => ({
       bill_no: d.billNo || null,
       customer_name: d.customer || null,
-      place: d.place || null,
+      place: null,
       phone: d.phone || null,
       pending_amount: d.amount ?? 0,
       raw_text: d.raw,
@@ -283,7 +283,7 @@ export default function AdminReceivables() {
   const callPhone = (p: string) => { if (p) window.location.href = `tel:+91${p}`; };
   const wa = (p: string, amt: number) => {
     if (!p) return;
-    const msg = `Hello sir/madam, this is Hitech Furniture and Interiors. Your pending balance is ${fmtAmount(amt)}. Kindly settle this at your earliest convenience. Thank you!`;
+    const msg = `Hi, this is from HitecH Furniture. You have a pending payment of ${fmtAmount(amt)}. Kindly take note. Thank you.`;
     openWhatsAppApp(`91${p}`, msg);
   };
 
@@ -296,7 +296,7 @@ export default function AdminReceivables() {
         <div>
           <h1 className="font-display text-2xl md:text-3xl">Backlog · Receivables</h1>
           <p className="text-sm text-muted-foreground">
-            Paste rows from Busy Accounting or Excel. Bill No auto-trimmed to first 9 alphanumeric characters.
+            Paste rows from Busy Accounting or Excel. Bill No format: 2 digits + 2 letters + up to 6 digits (e.g. 26HT123456).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -315,6 +315,17 @@ export default function AdminReceivables() {
         </div>
       </header>
 
+      {/* Total Outstanding Header */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Outstanding Amount</p>
+            <p className="font-display text-2xl md:text-3xl font-semibold tabular-nums">{fmtAmount(total)}</p>
+          </div>
+          <p className="text-sm text-muted-foreground">{rows.length} record{rows.length === 1 ? "" : "s"} saved</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Paste & parse</CardTitle>
@@ -323,12 +334,12 @@ export default function AdminReceivables() {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Paste rows — one per line. Free text or tab/CSV both work.\nQ20250001A Rahul Kumar Kalpetta 9876543210 12500\nQ20250002B Anjali Menon Sulthan Bathery 9988776655 8200.50`}
+            placeholder={`Paste rows — one per line.\n26HT123456 Rahul Kumar Kalpetta 9876543210 12500\n26HT123457 Anjali Menon Sulthan Bathery 9988776655 8200`}
             className="min-h-[140px] font-mono text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Auto-detects TSV/CSV vs free text. Phone = trailing 10 digits, Amount = last number, Place = before phone, Name = between bill & place.
+              Bill No (e.g. 26HT123456) → Customer Details → 10-digit Phone → Final Amount.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setText(""); setDraft([]); }} disabled={!text && draft.length === 0}>Clear</Button>
@@ -353,10 +364,9 @@ export default function AdminReceivables() {
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Bill No</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Place</TableHead>
+                    <TableHead>Customer Details</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
@@ -364,9 +374,8 @@ export default function AdminReceivables() {
                   {draft.map((r, i) => (
                     <TableRow key={r.id}>
                       <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell><input className="w-28 rounded border bg-background px-2 py-1 font-mono text-xs" value={r.billNo} onChange={(e) => updateDraft(r.id, { billNo: e.target.value.slice(0, 9) })} /></TableCell>
-                      <TableCell><input className="w-44 rounded border bg-background px-2 py-1 text-sm" value={r.customer} onChange={(e) => updateDraft(r.id, { customer: e.target.value })} /></TableCell>
-                      <TableCell><input className="w-32 rounded border bg-background px-2 py-1 text-sm" value={r.place} onChange={(e) => updateDraft(r.id, { place: e.target.value })} /></TableCell>
+                      <TableCell><input className="w-32 rounded border bg-background px-2 py-1 font-mono text-xs uppercase" value={r.billNo} onChange={(e) => updateDraft(r.id, { billNo: e.target.value.slice(0, 10) })} /></TableCell>
+                      <TableCell><input className="w-64 rounded border bg-background px-2 py-1 text-sm" value={r.customer} onChange={(e) => updateDraft(r.id, { customer: e.target.value })} /></TableCell>
                       <TableCell><input className="w-32 rounded border bg-background px-2 py-1 font-mono text-xs" value={r.phone} onChange={(e) => updateDraft(r.id, { phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} /></TableCell>
                       <TableCell className="text-right">
                         <input
