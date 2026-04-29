@@ -148,7 +148,7 @@ const AdminMeasurementTasks = () => {
       party_phone: t.customer_phone,
       party_address: t.customer_address,
       notes: t.requirement,
-      status: "draft",
+      status: "drafted",
       created_by: user?.id ?? null,
       source_task_id: t.id,
     }).select("id").single();
