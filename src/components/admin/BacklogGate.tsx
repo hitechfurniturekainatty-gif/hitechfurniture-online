@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, Lock, KeyRound, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,13 +10,19 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
 const SS_KEY = "backlog_unlock_until";
-const UNLOCK_MS = 15 * 60 * 1000; // 15 minutes
+// Single-entry access: unlock is valid only while the Backlog screen is
+// mounted. We still keep a tiny TTL guard (a few seconds) so the in-memory
+// flag doesn't accidentally outlive the page, but every fresh entry to the
+// Backlog route must re-prompt for the PIN.
+const UNLOCK_MS = 5 * 1000;
 
 export function isBacklogUnlocked(): boolean {
   try {
-    const v = sessionStorage.getItem(SS_KEY);
+    // Use in-memory only — never sessionStorage — so refresh / re-entry
+    // always re-prompts for the PIN.
+    const v = (window as any).__backlogUnlockUntil as number | undefined;
     if (!v) return false;
-    return Number(v) > Date.now();
+    return v > Date.now();
   } catch {
     return false;
   }
@@ -24,7 +30,7 @@ export function isBacklogUnlocked(): boolean {
 
 function unlockNow() {
   try {
-    sessionStorage.setItem(SS_KEY, String(Date.now() + UNLOCK_MS));
+    (window as any).__backlogUnlockUntil = Date.now() + UNLOCK_MS;
   } catch {
     /* ignore */
   }
@@ -37,18 +43,18 @@ function unlockNow() {
  */
 export function revealBacklogMenu() {
   try {
-    // Mark a short visibility window so the sidebar shows the Backlog item.
-    // The actual page entry will still prompt for the PIN.
-    sessionStorage.setItem(SS_KEY + "_reveal", String(Date.now() + UNLOCK_MS));
+    // Reveal the sidebar shortcut for a short window (15 min). Entering the
+    // page itself still requires the PIN every time.
+    (window as any).__backlogRevealUntil = Date.now() + 15 * 60 * 1000;
   } catch { /* ignore */ }
 }
 
 export function isBacklogMenuRevealed(): boolean {
   try {
     if (isBacklogUnlocked()) return true;
-    const v = sessionStorage.getItem(SS_KEY + "_reveal");
+    const v = (window as any).__backlogRevealUntil as number | undefined;
     if (!v) return false;
-    return Number(v) > Date.now();
+    return v > Date.now();
   } catch {
     return false;
   }
@@ -56,8 +62,8 @@ export function isBacklogMenuRevealed(): boolean {
 
 export function lockBacklog() {
   try {
-    sessionStorage.removeItem(SS_KEY);
-    sessionStorage.removeItem(SS_KEY + "_reveal");
+    (window as any).__backlogUnlockUntil = 0;
+    (window as any).__backlogRevealUntil = 0;
   } catch { /* ignore */ }
 }
 
@@ -70,6 +76,7 @@ export function lockBacklog() {
 export function BacklogGate({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unlocked, setUnlocked] = useState<boolean>(() => isBacklogUnlocked());
   const [pinSet, setPinSet] = useState<boolean | null>(null);
   const [pin, setPin] = useState("");
@@ -101,6 +108,33 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
+  }, []);
+
+  // SINGLE-ENTRY ACCESS: revoke unlock the moment this gate unmounts (the
+  // user navigated to Home, another admin tab, or anywhere else). The next
+  // time they click "Backlog", the PIN will be required again.
+  useEffect(() => {
+    return () => {
+      (window as any).__backlogUnlockUntil = 0;
+      setUnlocked(false);
+    };
+  }, []);
+
+  // Also revoke if the route path changes away from /admin/backlog while the
+  // gate stays mounted for any reason.
+  useEffect(() => {
+    if (!location.pathname.startsWith("/admin/backlog")) {
+      (window as any).__backlogUnlockUntil = 0;
+      setUnlocked(false);
+    }
+  }, [location.pathname]);
+
+  // On a hard refresh of the Backlog page, force re-prompt by clearing any
+  // stale in-memory flag at mount time.
+  useEffect(() => {
+    (window as any).__backlogUnlockUntil = 0;
+    setUnlocked(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (authLoading || (isAdmin && pinSet === null && !unlocked)) {
@@ -149,8 +183,8 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
         if (error) throw error;
         unlockNow();
         toast({ title: "Backlog PIN set", description: "Unlocked for 30 minutes." });
-        // Clear the PIN screen from history — back button must never return to it.
-        navigate("/admin", { replace: true });
+        // Stay on the Backlog page; just flip unlocked state.
+        setUnlocked(true);
         return;
       } else {
         const { data, error } = await supabase.rpc("verify_backlog_pin", { _pin: pin });
@@ -160,9 +194,7 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
           return;
         }
         unlockNow();
-        // Replace the password screen entry so the mobile back button
-        // cannot navigate back to it. Access is only via the shortcut.
-        navigate("/admin", { replace: true });
+        setUnlocked(true);
         return;
       }
     } catch (e: any) {
