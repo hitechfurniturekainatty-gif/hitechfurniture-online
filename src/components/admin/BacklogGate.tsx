@@ -148,8 +148,10 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.rpc("set_backlog_pin", { _pin: pin });
         if (error) throw error;
         unlockNow();
-        setUnlocked(true);
         toast({ title: "Backlog PIN set", description: "Unlocked for 30 minutes." });
+        // Clear the PIN screen from history — back button must never return to it.
+        navigate("/admin", { replace: true });
+        return;
       } else {
         const { data, error } = await supabase.rpc("verify_backlog_pin", { _pin: pin });
         if (error) throw error;
@@ -158,7 +160,10 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
           return;
         }
         unlockNow();
-        setUnlocked(true);
+        // Replace the password screen entry so the mobile back button
+        // cannot navigate back to it. Access is only via the shortcut.
+        navigate("/admin", { replace: true });
+        return;
       }
     } catch (e: any) {
       toast({ title: "Failed", description: e.message ?? String(e), variant: "destructive" });
