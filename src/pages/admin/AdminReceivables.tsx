@@ -437,8 +437,8 @@ export default function AdminReceivables() {
             {rows.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="gap-1 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" /> Clear all
+                  <Button size="sm" variant="destructive" className="gap-1">
+                    <Trash2 className="h-4 w-4" /> Clear All
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -470,11 +470,10 @@ export default function AdminReceivables() {
                     </TableHead>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Bill No</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Place</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead>Customer Details</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead className="w-32 text-right">Action</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-32 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -493,10 +492,11 @@ export default function AdminReceivables() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-mono text-xs">{r.bill_no || "—"}</TableCell>
-                      <TableCell className="font-medium">{r.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{r.place || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">{fmtAmount(Number(r.pending_amount))}</TableCell>
+                      <TableCell className="font-medium">
+                        {[r.customer_name, r.place].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{r.phone || <span className="text-destructive">missing</span>}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">{fmtAmount(Number(r.pending_amount))}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
                           <Button size="icon" variant="default" className="h-9 w-9" disabled={!r.phone} onClick={() => callPhone(r.phone!)} title="Call">
