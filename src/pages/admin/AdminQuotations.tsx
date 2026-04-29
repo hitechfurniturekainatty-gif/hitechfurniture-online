@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
-import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
+import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
@@ -253,8 +253,9 @@ const AdminQuotations = () => {
     }
   };
 
-  // All statuses we care about (order = lifecycle order)
-  const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+  // 4-status workflow + an "Active" view that hides delivered & rejected
+  // so the dashboard stays focused on what still needs work.
+  const STATUS_FILTERS = ["active", "all", "drafted", "finalized", "delivered", "rejected"] as const;
 
   // Apply doc-type tab + search BEFORE the status filter so each tab's status
   // counts only count the rows visible in that tab.
@@ -275,13 +276,27 @@ const AdminQuotations = () => {
 
   const filtered = useMemo(
     () =>
-      docFiltered.filter((r) => statusFilter === "all" || r.status === statusFilter),
+      docFiltered.filter((r) => {
+        const s = normalizeStatus(r.status);
+        if (statusFilter === "all") return true;
+        if (statusFilter === "active") return s !== "delivered" && s !== "rejected";
+        return s === statusFilter;
+      }),
     [docFiltered, statusFilter],
   );
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: docFiltered.length };
-    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = docFiltered.filter((r) => r.status === k).length;
+    const c: Record<string, number> = {
+      all: docFiltered.length,
+      active: docFiltered.filter((r) => {
+        const s = normalizeStatus(r.status);
+        return s !== "delivered" && s !== "rejected";
+      }).length,
+    };
+    for (const k of STATUS_FILTERS) {
+      if (k === "all" || k === "active") continue;
+      c[k] = docFiltered.filter((r) => normalizeStatus(r.status) === k).length;
+    }
     return c;
   }, [docFiltered]);
 
