@@ -26,6 +26,9 @@ import {
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { shareFilesNative } from "@/lib/nativeShare";
+import { Share2 } from "lucide-react";
 
 type QItem = {
   id: string;
@@ -91,6 +94,10 @@ const AdminQuotationPreview = () => {
   const [jobNotes, setJobNotes] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [generatingJob, setGeneratingJob] = useState(false);
+  // "saved" = pick a registered worker (existing flow).
+  // "direct" = skip worker selection and trigger native share sheet so the
+  // admin can send the worker-safe file to ANY contact / WhatsApp group.
+  const [assignMode, setAssignMode] = useState<"saved" | "direct">("saved");
 
   useEffect(() => {
     if (!id) return;
@@ -370,24 +377,35 @@ const AdminQuotationPreview = () => {
     setSelectedWorker("");
     setJobNotes("");
     setSelectedItemIds(new Set(items.map((item) => item.id)));
+    setAssignMode("saved");
     setAssignOpen(true);
+  };
+
+  // Shortcut from the action bar — open the dialog already in "Direct Share"
+  // mode so admins don't have to switch tabs.
+  const openDirectShareDialog = async () => {
+    await openAssignDialog();
+    setAssignMode("direct");
   };
 
   const generateAndAssignJob = async (format: "jpg" | "pdf" = "jpg") => {
     if (!q) return;
-    if (!selectedWorker) {
-      toast({ title: "Select a worker", variant: "destructive" });
-      return;
-    }
-
-    const worker = workers.find((entry) => entry.id === selectedWorker);
-    if (!worker) {
-      toast({ title: "Worker not found", variant: "destructive" });
-      return;
-    }
-    if (format === "jpg" && !worker.whatsapp_number?.trim()) {
-      toast({ title: "Worker WhatsApp missing", description: `Add a WhatsApp number for ${worker.name} first.`, variant: "destructive" });
-      return;
+    const isDirect = assignMode === "direct";
+    let worker: Worker | undefined;
+    if (!isDirect) {
+      if (!selectedWorker) {
+        toast({ title: "Select a worker", variant: "destructive" });
+        return;
+      }
+      worker = workers.find((entry) => entry.id === selectedWorker);
+      if (!worker) {
+        toast({ title: "Worker not found", variant: "destructive" });
+        return;
+      }
+      if (format === "jpg" && !worker.whatsapp_number?.trim()) {
+        toast({ title: "Worker WhatsApp missing", description: `Add a WhatsApp number for ${worker.name} first.`, variant: "destructive" });
+        return;
+      }
     }
 
     const chosenItems = items.filter((item) => selectedItemIds.has(item.id));
@@ -398,17 +416,21 @@ const AdminQuotationPreview = () => {
 
     setGeneratingJob(true);
     try {
-      const { error } = await supabase.from("job_work_orders").insert({
-        quotation_id: q.id,
-        worker_id: worker.id,
-        item_ids: chosenItems.map((item) => item.id),
-        notes: jobNotes.trim() || null,
-        status: "assigned",
-        created_by: user?.id ?? null,
-      });
-      if (error) {
-        toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
-        return;
+      // Only log a job_work_orders row when assigning to a saved worker.
+      // Direct shares are intentionally not tied to any worker profile.
+      if (worker) {
+        const { error } = await supabase.from("job_work_orders").insert({
+          quotation_id: q.id,
+          worker_id: worker.id,
+          item_ids: chosenItems.map((item) => item.id),
+          notes: jobNotes.trim() || null,
+          status: "assigned",
+          created_by: user?.id ?? null,
+        });
+        if (error) {
+          toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+          return;
+        }
       }
 
       const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
@@ -417,7 +439,7 @@ const AdminQuotationPreview = () => {
       // it as PDF or rasterised JPG.
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
-        worker_name: worker.name,
+        worker_name: worker?.name ?? "Job Work",
         date: new Date().toLocaleDateString("en-IN"),
         notes: jobNotes.trim() || null,
         items: chosenItems.map((item) => ({
@@ -433,22 +455,39 @@ const AdminQuotationPreview = () => {
         })),
       }, format === "jpg" ? COMPRESSED_PDF_OPTIONS : undefined);
 
-      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
-      const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
+      const baseFilename = worker
+        ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
+        : `JobWork-${q.quotation_id}`;
+      const greeting = worker ? `Hi ${worker.name},` : "Hi,";
+      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      if (format === "pdf") {
+      if (isDirect) {
+        // Direct WhatsApp / native share sheet — let the admin pick any
+        // contact or WhatsApp group from their phone.
+        if (format === "pdf") {
+          await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
+        } else {
+          const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+          const blobs = await pdfBlobToJpgPages(pdfBlob);
+          await shareFilesNative(blobs, baseFilename, msg, "jpg");
+        }
+        toast({
+          title: "Ready to share",
+          description: "Pick the contact or WhatsApp group from your phone's share sheet.",
+        });
+      } else if (format === "pdf") {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
         toast({
           title: "Job PDF downloaded",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
         const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
         const blobs = await pdfBlobToJpgPages(pdfBlob);
-        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
         toast({
           title: "Job work sent",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
         });
       }
       setAssignOpen(false);
