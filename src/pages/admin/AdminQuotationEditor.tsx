@@ -182,7 +182,7 @@ export const statusLabel = (s: string) => {
 const AdminQuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isAdmin, isOfficeStaff, isMeasurementStaff } = useAuth();
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
@@ -976,7 +976,21 @@ const AdminQuotationEditor = () => {
             <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>
           <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
-          {canEditPrice && normalizeStatus(q.status) === "finalized" && (
+          {/* Admin can change status at any time — quick switcher next to the badge.
+              Non-admin staff still get the contextual buttons (only when finalized). */}
+          {isAdmin && (
+            <div className="hidden items-center gap-1 sm:flex">
+              <Select value={normalizeStatus(q.status)} onValueChange={(v) => setStatus(v)}>
+                <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
               <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive" onClick={() => setStatus("rejected")}>Reject</Button>
@@ -1448,6 +1462,19 @@ const AdminQuotationEditor = () => {
         {canEditPrice && (
           <div className="mb-2">
             <AttachedNotesButton quotationId={q.id} className="h-11 w-full" />
+          </div>
+        )}
+        {/* Admin: change status from the mobile sticky bar without scrolling. */}
+        {isAdmin && (
+          <div className="mb-2">
+            <Select value={normalizeStatus(q.status)} onValueChange={(v) => setStatus(v)}>
+              <SelectTrigger className="h-11 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>Status: {statusLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
         {/* Row 2 (bottom): primary Save action sits closest to thumb. */}
