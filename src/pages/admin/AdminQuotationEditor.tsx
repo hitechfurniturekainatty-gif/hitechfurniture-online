@@ -531,6 +531,18 @@ const AdminQuotationEditor = () => {
     // It's enforced by a DB trigger (quotations_status_audit), so nothing to
     // do here. All quotations start as "drafted" and stay there until the
     // admin moves them manually or an advance is recorded.
+    // We re-read the status from DB after a save in case the trigger flipped it.
+    if (canEditPrice) {
+      const { data: fresh } = await supabase
+        .from("quotations")
+        .select("status, advance_amount")
+        .eq("id", q.id)
+        .maybeSingle();
+      if (fresh && fresh.status !== q.status) {
+        setQ((prev) => (prev ? { ...prev, status: fresh.status } : prev));
+        setStatusHistoryKey((k) => k + 1);
+      }
+    }
 
     toast({ title: "Saved" });
     return { idMap, savedItems: updated };
