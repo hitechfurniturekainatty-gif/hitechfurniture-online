@@ -153,19 +153,31 @@ export const ImageCropDialog = ({
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
         <div ref={stageRef} className="relative h-[45vh] w-full overflow-hidden rounded-md bg-muted sm:h-[55vh]">
           {src && (
-            <Cropper
-              image={src}
-              crop={crop}
-              zoom={zoom}
-              rotation={rotation}
-              aspect={manual ? undefined : aspect}
-              cropSize={manual ? { width: boxW, height: boxH } : undefined}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onRotationChange={setRotation}
-              onCropComplete={onComplete}
-              restrictPosition={false}
-            />
+            <>
+              <Cropper
+                image={src}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                aspect={manual ? undefined : aspect}
+                cropSize={manual ? { width: boxW, height: boxH } : undefined}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onRotationChange={setRotation}
+                onCropComplete={onComplete}
+                restrictPosition={false}
+              />
+              {manual && stageSize.w > 0 && (
+                <ResizeHandles
+                  stageW={stageSize.w}
+                  stageH={stageSize.h}
+                  boxW={boxW}
+                  boxH={boxH}
+                  setBoxW={setBoxW}
+                  setBoxH={setBoxH}
+                />
+              )}
+            </>
           )}
         </div>
 
