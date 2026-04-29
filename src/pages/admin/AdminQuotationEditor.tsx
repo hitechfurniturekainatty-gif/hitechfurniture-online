@@ -104,7 +104,7 @@ type Product = {
   product_images: { image_url: string }[];
 };
 type MainCat = { id: string; name: string; image_url: string | null };
-type SubCat = { id: string; main_category_id: string; name: string };
+type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Full quotation lifecycle (kept lowercase to match DB defaults)
@@ -326,7 +326,7 @@ const AdminQuotationEditor = () => {
         .order("display_order"),
       supabase
         .from("sub_categories")
-        .select("id, main_category_id, name")
+        .select("id, main_category_id, name, image_url")
         .is("deleted_at", null)
         .order("display_order"),
     ]);
@@ -1532,10 +1532,25 @@ const AdminQuotationEditor = () => {
                             key={s.id}
                             type="button"
                             onClick={() => setPickerSubId(s.id)}
-                            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card p-3 text-center transition-smooth hover:border-primary hover:shadow"
+                            className="group relative flex aspect-square flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border border-border bg-card p-3 text-center transition-smooth hover:border-primary hover:shadow"
                           >
-                            <span className="font-display text-sm">{s.name}</span>
-                            <span className="text-[11px] text-muted-foreground">{count} models</span>
+                            {s.image_url ? (
+                              <img
+                                src={s.image_url}
+                                alt={s.name}
+                                loading="lazy"
+                                className="absolute inset-0 h-full w-full object-contain p-3 opacity-90"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
+                            )}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
+                            <span className="relative z-10 mt-auto font-display text-sm font-semibold text-background">
+                              {s.name}
+                            </span>
+                            <span className="relative z-10 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                              {count}
+                            </span>
                           </button>
                         );
                       })}
