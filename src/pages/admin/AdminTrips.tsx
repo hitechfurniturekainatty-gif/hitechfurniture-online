@@ -68,9 +68,9 @@ const AdminTrips = () => {
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, delivery_route_id, delivery_place, total, status, expected_delivery_date")
-        // Only quotations the customer has accepted AND with a delivery date set
-        // are ready to be grouped into a delivery trip.
-        .eq("status", "accepted")
+        // Only finalized quotations (advance received OR admin-marked) with a
+        // delivery date set are ready to be grouped into a delivery trip.
+        .eq("status", "finalized")
         .not("expected_delivery_date", "is", null)
         .order("expected_delivery_date", { ascending: true }),
     ]);
