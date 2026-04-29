@@ -162,11 +162,10 @@ const AdminQuotationPreview = () => {
   };
 
   const markSent = async () => {
-    if (!q) return;
-    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-      await supabase.from("quotations").update({ status: "sent" }).eq("id", q.id);
-      setQ({ ...q, status: "sent" });
-    }
+    // No-op under the simplified 4-status workflow. Sharing a PDF/JPG no
+    // longer advances the status — only Advance Received or an admin's manual
+    // change does. Kept as a stub so existing call sites compile.
+    return;
   };
 
   // Share one or more JPG pages (page-by-page sequence). Tries the native
