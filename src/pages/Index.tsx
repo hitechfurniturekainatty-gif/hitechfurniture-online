@@ -98,12 +98,24 @@ const Index = () => {
   // All sections except hero_intro render below the hero. Honour admin display_order.
   const belowSections = sections.filter((s) => s.section_key !== "hero_intro");
 
+  // Global Loading Guard — show a clean branded splash until homepage data is
+  // ready. Prevents the brief flash of the legacy split hero on refresh.
+  if (initializing) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <Logo className="h-16 w-auto" />
+        <Loader2 className="h-5 w-5 animate-spin text-primary/70" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
-      {/* Dynamic hero slider — falls back to the classic split hero if admin hasn't added slides yet. */}
-      {slides.length > 0 ? (
+      {/* Dynamic hero slider. The legacy split-hero fallback was removed to
+          eliminate the flash-of-old-UI on refresh. */}
+      {slides.length > 0 && (
         heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) ? (
           // Old-model split layout: slider on the left, intro frame on the right (desktop).
           // On mobile they stack — slider first, then intro.
@@ -147,58 +159,6 @@ const Index = () => {
         ) : (
           <HeroSlider slides={slides} />
         )
-      ) : (
-      <section className="relative overflow-hidden">
-        <div className="container-page grid items-center gap-12 py-16 md:grid-cols-2 md:py-24 lg:py-28">
-          <div className="animate-fade-up">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-              {heroIntro?.eyebrow || "Live Catalog · Updated Daily"}
-            </p>
-            <h1 className="font-display text-4xl leading-[1.05] text-foreground md:text-6xl lg:text-7xl">
-              {heroIntro?.title || (
-                <>
-                  Furniture, <em className="text-primary not-italic font-display">crafted</em>
-                  <br />for the way you live.
-                </>
-              )}
-            </h1>
-            <p className="mt-6 max-w-xl text-base text-muted-foreground md:text-lg">
-              {heroIntro?.body || `${BRAND_TAGLINE} Browse our complete collection of sofas, beds, wardrobes and bespoke interiors — with live pricing and instant WhatsApp inquiry.`}
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="group">
-                <Link to={heroIntro?.cta_link || "/catalog"}>
-                  {heroIntro?.cta_label || "Explore catalog"}
-                  <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <a href={`https://wa.me/${settings?.whatsapp_number || "919526610404"}`} target="_blank" rel="noopener">Chat on WhatsApp</a>
-              </Button>
-            </div>
-          </div>
-          <div className="relative animate-scale-in">
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10 blur-2xl" />
-            <picture>
-              <source media="(max-width: 767px)" srcSet={heroImgWebpSm} type="image/webp" />
-              <source srcSet={heroImgWebp} type="image/webp" />
-              <img
-                src={heroImgJpg}
-                alt="Living room styled with Hitech furniture"
-                fetchPriority="high"
-                decoding="async"
-                width={800}
-                height={1000}
-                className="relative aspect-[4/5] w-full rounded-3xl object-cover shadow-elegant md:aspect-[5/6]"
-              />
-            </picture>
-            <div className="absolute -bottom-6 -left-6 hidden rounded-2xl bg-card p-5 shadow-product md:block">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">From</p>
-              <p className="font-display text-2xl font-semibold text-primary">₹ 12,500</p>
-            </div>
-          </div>
-        </div>
-      </section>
       )}
 
       {/* heroIntro is now rendered inline alongside the slider (above), so no
