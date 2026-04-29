@@ -203,6 +203,10 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
+  // "saved" = pick a registered worker (existing flow).
+  // "direct" = skip worker selection and trigger native share sheet so the
+  // admin can send the worker-safe file to ANY contact / WhatsApp group.
+  const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
