@@ -260,6 +260,7 @@ const AdminQuotationEditor = () => {
     const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
     if (!headerDirty && !hasUnsavedItems && !saving) {
       load();
+      setStatusHistoryKey((k) => k + 1);
     } else {
       toast({
         title: "Updated by another user",
