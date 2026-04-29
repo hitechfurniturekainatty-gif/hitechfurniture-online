@@ -958,14 +958,11 @@ const AdminQuotationEditor = () => {
             <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>
           <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
-          {canEditPrice && q.status === "sent" && (
+          {canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
-              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("accepted")}>Mark accepted</Button>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
               <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive" onClick={() => setStatus("rejected")}>Reject</Button>
             </div>
-          )}
-          {canEditPrice && q.status === "accepted" && (
-            <Button size="sm" variant="outline" className="hidden h-8 sm:inline-flex" onClick={() => setStatus("completed")}>Mark completed</Button>
           )}
         </div>
         {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
