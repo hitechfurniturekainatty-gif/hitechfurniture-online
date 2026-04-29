@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
-import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
+import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
@@ -54,7 +54,7 @@ const AdminQuotations = () => {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
+  const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -76,11 +76,11 @@ const AdminQuotations = () => {
   const setStatusFilter = (v: string) => {
     setStatusFilterState(v);
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("status"); else next.set("status", v);
+    if (v === "active") next.delete("status"); else next.set("status", v);
     setSearchParams(next, { replace: true });
   };
   useEffect(() => {
-    const fromUrl = searchParams.get("status") ?? "all";
+    const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
     const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";
     if (docFromUrl !== docTab) setDocTabState(docFromUrl);
@@ -253,8 +253,9 @@ const AdminQuotations = () => {
     }
   };
 
-  // All statuses we care about (order = lifecycle order)
-  const STATUS_FILTERS = ["all", "draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+  // 4-status workflow + an "Active" view that hides delivered & rejected
+  // so the dashboard stays focused on what still needs work.
+  const STATUS_FILTERS = ["active", "all", "drafted", "finalized", "delivered", "rejected"] as const;
 
   // Apply doc-type tab + search BEFORE the status filter so each tab's status
   // counts only count the rows visible in that tab.
@@ -275,13 +276,27 @@ const AdminQuotations = () => {
 
   const filtered = useMemo(
     () =>
-      docFiltered.filter((r) => statusFilter === "all" || r.status === statusFilter),
+      docFiltered.filter((r) => {
+        const s = normalizeStatus(r.status);
+        if (statusFilter === "all") return true;
+        if (statusFilter === "active") return s !== "delivered" && s !== "rejected";
+        return s === statusFilter;
+      }),
     [docFiltered, statusFilter],
   );
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: docFiltered.length };
-    for (const k of STATUS_FILTERS) if (k !== "all") c[k] = docFiltered.filter((r) => r.status === k).length;
+    const c: Record<string, number> = {
+      all: docFiltered.length,
+      active: docFiltered.filter((r) => {
+        const s = normalizeStatus(r.status);
+        return s !== "delivered" && s !== "rejected";
+      }).length,
+    };
+    for (const k of STATUS_FILTERS) {
+      if (k === "all" || k === "active") continue;
+      c[k] = docFiltered.filter((r) => normalizeStatus(r.status) === k).length;
+    }
     return c;
   }, [docFiltered]);
 
@@ -533,11 +548,15 @@ const AdminQuotations = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_FILTERS.map((k) => (
-              <SelectItem key={k} value={k}>
-                {k === "all" ? "All statuses" : statusLabel(k)} ({counts[k] ?? 0})
-              </SelectItem>
-            ))}
+            {STATUS_FILTERS.map((k) => {
+              const label =
+                k === "all" ? "All statuses" : k === "active" ? "Active (Drafted + Finalized)" : statusLabel(k);
+              return (
+                <SelectItem key={k} value={k}>
+                  {label} ({counts[k] ?? 0})
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -547,11 +566,15 @@ const AdminQuotations = () => {
       ) : (
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
-            {STATUS_FILTERS.map((k) => (
-              <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
-                {k === "all" ? "All" : statusLabel(k)} ({counts[k] ?? 0})
-              </TabsTrigger>
-            ))}
+            {STATUS_FILTERS.map((k) => {
+              const label =
+                k === "all" ? "All" : k === "active" ? "Active" : statusLabel(k);
+              return (
+                <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
+                  {label} ({counts[k] ?? 0})
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           <TabsContent value={statusFilter} className="mt-4 grid gap-3">
             {filtered.map(renderRow)}

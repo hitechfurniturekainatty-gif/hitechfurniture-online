@@ -40,6 +40,7 @@ import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
+import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
 
 type QItem = {
   id: string;
@@ -107,29 +108,35 @@ type MainCat = { id: string; name: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
-// Full quotation lifecycle (kept lowercase to match DB defaults)
-const STATUS_OPTIONS = [
-  "draft",        // just created, no items / not measured
-  "drafted",      // measurement done, awaiting price
-  "finalized",    // price + GST added, ready to send
-  "sent",         // shared with customer (WhatsApp)
-  "accepted",     // customer confirmed
-  "completed",    // delivered / done
-  "rejected",     // not moving forward
-];
+// Simplified 4-status lifecycle. Any legacy values still in the DB are
+// normalised to one of these for display via `statusLabel` below.
+export const STATUS_OPTIONS = ["drafted", "finalized", "delivered", "rejected"] as const;
+
+// Map any legacy status to its new bucket so old rows still render correctly.
+export const normalizeStatus = (s: string): string => {
+  switch (s) {
+    case "draft":
+      return "drafted";
+    case "sent":
+    case "accepted":
+      return "finalized";
+    case "completed":
+      return "delivered";
+    default:
+      return s;
+  }
+};
 
 export const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (s) {
-    case "accepted":
-    case "completed":
+  switch (normalizeStatus(s)) {
+    case "delivered":
       return "default";
-    case "sent":
     case "finalized":
       return "secondary";
     case "rejected":
       return "destructive";
     default:
-      return "outline"; // draft, drafted
+      return "outline"; // drafted
   }
 };
 
@@ -164,15 +171,12 @@ const ProductRow = ({
 
 export const statusLabel = (s: string) => {
   const map: Record<string, string> = {
-    draft: "Pending",
     drafted: "Drafted",
     finalized: "Finalized",
-    sent: "Sent",
-    accepted: "Accepted",
-    completed: "Completed",
+    delivered: "Delivered",
     rejected: "Rejected",
   };
-  return map[s] ?? s;
+  return map[normalizeStatus(s)] ?? s;
 };
 
 const AdminQuotationEditor = () => {
@@ -185,6 +189,9 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Bumped whenever the quotation's status changes so the history card
+  // re-fetches the audit trail.
+  const [statusHistoryKey, setStatusHistoryKey] = useState(0);
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
@@ -253,6 +260,7 @@ const AdminQuotationEditor = () => {
     const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
     if (!headerDirty && !hasUnsavedItems && !saving) {
       load();
+      setStatusHistoryKey((k) => k + 1);
     } else {
       toast({
         title: "Updated by another user",
@@ -519,20 +527,21 @@ const AdminQuotationEditor = () => {
 
     setSaving(false);
 
-    // Auto-advance status based on content + role
-    const hasItems = updated.length > 0 && updated.some((it) => it.description.trim());
-    const hasPricing = updated.some((it) => Number(it.unit_price) > 0);
-    let nextStatus: string | null = null;
-    if (po) {
-      // POs don't have a "finalized" pricing step — once items exist, it's drafted/finalized.
-      if (q.status === "draft" && hasItems) nextStatus = "finalized";
-    } else {
-      if (q.status === "draft" && hasItems && !canEditPrice) nextStatus = "drafted";
-      if ((q.status === "draft" || q.status === "drafted") && hasItems && hasPricing && canEditPrice) nextStatus = "finalized";
-    }
-    if (nextStatus) {
-      const { error: stErr } = await supabase.from("quotations").update({ status: nextStatus }).eq("id", q.id);
-      if (!stErr) setQ((prev) => (prev ? { ...prev, status: nextStatus! } : prev));
+    // Status auto-advance: only the advance-amount → finalized rule remains.
+    // It's enforced by a DB trigger (quotations_status_audit), so nothing to
+    // do here. All quotations start as "drafted" and stay there until the
+    // admin moves them manually or an advance is recorded.
+    // We re-read the status from DB after a save in case the trigger flipped it.
+    if (canEditPrice) {
+      const { data: fresh } = await supabase
+        .from("quotations")
+        .select("status, advance_amount")
+        .eq("id", q.id)
+        .maybeSingle();
+      if (fresh && fresh.status !== q.status) {
+        setQ((prev) => (prev ? { ...prev, status: fresh.status } : prev));
+        setStatusHistoryKey((k) => k + 1);
+      }
     }
 
     toast({ title: "Saved" });
@@ -742,6 +751,7 @@ const AdminQuotationEditor = () => {
       return;
     }
     setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    setStatusHistoryKey((k) => k + 1);
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
@@ -808,9 +818,8 @@ const AdminQuotationEditor = () => {
 
     await shareJpgPagesViaWhatsApp(r.blobs, r.baseName, q.party_phone, msg);
 
-    if (q.status === "draft" || q.status === "drafted" || q.status === "finalized") {
-      await setStatus("sent", { silent: true });
-    }
+    // Note: sharing on WhatsApp no longer changes the status. The 4-status
+    // workflow only moves to "finalized" via Advance Received or admin action.
   };
 
   // ---- Job Work ----
@@ -967,14 +976,11 @@ const AdminQuotationEditor = () => {
             <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>
           <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
-          {canEditPrice && q.status === "sent" && (
+          {canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
-              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("accepted")}>Mark accepted</Button>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
               <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive" onClick={() => setStatus("rejected")}>Reject</Button>
             </div>
-          )}
-          {canEditPrice && q.status === "accepted" && (
-            <Button size="sm" variant="outline" className="hidden h-8 sm:inline-flex" onClick={() => setStatus("completed")}>Mark completed</Button>
           )}
         </div>
         {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
@@ -1410,6 +1416,11 @@ const AdminQuotationEditor = () => {
 
       {isFieldOnly && (
         <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
+      )}
+
+      {/* Audit trail of every status change (admin/staff only — workers don't see this). */}
+      {canEditPrice && (
+        <QuotationStatusHistory quotationId={q.id} refreshKey={statusHistoryKey} />
       )}
 
       {/* Sticky mobile action bar */}
