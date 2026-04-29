@@ -283,7 +283,7 @@ export default function AdminReceivables() {
   const callPhone = (p: string) => { if (p) window.location.href = `tel:+91${p}`; };
   const wa = (p: string, amt: number) => {
     if (!p) return;
-    const msg = `Hi, this is from HitecH Furniture. You have a pending payment of ${fmtAmount(amt)}. Kindly take note. Thank you.`;
+    const msg = `Greetings from HitecH Furniture! Hope you are having a wonderful day. We are reaching out regarding a pending balance of ${fmtAmount(amt)} on your account. We kindly request you to arrange this payment at your earliest convenience. Thank you for your continued support! Have a great day ahead.`;
     openWhatsAppApp(`91${p}`, msg);
   };
 
