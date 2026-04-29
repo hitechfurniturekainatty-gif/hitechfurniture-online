@@ -8,9 +8,9 @@ import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { statusBadgeVariant, statusLabel } from "./AdminQuotationEditor";
+import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
 
-const QUOTATION_STATUSES = ["draft", "drafted", "finalized", "sent", "accepted", "completed", "rejected"] as const;
+const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
 
 type UpcomingDelivery = {
   id: string;
@@ -39,7 +39,7 @@ const AdminOverview = () => {
         supabase.from("main_categories").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
         supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).lte("stock_quantity", 5).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "draft").then((r) => r),
+        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "drafted").then((r) => r),
         supabase.from("workers").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_active", true).then((r) => r),
         supabase.from("customer_services").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(resolved,cancelled,converted)").then((r) => r),
         supabase.from("customer_complaints").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(resolved,cancelled)").then((r) => r),
@@ -90,7 +90,7 @@ const AdminOverview = () => {
           .not("expected_delivery_date", "is", null)
           .gte("expected_delivery_date", fromStr)
           .lte("expected_delivery_date", toStr)
-          .not("status", "in", "(completed,rejected)")
+          .not("status", "in", "(delivered,rejected)")
           .order("expected_delivery_date", { ascending: true })
           .limit(50);
         if (!isAdmin) q = q.eq("created_by", user.id);
