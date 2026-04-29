@@ -123,7 +123,7 @@ const AdminOverview = () => {
   const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
-    isOfficeStaff && { label: "Draft quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=draft" },
+    isOfficeStaff && { label: "Drafted quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=drafted" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
     isAdmin && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
