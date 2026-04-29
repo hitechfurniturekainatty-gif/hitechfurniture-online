@@ -777,6 +777,18 @@ const AdminQuotationPreview = () => {
           )}
           {canShare && (
             <Button
+              variant="outline"
+              onClick={openDirectShareDialog}
+              disabled={sharing || generatingJob || items.length === 0}
+              className="h-11 flex-1 sm:flex-initial"
+              title="Share job work directly to any contact or WhatsApp group"
+            >
+              <Share2 className="mr-2 h-4 w-4 text-primary" />
+              Direct Share
+            </Button>
+          )}
+          {canShare && (
+            <Button
               onClick={() => buildAndShare("share")}
               disabled={sharing}
               className="h-11 flex-1 sm:flex-initial"
@@ -811,6 +823,32 @@ const AdminQuotationPreview = () => {
           </DialogHeader>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+            {/* Mode picker — Saved Worker vs Direct WhatsApp / native share */}
+            <div className="space-y-2">
+              <Label>Send to</Label>
+              <RadioGroup
+                value={assignMode}
+                onValueChange={(v) => setAssignMode(v as "saved" | "direct")}
+                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              >
+                <label className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${assignMode === "saved" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="saved" id="mode-saved" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Saved Worker</p>
+                    <p className="text-xs text-muted-foreground">Pick from your registered workers list.</p>
+                  </div>
+                </label>
+                <label className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${assignMode === "direct" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="direct" id="mode-direct" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Direct WhatsApp Share</p>
+                    <p className="text-xs text-muted-foreground">Send to any contact or WhatsApp group via your phone.</p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+
+            {assignMode === "saved" && (
             <div className="space-y-1.5">
               <Label>Worker</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -849,6 +887,18 @@ const AdminQuotationPreview = () => {
                 );
               })()}
             </div>
+            )}
+
+            {assignMode === "direct" && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+                <p className="font-medium">Direct WhatsApp / Native Share</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  We'll generate the worker-safe file (no prices, no customer phone)
+                  and open your phone's share sheet so you can pick any contact or
+                  WhatsApp group. No worker profile is needed.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Items to assign</Label>
@@ -885,11 +935,11 @@ const AdminQuotationPreview = () => {
             <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={workers.length === 0 || !selectedWorker}
+              disabled={assignMode === "saved" && (workers.length === 0 || !selectedWorker)}
               onPdf={() => generateAndAssignJob("pdf")}
               onJpg={() => generateAndAssignJob("jpg")}
               triggerVariant="default"
-              label="Assign & send"
+              label={assignMode === "direct" ? "Generate & Share" : "Assign & send"}
               pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
               jpgTooltip="JPG — send via WhatsApp to worker now"
             />
