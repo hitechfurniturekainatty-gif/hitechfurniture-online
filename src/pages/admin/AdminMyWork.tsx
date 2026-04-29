@@ -143,7 +143,7 @@ const AdminMyWork = () => {
             </p>
           </div>
           <div className="text-right">
-            <Badge variant={q.status === "draft" ? "outline" : "secondary"} className="capitalize">{q.status}</Badge>
+            <Badge variant={q.status === "drafted" || q.status === "draft" ? "outline" : "secondary"} className="capitalize">{q.status}</Badge>
             <p className="mt-2 font-semibold">₹{Number(q.total ?? 0).toLocaleString("en-IN")}</p>
           </div>
         </div>
