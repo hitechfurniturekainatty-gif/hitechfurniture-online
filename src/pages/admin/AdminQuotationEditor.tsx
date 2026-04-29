@@ -1149,7 +1149,19 @@ const AdminQuotationEditor = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Item photo</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs font-medium">Item photo</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
+                          onClick={() => openPickerForItem(it.id)}
+                        >
+                          <Search className="mr-1 h-3 w-3" />
+                          Pick from catalog
+                        </Button>
+                      </div>
                       <SingleImagePicker
                         value={it.item_image_url}
                         onChange={(v) => updateItem(it.id, { item_image_url: v })}
