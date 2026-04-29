@@ -188,6 +188,9 @@ const AdminQuotationEditor = () => {
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  // When set, the next product picked replaces the fields of this existing row
+  // instead of appending a new line. Cleared after use or when picker closes.
+  const [pickerTargetItemId, setPickerTargetItemId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
@@ -341,10 +344,40 @@ const AdminQuotationEditor = () => {
     setPickerMainId(null);
     setPickerSubId(null);
     setProductSearch("");
+    setPickerTargetItemId(null);
+    setProductPickerOpen(true);
+  };
+
+  // Open the same catalog picker, but bind the next pick to a specific
+  // existing row — so the admin can fill in catalog details per-row while
+  // building a long quotation, instead of adding a brand-new line.
+  const openPickerForItem = async (itemId: string) => {
+    await loadProducts();
+    setPickerMainId(null);
+    setPickerSubId(null);
+    setProductSearch("");
+    setPickerTargetItemId(itemId);
     setProductPickerOpen(true);
   };
 
   const addFromProduct = (p: Product) => {
+    // If the picker was opened from a row's "Pick from catalog" button,
+    // patch THAT row instead of appending a new one.
+    if (pickerTargetItemId) {
+      updateItem(pickerTargetItemId, {
+        description: `${p.product_name} (${p.product_code})`,
+        item_image_url: p.product_images?.[0]?.image_url ?? null,
+        catalog_text: p.product_code ?? null,
+        unit_price: canEditPrice
+          ? Number(p.offer_price ?? p.mrp ?? 0)
+          : undefined as any,
+        product_id: p.id,
+      });
+      setPickerTargetItemId(null);
+      setProductPickerOpen(false);
+      toast({ title: "Item updated from catalog" });
+      return;
+    }
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
       description: `${p.product_name} (${p.product_code})`,
