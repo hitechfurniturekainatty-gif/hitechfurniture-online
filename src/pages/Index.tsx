@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2 } from "lucide-react";
-import Logo from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import {
