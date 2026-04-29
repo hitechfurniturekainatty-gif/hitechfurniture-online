@@ -738,6 +738,7 @@ const AdminQuotationEditor = () => {
       return;
     }
     setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    setStatusHistoryKey((k) => k + 1);
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
