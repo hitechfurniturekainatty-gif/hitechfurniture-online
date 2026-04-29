@@ -188,6 +188,9 @@ const AdminQuotationEditor = () => {
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  // When set, the next product picked replaces the fields of this existing row
+  // instead of appending a new line. Cleared after use or when picker closes.
+  const [pickerTargetItemId, setPickerTargetItemId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
@@ -341,10 +344,39 @@ const AdminQuotationEditor = () => {
     setPickerMainId(null);
     setPickerSubId(null);
     setProductSearch("");
+    setPickerTargetItemId(null);
+    setProductPickerOpen(true);
+  };
+
+  // Open the same catalog picker, but bind the next pick to a specific
+  // existing row — so the admin can fill in catalog details per-row while
+  // building a long quotation, instead of adding a brand-new line.
+  const openPickerForItem = async (itemId: string) => {
+    await loadProducts();
+    setPickerMainId(null);
+    setPickerSubId(null);
+    setProductSearch("");
+    setPickerTargetItemId(itemId);
     setProductPickerOpen(true);
   };
 
   const addFromProduct = (p: Product) => {
+    // If the picker was opened from a row's "Pick from catalog" button,
+    // patch THAT row instead of appending a new one.
+    if (pickerTargetItemId) {
+      const patch: Partial<QItem> = {
+        description: `${p.product_name} (${p.product_code})`,
+        item_image_url: p.product_images?.[0]?.image_url ?? null,
+        catalog_text: p.product_code ?? null,
+        product_id: p.id,
+      };
+      if (canEditPrice) patch.unit_price = Number(p.offer_price ?? p.mrp ?? 0);
+      updateItem(pickerTargetItemId, patch);
+      setPickerTargetItemId(null);
+      setProductPickerOpen(false);
+      toast({ title: "Item updated from catalog" });
+      return;
+    }
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
       description: `${p.product_name} (${p.product_code})`,
@@ -1117,7 +1149,19 @@ const AdminQuotationEditor = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Item photo</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs font-medium">Item photo</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
+                          onClick={() => openPickerForItem(it.id)}
+                        >
+                          <Search className="mr-1 h-3 w-3" />
+                          Pick from catalog
+                        </Button>
+                      </div>
                       <SingleImagePicker
                         value={it.item_image_url}
                         onChange={(v) => updateItem(it.id, { item_image_url: v })}
@@ -1404,7 +1448,13 @@ const AdminQuotationEditor = () => {
       <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
 
       {/* Product picker */}
-      <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+      <Dialog
+        open={productPickerOpen}
+        onOpenChange={(o) => {
+          setProductPickerOpen(o);
+          if (!o) setPickerTargetItemId(null);
+        }}
+      >
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="flex items-center gap-2">
