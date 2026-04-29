@@ -1585,6 +1585,33 @@ const AdminQuotationEditor = () => {
             onFocusCapture={scrollFocusedIntoView}
           >
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
+
+            {/* Mode picker — Saved Worker vs Direct WhatsApp / native share */}
+            <div className="space-y-2">
+              <Label>Send to</Label>
+              <RadioGroup
+                value={jobMode}
+                onValueChange={(v) => setJobMode(v as "saved" | "direct")}
+                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              >
+                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "saved" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="saved" id="jobmode-saved" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Saved Worker</p>
+                    <p className="text-[11px] text-muted-foreground">Pick from registered workers.</p>
+                  </div>
+                </label>
+                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "direct" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="direct" id="jobmode-direct" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Direct WhatsApp Share</p>
+                    <p className="text-[11px] text-muted-foreground">Any contact / WhatsApp group.</p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+
+            {jobMode === "saved" ? (
             <div className="space-y-1.5">
               <Label>Worker *</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -1601,18 +1628,25 @@ const AdminQuotationEditor = () => {
                 <p className="text-xs text-muted-foreground">No active workers. <Link to="/admin/workers" className="text-primary underline">Add one</Link>.</p>
               )}
             </div>
+            ) : (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
+                We'll generate the worker-safe file (no prices, no customer phone)
+                and open your phone's share sheet so you can pick any contact or
+                WhatsApp group.
+              </div>
+            )}
             <div className="space-y-1.5"><Label>Notes (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. priority, finish type..." /></div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={!selectedWorker}
+              disabled={jobMode === "saved" && !selectedWorker}
               onPdf={() => generateAndSendJob("pdf")}
               onJpg={() => generateAndSendJob("jpg")}
               triggerVariant="default"
               triggerClassName="w-full sm:w-auto"
-              label="Assign & send"
+              label={jobMode === "direct" ? "Generate & Share" : "Assign & send"}
               pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
               jpgTooltip="JPG — send via WhatsApp to worker now"
             />
