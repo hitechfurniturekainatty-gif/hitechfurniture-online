@@ -16,23 +16,17 @@ import { useNavigate } from "react-router-dom";
 /**
  * Receivables — confidential admin-only ledger. Persisted in DB.
  *
- * Smart parser supports two paste shapes (auto-detected):
- *  1) TSV/CSV from spreadsheet → tab/comma separated columns
- *  2) Free text — one record per line
- *
- * Field rules (per spec):
- *  - Bill No: FIRST 9 ALPHANUMERIC characters (skip leading spaces/symbols).
- *  - Phone: 10-digit number near the END of the line.
- *  - Amount: LAST numeric token on the line.
- *  - Place: word(s) immediately before the phone.
- *  - Customer Name: text between bill no and place.
+ * Fixed-format parser (one record per line):
+ *  - Bill No: 2 digits + 2 letters + up to 6 digits (e.g. 26HT123456)
+ *  - Phone: 10-digit number near the END of the line, immediately before the amount
+ *  - Amount: final numeric value on the line
+ *  - Customer Details: everything between Bill No and Phone (name + place, single field)
  */
 
 type DraftRow = {
   id: string;
   billNo: string;
-  customer: string;
-  place: string;
+  customer: string; // combined "Customer Details" (name + place)
   phone: string;
   amount: number | null;
   amountRaw: string;
@@ -51,6 +45,7 @@ type ServerRow = {
   created_at: string;
 };
 
+const BILL_RE = /\b(\d{2}[A-Za-z]{2}\d{1,6})\b/;
 const PHONE_RE = /(?:\d[\s\-.]*){10}/g;
 const AMOUNT_RE = /-?\d{1,3}(?:[,\s]\d{2,3})*(?:\.\d+)?|-?\d+(?:\.\d+)?/g;
 
@@ -63,14 +58,16 @@ function cleanLine(line: string) {
 }
 
 function takeBillNo(line: string): { billNo: string; rest: string } {
-  // Skip leading non-alphanumerics, then take up to 9 alphanumeric chars.
-  const m = line.match(/^[^A-Za-z0-9]*([A-Za-z0-9]{1,})/);
-  if (!m) return { billNo: "", rest: line };
-  const head = m[1];
-  const billNo = head.slice(0, 9);
-  // Cut from original line: leading non-alnum + the alphanumeric run we partially consumed.
-  const consumedLen = (m[0].length - head.length) + billNo.length;
-  const rest = line.slice(consumedLen).trim();
+  // Fixed format: 2 digits + 2 letters + up to 6 digits (e.g. 26HT123456)
+  const m = line.match(BILL_RE);
+  if (!m) {
+    // Fallback: first alphanumeric token
+    const f = line.match(/[A-Za-z0-9]+/);
+    return { billNo: f ? f[0] : "", rest: f ? line.slice((f.index ?? 0) + f[0].length).trim() : line };
+  }
+  const billNo = m[1].toUpperCase();
+  const start = m.index ?? 0;
+  const rest = (line.slice(0, start) + line.slice(start + m[1].length)).trim();
   return { billNo, rest };
 }
 
@@ -105,31 +102,22 @@ function extractLastAmount(text: string): { amount: number | null; raw: string; 
   return { amount: Number.isFinite(numeric) ? numeric : null, raw: raw.trim(), rest };
 }
 
-function splitNamePlace(text: string): { name: string; place: string } {
-  const tokens = text.replace(/[,|;]+/g, " ").split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return { name: "", place: "" };
-  if (tokens.length === 1) return { name: tokens[0], place: "" };
-  const place = tokens.pop() as string;
-  return { name: tokens.join(" "), place };
-}
-
 function parseFreeLine(raw: string): DraftRow {
   const line = cleanLine(raw);
   const { billNo, rest: r1 } = takeBillNo(line);
   const { phone, before, after } = extractTrailingPhone(r1);
-  // Amount usually appears AFTER phone; if not, fall back to last number on the line.
+  // Amount appears AFTER phone per spec; fall back to last number if not found.
   let amountInfo = extractLastAmount(after);
-  let restForName = before;
+  let customerText = before;
   if (amountInfo.amount == null) {
     amountInfo = extractLastAmount(before);
-    restForName = amountInfo.rest;
+    customerText = amountInfo.rest;
   }
-  const { name, place } = splitNamePlace(restForName);
+  const customer = customerText.replace(/[,|;]+/g, " ").replace(/\s{2,}/g, " ").trim();
   return {
     id: crypto.randomUUID(),
     billNo,
-    customer: name,
-    place,
+    customer,
     phone,
     amount: amountInfo.amount,
     amountRaw: amountInfo.raw,
@@ -137,51 +125,10 @@ function parseFreeLine(raw: string): DraftRow {
   };
 }
 
-function parseTabular(text: string): DraftRow[] {
-  // Auto-detect TSV/CSV: split on tabs primarily, fall back to commas.
-  const lines = text.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.trim().length > 0);
-  return lines.map((line) => {
-    const cells = line.includes("\t") ? line.split("\t") : line.split(",");
-    const trimmed = cells.map((c) => c.trim());
-    // Heuristic mapping: try to find phone & amount by content; bill no = first cell trimmed to 9 alnum.
-    const billHead = trimmed[0]?.match(/[A-Za-z0-9]+/)?.[0] ?? "";
-    const billNo = billHead.slice(0, 9);
-    let phone = "";
-    let amount: number | null = null;
-    let amountRaw = "";
-    const remaining: string[] = [];
-    for (let i = 1; i < trimmed.length; i++) {
-      const cell = trimmed[i];
-      const digits = cell.replace(/\D/g, "");
-      if (!phone && digits.length === 10) { phone = digits; continue; }
-      const num = parseFloat(cell.replace(/[,\s₹]/g, ""));
-      if (!isNaN(num) && /\d/.test(cell)) { amount = num; amountRaw = cell; continue; }
-      remaining.push(cell);
-    }
-    const { name, place } = splitNamePlace(remaining.join(" "));
-    return {
-      id: crypto.randomUUID(),
-      billNo,
-      customer: name,
-      place,
-      phone,
-      amount,
-      amountRaw,
-      raw: line,
-    };
-  });
-}
-
 function autoParse(text: string): DraftRow[] {
-  // Detect tabular: any line containing tabs, OR most lines containing 3+ commas.
+  // Normalize tabs/commas to spaces so the same fixed-format parser works for pasted spreadsheet rows.
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length === 0) return [];
-  const tabLines = lines.filter((l) => l.includes("\t")).length;
-  const csvLines = lines.filter((l) => (l.match(/,/g)?.length ?? 0) >= 3).length;
-  if (tabLines / lines.length >= 0.5 || csvLines / lines.length >= 0.7) {
-    return parseTabular(text);
-  }
-  return lines.map(parseFreeLine);
+  return lines.map((l) => parseFreeLine(l.replace(/\t/g, " ")));
 }
 
 const fmtAmount = (n: number | null) => {
@@ -251,7 +198,7 @@ export default function AdminReceivables() {
     const payload = draft.map((d) => ({
       bill_no: d.billNo || null,
       customer_name: d.customer || null,
-      place: d.place || null,
+      place: null,
       phone: d.phone || null,
       pending_amount: d.amount ?? 0,
       raw_text: d.raw,
@@ -336,7 +283,7 @@ export default function AdminReceivables() {
   const callPhone = (p: string) => { if (p) window.location.href = `tel:+91${p}`; };
   const wa = (p: string, amt: number) => {
     if (!p) return;
-    const msg = `Hello sir/madam, this is Hitech Furniture and Interiors. Your pending balance is ${fmtAmount(amt)}. Kindly settle this at your earliest convenience. Thank you!`;
+    const msg = `Hi, this is from HitecH Furniture. You have a pending payment of ${fmtAmount(amt)}. Kindly take note. Thank you.`;
     openWhatsAppApp(`91${p}`, msg);
   };
 
@@ -349,7 +296,7 @@ export default function AdminReceivables() {
         <div>
           <h1 className="font-display text-2xl md:text-3xl">Backlog · Receivables</h1>
           <p className="text-sm text-muted-foreground">
-            Paste rows from Busy Accounting or Excel. Bill No auto-trimmed to first 9 alphanumeric characters.
+            Paste rows from Busy Accounting or Excel. Bill No format: 2 digits + 2 letters + up to 6 digits (e.g. 26HT123456).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -368,6 +315,17 @@ export default function AdminReceivables() {
         </div>
       </header>
 
+      {/* Total Outstanding Header */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Outstanding Amount</p>
+            <p className="font-display text-2xl md:text-3xl font-semibold tabular-nums">{fmtAmount(total)}</p>
+          </div>
+          <p className="text-sm text-muted-foreground">{rows.length} record{rows.length === 1 ? "" : "s"} saved</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Paste & parse</CardTitle>
@@ -376,12 +334,12 @@ export default function AdminReceivables() {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Paste rows — one per line. Free text or tab/CSV both work.\nQ20250001A Rahul Kumar Kalpetta 9876543210 12500\nQ20250002B Anjali Menon Sulthan Bathery 9988776655 8200.50`}
+            placeholder={`Paste rows — one per line.\n26HT123456 Rahul Kumar Kalpetta 9876543210 12500\n26HT123457 Anjali Menon Sulthan Bathery 9988776655 8200`}
             className="min-h-[140px] font-mono text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              Auto-detects TSV/CSV vs free text. Phone = trailing 10 digits, Amount = last number, Place = before phone, Name = between bill & place.
+              Bill No (e.g. 26HT123456) → Customer Details → 10-digit Phone → Final Amount.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setText(""); setDraft([]); }} disabled={!text && draft.length === 0}>Clear</Button>
@@ -406,10 +364,9 @@ export default function AdminReceivables() {
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Bill No</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Place</TableHead>
+                    <TableHead>Customer Details</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
@@ -417,9 +374,8 @@ export default function AdminReceivables() {
                   {draft.map((r, i) => (
                     <TableRow key={r.id}>
                       <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell><input className="w-28 rounded border bg-background px-2 py-1 font-mono text-xs" value={r.billNo} onChange={(e) => updateDraft(r.id, { billNo: e.target.value.slice(0, 9) })} /></TableCell>
-                      <TableCell><input className="w-44 rounded border bg-background px-2 py-1 text-sm" value={r.customer} onChange={(e) => updateDraft(r.id, { customer: e.target.value })} /></TableCell>
-                      <TableCell><input className="w-32 rounded border bg-background px-2 py-1 text-sm" value={r.place} onChange={(e) => updateDraft(r.id, { place: e.target.value })} /></TableCell>
+                      <TableCell><input className="w-32 rounded border bg-background px-2 py-1 font-mono text-xs uppercase" value={r.billNo} onChange={(e) => updateDraft(r.id, { billNo: e.target.value.slice(0, 10) })} /></TableCell>
+                      <TableCell><input className="w-64 rounded border bg-background px-2 py-1 text-sm" value={r.customer} onChange={(e) => updateDraft(r.id, { customer: e.target.value })} /></TableCell>
                       <TableCell><input className="w-32 rounded border bg-background px-2 py-1 font-mono text-xs" value={r.phone} onChange={(e) => updateDraft(r.id, { phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} /></TableCell>
                       <TableCell className="text-right">
                         <input
@@ -481,8 +437,8 @@ export default function AdminReceivables() {
             {rows.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="gap-1 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" /> Clear all
+                  <Button size="sm" variant="destructive" className="gap-1">
+                    <Trash2 className="h-4 w-4" /> Clear All
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -514,11 +470,10 @@ export default function AdminReceivables() {
                     </TableHead>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Bill No</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Place</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead>Customer Details</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead className="w-32 text-right">Action</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-32 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -537,10 +492,11 @@ export default function AdminReceivables() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-mono text-xs">{r.bill_no || "—"}</TableCell>
-                      <TableCell className="font-medium">{r.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell>{r.place || <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">{fmtAmount(Number(r.pending_amount))}</TableCell>
+                      <TableCell className="font-medium">
+                        {[r.customer_name, r.place].filter(Boolean).join(" ") || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{r.phone || <span className="text-destructive">missing</span>}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">{fmtAmount(Number(r.pending_amount))}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
                           <Button size="icon" variant="default" className="h-9 w-9" disabled={!r.phone} onClick={() => callPhone(r.phone!)} title="Call">
