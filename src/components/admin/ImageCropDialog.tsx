@@ -62,6 +62,103 @@ async function getCroppedFile(
   return new File([blob], safeName, { type: "image/jpeg", lastModified: Date.now() });
 }
 
+/**
+ * Corner handles overlay for the manual crop box.
+ * Positioned over the centered crop area react-easy-crop renders. Supports
+ * mouse, touch and pen via Pointer Events. Each corner resizes from the
+ * opposite anchor so the box grows/shrinks toward the dragged finger.
+ */
+function ResizeHandles({
+  stageW,
+  stageH,
+  boxW,
+  boxH,
+  setBoxW,
+  setBoxH,
+}: {
+  stageW: number;
+  stageH: number;
+  boxW: number;
+  boxH: number;
+  setBoxW: (n: number) => void;
+  setBoxH: (n: number) => void;
+}) {
+  // Crop box is centered in the stage by react-easy-crop.
+  const left = (stageW - boxW) / 2;
+  const top = (stageH - boxH) / 2;
+  const minSize = 40;
+  const maxW = Math.max(minSize, stageW - 8);
+  const maxH = Math.max(minSize, stageH - 8);
+
+  type Corner = "tl" | "tr" | "bl" | "br";
+  const start = (corner: Corner) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = boxW;
+    const startH = boxH;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      // Box is centered, so any edge drag changes size by 2× the pointer delta.
+      const sx = corner === "tr" || corner === "br" ? 1 : -1;
+      const sy = corner === "bl" || corner === "br" ? 1 : -1;
+      const nw = Math.min(maxW, Math.max(minSize, startW + sx * dx * 2));
+      const nh = Math.min(maxH, Math.max(minSize, startH + sy * dy * 2));
+      setBoxW(nw);
+      setBoxH(nh);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  const handleBase =
+    "absolute z-20 h-6 w-6 rounded-full border-2 border-white bg-primary shadow-md touch-none cursor-grab active:cursor-grabbing";
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      aria-hidden
+    >
+      <div
+        className="absolute"
+        style={{ left, top, width: boxW, height: boxH }}
+      >
+        <div
+          onPointerDown={start("tl")}
+          className={handleBase + " pointer-events-auto"}
+          style={{ left: -12, top: -12 }}
+        />
+        <div
+          onPointerDown={start("tr")}
+          className={handleBase + " pointer-events-auto"}
+          style={{ right: -12, top: -12 }}
+        />
+        <div
+          onPointerDown={start("bl")}
+          className={handleBase + " pointer-events-auto"}
+          style={{ left: -12, bottom: -12 }}
+        />
+        <div
+          onPointerDown={start("br")}
+          className={handleBase + " pointer-events-auto"}
+          style={{ right: -12, bottom: -12 }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export const ImageCropDialog = ({
   file,
   open,
