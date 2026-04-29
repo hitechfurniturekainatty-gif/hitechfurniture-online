@@ -38,6 +38,8 @@ import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { shareFilesNative } from "@/lib/nativeShare";
 
 type QItem = {
   id: string;
