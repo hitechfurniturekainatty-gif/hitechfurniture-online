@@ -42,8 +42,9 @@ const AdminLogistics = () => {
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, total, expected_delivery_date")
-        // Accepted orders with a delivery date set are ready to schedule.
-        .eq("status", "accepted")
+        // Finalized orders (advance received OR manually finalized) with a
+        // delivery date set are ready to schedule.
+        .eq("status", "finalized")
         .not("expected_delivery_date", "is", null),
       supabase
         .from("trip_quotations")
