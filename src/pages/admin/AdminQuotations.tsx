@@ -548,11 +548,15 @@ const AdminQuotations = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_FILTERS.map((k) => (
-              <SelectItem key={k} value={k}>
-                {k === "all" ? "All statuses" : statusLabel(k)} ({counts[k] ?? 0})
-              </SelectItem>
-            ))}
+            {STATUS_FILTERS.map((k) => {
+              const label =
+                k === "all" ? "All statuses" : k === "active" ? "Active (Drafted + Finalized)" : statusLabel(k);
+              return (
+                <SelectItem key={k} value={k}>
+                  {label} ({counts[k] ?? 0})
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -562,11 +566,15 @@ const AdminQuotations = () => {
       ) : (
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
-            {STATUS_FILTERS.map((k) => (
-              <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
-                {k === "all" ? "All" : statusLabel(k)} ({counts[k] ?? 0})
-              </TabsTrigger>
-            ))}
+            {STATUS_FILTERS.map((k) => {
+              const label =
+                k === "all" ? "All" : k === "active" ? "Active" : statusLabel(k);
+              return (
+                <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
+                  {label} ({counts[k] ?? 0})
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           <TabsContent value={statusFilter} className="mt-4 grid gap-3">
             {filtered.map(renderRow)}
