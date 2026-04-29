@@ -137,6 +137,24 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // If the user reaches /admin/backlog via browser BACK or FORWARD navigation
+  // (i.e. not a deliberate fresh click), bounce them out immediately so the
+  // PIN prompt never reappears from history. A deliberate entry sets a
+  // short-lived intent flag in BacklogShortcut / sidebar click handlers.
+  useEffect(() => {
+    try {
+      const intent = (window as any).__backlogIntent as number | undefined;
+      const fresh = intent && Date.now() - intent < 4000;
+      if (fresh) {
+        (window as any).__backlogIntent = 0;
+        return;
+      }
+      // Not a fresh intent → treat as back/forward arrival. Redirect away.
+      navigate("/admin", { replace: true });
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (authLoading || (isAdmin && pinSet === null && !unlocked)) {
     return (
       <AdminShell>
