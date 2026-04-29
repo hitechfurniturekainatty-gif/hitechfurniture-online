@@ -38,6 +38,8 @@ import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { shareFilesNative } from "@/lib/nativeShare";
 
 type QItem = {
   id: string;
@@ -201,6 +203,10 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
+  // "saved" = pick a registered worker (existing flow).
+  // "direct" = skip worker selection and trigger native share sheet so the
+  // admin can send the worker-safe file to ANY contact / WhatsApp group.
+  const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
@@ -789,13 +795,19 @@ const AdminQuotationEditor = () => {
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
     setJobNotes("");
+    setJobMode("saved");
     setJobOpen(true);
   };
 
   const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg") => {
-    if (!q || !selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
-    const worker = workers.find((w) => w.id === selectedWorker);
-    if (!worker) return;
+    if (!q) return;
+    const isDirect = jobMode === "direct";
+    let worker: Worker | undefined;
+    if (!isDirect) {
+      if (!selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
+      worker = workers.find((w) => w.id === selectedWorker);
+      if (!worker) return;
+    }
     const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
     if (chosenItems.length === 0) {
       toast({ title: "No saved items selected", description: "Save the quotation, then re-tick the items.", variant: "destructive" });
@@ -803,23 +815,26 @@ const AdminQuotationEditor = () => {
     }
     setGeneratingJob(true);
     try {
-      // create job_work_orders row
-      const { error } = await supabase.from("job_work_orders").insert({
-        quotation_id: q.id,
-        worker_id: worker.id,
-        item_ids: chosenItems.map((c) => c.id),
-        notes: jobNotes || null,
-        created_by: user?.id ?? null,
-      });
-      if (error) {
-        toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
-        return;
+      // Only log a job_work_orders row when assigning to a saved worker.
+      // Direct shares are intentionally not tied to any worker profile.
+      if (worker) {
+        const { error } = await supabase.from("job_work_orders").insert({
+          quotation_id: q.id,
+          worker_id: worker.id,
+          item_ids: chosenItems.map((c) => c.id),
+          notes: jobNotes || null,
+          created_by: user?.id ?? null,
+        });
+        if (error) {
+          toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+          return;
+        }
       }
       // generate worker-safe JPG (NO prices, NO bank, NO customer phone)
       const { generateJobWorkPdf } = await loadPdfLib();
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
-        worker_name: worker.name,
+        worker_name: worker?.name ?? "Job Work",
         date: new Date().toLocaleDateString("en-IN"),
         notes: jobNotes || null,
         items: chosenItems.map((it) => ({
@@ -834,22 +849,38 @@ const AdminQuotationEditor = () => {
           quantity: it.quantity,
         })),
       }, format === "jpg" ? SHARE_PDF_OPTIONS : undefined);
-      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
-      const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
+      const baseFilename = worker
+        ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
+        : `JobWork-${q.quotation_id}`;
+      const greeting = worker ? `Hi ${worker.name},` : "Hi,";
+      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      if (format === "pdf") {
+      if (isDirect) {
+        // Direct WhatsApp / native share sheet — admin picks any contact.
+        if (format === "pdf") {
+          await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
+        } else {
+          const { pdfBlobToJpgPages } = await loadJpgLib();
+          const blobs = await pdfBlobToJpgPages(pdfBlob);
+          await shareFilesNative(blobs, baseFilename, msg, "jpg");
+        }
+        toast({
+          title: "Ready to share",
+          description: "Pick the contact or WhatsApp group from your phone's share sheet.",
+        });
+      } else if (format === "pdf") {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
         toast({
           title: "Job PDF downloaded",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
         const { pdfBlobToJpgPages } = await loadJpgLib();
         const blobs = await pdfBlobToJpgPages(pdfBlob);
-        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
         toast({
           title: "Job work sent",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
         });
       }
 
@@ -1554,6 +1585,33 @@ const AdminQuotationEditor = () => {
             onFocusCapture={scrollFocusedIntoView}
           >
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
+
+            {/* Mode picker — Saved Worker vs Direct WhatsApp / native share */}
+            <div className="space-y-2">
+              <Label>Send to</Label>
+              <RadioGroup
+                value={jobMode}
+                onValueChange={(v) => setJobMode(v as "saved" | "direct")}
+                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              >
+                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "saved" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="saved" id="jobmode-saved" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Saved Worker</p>
+                    <p className="text-[11px] text-muted-foreground">Pick from registered workers.</p>
+                  </div>
+                </label>
+                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "direct" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <RadioGroupItem value="direct" id="jobmode-direct" className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Direct WhatsApp Share</p>
+                    <p className="text-[11px] text-muted-foreground">Any contact / WhatsApp group.</p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+
+            {jobMode === "saved" ? (
             <div className="space-y-1.5">
               <Label>Worker *</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -1570,18 +1628,25 @@ const AdminQuotationEditor = () => {
                 <p className="text-xs text-muted-foreground">No active workers. <Link to="/admin/workers" className="text-primary underline">Add one</Link>.</p>
               )}
             </div>
+            ) : (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
+                We'll generate the worker-safe file (no prices, no customer phone)
+                and open your phone's share sheet so you can pick any contact or
+                WhatsApp group.
+              </div>
+            )}
             <div className="space-y-1.5"><Label>Notes (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. priority, finish type..." /></div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={!selectedWorker}
+              disabled={jobMode === "saved" && !selectedWorker}
               onPdf={() => generateAndSendJob("pdf")}
               onJpg={() => generateAndSendJob("jpg")}
               triggerVariant="default"
               triggerClassName="w-full sm:w-auto"
-              label="Assign & send"
+              label={jobMode === "direct" ? "Generate & Share" : "Assign & send"}
               pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
               jpgTooltip="JPG — send via WhatsApp to worker now"
             />
