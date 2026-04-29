@@ -189,6 +189,9 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Bumped whenever the quotation's status changes so the history card
+  // re-fetches the audit trail.
+  const [statusHistoryKey, setStatusHistoryKey] = useState(0);
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
