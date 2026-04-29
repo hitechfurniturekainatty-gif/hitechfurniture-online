@@ -864,6 +864,38 @@ export type Database = {
           },
         ]
       }
+      quotation_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          quotation_id: string
+          status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          quotation_id: string
+          status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          quotation_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_status_history_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotations: {
         Row: {
           advance_amount: number
