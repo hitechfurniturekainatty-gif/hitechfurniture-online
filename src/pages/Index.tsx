@@ -4,11 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
-import heroImgWebp from "@/assets/hero-living.webp";
-import heroImgWebpSm from "@/assets/hero-living-sm.webp";
-import heroImgJpg from "@/assets/hero-living.jpg";
-import { BRAND_TAGLINE } from "@/lib/brand";
+import { ArrowRight, Loader2 } from "lucide-react";
+import Logo from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import {
@@ -37,6 +34,9 @@ const Index = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
+  // Global loading guard — prevents the brief flash of the placeholder
+  // hero before homepage data finishes loading.
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     // Fire both queries in parallel — saves one full round-trip on mobile.
@@ -66,6 +66,9 @@ const Index = () => {
       setSlides(hp.slides);
       setSections(hp.sections);
       setSettings(hp.settings);
+      setInitializing(false);
+    }).catch(() => {
+      if (!cancelled) setInitializing(false);
     });
 
     // Realtime: when admin reorders / edits / adds main categories, refresh instantly.
