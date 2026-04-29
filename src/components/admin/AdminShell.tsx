@@ -235,7 +235,12 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
                     key={entry.to}
                     to={entry.to}
                     end={entry.end}
-                    onClick={entry.to === "/admin" && entry.end ? handleOverviewTap : undefined}
+                    onClick={(e) => {
+                      if (entry.to === "/admin" && entry.end) handleOverviewTap?.(e as any);
+                      if (entry.to === "/admin/backlog") {
+                        (window as any).__backlogIntent = Date.now();
+                      }
+                    }}
                     className={({ isActive }) =>
                       cn(
                         "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",

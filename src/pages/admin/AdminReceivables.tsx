@@ -307,7 +307,7 @@ export default function AdminReceivables() {
             size="sm"
             variant="outline"
             className="gap-1"
-            onClick={() => { lockBacklog(); navigate("/admin"); }}
+            onClick={() => { lockBacklog(); navigate("/admin", { replace: true }); }}
             title="Lock and exit"
           >
             <Lock className="h-4 w-4" /> Lock
