@@ -11,9 +11,9 @@ export function BacklogShortcut() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "B" || e.key === "b")) {
         e.preventDefault();
+        // Mark this as a deliberate entry so BacklogGate doesn't bounce us out.
+        (window as any).__backlogIntent = Date.now();
         // replace: true so the PIN screen never appears in browser history.
-        // Pressing the back button after unlocking returns to wherever the
-        // user was, not to the password prompt.
         navigate("/admin/backlog", { replace: true });
       }
     };
