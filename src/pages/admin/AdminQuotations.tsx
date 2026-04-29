@@ -54,7 +54,7 @@ const AdminQuotations = () => {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "all");
+  const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -76,11 +76,11 @@ const AdminQuotations = () => {
   const setStatusFilter = (v: string) => {
     setStatusFilterState(v);
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("status"); else next.set("status", v);
+    if (v === "active") next.delete("status"); else next.set("status", v);
     setSearchParams(next, { replace: true });
   };
   useEffect(() => {
-    const fromUrl = searchParams.get("status") ?? "all";
+    const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
     const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";
     if (docFromUrl !== docTab) setDocTabState(docFromUrl);
