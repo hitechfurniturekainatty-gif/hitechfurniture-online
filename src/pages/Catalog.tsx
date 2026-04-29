@@ -11,7 +11,7 @@ import { Search, X, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type MainCat = { id: string; name: string; slug: string; image_url: string | null };
-type SubCat = { id: string; main_category_id: string; name: string; slug: string };
+type SubCat = { id: string; main_category_id: string; name: string; slug: string; image_url: string | null };
 type Product = ProductCardData & {
   main_category_id: string;
   sub_category_id: string | null;
@@ -45,7 +45,7 @@ const Catalog = () => {
     let cancelled = false;
     Promise.all([
       supabase.from("main_categories").select("id, name, slug, image_url").order("display_order"),
-      supabase.from("sub_categories").select("id, main_category_id, name, slug").order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name, slug, image_url").order("display_order"),
       supabase
         .from("products")
         .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
@@ -260,12 +260,30 @@ const Catalog = () => {
                   key={s.id}
                   type="button"
                   onClick={() => setSub(s.slug)}
-                  className="img-frame group relative flex aspect-square flex-col items-center justify-center overflow-hidden bg-card p-4 text-center transition-smooth hover:shadow-product"
+                  className="img-frame group relative aspect-square overflow-hidden bg-card text-left transition-smooth hover:shadow-product"
                 >
-                  <span className="font-display text-base text-foreground">{s.name}</span>
-                  <span className="mt-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                    {productCountBySub[s.id] ?? 0} pieces
-                  </span>
+                  {s.image_url ? (
+                    <img
+                      src={s.image_url}
+                      alt={s.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+                      <span className="font-display text-2xl text-primary">{s.name[0]}</span>
+                    </div>
+                  )}
+                  <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/75 via-foreground/0 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 z-10 flex items-end justify-between gap-2">
+                    <span className="font-display text-base font-semibold text-background">
+                      {s.name}
+                    </span>
+                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                      {productCountBySub[s.id] ?? 0}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
