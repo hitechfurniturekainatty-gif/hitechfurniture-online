@@ -77,7 +77,7 @@ export const ImageCropDialog = ({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [aspect, setAspect] = useState<number | undefined>(undefined);
+  const [aspect] = useState<number | undefined>(undefined);
   const [pixels, setPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
   // Manual mode: free aspect + user-controlled crop box size (in screen px).
