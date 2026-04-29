@@ -364,15 +364,14 @@ const AdminQuotationEditor = () => {
     // If the picker was opened from a row's "Pick from catalog" button,
     // patch THAT row instead of appending a new one.
     if (pickerTargetItemId) {
-      updateItem(pickerTargetItemId, {
+      const patch: Partial<QItem> = {
         description: `${p.product_name} (${p.product_code})`,
         item_image_url: p.product_images?.[0]?.image_url ?? null,
         catalog_text: p.product_code ?? null,
-        unit_price: canEditPrice
-          ? Number(p.offer_price ?? p.mrp ?? 0)
-          : undefined as any,
         product_id: p.id,
-      });
+      };
+      if (canEditPrice) patch.unit_price = Number(p.offer_price ?? p.mrp ?? 0);
+      updateItem(pickerTargetItemId, patch);
       setPickerTargetItemId(null);
       setProductPickerOpen(false);
       toast({ title: "Item updated from catalog" });
