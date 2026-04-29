@@ -107,29 +107,35 @@ type MainCat = { id: string; name: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
-// Full quotation lifecycle (kept lowercase to match DB defaults)
-const STATUS_OPTIONS = [
-  "draft",        // just created, no items / not measured
-  "drafted",      // measurement done, awaiting price
-  "finalized",    // price + GST added, ready to send
-  "sent",         // shared with customer (WhatsApp)
-  "accepted",     // customer confirmed
-  "completed",    // delivered / done
-  "rejected",     // not moving forward
-];
+// Simplified 4-status lifecycle. Any legacy values still in the DB are
+// normalised to one of these for display via `statusLabel` below.
+export const STATUS_OPTIONS = ["drafted", "finalized", "delivered", "rejected"] as const;
+
+// Map any legacy status to its new bucket so old rows still render correctly.
+export const normalizeStatus = (s: string): string => {
+  switch (s) {
+    case "draft":
+      return "drafted";
+    case "sent":
+    case "accepted":
+      return "finalized";
+    case "completed":
+      return "delivered";
+    default:
+      return s;
+  }
+};
 
 export const statusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (s) {
-    case "accepted":
-    case "completed":
+  switch (normalizeStatus(s)) {
+    case "delivered":
       return "default";
-    case "sent":
     case "finalized":
       return "secondary";
     case "rejected":
       return "destructive";
     default:
-      return "outline"; // draft, drafted
+      return "outline"; // drafted
   }
 };
 
@@ -164,15 +170,12 @@ const ProductRow = ({
 
 export const statusLabel = (s: string) => {
   const map: Record<string, string> = {
-    draft: "Pending",
     drafted: "Drafted",
     finalized: "Finalized",
-    sent: "Sent",
-    accepted: "Accepted",
-    completed: "Completed",
+    delivered: "Delivered",
     rejected: "Rejected",
   };
-  return map[s] ?? s;
+  return map[normalizeStatus(s)] ?? s;
 };
 
 const AdminQuotationEditor = () => {
