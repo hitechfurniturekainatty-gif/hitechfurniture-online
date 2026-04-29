@@ -1405,6 +1405,11 @@ const AdminQuotationEditor = () => {
         <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
       )}
 
+      {/* Audit trail of every status change (admin/staff only — workers don't see this). */}
+      {canEditPrice && (
+        <QuotationStatusHistory quotationId={q.id} refreshKey={statusHistoryKey} />
+      )}
+
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
         {/* Row 1 (top): secondary actions — equal thirds so the Assign button is
