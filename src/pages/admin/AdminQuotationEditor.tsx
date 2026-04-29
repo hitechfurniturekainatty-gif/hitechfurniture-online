@@ -795,13 +795,19 @@ const AdminQuotationEditor = () => {
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
     setJobNotes("");
+    setJobMode("saved");
     setJobOpen(true);
   };
 
   const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg") => {
-    if (!q || !selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
-    const worker = workers.find((w) => w.id === selectedWorker);
-    if (!worker) return;
+    if (!q) return;
+    const isDirect = jobMode === "direct";
+    let worker: Worker | undefined;
+    if (!isDirect) {
+      if (!selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
+      worker = workers.find((w) => w.id === selectedWorker);
+      if (!worker) return;
+    }
     const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
     if (chosenItems.length === 0) {
       toast({ title: "No saved items selected", description: "Save the quotation, then re-tick the items.", variant: "destructive" });
@@ -809,23 +815,26 @@ const AdminQuotationEditor = () => {
     }
     setGeneratingJob(true);
     try {
-      // create job_work_orders row
-      const { error } = await supabase.from("job_work_orders").insert({
-        quotation_id: q.id,
-        worker_id: worker.id,
-        item_ids: chosenItems.map((c) => c.id),
-        notes: jobNotes || null,
-        created_by: user?.id ?? null,
-      });
-      if (error) {
-        toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
-        return;
+      // Only log a job_work_orders row when assigning to a saved worker.
+      // Direct shares are intentionally not tied to any worker profile.
+      if (worker) {
+        const { error } = await supabase.from("job_work_orders").insert({
+          quotation_id: q.id,
+          worker_id: worker.id,
+          item_ids: chosenItems.map((c) => c.id),
+          notes: jobNotes || null,
+          created_by: user?.id ?? null,
+        });
+        if (error) {
+          toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+          return;
+        }
       }
       // generate worker-safe JPG (NO prices, NO bank, NO customer phone)
       const { generateJobWorkPdf } = await loadPdfLib();
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
-        worker_name: worker.name,
+        worker_name: worker?.name ?? "Job Work",
         date: new Date().toLocaleDateString("en-IN"),
         notes: jobNotes || null,
         items: chosenItems.map((it) => ({
@@ -840,22 +849,38 @@ const AdminQuotationEditor = () => {
           quantity: it.quantity,
         })),
       }, format === "jpg" ? SHARE_PDF_OPTIONS : undefined);
-      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
-      const msg = `Hi ${worker.name},\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
+      const baseFilename = worker
+        ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
+        : `JobWork-${q.quotation_id}`;
+      const greeting = worker ? `Hi ${worker.name},` : "Hi,";
+      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
-      if (format === "pdf") {
+      if (isDirect) {
+        // Direct WhatsApp / native share sheet — admin picks any contact.
+        if (format === "pdf") {
+          await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
+        } else {
+          const { pdfBlobToJpgPages } = await loadJpgLib();
+          const blobs = await pdfBlobToJpgPages(pdfBlob);
+          await shareFilesNative(blobs, baseFilename, msg, "jpg");
+        }
+        toast({
+          title: "Ready to share",
+          description: "Pick the contact or WhatsApp group from your phone's share sheet.",
+        });
+      } else if (format === "pdf") {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
         toast({
           title: "Job PDF downloaded",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}. Attach the PDF on WhatsApp manually.`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
         const { pdfBlobToJpgPages } = await loadJpgLib();
         const blobs = await pdfBlobToJpgPages(pdfBlob);
-        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
         toast({
           title: "Job work sent",
-          description: `${chosenItems.length} item(s) assigned to ${worker.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
+          description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
         });
       }
 
