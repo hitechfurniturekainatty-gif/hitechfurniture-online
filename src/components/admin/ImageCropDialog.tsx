@@ -3,7 +3,7 @@ import Cropper, { type Area } from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, RectangleVertical, Move } from "lucide-react";
+import { Loader2, Crop as CropIcon, RotateCw, Move, Maximize2 } from "lucide-react";
 
 /**
  * Reusable image crop dialog used by SingleImagePicker / MultiImagePicker.
@@ -11,12 +11,6 @@ import { Loader2, Crop as CropIcon, RotateCw, Square, RectangleHorizontal, Recta
  * - "Use as-is" skips cropping for fast workflow.
  * - Returns a new File (image/jpeg) which the caller uploads.
  */
-
-const ASPECTS: { label: string; value: number | undefined; icon: React.ComponentType<{ className?: string }> }[] = [
-  { label: "1:1", value: 1, icon: Square },
-  { label: "4:3", value: 4 / 3, icon: RectangleHorizontal },
-  { label: "3:4", value: 3 / 4, icon: RectangleVertical },
-];
 
 async function getCroppedFile(
   src: string,
@@ -180,29 +174,20 @@ export const ImageCropDialog = ({
             <Button
               type="button"
               size="sm"
-              variant={manual ? "default" : "outline"}
+              variant="default"
               onClick={() => setManual(true)}
             >
-              <Move className="mr-1 h-3.5 w-3.5" /> Manual
+              <Move className="mr-1 h-3.5 w-3.5" /> Manual crop
             </Button>
-            {ASPECTS.map((a) => {
-              const Icon = a.icon;
-              const active = !manual && aspect === a.value;
-              return (
-                <Button
-                  key={a.label}
-                  type="button"
-                  size="sm"
-                  variant={active ? "default" : "outline"}
-                  onClick={() => {
-                    setManual(false);
-                    setAspect(a.value);
-                  }}
-                >
-                  <Icon className="mr-1 h-3.5 w-3.5" /> {a.label}
-                </Button>
-              );
-            })}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={useAsIs}
+              disabled={busy}
+            >
+              <Maximize2 className="mr-1 h-3.5 w-3.5" /> Full attach
+            </Button>
             <Button type="button" size="sm" variant="outline" onClick={() => setRotation((r) => (r + 90) % 360)}>
               <RotateCw className="mr-1 h-3.5 w-3.5" /> Rotate
             </Button>
