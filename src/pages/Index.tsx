@@ -114,6 +114,9 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
+      {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}
+      <HeroWindowReveal />
+
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}
       {slides.length > 0 && (
