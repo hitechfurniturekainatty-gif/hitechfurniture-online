@@ -8,6 +8,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
+import { HeroWindowReveal } from "@/components/HeroWindowReveal";
 import {
   alignClass,
   fetchHomepageData,
