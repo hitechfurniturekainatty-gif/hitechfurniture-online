@@ -8,6 +8,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
+import { HeroWindowReveal } from "@/components/HeroWindowReveal";
 import {
   alignClass,
   fetchHomepageData,
@@ -112,6 +113,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
+
+      {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}
+      <HeroWindowReveal />
 
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}
