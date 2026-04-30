@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_quotations_status_audit ON public.quotations;
