@@ -109,44 +109,36 @@ export const HeroWindowReveal = () => {
             transformOrigin: "center center",
           }}
         >
-          {/* Left door half */}
+          {/* Left door half — shows the LEFT side of the glass-door image */}
           <div
-            className="absolute inset-y-0 left-0 w-1/2 overflow-hidden will-change-transform"
+            className="absolute inset-y-0 left-0 w-1/2 will-change-transform"
             style={{
               transform: `translateX(-${doorTranslate}%) rotateY(${doorRotate}deg)`,
               transformOrigin: "left center",
               opacity: doorOpacity,
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "20px 0 60px rgba(0,0,0,0.5)" : undefined,
+              backgroundImage: `url(${glassDoorImg})`,
+              backgroundSize: "200% 100%",
+              backgroundPosition: "left center",
+              backgroundRepeat: "no-repeat",
             }}
-          >
-            <img
-              src={glassDoorImg}
-              alt=""
-              aria-hidden
-              className="h-full w-[200%] max-w-none object-cover"
-              style={{ objectPosition: "left center" }}
-            />
-          </div>
-          {/* Right door half */}
+          />
+          {/* Right door half — shows the RIGHT side of the glass-door image */}
           <div
-            className="absolute inset-y-0 right-0 w-1/2 overflow-hidden will-change-transform"
+            className="absolute inset-y-0 right-0 w-1/2 will-change-transform"
             style={{
               transform: `translateX(${doorTranslate}%) rotateY(-${doorRotate}deg)`,
               transformOrigin: "right center",
               opacity: doorOpacity,
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "-20px 0 60px rgba(0,0,0,0.5)" : undefined,
+              backgroundImage: `url(${glassDoorImg})`,
+              backgroundSize: "200% 100%",
+              backgroundPosition: "right center",
+              backgroundRepeat: "no-repeat",
             }}
-          >
-            <img
-              src={glassDoorImg}
-              alt=""
-              aria-hidden
-              className="h-full w-[200%] max-w-none object-cover"
-              style={{ objectPosition: "right center", marginLeft: "-100%" }}
-            />
-          </div>
+          />
         </div>
 
         {/* Layer 3: Arch villa exterior (top, fades as we zoom into it) */}
