@@ -1,45 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import exteriorImg from "@/assets/hero-exterior-door.jpg";
-import interiorImg from "@/assets/hero-interior-room.jpg";
+import archImg from "@/assets/hero-villa-arch.jpg";
+import glassDoorImg from "@/assets/hero-glass-door.jpg";
+import interiorImg from "@/assets/hero-interior-sofa.jpg";
 
 /**
- * Premium scroll-linked "Window Reveal" hero.
+ * Premium scroll-linked "Visual Journey" hero.
  *
- * The section is taller than the viewport (200vh). As the user scrolls
- * through it, the black-framed glass doors swing open (left + right halves
- * translate outward and rotate slightly) while the interior image zooms
- * in behind them — creating the illusion of walking from the villa's
- * exterior into a luxury showroom. Scrolling back up reverses the motion.
- *
- * The exterior image is split into two halves clipped down the middle so
- * each half can animate independently like a real double door.
+ * Three stages as the user scrolls:
+ *  Stage 1 (0.00 - 0.33): Arch villa exterior — full screen.
+ *  Stage 2 (0.33 - 0.66): Camera zooms toward the arch; glass door fades/scales in.
+ *  Stage 3 (0.66 - 1.00): Glass double doors swing open naturally, revealing
+ *                          the premium green sofa interior behind them.
  */
 export const HeroWindowReveal = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
-  const [progress, setProgress] = useState(0); // 0 = closed, 1 = fully open
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-
     let raf = 0;
     const update = () => {
       raf = 0;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
-      // total scrollable distance inside the pinned hero
       const total = el.offsetHeight - vh;
       const scrolled = Math.min(Math.max(-rect.top, 0), total);
-      const p = total > 0 ? scrolled / total : 0;
-      setProgress(p);
+      setProgress(total > 0 ? scrolled / total : 0);
     };
-
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(update);
-    };
-
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
@@ -50,98 +40,135 @@ export const HeroWindowReveal = () => {
     };
   }, []);
 
-  // Eased progress for buttery-smooth motion
-  const eased = progress < 0.5
-    ? 2 * progress * progress
-    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+  // --- Stage progress (clamped 0..1 within each segment) ---
+  const clamp = (n: number) => Math.min(Math.max(n, 0), 1);
+  const ease = (t: number) =>
+    t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-  // Door halves slide outward and rotate slightly (like real doors swinging open)
-  const doorTranslate = eased * 60; // % of half-width
-  const doorRotate = eased * 18; // degrees
-  const doorOpacity = 1 - Math.min(eased * 1.4, 1);
+  const s1 = clamp(progress / 0.33);          // arch zoom
+  const s2 = clamp((progress - 0.33) / 0.33); // glass door appears
+  const s3 = clamp((progress - 0.66) / 0.34); // doors open
 
-  // Interior zooms in as we walk through
-  const interiorScale = 1 + eased * 0.35;
-  const interiorOpacity = Math.min(0.2 + eased * 1.6, 1);
+  // Stage 1: arch zooms in (as if walking toward it)
+  const archScale = 1 + ease(s1) * 0.6;
+  const archOpacity = 1 - ease(s2) * 0.9;
 
-  // Headline fades + lifts as user begins scrolling
-  const headlineOpacity = 1 - Math.min(progress * 2.5, 1);
-  const headlineLift = -progress * 40;
+  // Stage 2: glass door fades + scales in to fill the frame
+  const glassScale = 0.7 + ease(s2) * 0.3;
+  const glassOpacity = ease(s2);
 
-  // Interior caption fades in once doors are mostly open
-  const interiorCaptionOpacity = Math.max((eased - 0.55) / 0.45, 0);
+  // Stage 3: glass doors swing open naturally
+  const e3 = ease(s3);
+  const doorTranslate = e3 * 55;   // % outward
+  const doorRotate = e3 * 22;      // perspective rotation
+  const doorOpacity = 1 - Math.min(e3 * 1.3, 1);
+
+  // Interior reveal behind the glass
+  const interiorScale = 1 + e3 * 0.25;
+  const interiorOpacity = Math.min(0.15 + e3 * 1.6, 1);
+
+  // Headline visible only during stage 1
+  const headlineOpacity = 1 - clamp(progress / 0.25);
+  const headlineLift = -progress * 50;
+
+  // "Step inside" caption appears once doors are mostly open
+  const captionOpacity = clamp((s3 - 0.55) / 0.45);
 
   return (
     <section
       ref={sectionRef}
       className="relative w-full"
-      style={{ height: "200vh" }}
-      aria-label="Luxury furniture showroom reveal"
+      style={{ height: "300vh" }}
+      aria-label="Luxury villa to showroom visual journey"
     >
-      <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* Interior layer — visible as the doors open */}
+      <div className="sticky top-0 h-screen w-full overflow-hidden bg-black [perspective:1400px]">
+        {/* Layer 1: Interior (deepest) */}
         <div
           className="absolute inset-0 will-change-transform"
           style={{
             transform: `scale(${interiorScale})`,
             opacity: interiorOpacity,
-            transition: "opacity 120ms linear",
           }}
         >
           <img
             src={interiorImg}
-            alt="Luxury showroom interior with emerald green velvet sofas and a wooden coffee table"
+            alt="Luxury showroom interior with emerald green velvet sofa, brass arc lamp and walnut coffee table"
             className="h-full w-full object-cover"
             loading="eager"
             decoding="async"
           />
-          {/* Soft vignette for cinematic depth */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.45)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)]" />
         </div>
 
-        {/* Door — left half */}
+        {/* Layer 2: Glass door (split into two halves that swing open) */}
         <div
-          className="absolute inset-y-0 left-0 w-1/2 will-change-transform"
+          className="absolute inset-0"
           style={{
-            transform: `translateX(-${doorTranslate}%) rotateY(${doorRotate}deg)`,
-            transformOrigin: "left center",
-            transformStyle: "preserve-3d",
-            opacity: doorOpacity,
-            backfaceVisibility: "hidden",
+            opacity: glassOpacity,
+            transform: `scale(${glassScale})`,
+            transformOrigin: "center center",
           }}
         >
+          {/* Left door half */}
           <div
-            className="h-full w-full bg-cover bg-no-repeat shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
+            className="absolute inset-y-0 left-0 w-1/2 overflow-hidden will-change-transform"
             style={{
-              backgroundImage: `url(${exteriorImg})`,
-              backgroundPosition: "left center",
-              backgroundSize: "200% 100%",
+              transform: `translateX(-${doorTranslate}%) rotateY(${doorRotate}deg)`,
+              transformOrigin: "left center",
+              opacity: doorOpacity,
+              backfaceVisibility: "hidden",
+              boxShadow: e3 > 0 ? "20px 0 60px rgba(0,0,0,0.5)" : undefined,
             }}
-          />
+          >
+            <img
+              src={glassDoorImg}
+              alt=""
+              aria-hidden
+              className="h-full w-[200%] max-w-none object-cover"
+              style={{ objectPosition: "left center" }}
+            />
+          </div>
+          {/* Right door half */}
+          <div
+            className="absolute inset-y-0 right-0 w-1/2 overflow-hidden will-change-transform"
+            style={{
+              transform: `translateX(${doorTranslate}%) rotateY(-${doorRotate}deg)`,
+              transformOrigin: "right center",
+              opacity: doorOpacity,
+              backfaceVisibility: "hidden",
+              boxShadow: e3 > 0 ? "-20px 0 60px rgba(0,0,0,0.5)" : undefined,
+            }}
+          >
+            <img
+              src={glassDoorImg}
+              alt=""
+              aria-hidden
+              className="h-full w-[200%] max-w-none object-cover"
+              style={{ objectPosition: "right center", marginLeft: "-100%" }}
+            />
+          </div>
         </div>
 
-        {/* Door — right half */}
+        {/* Layer 3: Arch villa exterior (top, fades as we zoom into it) */}
         <div
-          className="absolute inset-y-0 right-0 w-1/2 will-change-transform"
+          className="absolute inset-0 will-change-transform"
           style={{
-            transform: `translateX(${doorTranslate}%) rotateY(-${doorRotate}deg)`,
-            transformOrigin: "right center",
-            transformStyle: "preserve-3d",
-            opacity: doorOpacity,
-            backfaceVisibility: "hidden",
+            transform: `scale(${archScale})`,
+            opacity: archOpacity,
           }}
         >
-          <div
-            className="h-full w-full bg-cover bg-no-repeat shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
-            style={{
-              backgroundImage: `url(${exteriorImg})`,
-              backgroundPosition: "right center",
-              backgroundSize: "200% 100%",
-            }}
+          <img
+            src={archImg}
+            alt="Luxury villa exterior with grand arch entrance at golden hour"
+            className="h-full w-full object-cover"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
           />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
         </div>
 
-        {/* Headline (visible while doors are still closed) */}
+        {/* Headline — visible at start */}
         <div
           className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center"
           style={{
@@ -149,16 +176,14 @@ export const HeroWindowReveal = () => {
             transform: `translateY(${headlineLift}px)`,
           }}
         >
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/80 md:text-xs">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/85 md:text-xs">
             Hitech Furniture &amp; Interiors
           </p>
-          <h1 className="font-display text-4xl leading-[1.05] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] md:text-6xl lg:text-7xl">
+          <h1 className="font-display text-4xl leading-[1.05] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)] md:text-6xl lg:text-7xl">
             Luxury Furniture,
             <br />
             <span className="italic text-white/95">Redefined.</span>
           </h1>
-
-          {/* Scroll cue */}
           <div className="mt-12 flex flex-col items-center gap-2 text-white/85">
             <span className="text-[10px] font-medium uppercase tracking-[0.35em]">
               Scroll to enter
@@ -167,15 +192,15 @@ export const HeroWindowReveal = () => {
           </div>
         </div>
 
-        {/* Interior caption (revealed once you've "walked in") */}
+        {/* "Step inside" caption — appears after doors open */}
         <div
           className="pointer-events-none absolute inset-x-0 bottom-10 z-20 flex flex-col items-center px-6 text-center md:bottom-16"
-          style={{ opacity: interiorCaptionOpacity }}
+          style={{ opacity: captionOpacity }}
         >
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/85 md:text-xs">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/90 md:text-xs">
             Step inside
           </p>
-          <h2 className="font-display text-2xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.55)] md:text-4xl">
+          <h2 className="font-display text-2xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)] md:text-4xl">
             Welcome to the showroom
           </h2>
         </div>
