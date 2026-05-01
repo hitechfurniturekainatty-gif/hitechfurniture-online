@@ -84,16 +84,17 @@ export const HeroWindowReveal = () => {
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black [perspective:1400px]">
         {/* Layer 1: Interior (deepest) */}
         <div
-          className="absolute inset-0 will-change-transform"
+          className="absolute inset-0 will-change-transform overflow-hidden"
           style={{
             transform: `scale(${interiorScale})`,
+            transformOrigin: "center center",
             opacity: interiorOpacity,
           }}
         >
           <img
             src={interiorImg}
             alt="Luxury showroom interior with emerald green velvet sofa, brass arc lamp and walnut coffee table"
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover object-center"
             loading="eager"
             decoding="async"
           />
@@ -143,16 +144,17 @@ export const HeroWindowReveal = () => {
 
         {/* Layer 3: Arch villa exterior (top, fades as we zoom into it) */}
         <div
-          className="absolute inset-0 will-change-transform"
+          className="absolute inset-0 will-change-transform overflow-hidden"
           style={{
             transform: `scale(${archScale})`,
+            transformOrigin: "center center",
             opacity: archOpacity,
           }}
         >
           <img
             src={archImg}
             alt="Luxury villa exterior with grand arch entrance at golden hour"
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover object-center"
             loading="eager"
             decoding="async"
             fetchPriority="high"
