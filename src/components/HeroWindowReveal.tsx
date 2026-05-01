@@ -120,7 +120,7 @@ export const HeroWindowReveal = () => {
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "20px 0 60px rgba(0,0,0,0.5)" : undefined,
               backgroundImage: `url(${glassDoorImg})`,
-              backgroundSize: "200% 100%",
+              backgroundSize: "200vw 100vh",
               backgroundPosition: "left center",
               backgroundRepeat: "no-repeat",
             }}
@@ -135,7 +135,7 @@ export const HeroWindowReveal = () => {
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "-20px 0 60px rgba(0,0,0,0.5)" : undefined,
               backgroundImage: `url(${glassDoorImg})`,
-              backgroundSize: "200% 100%",
+              backgroundSize: "200vw 100vh",
               backgroundPosition: "right center",
               backgroundRepeat: "no-repeat",
             }}
