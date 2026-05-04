@@ -127,7 +127,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <Text style={styles.partyValue}>{q.quotation_date}</Text>
           {q.expected_delivery_date && (
             <>
-              <Text style={[styles.partyLabel, { marginTop: 6 }]}>Expected Delivery</Text>
+              <Text style={[styles.partyLabel, { marginTop: 6 }]}>Delivery Date</Text>
               <Text style={styles.partyValue}>{q.expected_delivery_date}</Text>
             </>
           )}

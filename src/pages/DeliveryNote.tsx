@@ -174,7 +174,7 @@ const DeliveryNote = () => {
             </div>
             <div className="sm:text-right">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Expected delivery
+                Delivery date
               </p>
               <p className="mt-1 inline-flex items-center gap-1.5 font-display text-lg">
                 <Calendar className="h-4 w-4 text-primary" />
