@@ -36,6 +36,9 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   facebook_url: "",
   managing_partner: "",
   footer_about: "",
+  hero_arch_image_url: null,
+  hero_glass_door_image_url: null,
+  hero_interior_image_url: null,
 };
 
 const AdminHomePage = () => {
