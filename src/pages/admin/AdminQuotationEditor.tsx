@@ -1054,7 +1054,13 @@ const AdminQuotationEditor = () => {
                 value={q.salesperson_name ?? ""}
                 onChange={(e) => updateHeader({ salesperson_name: e.target.value })}
                 placeholder="Who attended the customer?"
+                list="salesperson-options"
               />
+              <datalist id="salesperson-options">
+                {staffOptions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
             </div>
           )}
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
