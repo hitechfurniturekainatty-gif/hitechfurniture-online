@@ -240,8 +240,9 @@ const AdminHomePage = () => {
       </div>
 
       <Tabs defaultValue="hero">
-        <TabsList className="mb-4 grid w-full grid-cols-4 max-w-3xl">
+        <TabsList className="mb-4 grid w-full grid-cols-5 max-w-3xl">
           <TabsTrigger value="hero">Hero Slider</TabsTrigger>
+          <TabsTrigger value="hero_images">Main Images</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
           <TabsTrigger value="contact">Contact &amp; Find Us</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
