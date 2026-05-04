@@ -597,7 +597,7 @@ const AdminQuotations = () => {
               <SelectValue placeholder="All staff" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All staff ({docFiltered.length /* approx */})</SelectItem>
+              <SelectItem value="all">All staff</SelectItem>
               {staffOptions.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name} ({s.count})
