@@ -363,9 +363,10 @@ const AdminHomePage = () => {
                       setSettings({ ...settings, [key]: next } as typeof settings);
                       // Persist immediately so the upload can never be lost.
                       if (settings.id) {
+                        const patch: Partial<HomepageSettings> = { [key]: next };
                         const { error } = await supabase
                           .from("homepage_settings")
-                          .update({ [key]: next })
+                          .update(patch)
                           .eq("id", settings.id);
                         if (error) {
                           toast({ title: "Image save failed", description: error.message, variant: "destructive" });
