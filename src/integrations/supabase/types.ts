@@ -366,6 +366,9 @@ export type Database = {
           footer_about: string | null
           google_maps_embed_url: string | null
           google_maps_url: string | null
+          hero_arch_image_url: string | null
+          hero_glass_door_image_url: string | null
+          hero_interior_image_url: string | null
           id: string
           instagram_url: string | null
           managing_partner: string | null
@@ -385,6 +388,9 @@ export type Database = {
           footer_about?: string | null
           google_maps_embed_url?: string | null
           google_maps_url?: string | null
+          hero_arch_image_url?: string | null
+          hero_glass_door_image_url?: string | null
+          hero_interior_image_url?: string | null
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
@@ -404,6 +410,9 @@ export type Database = {
           footer_about?: string | null
           google_maps_embed_url?: string | null
           google_maps_url?: string | null
+          hero_arch_image_url?: string | null
+          hero_glass_door_image_url?: string | null
+          hero_interior_image_url?: string | null
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
