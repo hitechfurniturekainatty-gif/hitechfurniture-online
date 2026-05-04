@@ -7,8 +7,13 @@ import { WhatsAppFab } from "@/components/WhatsAppFab";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, X, ArrowLeft } from "lucide-react";
+import { Search, X, ArrowLeft, SlidersHorizontal, FileDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Seo } from "@/components/Seo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { toast } from "@/hooks/use-toast";
 
 type MainCat = { id: string; name: string; slug: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; image_url: string | null };
@@ -16,6 +21,9 @@ type Product = ProductCardData & {
   main_category_id: string;
   sub_category_id: string | null;
   mrp: number;
+  offer_price: number | null;
+  material?: string | null;
+  dimensions?: string | null;
 };
 
 // First page size — keeps the initial payload small on 3G/4G so cards
@@ -34,6 +42,14 @@ const Catalog = () => {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
 
+  // --- Advanced filter state (price, material, in-stock, sort) ---
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
+  const [material, setMaterial] = useState<string>("__all__");
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [sort, setSort] = useState<string>("newest");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
   const activeCatSlug = params.get("cat");
   const activeSubSlug = params.get("sub");
 
@@ -48,7 +64,7 @@ const Catalog = () => {
       supabase.from("sub_categories").select("id, main_category_id, name, slug, image_url").order("display_order"),
       supabase
         .from("products")
-        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
+        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order)")
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
@@ -68,7 +84,7 @@ const Catalog = () => {
   );
 
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (activeCat && p.main_category_id !== activeCat.id) return false;
       if (activeSubSlug && activeSubSlug !== "__all__") {
         const sub = subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id);
@@ -82,12 +98,35 @@ const Catalog = () => {
         )
           return false;
       }
+      // Effective price (offer if set, else MRP) used for both filtering & sorting
+      const eff = p.offer_price && p.offer_price < p.mrp ? p.offer_price : p.mrp;
+      const min = priceMin ? Number(priceMin) : null;
+      const max = priceMax ? Number(priceMax) : null;
+      if (min != null && !Number.isNaN(min) && eff < min) return false;
+      if (max != null && !Number.isNaN(max) && eff > max) return false;
+      if (material !== "__all__" && (p.material ?? "").toLowerCase() !== material.toLowerCase()) return false;
+      if (inStockOnly && (p.stock_quantity ?? 0) <= 0) return false;
       return true;
     });
-  }, [products, activeCat, activeSubSlug, deferredSearch, subCats]);
+    const eff = (p: Product) => (p.offer_price && p.offer_price < p.mrp ? p.offer_price : p.mrp);
+    if (sort === "price_asc") list.sort((a, b) => eff(a) - eff(b));
+    else if (sort === "price_desc") list.sort((a, b) => eff(b) - eff(a));
+    else if (sort === "name_asc") list.sort((a, b) => a.product_name.localeCompare(b.product_name));
+    return list;
+  }, [products, activeCat, activeSubSlug, deferredSearch, subCats, priceMin, priceMax, material, inStockOnly, sort]);
+
+  // Distinct material list — built once from the loaded payload.
+  const materials = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) if (p.material && p.material.trim()) set.add(p.material.trim());
+    return Array.from(set).sort();
+  }, [products]);
+
+  const activeFilterCount =
+    (priceMin ? 1 : 0) + (priceMax ? 1 : 0) + (material !== "__all__" ? 1 : 0) + (inStockOnly ? 1 : 0);
 
   // Reset pagination whenever filters change so we never silently hide results.
-  useEffect(() => { setVisible(PAGE_SIZE); }, [activeCatSlug, activeSubSlug, deferredSearch]);
+  useEffect(() => { setVisible(PAGE_SIZE); }, [activeCatSlug, activeSubSlug, deferredSearch, priceMin, priceMax, material, inStockOnly, sort]);
 
   const visibleProducts = filtered.slice(0, visible);
   const hasMore = visible < filtered.length;
@@ -134,8 +173,56 @@ const Catalog = () => {
     return m;
   }, [products]);
 
+  const downloadCatalogPdf = async () => {
+    if (!filtered.length) {
+      toast({ title: "Nothing to download", description: "Adjust filters and try again." });
+      return;
+    }
+    setDownloadingPdf(true);
+    try {
+      const [{ generateCatalogPdf }, { downloadBlob }] = await Promise.all([
+        import("@/lib/catalogPdf"),
+        import("@/lib/downloadBlob"),
+      ]);
+      const items = filtered.map((p) => {
+        const cover = [...(p.product_images ?? [])].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+        return {
+          product_name: p.product_name,
+          product_code: p.product_code,
+          mrp: Number(p.mrp),
+          offer_price: p.offer_price ? Number(p.offer_price) : null,
+          material: p.material ?? null,
+          dimensions: p.dimensions ?? null,
+          cover_image: cover,
+        };
+      });
+      const title = activeCat ? `${activeCat.name} Catalog` : "Product Catalog";
+      const subtitle = "Hitech Furniture & Interiors · Wayanad";
+      const blob = await generateCatalogPdf(items, title, subtitle);
+      downloadBlob(blob, `hitech-${activeCat?.slug ?? "catalog"}.pdf`);
+      toast({ title: "Catalog downloaded", description: "Share it on WhatsApp anytime." });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "PDF generation failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title={
+          activeCat
+            ? `${activeCat.name} — Hitech Furniture Catalog`
+            : "Furniture Catalog — Sofas, Beds, Wardrobes | Hitech Furniture"
+        }
+        description={
+          activeCat
+            ? `Browse ${activeCat.name.toLowerCase()} from Hitech Furniture & Interiors, Wayanad. Filter by price, material and stock. Download PDF or enquire on WhatsApp.`
+            : "Live furniture catalog — sofas, beds, wardrobes, dining and more from Hitech Furniture & Interiors, Wayanad. Filter, browse and enquire instantly on WhatsApp."
+        }
+      />
       <SiteHeader />
 
       <div className="border-b border-border/60 bg-secondary/40">
@@ -162,7 +249,7 @@ const Catalog = () => {
 
       <div className="container-page py-8">
         {/* Search */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1 max-w-xl">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -172,6 +259,74 @@ const Catalog = () => {
               className="pl-9"
             />
           </div>
+          {!isLandingView && !isSubPickerView && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                    Filters
+                    {activeFilterCount > 0 && (
+                      <span className="ml-2 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-md">
+                  <SheetHeader>
+                    <SheetTitle>Filter products</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-6">
+                    <div>
+                      <p className="mb-2 text-sm font-medium">Price range (₹)</p>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" inputMode="numeric" placeholder="Min" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+                        <span className="text-muted-foreground">to</span>
+                        <Input type="number" inputMode="numeric" placeholder="Max" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+                      </div>
+                    </div>
+                    {materials.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium">Material</p>
+                        <Select value={material} onValueChange={setMaterial}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All materials</SelectItem>
+                            {materials.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={inStockOnly} onCheckedChange={(v) => setInStockOnly(v === true)} />
+                      In stock only
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setPriceMin(""); setPriceMax(""); setMaterial("__all__"); setInStockOnly(false); }}
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="price_asc">Price: low → high</SelectItem>
+                  <SelectItem value="price_desc">Price: high → low</SelectItem>
+                  <SelectItem value="name_asc">Name A–Z</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={downloadCatalogPdf} disabled={downloadingPdf}>
+                {downloadingPdf ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
+                Catalog PDF
+              </Button>
+            </div>
+          )}
           {!isLandingView && (
             <p className="text-sm text-muted-foreground">{filtered.length} pieces</p>
           )}
