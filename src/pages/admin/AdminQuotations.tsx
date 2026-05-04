@@ -42,6 +42,7 @@ type Q = {
   created_by: string | null;
   document_type: DocType;
   service_type?: string | null;
+  salesperson_name?: string | null;
 };
 
 const AdminQuotations = () => {
@@ -108,7 +109,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
