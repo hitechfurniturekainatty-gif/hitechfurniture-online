@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import archImg from "@/assets/hero-villa-arch.jpg";
-import glassDoorImg from "@/assets/hero-glass-door.jpg";
-import interiorImg from "@/assets/hero-interior-sofa.jpg";
+import archDefault from "@/assets/hero-villa-arch.jpg";
+import glassDoorDefault from "@/assets/hero-glass-door.jpg";
+import interiorDefault from "@/assets/hero-interior-sofa.jpg";
+import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 
 /**
  * Premium scroll-linked "Visual Journey" hero.
@@ -16,6 +17,10 @@ import interiorImg from "@/assets/hero-interior-sofa.jpg";
 export const HeroWindowReveal = () => {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const [progress, setProgress] = useState(0);
+  const settings = useHomepageSettings();
+  const archImg = settings?.hero_arch_image_url || archDefault;
+  const glassDoorImg = settings?.hero_glass_door_image_url || glassDoorDefault;
+  const interiorImg = settings?.hero_interior_image_url || interiorDefault;
 
   useEffect(() => {
     const el = sectionRef.current;
