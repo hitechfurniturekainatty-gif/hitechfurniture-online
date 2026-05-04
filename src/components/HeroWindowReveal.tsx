@@ -94,7 +94,7 @@ export const HeroWindowReveal = () => {
           <img
             src={interiorImg}
             alt="Luxury showroom interior with emerald green velvet sofa, brass arc lamp and walnut coffee table"
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-cover object-[60%_center] sm:object-center"
             loading="eager"
             decoding="async"
           />
@@ -120,7 +120,7 @@ export const HeroWindowReveal = () => {
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "20px 0 60px rgba(0,0,0,0.5)" : undefined,
               backgroundImage: `url(${glassDoorImg})`,
-              backgroundSize: "200vw 100vh",
+              backgroundSize: "200vw 100dvh",
               backgroundPosition: "left center",
               backgroundRepeat: "no-repeat",
             }}
@@ -135,7 +135,7 @@ export const HeroWindowReveal = () => {
               backfaceVisibility: "hidden",
               boxShadow: e3 > 0 ? "-20px 0 60px rgba(0,0,0,0.5)" : undefined,
               backgroundImage: `url(${glassDoorImg})`,
-              backgroundSize: "200vw 100vh",
+              backgroundSize: "200vw 100dvh",
               backgroundPosition: "right center",
               backgroundRepeat: "no-repeat",
             }}
@@ -154,7 +154,7 @@ export const HeroWindowReveal = () => {
           <img
             src={archImg}
             alt="Luxury villa exterior with grand arch entrance at golden hour"
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_30%] sm:object-center"
             loading="eager"
             decoding="async"
             fetchPriority="high"
