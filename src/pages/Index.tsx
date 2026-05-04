@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { HeroWindowReveal } from "@/components/HeroWindowReveal";
+import { Seo } from "@/components/Seo";
 import {
   alignClass,
   fetchHomepageData,
@@ -112,6 +113,24 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="Hitech Furniture & Interiors — Custom Sofas, Beds & Wardrobes in Wayanad"
+        description="14+ years of crafting custom furniture and interiors in Kalpetta, Wayanad. Browse our live catalog of sofas, beds, wardrobes and more — enquire on WhatsApp."
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FurnitureStore",
+          name: "Hitech Furniture & Interiors",
+          description: "Custom furniture manufacturer and interior designer in Kalpetta, Wayanad. Retail and wholesale.",
+          telephone: settings?.contact_phone ?? "+91 95266 10404",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "Kalpetta",
+            addressRegion: "Kerala",
+            addressCountry: "IN",
+          },
+          url: typeof window !== "undefined" ? window.location.origin : undefined,
+        }}
+      />
       <SiteHeader />
 
       {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}

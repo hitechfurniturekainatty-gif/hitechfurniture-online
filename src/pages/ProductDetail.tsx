@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openWhatsAppApp } from "@/lib/whatsapp";
+import { Seo } from "@/components/Seo";
 
 type Product = {
   id: string;
@@ -260,6 +261,32 @@ Please share more details.`;
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title={`${product.product_name} — ${product.main_categories?.name ?? "Furniture"} | Hitech Furniture`}
+        description={
+          (product.description?.slice(0, 155)) ||
+          `${product.product_name} (Code ${product.product_code}) by Hitech Furniture & Interiors, Wayanad. Enquire on WhatsApp for price and delivery.`
+        }
+        image={cover}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.product_name,
+          sku: product.product_code,
+          description: product.description ?? undefined,
+          image: images.map((i) => i.image_url),
+          brand: { "@type": "Brand", name: "Hitech Furniture & Interiors" },
+          category: product.main_categories?.name,
+          material: product.material ?? undefined,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: Number(product.offer_price ?? product.mrp),
+            availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: productUrl,
+          },
+        }}
+      />
       <SiteHeader />
 
       <div className="container-page py-6">
