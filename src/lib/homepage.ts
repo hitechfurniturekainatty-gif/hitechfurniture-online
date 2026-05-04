@@ -15,6 +15,11 @@ export type HomepageSettings = {
   facebook_url: string | null;
   managing_partner: string | null;
   footer_about: string | null;
+  // Optional overrides for the cinematic "Visual Journey" hero. When null, the
+  // bundled default images are used.
+  hero_arch_image_url: string | null;
+  hero_glass_door_image_url: string | null;
+  hero_interior_image_url: string | null;
 };
 
 export type HeroSlide = {
