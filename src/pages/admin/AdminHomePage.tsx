@@ -337,6 +337,61 @@ const AdminHomePage = () => {
           </Card>
         </TabsContent>
 
+        {/* HERO IMAGES (cinematic Visual Journey) */}
+        <TabsContent value="hero_images" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cinematic hero — main images</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-xs text-muted-foreground">
+                These are the three full-screen images used by the scroll-linked
+                "Visual Journey" hero on the home page. Leave any field blank to
+                fall back to the bundled default. Recommended size: 1920×1080 or
+                larger, landscape.
+              </p>
+              {([
+                { key: "hero_arch_image_url", label: "1. Arch villa exterior", hint: "First view — luxury arched entrance, full-screen exterior." },
+                { key: "hero_glass_door_image_url", label: "2. Glass door (mid stage)", hint: "Splits into two halves that swing open as the user scrolls." },
+                { key: "hero_interior_image_url", label: "3. Interior reveal", hint: "Premium living room / sofa shown once the doors are fully open." },
+              ] as const).map(({ key, label, hint }) => (
+                <div key={key} className="grid gap-4 md:grid-cols-[220px_1fr]">
+                  <SingleImagePicker
+                    value={(settings[key] as string | null) || null}
+                    onChange={async (url) => {
+                      const next = url || null;
+                      setSettings({ ...settings, [key]: next } as typeof settings);
+                      // Persist immediately so the upload can never be lost.
+                      if (settings.id) {
+                        const { error } = await supabase
+                          .from("homepage_settings")
+                          .update({ [key]: next })
+                          .eq("id", settings.id);
+                        if (error) {
+                          toast({ title: "Image save failed", description: error.message, variant: "destructive" });
+                        } else {
+                          toast({ title: "Hero image saved", description: "Refresh the home page to see it." });
+                        }
+                      }
+                    }}
+                    bucket="homepage-media"
+                    folder="hero-cinematic"
+                  />
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-sm font-semibold">{label}</Label>
+                    <p className="text-xs text-muted-foreground">{hint}</p>
+                  </div>
+                </div>
+              ))}
+              {settings.isNew && (
+                <p className="rounded-md border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Save the Contact tab once to create the settings row, then upload images here.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* SECTIONS */}
         <TabsContent value="sections" className="space-y-4">
           <Card>
