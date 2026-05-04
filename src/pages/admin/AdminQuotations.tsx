@@ -42,6 +42,7 @@ type Q = {
   created_by: string | null;
   document_type: DocType;
   service_type?: string | null;
+  salesperson_name?: string | null;
 };
 
 const AdminQuotations = () => {
@@ -56,6 +57,7 @@ const AdminQuotations = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
   const [staffFilter, setStaffFilterState] = useState<string>(searchParams.get("staff") ?? "all");
+  const [salesFilter, setSalesFilterState] = useState<string>(searchParams.get("sales") ?? "all");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -86,6 +88,12 @@ const AdminQuotations = () => {
     if (v === "all") next.delete("staff"); else next.set("staff", v);
     setSearchParams(next, { replace: true });
   };
+  const setSalesFilter = (v: string) => {
+    setSalesFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("sales"); else next.set("sales", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
@@ -93,6 +101,8 @@ const AdminQuotations = () => {
     if (docFromUrl !== docTab) setDocTabState(docFromUrl);
     const staffFromUrl = searchParams.get("staff") ?? "all";
     if (staffFromUrl !== staffFilter) setStaffFilterState(staffFromUrl);
+    const salesFromUrl = searchParams.get("sales") ?? "all";
+    if (salesFromUrl !== salesFilter) setSalesFilterState(salesFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -108,7 +118,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
@@ -281,6 +291,14 @@ const AdminQuotations = () => {
           return false;
         }
       }
+      if (isOfficeStaff && salesFilter !== "all") {
+        const name = (r.salesperson_name ?? "").trim();
+        if (salesFilter === "__none__") {
+          if (name) return false;
+        } else if (name !== salesFilter) {
+          return false;
+        }
+      }
       if (!s) return true;
       return (
         r.quotation_id.toLowerCase().includes(s) ||
@@ -288,7 +306,7 @@ const AdminQuotations = () => {
         r.party_place.toLowerCase().includes(s)
       );
     });
-  }, [rows, search, docTab, staffFilter, isOfficeStaff]);
+  }, [rows, search, docTab, staffFilter, salesFilter, isOfficeStaff]);
 
   // Distinct staff options derived from the loaded rows (within current doc tab).
   const staffOptions = useMemo(() => {
@@ -304,6 +322,21 @@ const AdminQuotations = () => {
     });
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [rows, creatorMap, docTab]);
+
+  // Distinct salesperson names from current doc tab.
+  const salesOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((r) => {
+      const t: DocType = (r.document_type as DocType) ?? "quotation";
+      if (t !== docTab) return;
+      const name = (r.salesperson_name ?? "").trim();
+      if (!name) return;
+      map.set(name, (map.get(name) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows, docTab]);
 
   const filtered = useMemo(
     () =>
@@ -382,6 +415,11 @@ const AdminQuotations = () => {
                 {q.created_by && (
                   <span className="ml-2 inline-flex items-center gap-1">
                     · <User className="h-3 w-3" /> {creatorMap[q.created_by] ?? "Staff"}
+                  </span>
+                )}
+                {q.salesperson_name && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    · Sales: <span className="font-medium text-foreground">{q.salesperson_name}</span>
                   </span>
                 )}
               </p>
@@ -604,6 +642,23 @@ const AdminQuotations = () => {
                 </SelectItem>
               ))}
               <SelectItem value="__none__">Unknown / system</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {isOfficeStaff && (
+          <Select value={salesFilter} onValueChange={setSalesFilter}>
+            <SelectTrigger className="sm:w-56">
+              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="All salespersons" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All salespersons</SelectItem>
+              {salesOptions.map((s) => (
+                <SelectItem key={s.name} value={s.name}>
+                  {s.name} ({s.count})
+                </SelectItem>
+              ))}
+              <SelectItem value="__none__">No salesperson</SelectItem>
             </SelectContent>
           </Select>
         )}

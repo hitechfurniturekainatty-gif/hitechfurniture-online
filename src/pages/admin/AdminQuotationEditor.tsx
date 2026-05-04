@@ -82,6 +82,7 @@ type Quotation = {
   delivery_route_id: string | null;
   delivery_place: string | null;
   document_type: DocType;
+  salesperson_name: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
@@ -426,6 +427,7 @@ const AdminQuotationEditor = () => {
         status: q.status,
         notes: q.notes,
         terms: q.terms,
+        salesperson_name: q.salesperson_name,
       }).eq("id", q.id);
       if (error) {
         setSaving(false);
@@ -1044,6 +1046,17 @@ const AdminQuotationEditor = () => {
           <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
+          {!po && (
+            <div className="space-y-1.5">
+              <Label>Salesperson / Staff name</Label>
+              <Input
+                className="h-11"
+                value={q.salesperson_name ?? ""}
+                onChange={(e) => updateHeader({ salesperson_name: e.target.value })}
+                placeholder="Who attended the customer?"
+              />
+            </div>
+          )}
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Expected delivery</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>

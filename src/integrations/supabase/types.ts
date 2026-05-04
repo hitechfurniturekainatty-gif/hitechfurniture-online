@@ -927,6 +927,7 @@ export type Database = {
           party_place: string
           quotation_date: string
           quotation_id: string
+          salesperson_name: string | null
           service_type: string
           source_complaint_id: string | null
           source_service_id: string | null
@@ -958,6 +959,7 @@ export type Database = {
           party_place: string
           quotation_date?: string
           quotation_id: string
+          salesperson_name?: string | null
           service_type?: string
           source_complaint_id?: string | null
           source_service_id?: string | null
@@ -989,6 +991,7 @@ export type Database = {
           party_place?: string
           quotation_date?: string
           quotation_id?: string
+          salesperson_name?: string | null
           service_type?: string
           source_complaint_id?: string | null
           source_service_id?: string | null
