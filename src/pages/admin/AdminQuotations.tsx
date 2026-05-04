@@ -45,7 +45,7 @@ type Q = {
 };
 
 const AdminQuotations = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isOfficeStaff } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<Q[]>([]);
@@ -274,7 +274,7 @@ const AdminQuotations = () => {
       // Treat missing document_type as 'quotation' (legacy rows).
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return false;
-      if (isAdmin && staffFilter !== "all") {
+      if (isOfficeStaff && staffFilter !== "all") {
         if (staffFilter === "__none__") {
           if (r.created_by) return false;
         } else if (r.created_by !== staffFilter) {
@@ -288,7 +288,7 @@ const AdminQuotations = () => {
         r.party_place.toLowerCase().includes(s)
       );
     });
-  }, [rows, search, docTab, staffFilter, isAdmin]);
+  }, [rows, search, docTab, staffFilter, isOfficeStaff]);
 
   // Distinct staff options derived from the loaded rows (within current doc tab).
   const staffOptions = useMemo(() => {
@@ -590,7 +590,7 @@ const AdminQuotations = () => {
             })}
           </SelectContent>
         </Select>
-        {isAdmin && (
+        {isOfficeStaff && (
           <Select value={staffFilter} onValueChange={setStaffFilter}>
             <SelectTrigger className="sm:w-56">
               <User className="mr-2 h-4 w-4 text-muted-foreground" />
