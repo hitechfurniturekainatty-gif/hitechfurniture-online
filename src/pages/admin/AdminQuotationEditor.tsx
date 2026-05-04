@@ -427,6 +427,7 @@ const AdminQuotationEditor = () => {
         status: q.status,
         notes: q.notes,
         terms: q.terms,
+        salesperson_name: q.salesperson_name,
       }).eq("id", q.id);
       if (error) {
         setSaving(false);
