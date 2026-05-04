@@ -55,6 +55,7 @@ const AdminQuotations = () => {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
+  const [staffFilter, setStaffFilterState] = useState<string>(searchParams.get("staff") ?? "all");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -79,11 +80,19 @@ const AdminQuotations = () => {
     if (v === "active") next.delete("status"); else next.set("status", v);
     setSearchParams(next, { replace: true });
   };
+  const setStaffFilter = (v: string) => {
+    setStaffFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("staff"); else next.set("staff", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
     const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";
     if (docFromUrl !== docTab) setDocTabState(docFromUrl);
+    const staffFromUrl = searchParams.get("staff") ?? "all";
+    if (staffFromUrl !== staffFilter) setStaffFilterState(staffFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -265,6 +274,13 @@ const AdminQuotations = () => {
       // Treat missing document_type as 'quotation' (legacy rows).
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return false;
+      if (isAdmin && staffFilter !== "all") {
+        if (staffFilter === "__none__") {
+          if (r.created_by) return false;
+        } else if (r.created_by !== staffFilter) {
+          return false;
+        }
+      }
       if (!s) return true;
       return (
         r.quotation_id.toLowerCase().includes(s) ||
@@ -272,7 +288,22 @@ const AdminQuotations = () => {
         r.party_place.toLowerCase().includes(s)
       );
     });
-  }, [rows, search, docTab]);
+  }, [rows, search, docTab, staffFilter, isAdmin]);
+
+  // Distinct staff options derived from the loaded rows (within current doc tab).
+  const staffOptions = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string; count: number }>();
+    rows.forEach((r) => {
+      const t: DocType = (r.document_type as DocType) ?? "quotation";
+      if (t !== docTab) return;
+      if (!r.created_by) return;
+      const name = creatorMap[r.created_by] ?? "Staff";
+      const ex = seen.get(r.created_by);
+      if (ex) ex.count += 1;
+      else seen.set(r.created_by, { id: r.created_by, name, count: 1 });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows, creatorMap, docTab]);
 
   const filtered = useMemo(
     () =>
@@ -559,6 +590,23 @@ const AdminQuotations = () => {
             })}
           </SelectContent>
         </Select>
+        {isAdmin && (
+          <Select value={staffFilter} onValueChange={setStaffFilter}>
+            <SelectTrigger className="sm:w-56">
+              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="All staff" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All staff ({docFiltered.length /* approx */})</SelectItem>
+              {staffOptions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name} ({s.count})
+                </SelectItem>
+              ))}
+              <SelectItem value="__none__">Unknown / system</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {loading ? (
