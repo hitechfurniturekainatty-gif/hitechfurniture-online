@@ -285,6 +285,24 @@ const AdminQuotationEditor = () => {
     setHeaderDirty(true);
   };
 
+  // Staff display names — used as auto-suggest options for the
+  // "Salesperson / Staff" field on the quotation header.
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("list-staff-users");
+      if (cancelled || error) return;
+      const users = (data?.users ?? []) as Array<{ display_name?: string | null; email?: string | null; role?: string | null }>;
+      const names = users
+        .filter((u) => u.role && u.role !== "delivery") // sales staff only
+        .map((u) => (u.display_name || u.email || "").trim())
+        .filter(Boolean);
+      setStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const addBlankItem = () => {
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
@@ -1054,7 +1072,13 @@ const AdminQuotationEditor = () => {
                 value={q.salesperson_name ?? ""}
                 onChange={(e) => updateHeader({ salesperson_name: e.target.value })}
                 placeholder="Who attended the customer?"
+                list="salesperson-options"
               />
+              <datalist id="salesperson-options">
+                {staffOptions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
             </div>
           )}
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
