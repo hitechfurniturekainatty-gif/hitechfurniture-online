@@ -417,6 +417,11 @@ const AdminQuotations = () => {
                     · <User className="h-3 w-3" /> {creatorMap[q.created_by] ?? "Staff"}
                   </span>
                 )}
+                {q.salesperson_name && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    · Sales: <span className="font-medium text-foreground">{q.salesperson_name}</span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
