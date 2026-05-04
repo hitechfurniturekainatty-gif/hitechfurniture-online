@@ -259,7 +259,7 @@ const Catalog = () => {
               className="pl-9"
             />
           </div>
-          {!isLandingView && !isSubPickerView && (
+          {(
             <div className="flex flex-wrap items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
@@ -273,17 +273,72 @@ const Catalog = () => {
                     )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:max-w-md">
+                <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
                   <SheetHeader>
                     <SheetTitle>Filter products</SheetTitle>
                   </SheetHeader>
                   <div className="mt-6 space-y-6">
+                    <div>
+                      <p className="mb-2 text-sm font-medium">Main category</p>
+                      <Select
+                        value={activeCatSlug ?? "__all__"}
+                        onValueChange={(v) => setCat(v === "__all__" ? null : v)}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">All categories</SelectItem>
+                          {mainCats.map((c) => (
+                            <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {activeCat && subsForActive.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium">Sub-category</p>
+                        <Select
+                          value={activeSubSlug ?? "__all__"}
+                          onValueChange={(v) => setSub(v === "__all__" ? null : v)}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All sub-categories</SelectItem>
+                            {subsForActive.map((s) => (
+                              <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div>
                       <p className="mb-2 text-sm font-medium">Price range (₹)</p>
                       <div className="flex items-center gap-2">
                         <Input type="number" inputMode="numeric" placeholder="Min" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
                         <span className="text-muted-foreground">to</span>
                         <Input type="number" inputMode="numeric" placeholder="Max" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {[
+                          { label: "Under ₹10k", min: "", max: "10000" },
+                          { label: "₹10k–25k", min: "10000", max: "25000" },
+                          { label: "₹25k–50k", min: "25000", max: "50000" },
+                          { label: "₹50k–1L", min: "50000", max: "100000" },
+                          { label: "Above ₹1L", min: "100000", max: "" },
+                        ].map((r) => (
+                          <button
+                            key={r.label}
+                            type="button"
+                            onClick={() => { setPriceMin(r.min); setPriceMax(r.max); }}
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                              priceMin === r.min && priceMax === r.max
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border hover:bg-muted"
+                            )}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     {materials.length > 0 && (
@@ -312,6 +367,7 @@ const Catalog = () => {
                   </div>
                 </SheetContent>
               </Sheet>
+              {!isLandingView && !isSubPickerView && (<>
               <Select value={sort} onValueChange={setSort}>
                 <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -325,6 +381,7 @@ const Catalog = () => {
                 {downloadingPdf ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
                 Catalog PDF
               </Button>
+              </>)}
             </div>
           )}
           {!isLandingView && (
