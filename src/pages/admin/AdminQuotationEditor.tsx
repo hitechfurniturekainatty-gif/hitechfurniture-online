@@ -1083,7 +1083,7 @@ const AdminQuotationEditor = () => {
           )}
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Expected delivery</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
+          <div className="space-y-1.5"><Label>Delivery date</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
           {canEditPrice && (
             <div className="space-y-1.5">
               <Label>Status</Label>
