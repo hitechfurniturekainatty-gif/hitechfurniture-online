@@ -285,6 +285,24 @@ const AdminQuotationEditor = () => {
     setHeaderDirty(true);
   };
 
+  // Staff display names — used as auto-suggest options for the
+  // "Salesperson / Staff" field on the quotation header.
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("list-staff-users");
+      if (cancelled || error) return;
+      const users = (data?.users ?? []) as Array<{ display_name?: string | null; email?: string | null; role?: string | null }>;
+      const names = users
+        .filter((u) => u.role && u.role !== "delivery") // sales staff only
+        .map((u) => (u.display_name || u.email || "").trim())
+        .filter(Boolean);
+      setStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const addBlankItem = () => {
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
