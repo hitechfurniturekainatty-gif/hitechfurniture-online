@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { BacklogShortcut } from "@/components/admin/BacklogShortcut";
+import { AdminOnly } from "@/components/admin/AdminOnly";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
@@ -81,24 +82,24 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
-            <Route path="/admin/categories" element={<AdminCategories />} />
-            <Route path="/admin/products" element={<AdminProducts />} />
-            <Route path="/admin/staff" element={<AdminStaff />} />
-            <Route path="/admin/workers" element={<AdminWorkers />} />
-            <Route path="/admin/workers/:id" element={<AdminWorkerDetail />} />
+            <Route path="/admin/categories" element={<AdminOnly><AdminCategories /></AdminOnly>} />
+            <Route path="/admin/products" element={<AdminOnly><AdminProducts /></AdminOnly>} />
+            <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
+            <Route path="/admin/workers" element={<AdminOnly><AdminWorkers /></AdminOnly>} />
+            <Route path="/admin/workers/:id" element={<AdminOnly><AdminWorkerDetail /></AdminOnly>} />
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />
             <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
             <Route path="/admin/quotations/:id/preview" element={<AdminQuotationPreview />} />
-            <Route path="/admin/routes" element={<AdminRoutes />} />
+            <Route path="/admin/routes" element={<AdminOnly><AdminRoutes /></AdminOnly>} />
             <Route path="/admin/logistics" element={<AdminLogistics />} />
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/my-trips" element={<AdminMyTrips />} />
             <Route path="/admin/services" element={<AdminServices />} />
             <Route path="/admin/services/:id" element={<AdminServiceEditor />} />
             <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
-            <Route path="/admin/trash" element={<AdminTrash />} />
-            <Route path="/admin/home-page" element={<AdminHomePage />} />
+            <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
+            <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
             {/* Legacy direct path also gated by Backlog */}
             <Route path="/admin/receivables" element={<AdminBacklog />} />
