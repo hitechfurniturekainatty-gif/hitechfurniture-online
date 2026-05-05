@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 
@@ -95,7 +95,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       operations: ["/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
       inventory: ["/admin/categories", "/admin/products"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
-      team: ["/admin/staff", "/admin/workers"],
+      team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
     };
     setOpenGroups((prev) => {
       const next = { ...prev };
@@ -178,6 +178,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     kind: "group", id: "team", label: "Team Management", icon: UsersRound,
     children: filt([
       { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
+      { to: "/admin/staff-monitor", label: "Staff Monitor", icon: Activity, show: isAdmin },
       { to: "/admin/workers", label: "Workers", icon: HardHat, show: isAdmin },
     ]),
   };
