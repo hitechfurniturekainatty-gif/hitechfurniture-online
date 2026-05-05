@@ -62,6 +62,8 @@ type Quotation = {
   terms: string | null;
   created_by: string | null;
   document_type: DocType;
+  submitted_for_pricing_at?: string | null;
+  source_task_id?: string | null;
 };
 
 type Worker = {
