@@ -763,6 +763,30 @@ const AdminQuotationEditor = () => {
     navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
+  // Measurement staff: save current draft AND mark the source measurement
+  // task as completed so office staff get an alert that pricing is needed.
+  const submitForPricing = async () => {
+    if (!q) return;
+    if (items.length === 0 || !items.some((i) => i.description.trim())) {
+      toast({ title: "Add at least one item before submitting", variant: "destructive" });
+      return;
+    }
+    const result = await saveAll();
+    if (!result) return;
+    if (q.source_task_id) {
+      const { error } = await supabase
+        .from("measurement_tasks")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", q.source_task_id);
+      if (error) {
+        toast({ title: "Couldn't mark task complete", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    toast({ title: "Submitted for pricing", description: "Office staff have been notified." });
+    navigate("/admin/measurement-tasks");
+  };
+
   // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
