@@ -367,11 +367,20 @@ export type Database = {
           google_maps_embed_url: string | null
           google_maps_url: string | null
           hero_arch_image_url: string | null
+          hero_brand_text: string | null
+          hero_caption_eyebrow: string | null
+          hero_caption_title: string | null
           hero_glass_door_image_url: string | null
+          hero_headline_line1: string | null
+          hero_headline_line2: string | null
           hero_interior_image_url: string | null
+          hero_scroll_hint: string | null
           id: string
           instagram_url: string | null
           managing_partner: string | null
+          show_google_review: boolean
+          show_hero_text: boolean
+          show_hero_window: boolean
           singleton: boolean
           updated_at: string
           whatsapp_default_message: string
@@ -389,11 +398,20 @@ export type Database = {
           google_maps_embed_url?: string | null
           google_maps_url?: string | null
           hero_arch_image_url?: string | null
+          hero_brand_text?: string | null
+          hero_caption_eyebrow?: string | null
+          hero_caption_title?: string | null
           hero_glass_door_image_url?: string | null
+          hero_headline_line1?: string | null
+          hero_headline_line2?: string | null
           hero_interior_image_url?: string | null
+          hero_scroll_hint?: string | null
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
+          show_google_review?: boolean
+          show_hero_text?: boolean
+          show_hero_window?: boolean
           singleton?: boolean
           updated_at?: string
           whatsapp_default_message?: string
@@ -411,11 +429,20 @@ export type Database = {
           google_maps_embed_url?: string | null
           google_maps_url?: string | null
           hero_arch_image_url?: string | null
+          hero_brand_text?: string | null
+          hero_caption_eyebrow?: string | null
+          hero_caption_title?: string | null
           hero_glass_door_image_url?: string | null
+          hero_headline_line1?: string | null
+          hero_headline_line2?: string | null
           hero_interior_image_url?: string | null
+          hero_scroll_hint?: string | null
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
+          show_google_review?: boolean
+          show_hero_text?: boolean
+          show_hero_window?: boolean
           singleton?: boolean
           updated_at?: string
           whatsapp_default_message?: string
