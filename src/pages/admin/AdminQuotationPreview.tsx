@@ -523,6 +523,18 @@ const AdminQuotationPreview = () => {
         <span className="text-xs text-muted-foreground">{po ? "PO Preview" : "Digital Preview"}</span>
       </div>
 
+      {isFieldOnly && q.submitted_for_pricing_at && (
+        <div className="mb-3 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+          <Check className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">Submitted for pricing — view only</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              You've submitted measurements and items. Office staff will add prices and finalize. You can view this quotation but no longer edit it.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Document */}
       <article className="mx-auto max-w-4xl rounded-lg border border-border bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
         {/* Header */}
