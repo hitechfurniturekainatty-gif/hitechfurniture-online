@@ -198,6 +198,28 @@ const AdminStaffMonitor = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Workflow legend so everyone reads the lanes the same way */}
+        <Card className="mb-4 border-dashed">
+          <CardContent className="grid gap-2 p-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><Ruler className="h-3.5 w-3.5 text-primary" /> Measurement staff</p>
+              <p className="text-muted-foreground">Open task → fill items + measurements → <span className="font-medium text-emerald-700 dark:text-emerald-300">Submit for pricing</span> = complete.</p>
+            </div>
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><FileText className="h-3.5 w-3.5 text-primary" /> Office staff</p>
+              <p className="text-muted-foreground">Open quotation → add prices &amp; save → assign work → send to customer → <span className="font-medium text-emerald-700 dark:text-emerald-300">delivered</span> = complete.</p>
+            </div>
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><HardHat className="h-3.5 w-3.5 text-primary" /> Workers</p>
+              <p className="text-muted-foreground">Job assigned → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">done</span> = complete.</p>
+            </div>
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><Truck className="h-3.5 w-3.5 text-primary" /> Delivery</p>
+              <p className="text-muted-foreground">Trip planned → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">completed</span> = complete.</p>
+            </div>
+          </CardContent>
+        </Card>
       </AdminShell>
     </AdminOnly>
   );
