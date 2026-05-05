@@ -299,13 +299,13 @@ const Index = () => {
         </div>
       )}
 
+      {/* Google review CTA — quick 1-tap rating + scannable QR for in-store. */}
+      <GoogleReviewCta />
+
       <Suspense fallback={null}>
         <SiteFooter />
         <WhatsAppFab />
       </Suspense>
-
-      {/* Google review CTA — bottom-left, just above the footer edge. */}
-      <GoogleReviewCta />
     </div>
   );
 };
@@ -319,45 +319,52 @@ const GOOGLE_REVIEW_URL =
 
 const GoogleReviewCta = () => {
   const qrUrl =
-    "https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=" +
+    "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=2&data=" +
     encodeURIComponent(GOOGLE_REVIEW_URL);
   return (
-    <section className="container-page pb-10 md:pb-14">
-      <div className="flex max-w-sm items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-card-soft">
-        <div className="shrink-0 rounded-xl border border-border bg-background p-1.5">
-          <img
-            src={qrUrl}
-            alt="Scan to rate Hitech Furniture on Google"
-            loading="lazy"
-            decoding="async"
-            width={72}
-            height={72}
-            className="h-16 w-16"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1 text-amber-500">
+    <section className="container-page pb-16 md:pb-20">
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:flex-row md:p-12 md:text-left">
+        <div className="flex-1">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+            Loved your experience?
+          </p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">
+            Rate us on Google
+          </h2>
+          <div className="mt-2 flex items-center justify-center gap-1 text-amber-500 md:justify-start">
             {Array.from({ length: 5 }).map((_, i) => (
-              <svg key={i} viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current">
+              <svg key={i} viewBox="0 0 24 24" className="h-6 w-6 fill-current">
                 <path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z" />
               </svg>
             ))}
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-foreground">
-            Rate us on Google
-          </h3>
-          <p className="text-[11px] text-muted-foreground">Scan QR or tap the button</p>
-          <Button asChild size="sm" className="mt-1.5 h-7 px-2.5 text-xs">
-            <a
-              href={GOOGLE_REVIEW_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              referrerPolicy="no-referrer"
-            >
-              Rate now
-              <ArrowRight className="ml-1 h-3 w-3" />
-            </a>
-          </Button>
+          <p className="mt-3 text-sm text-muted-foreground md:text-base">
+            One tap takes you straight to the star-rating page — no searching, no hunting for links.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3 md:justify-start">
+            <Button asChild size="lg" className="group">
+              <a href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener">
+                Rate us on Google
+                <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </a>
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="rounded-2xl border border-border bg-background p-3 shadow-sm">
+            <img
+              src={qrUrl}
+              alt="Scan to rate Hitech Furniture on Google"
+              loading="lazy"
+              decoding="async"
+              width={160}
+              height={160}
+              className="h-40 w-40"
+            />
+          </div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Scan to rate
+          </p>
         </div>
       </div>
     </section>
