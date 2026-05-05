@@ -135,7 +135,7 @@ const Index = () => {
       <SiteHeader />
 
       {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}
-      <HeroWindowReveal />
+      {settings?.show_hero_window !== false && <HeroWindowReveal />}
 
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}
@@ -301,7 +301,7 @@ const Index = () => {
       )}
 
       {/* Google review CTA — quick 1-tap rating + scannable QR for in-store. */}
-      <GoogleReviewCta />
+      {settings?.show_google_review !== false && <GoogleReviewCta />}
 
       <Suspense fallback={null}>
         <SiteFooter />

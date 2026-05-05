@@ -21,6 +21,13 @@ export const HeroWindowReveal = () => {
   const archImg = settings?.hero_arch_image_url || archDefault;
   const glassDoorImg = settings?.hero_glass_door_image_url || glassDoorDefault;
   const interiorImg = settings?.hero_interior_image_url || interiorDefault;
+  const showText = settings?.show_hero_text !== false;
+  const brandText = settings?.hero_brand_text || "Hitech Furniture & Interiors";
+  const headline1 = settings?.hero_headline_line1 || "Luxury Furniture,";
+  const headline2 = settings?.hero_headline_line2 || "Redefined.";
+  const scrollHint = settings?.hero_scroll_hint || "Scroll to enter";
+  const captionEyebrow = settings?.hero_caption_eyebrow || "Step inside";
+  const captionTitle = settings?.hero_caption_title || "Welcome to the showroom";
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -168,6 +175,7 @@ export const HeroWindowReveal = () => {
         </div>
 
         {/* Headline — visible at start */}
+        {showText && (
         <div
           className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center"
           style={{
@@ -176,33 +184,36 @@ export const HeroWindowReveal = () => {
           }}
         >
           <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/85 md:text-xs">
-            Hitech Furniture &amp; Interiors
+            {brandText}
           </p>
           <h1 className="font-display text-4xl leading-[1.05] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)] md:text-6xl lg:text-7xl">
-            Luxury Furniture,
+            {headline1}
             <br />
-            <span className="italic text-white/95">Redefined.</span>
+            <span className="italic text-white/95">{headline2}</span>
           </h1>
           <div className="mt-12 flex flex-col items-center gap-2 text-white/85">
             <span className="text-[10px] font-medium uppercase tracking-[0.35em]">
-              Scroll to enter
+              {scrollHint}
             </span>
             <ChevronDown className="h-5 w-5 animate-bounce" aria-hidden />
           </div>
         </div>
+        )}
 
         {/* "Step inside" caption — appears after doors open */}
+        {showText && (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-10 z-20 flex flex-col items-center px-6 text-center md:bottom-16"
           style={{ opacity: captionOpacity }}
         >
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.4em] text-white/90 md:text-xs">
-            Step inside
+            {captionEyebrow}
           </p>
           <h2 className="font-display text-2xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)] md:text-4xl">
-            Welcome to the showroom
+            {captionTitle}
           </h2>
         </div>
+        )}
       </div>
     </section>
   );

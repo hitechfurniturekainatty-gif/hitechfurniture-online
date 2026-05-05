@@ -39,6 +39,15 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   hero_arch_image_url: null,
   hero_glass_door_image_url: null,
   hero_interior_image_url: null,
+  show_hero_window: true,
+  show_hero_text: true,
+  show_google_review: true,
+  hero_brand_text: "",
+  hero_headline_line1: "",
+  hero_headline_line2: "",
+  hero_scroll_hint: "",
+  hero_caption_eyebrow: "",
+  hero_caption_title: "",
 };
 
 const AdminHomePage = () => {
@@ -389,6 +398,59 @@ const AdminHomePage = () => {
                   Save the Contact tab once to create the settings row, then upload images here.
                 </p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Visibility & overlay text</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch id="show-hero-window" checked={settings.show_hero_window} onCheckedChange={(v) => setSettings({ ...settings, show_hero_window: v })} />
+                  <Label htmlFor="show-hero-window" className="text-sm">Show cinematic main hero</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="show-hero-text" checked={settings.show_hero_text} onCheckedChange={(v) => setSettings({ ...settings, show_hero_text: v })} />
+                  <Label htmlFor="show-hero-text" className="text-sm">Show text on main image</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="show-google-review" checked={settings.show_google_review} onCheckedChange={(v) => setSettings({ ...settings, show_google_review: v })} />
+                  <Label htmlFor="show-google-review" className="text-sm">Show "Rate us on Google" section</Label>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Brand line (small caps above headline)</Label>
+                  <Input value={settings.hero_brand_text ?? ""} onChange={(e) => setSettings({ ...settings, hero_brand_text: e.target.value })} placeholder="Hitech Furniture & Interiors" />
+                </div>
+                <div>
+                  <Label className="text-xs">Scroll hint text</Label>
+                  <Input value={settings.hero_scroll_hint ?? ""} onChange={(e) => setSettings({ ...settings, hero_scroll_hint: e.target.value })} placeholder="Scroll to enter" />
+                </div>
+                <div>
+                  <Label className="text-xs">Headline — line 1</Label>
+                  <Input value={settings.hero_headline_line1 ?? ""} onChange={(e) => setSettings({ ...settings, hero_headline_line1: e.target.value })} placeholder="Luxury Furniture," />
+                </div>
+                <div>
+                  <Label className="text-xs">Headline — line 2 (italic)</Label>
+                  <Input value={settings.hero_headline_line2 ?? ""} onChange={(e) => setSettings({ ...settings, hero_headline_line2: e.target.value })} placeholder="Redefined." />
+                </div>
+                <div>
+                  <Label className="text-xs">After-doors caption eyebrow</Label>
+                  <Input value={settings.hero_caption_eyebrow ?? ""} onChange={(e) => setSettings({ ...settings, hero_caption_eyebrow: e.target.value })} placeholder="Step inside" />
+                </div>
+                <div>
+                  <Label className="text-xs">After-doors caption title</Label>
+                  <Input value={settings.hero_caption_title ?? ""} onChange={(e) => setSettings({ ...settings, hero_caption_title: e.target.value })} placeholder="Welcome to the showroom" />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={saveSettings} disabled={saving}>
+                  {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}Save changes
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
