@@ -765,9 +765,11 @@ const AdminQuotationPreview = () => {
       {/* Sticky action bar */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-4 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
         <div className="mx-auto flex max-w-4xl flex-wrap gap-2">
-          <Button variant="outline" onClick={handleEdit} className="h-11 flex-1 sm:flex-initial">
-            <Pencil className="mr-2 h-4 w-4" />Edit
-          </Button>
+          {!(isFieldOnly && q.submitted_for_pricing_at) && (
+            <Button variant="outline" onClick={handleEdit} className="h-11 flex-1 sm:flex-initial">
+              <Pencil className="mr-2 h-4 w-4" />Edit
+            </Button>
+          )}
           {canShare && (
             <Button
               variant="secondary"
