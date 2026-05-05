@@ -1588,7 +1588,7 @@ const AdminQuotationEditor = () => {
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
         </Button>
-        {isFieldOnly && q.source_task_id && (
+        {isFieldOnly && q.source_task_id && !submittedForPricing && (
           <Button
             onClick={submitForPricing}
             disabled={saving}
