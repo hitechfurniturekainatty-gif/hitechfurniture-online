@@ -1284,7 +1284,7 @@ const AdminQuotationEditor = () => {
                       {showPricing ? "Quantity & Pricing" : "Quantity"}
                     </h3>
                   </div>
-                  <div className={`grid gap-3 ${showPricing ? "grid-cols-3" : "grid-cols-1 sm:max-w-[160px]"}`}>
+                  <div className={`grid gap-3 ${showPricing ? (canEditPrice ? "grid-cols-3" : "grid-cols-2") : "grid-cols-1 sm:max-w-[160px]"}`}>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Qty</Label>
                     <Input
@@ -1303,9 +1303,9 @@ const AdminQuotationEditor = () => {
                       placeholder="1"
                     />
                   </div>
-                  {showPricing && (
-                  <>
-                  <div className="space-y-1.5">
+                   {showPricing && (
+                   <>
+                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Unit price (₹)</Label>
                     <Input
                       className="h-11"
@@ -1321,6 +1321,7 @@ const AdminQuotationEditor = () => {
                     />
                     {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
                   </div>
+                  {canEditPrice && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Amount</Label>
                     <div className="flex h-11 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary">
@@ -1329,6 +1330,7 @@ const AdminQuotationEditor = () => {
                         : <span className="font-normal text-muted-foreground">—</span>}
                     </div>
                   </div>
+                  )}
                   </>
                   )}
                   </div>
