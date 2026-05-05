@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Copy, Check, QrCode, Star } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
@@ -321,50 +322,96 @@ const GoogleReviewCta = () => {
   const qrUrl =
     "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=2&data=" +
     encodeURIComponent(GOOGLE_REVIEW_URL);
+  const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(GOOGLE_REVIEW_URL);
+      setCopied(true);
+      toast({ title: "Link copied", description: "Share it with friends & family." });
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      toast({ title: "Couldn't copy", description: "Please copy the link manually.", variant: "destructive" });
+    }
+  };
+
   return (
     <section className="container-page pb-16 md:pb-20">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:flex-row md:p-12 md:text-left">
-        <div className="flex-1">
+      <div className="relative mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-amber-50/40 p-8 text-center shadow-card-soft md:p-12">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+
+        <div className="relative">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 shadow-sm">
+            <Star className="h-7 w-7 fill-current" />
+          </div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
             Loved your experience?
           </p>
           <h2 className="font-display text-3xl text-foreground md:text-4xl">
             Rate us on Google
           </h2>
-          <div className="mt-2 flex items-center justify-center gap-1 text-amber-500 md:justify-start">
+          <div className="mt-3 flex items-center justify-center gap-1 text-amber-500">
             {Array.from({ length: 5 }).map((_, i) => (
-              <svg key={i} viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+              <svg key={i} viewBox="0 0 24 24" className="h-6 w-6 fill-current drop-shadow-sm">
                 <path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z" />
               </svg>
             ))}
           </div>
-          <p className="mt-3 text-sm text-muted-foreground md:text-base">
-            One tap takes you straight to the star-rating page — no searching, no hunting for links.
+          <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground md:text-base">
+            One tap opens the star-rating page — or copy the link to share with friends & family.
           </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3 md:justify-start">
-            <Button asChild size="lg" className="group">
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg" className="group shadow-md">
               <a href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener">
                 Rate us on Google
                 <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </a>
             </Button>
+            <Button size="lg" variant="outline" onClick={handleCopy}>
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 text-emerald-600" />
+                  Link copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy review link
+                </>
+              )}
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              onClick={() => setShowQr((v) => !v)}
+              aria-expanded={showQr}
+            >
+              <QrCode className="h-4 w-4" />
+              {showQr ? "Hide QR code" : "Show QR code"}
+            </Button>
           </div>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <div className="rounded-2xl border border-border bg-background p-3 shadow-sm">
-            <img
-              src={qrUrl}
-              alt="Scan to rate Hitech Furniture on Google"
-              loading="lazy"
-              decoding="async"
-              width={160}
-              height={160}
-              className="h-40 w-40"
-            />
-          </div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Scan to rate
-          </p>
+
+          {showQr && (
+            <div className="mt-7 flex animate-fade-up flex-col items-center gap-2">
+              <div className="rounded-2xl border border-border bg-background p-3 shadow-sm">
+                <img
+                  src={qrUrl}
+                  alt="Scan to rate Hitech Furniture on Google"
+                  loading="lazy"
+                  decoding="async"
+                  width={180}
+                  height={180}
+                  className="h-44 w-44"
+                />
+              </div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Scan with your phone camera
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>
