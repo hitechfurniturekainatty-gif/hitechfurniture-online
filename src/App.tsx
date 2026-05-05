@@ -40,6 +40,7 @@ const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
 const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
 const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
 const AdminBacklog = lazy(() => import("./pages/admin/AdminBacklog.tsx"));
+const AdminStaffMonitor = lazy(() => import("./pages/admin/AdminStaffMonitor.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/admin/categories" element={<AdminOnly><AdminCategories /></AdminOnly>} />
             <Route path="/admin/products" element={<AdminOnly><AdminProducts /></AdminOnly>} />
             <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
+            <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
             <Route path="/admin/workers" element={<AdminOnly><AdminWorkers /></AdminOnly>} />
             <Route path="/admin/workers/:id" element={<AdminOnly><AdminWorkerDetail /></AdminOnly>} />
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
