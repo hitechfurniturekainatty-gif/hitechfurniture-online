@@ -1509,7 +1509,9 @@ const AdminQuotationEditor = () => {
       )}
 
       {isFieldOnly && (
-        <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
+        <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">
+          Save your work as you go. When all items + measurements are filled, tap <span className="font-semibold">Submit for pricing</span> — office staff will add prices and finalize.
+        </p>
       )}
 
       {/* Audit trail of every status change (admin/staff only — workers don't see this). */}
