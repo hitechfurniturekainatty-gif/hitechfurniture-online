@@ -254,6 +254,16 @@ const AdminQuotationEditor = () => {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
+  // Measurement staff already submitted this draft for pricing — they can
+  // only view it now. Send them to the read-only preview so they can't
+  // accidentally edit measurements after office staff start pricing.
+  useEffect(() => {
+    if (!loading && q && fieldReadOnly) {
+      navigate(`/admin/quotations/${q.id}/preview`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, fieldReadOnly, q?.id]);
+
   // Preload published products once so the description autosuggest is instant.
   useEffect(() => {
     loadProducts();
