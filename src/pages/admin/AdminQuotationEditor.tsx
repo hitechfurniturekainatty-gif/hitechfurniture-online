@@ -23,7 +23,7 @@ import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
-  Package, HardHat, Send, FileText, Search, ShoppingCart,
+  Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
 } from "lucide-react";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
 // of blocking initial page paint on mobile.
