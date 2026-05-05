@@ -39,6 +39,15 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   hero_arch_image_url: null,
   hero_glass_door_image_url: null,
   hero_interior_image_url: null,
+  show_hero_window: true,
+  show_hero_text: true,
+  show_google_review: true,
+  hero_brand_text: "",
+  hero_headline_line1: "",
+  hero_headline_line2: "",
+  hero_scroll_hint: "",
+  hero_caption_eyebrow: "",
+  hero_caption_title: "",
 };
 
 const AdminHomePage = () => {
