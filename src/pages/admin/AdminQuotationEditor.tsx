@@ -1094,7 +1094,7 @@ const AdminQuotationEditor = () => {
       </div>
 
       {/* Banner: this quotation came from a measurement task and is awaiting pricing */}
-      {canEditPrice && q.source_task_id && normalizeStatus(q.status) === "drafted" && (
+      {canEditPrice && submittedForPricing && normalizeStatus(q.status) === "drafted" && (
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="text-sm">
