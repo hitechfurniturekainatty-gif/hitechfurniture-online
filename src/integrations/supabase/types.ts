@@ -933,6 +933,7 @@ export type Database = {
           source_service_id: string | null
           source_task_id: string | null
           status: string
+          submitted_for_pricing_at: string | null
           subtotal: number
           terms: string | null
           total: number
@@ -965,6 +966,7 @@ export type Database = {
           source_service_id?: string | null
           source_task_id?: string | null
           status?: string
+          submitted_for_pricing_at?: string | null
           subtotal?: number
           terms?: string | null
           total?: number
@@ -997,6 +999,7 @@ export type Database = {
           source_service_id?: string | null
           source_task_id?: string | null
           status?: string
+          submitted_for_pricing_at?: string | null
           subtotal?: number
           terms?: string | null
           total?: number

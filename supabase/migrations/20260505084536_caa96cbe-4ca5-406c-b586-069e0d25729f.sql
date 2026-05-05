@@ -1,0 +1,1 @@
+ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS submitted_for_pricing_at timestamp with time zone;
