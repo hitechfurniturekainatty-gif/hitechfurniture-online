@@ -23,7 +23,7 @@ import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
-  Package, HardHat, Send, FileText, Search, ShoppingCart,
+  Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
 } from "lucide-react";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
 // of blocking initial page paint on mobile.
@@ -83,6 +83,7 @@ type Quotation = {
   delivery_place: string | null;
   document_type: DocType;
   salesperson_name: string | null;
+  source_task_id?: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
@@ -762,6 +763,30 @@ const AdminQuotationEditor = () => {
     navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
+  // Measurement staff: save current draft AND mark the source measurement
+  // task as completed so office staff get an alert that pricing is needed.
+  const submitForPricing = async () => {
+    if (!q) return;
+    if (items.length === 0 || !items.some((i) => i.description.trim())) {
+      toast({ title: "Add at least one item before submitting", variant: "destructive" });
+      return;
+    }
+    const result = await saveAll();
+    if (!result) return;
+    if (q.source_task_id) {
+      const { error } = await supabase
+        .from("measurement_tasks")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", q.source_task_id);
+      if (error) {
+        toast({ title: "Couldn't mark task complete", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    toast({ title: "Submitted for pricing", description: "Office staff have been notified." });
+    navigate("/admin/measurement-tasks");
+  };
+
   // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
@@ -1022,6 +1047,11 @@ const AdminQuotationEditor = () => {
           <Button onClick={saveAndPreview} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
+          {isFieldOnly && q.source_task_id && (
+            <Button onClick={submitForPricing} disabled={saving} variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <CheckCircle2 className="mr-2 h-4 w-4" />Submit for pricing
+            </Button>
+          )}
           {canEditPrice && (
             <>
               <DownloadShareMenu
@@ -1037,6 +1067,17 @@ const AdminQuotationEditor = () => {
           )}
         </div>
       </div>
+
+      {/* Banner: this quotation came from a measurement task and is awaiting pricing */}
+      {canEditPrice && q.source_task_id && normalizeStatus(q.status) === "drafted" && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">Measurement complete — awaiting pricing</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Field staff submitted measurements and items. Add unit prices, GST and any extra notes, then save.</p>
+          </div>
+        </div>
+      )}
 
       {/* Header form */}
       <Card className="mb-4">
@@ -1468,7 +1509,9 @@ const AdminQuotationEditor = () => {
       )}
 
       {isFieldOnly && (
-        <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">Submit this draft and office staff will add prices and finalize.</p>
+        <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">
+          Save your work as you go. When all items + measurements are filled, tap <span className="font-semibold">Submit for pricing</span> — office staff will add prices and finalize.
+        </p>
       )}
 
       {/* Audit trail of every status change (admin/staff only — workers don't see this). */}
@@ -1520,6 +1563,15 @@ const AdminQuotationEditor = () => {
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
         </Button>
+        {isFieldOnly && q.source_task_id && (
+          <Button
+            onClick={submitForPricing}
+            disabled={saving}
+            className="mt-2 h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <CheckCircle2 className="mr-1.5 h-4 w-4" />Submit for pricing
+          </Button>
+        )}
       </div>
       {/* Spacer so content isn't hidden behind sticky bar on mobile */}
       <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,15 @@ type UpcomingDelivery = {
   total: number;
 };
 
+type AwaitingPricing = {
+  id: string;
+  quotation_id: string;
+  party_name: string;
+  party_place: string | null;
+  created_at: string;
+  created_by: string | null;
+};
+
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
@@ -31,6 +40,7 @@ const AdminOverview = () => {
   });
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
+  const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
 
   useEffect(() => {
     const run = async () => {
@@ -96,6 +106,20 @@ const AdminOverview = () => {
         if (!isAdmin) q = q.eq("created_by", user.id);
         const { data } = await q;
         setUpcoming((data ?? []) as UpcomingDelivery[]);
+      }
+
+      // Office staff: drafted quotations created by measurement staff
+      // (i.e. those linked to a measurement task) — these need pricing.
+      if (isOfficeStaff) {
+        const { data } = await supabase
+          .from("quotations")
+          .select("id, quotation_id, party_name, party_place, created_at, created_by, source_task_id")
+          .is("deleted_at", null)
+          .eq("status", "drafted")
+          .not("source_task_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        setAwaitingPricing((data ?? []) as AwaitingPricing[]);
       }
     };
     run();
@@ -236,6 +260,37 @@ const AdminOverview = () => {
                 </Link>
               );
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {isOfficeStaff && awaitingPricing.length > 0 && (
+        <Card className="mb-6 border-emerald-500/40 bg-emerald-500/5">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              Awaiting pricing
+              <Badge variant="secondary" className="ml-1">{awaitingPricing.length}</Badge>
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/quotations?status=drafted">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">Measurement staff submitted these — add prices, GST and finalize.</p>
+            {awaitingPricing.slice(0, 5).map((q) => (
+              <Link
+                key={q.id}
+                to={`/admin/quotations/${q.id}`}
+                className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">{q.party_name}{q.party_place ? <span className="text-xs text-muted-foreground"> · {q.party_place}</span> : null}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.quotation_id}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px]">Add prices</Badge>
+              </Link>
+            ))}
           </CardContent>
         </Card>
       )}
