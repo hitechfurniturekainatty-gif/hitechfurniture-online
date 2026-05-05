@@ -20,6 +20,16 @@ export type HomepageSettings = {
   hero_arch_image_url: string | null;
   hero_glass_door_image_url: string | null;
   hero_interior_image_url: string | null;
+  // Visibility toggles + editable hero overlay text
+  show_hero_window: boolean;
+  show_hero_text: boolean;
+  show_google_review: boolean;
+  hero_brand_text: string | null;
+  hero_headline_line1: string | null;
+  hero_headline_line2: string | null;
+  hero_scroll_hint: string | null;
+  hero_caption_eyebrow: string | null;
+  hero_caption_title: string | null;
 };
 
 export type HeroSlide = {
