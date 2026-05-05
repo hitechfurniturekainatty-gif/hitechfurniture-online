@@ -299,13 +299,13 @@ const Index = () => {
         </div>
       )}
 
-      {/* Google review CTA — quick 1-tap rating + scannable QR for in-store. */}
-      <GoogleReviewCta />
-
       <Suspense fallback={null}>
         <SiteFooter />
         <WhatsAppFab />
       </Suspense>
+
+      {/* Google review CTA — bottom-left, just above the footer edge. */}
+      <GoogleReviewCta />
     </div>
   );
 };
@@ -322,17 +322,17 @@ const GoogleReviewCta = () => {
     "https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=" +
     encodeURIComponent(GOOGLE_REVIEW_URL);
   return (
-    <section className="container-page pb-12 md:pb-16">
-      <div className="mx-auto flex max-w-md items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-card-soft">
+    <section className="container-page pb-10 md:pb-14">
+      <div className="flex max-w-sm items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-card-soft">
         <div className="shrink-0 rounded-xl border border-border bg-background p-1.5">
           <img
             src={qrUrl}
             alt="Scan to rate Hitech Furniture on Google"
             loading="lazy"
             decoding="async"
-            width={84}
-            height={84}
-            className="h-20 w-20"
+            width={72}
+            height={72}
+            className="h-16 w-16"
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -343,11 +343,11 @@ const GoogleReviewCta = () => {
               </svg>
             ))}
           </div>
-          <h3 className="mt-1 font-display text-base font-semibold text-foreground">
+          <h3 className="mt-0.5 font-display text-sm font-semibold text-foreground">
             Rate us on Google
           </h3>
-          <p className="text-xs text-muted-foreground">Scan QR or tap the button</p>
-          <Button asChild size="sm" className="mt-2 h-8 px-3 text-xs">
+          <p className="text-[11px] text-muted-foreground">Scan QR or tap the button</p>
+          <Button asChild size="sm" className="mt-1.5 h-7 px-2.5 text-xs">
             <a
               href={GOOGLE_REVIEW_URL}
               target="_blank"
