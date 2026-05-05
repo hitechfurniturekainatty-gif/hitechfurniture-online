@@ -1550,6 +1550,15 @@ const AdminQuotationEditor = () => {
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
         </Button>
+        {isFieldOnly && q.source_task_id && (
+          <Button
+            onClick={submitForPricing}
+            disabled={saving}
+            className="mt-2 h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <CheckCircle2 className="mr-1.5 h-4 w-4" />Submit for pricing
+          </Button>
+        )}
       </div>
       {/* Spacer so content isn't hidden behind sticky bar on mobile */}
       <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
