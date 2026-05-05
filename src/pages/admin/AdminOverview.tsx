@@ -116,7 +116,7 @@ const AdminOverview = () => {
           .select("id, quotation_id, party_name, party_place, created_at, created_by, source_task_id")
           .is("deleted_at", null)
           .eq("status", "drafted")
-          .not("source_task_id", "is", null)
+          .not("submitted_for_pricing_at", "is", null)
           .order("created_at", { ascending: false })
           .limit(20);
         setAwaitingPricing((data ?? []) as AwaitingPricing[]);
