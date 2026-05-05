@@ -83,6 +83,7 @@ type Quotation = {
   delivery_place: string | null;
   document_type: DocType;
   salesperson_name: string | null;
+  source_task_id?: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
