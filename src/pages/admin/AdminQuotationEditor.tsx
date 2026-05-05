@@ -1068,6 +1068,17 @@ const AdminQuotationEditor = () => {
         </div>
       </div>
 
+      {/* Banner: this quotation came from a measurement task and is awaiting pricing */}
+      {canEditPrice && q.source_task_id && normalizeStatus(q.status) === "drafted" && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">Measurement complete — awaiting pricing</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Field staff submitted measurements and items. Add unit prices, GST and any extra notes, then save.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header form */}
       <Card className="mb-4">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
