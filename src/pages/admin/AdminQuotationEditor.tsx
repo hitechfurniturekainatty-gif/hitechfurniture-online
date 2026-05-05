@@ -1284,7 +1284,7 @@ const AdminQuotationEditor = () => {
                       {showPricing ? "Quantity & Pricing" : "Quantity"}
                     </h3>
                   </div>
-                  <div className={`grid gap-3 ${showPricing ? "grid-cols-3" : "grid-cols-1 sm:max-w-[160px]"}`}>
+                  <div className={`grid gap-3 ${showPricing ? (canEditPrice ? "grid-cols-3" : "grid-cols-2") : "grid-cols-1 sm:max-w-[160px]"}`}>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Qty</Label>
                     <Input
