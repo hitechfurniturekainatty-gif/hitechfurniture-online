@@ -82,8 +82,11 @@ const AdminQuotationPreview = () => {
   const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isOfficeStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
   const canShare = isOfficeStaff;
+  // Measurement-only staff who already submitted the draft for pricing
+  // can view this quotation but cannot edit it any more.
+  const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
