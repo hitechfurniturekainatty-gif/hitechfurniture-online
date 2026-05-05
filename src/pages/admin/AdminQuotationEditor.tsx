@@ -1072,7 +1072,7 @@ const AdminQuotationEditor = () => {
           <Button onClick={saveAndPreview} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
-          {isFieldOnly && q.source_task_id && (
+          {isFieldOnly && q.source_task_id && !submittedForPricing && (
             <Button onClick={submitForPricing} disabled={saving} variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
               <CheckCircle2 className="mr-2 h-4 w-4" />Submit for pricing
             </Button>
