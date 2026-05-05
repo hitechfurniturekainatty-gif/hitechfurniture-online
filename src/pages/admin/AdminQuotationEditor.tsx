@@ -84,6 +84,7 @@ type Quotation = {
   document_type: DocType;
   salesperson_name: string | null;
   source_task_id?: string | null;
+  submitted_for_pricing_at?: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
@@ -222,6 +223,10 @@ const AdminQuotationEditor = () => {
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
+  // Once measurement staff hits "Submit for pricing", their view goes
+  // read-only and the office staff get the alert to add prices.
+  const submittedForPricing = !!q?.submitted_for_pricing_at;
+  const fieldReadOnly = isFieldOnly && submittedForPricing;
   // Document type drives major UI changes: PO mode hides all pricing,
   // GST, advance, discount, terms, totals, and bank info — POs only
   // describe the work / materials sent to a worker or supplier.
@@ -248,6 +253,16 @@ const AdminQuotationEditor = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  // Measurement staff already submitted this draft for pricing — they can
+  // only view it now. Send them to the read-only preview so they can't
+  // accidentally edit measurements after office staff start pricing.
+  useEffect(() => {
+    if (!loading && q && fieldReadOnly) {
+      navigate(`/admin/quotations/${q.id}/preview`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, fieldReadOnly, q?.id]);
 
   // Preload published products once so the description autosuggest is instant.
   useEffect(() => {
@@ -773,6 +788,16 @@ const AdminQuotationEditor = () => {
     }
     const result = await saveAll();
     if (!result) return;
+    const nowIso = new Date().toISOString();
+    const { error: qErr } = await supabase
+      .from("quotations")
+      .update({ submitted_for_pricing_at: nowIso })
+      .eq("id", q.id);
+    if (qErr) {
+      toast({ title: "Submit failed", description: qErr.message, variant: "destructive" });
+      return;
+    }
+    setQ((prev) => (prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev));
     if (q.source_task_id) {
       const { error } = await supabase
         .from("measurement_tasks")
@@ -1047,7 +1072,7 @@ const AdminQuotationEditor = () => {
           <Button onClick={saveAndPreview} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
-          {isFieldOnly && q.source_task_id && (
+          {isFieldOnly && q.source_task_id && !submittedForPricing && (
             <Button onClick={submitForPricing} disabled={saving} variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
               <CheckCircle2 className="mr-2 h-4 w-4" />Submit for pricing
             </Button>
@@ -1069,7 +1094,7 @@ const AdminQuotationEditor = () => {
       </div>
 
       {/* Banner: this quotation came from a measurement task and is awaiting pricing */}
-      {canEditPrice && q.source_task_id && normalizeStatus(q.status) === "drafted" && (
+      {canEditPrice && submittedForPricing && normalizeStatus(q.status) === "drafted" && (
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="text-sm">
@@ -1563,7 +1588,7 @@ const AdminQuotationEditor = () => {
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
         </Button>
-        {isFieldOnly && q.source_task_id && (
+        {isFieldOnly && q.source_task_id && !submittedForPricing && (
           <Button
             onClick={submitForPricing}
             disabled={saving}

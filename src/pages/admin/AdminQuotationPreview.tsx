@@ -62,6 +62,8 @@ type Quotation = {
   terms: string | null;
   created_by: string | null;
   document_type: DocType;
+  submitted_for_pricing_at?: string | null;
+  source_task_id?: string | null;
 };
 
 type Worker = {
@@ -80,8 +82,11 @@ const AdminQuotationPreview = () => {
   const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isOfficeStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
   const canShare = isOfficeStaff;
+  // Measurement-only staff who already submitted the draft for pricing
+  // can view this quotation but cannot edit it any more.
+  const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
@@ -518,6 +523,18 @@ const AdminQuotationPreview = () => {
         <span className="text-xs text-muted-foreground">{po ? "PO Preview" : "Digital Preview"}</span>
       </div>
 
+      {isFieldOnly && q.submitted_for_pricing_at && (
+        <div className="mb-3 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+          <Check className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">Submitted for pricing — view only</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              You've submitted measurements and items. Office staff will add prices and finalize. You can view this quotation but no longer edit it.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Document */}
       <article className="mx-auto max-w-4xl rounded-lg border border-border bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
         {/* Header */}
@@ -760,9 +777,11 @@ const AdminQuotationPreview = () => {
       {/* Sticky action bar */}
       <div className="sticky bottom-0 left-0 right-0 z-20 mt-4 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
         <div className="mx-auto flex max-w-4xl flex-wrap gap-2">
-          <Button variant="outline" onClick={handleEdit} className="h-11 flex-1 sm:flex-initial">
-            <Pencil className="mr-2 h-4 w-4" />Edit
-          </Button>
+          {!(isFieldOnly && q.submitted_for_pricing_at) && (
+            <Button variant="outline" onClick={handleEdit} className="h-11 flex-1 sm:flex-initial">
+              <Pencil className="mr-2 h-4 w-4" />Edit
+            </Button>
+          )}
           {canShare && (
             <Button
               variant="secondary"
