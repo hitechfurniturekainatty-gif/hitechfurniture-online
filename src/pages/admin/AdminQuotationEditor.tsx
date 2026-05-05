@@ -223,6 +223,10 @@ const AdminQuotationEditor = () => {
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
+  // Once measurement staff hits "Submit for pricing", their view goes
+  // read-only and the office staff get the alert to add prices.
+  const submittedForPricing = !!q?.submitted_for_pricing_at;
+  const fieldReadOnly = isFieldOnly && submittedForPricing;
   // Document type drives major UI changes: PO mode hides all pricing,
   // GST, advance, discount, terms, totals, and bank info — POs only
   // describe the work / materials sent to a worker or supplier.
