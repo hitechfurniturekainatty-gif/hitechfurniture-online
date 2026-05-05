@@ -778,6 +778,16 @@ const AdminQuotationEditor = () => {
     }
     const result = await saveAll();
     if (!result) return;
+    const nowIso = new Date().toISOString();
+    const { error: qErr } = await supabase
+      .from("quotations")
+      .update({ submitted_for_pricing_at: nowIso })
+      .eq("id", q.id);
+    if (qErr) {
+      toast({ title: "Submit failed", description: qErr.message, variant: "destructive" });
+      return;
+    }
+    setQ((prev) => (prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev));
     if (q.source_task_id) {
       const { error } = await supabase
         .from("measurement_tasks")
