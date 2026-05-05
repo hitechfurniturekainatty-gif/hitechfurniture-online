@@ -21,7 +21,6 @@ export const SiteFooter = () => {
   const phone2 = s?.contact_phone_secondary || "+91 95621 34796";
   const email = s?.contact_email || "hitechfurniturekainatty@gmail.com";
   const whatsappNumber = s?.whatsapp_number || WHATSAPP_NUMBER;
-  const partner = s?.managing_partner || "Abdul Raheem";
   const about =
     s?.footer_about ||
     "A live catalog of furniture & interior pieces — refined craftsmanship for homes and workspaces.";
@@ -32,11 +31,6 @@ export const SiteFooter = () => {
       <div className="md:col-span-1">
         <Logo className="h-12 w-auto" />
         <p className="mt-4 max-w-sm text-sm text-muted-foreground">{about}</p>
-        {partner && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Managing Partner: <span className="font-medium text-foreground/80">{partner}</span>
-          </p>
-        )}
         {(s?.instagram_url || s?.facebook_url) && (
           <div className="mt-4 flex items-center gap-2">
             {s?.instagram_url && (
