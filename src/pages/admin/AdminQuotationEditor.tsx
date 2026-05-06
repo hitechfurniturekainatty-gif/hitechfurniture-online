@@ -812,6 +812,7 @@ const AdminQuotationEditor = () => {
       }
     }
     toast({ title: "Submitted for pricing", description: "Office staff have been notified." });
+    notesWindow.close();
     navigate("/admin/measurement-tasks");
   };
 
