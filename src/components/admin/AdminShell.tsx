@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 
@@ -145,6 +145,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
+  const guide: SoloItem = { kind: "solo", to: "/guide", label: "User Guide", icon: BookOpen, show: true };
   // Only show Backlog in the sidebar while it is currently unlocked. After the
   // 15-min auto-lock or sign-out, the menu disappears entirely — the area is
   // then only reachable again via the triple-tap on the logo.
@@ -195,6 +196,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     homePage,
     backlog,
     trash,
+    guide,
   ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
 
   const isActiveTo = (to: string, end?: boolean) =>
