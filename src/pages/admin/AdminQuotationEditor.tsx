@@ -582,9 +582,6 @@ const AdminQuotationEditor = () => {
     }
 
     toast({ title: "Saved" });
-    // Per UX spec: a successful Save is one of only two ways the floating
-    // internal-notes window may auto-close (the other is the user's X click).
-    notesWindow.close();
     return { idMap, savedItems: updated };
   };
 
