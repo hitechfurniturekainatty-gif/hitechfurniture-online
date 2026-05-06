@@ -15,7 +15,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { compressImage } from "@/lib/imageCompression";
 import { Plus, StickyNote, Loader2, Trash2, Eye, Camera, FileText } from "lucide-react";
-import { FloatingNotesWindow, type AttachedNote } from "./FloatingNotesWindow";
+import { type AttachedNote } from "./FloatingNotesWindow";
+import { notesWindow } from "./notesWindowStore";
 
 type Props = {
   /** quotation/PO row UUID this note is attached to */
@@ -38,7 +39,6 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
   const [notes, setNotes] = useState<AttachedNote[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [floatOpen, setFloatOpen] = useState(false);
   const [caption, setCaption] = useState("");
 
   const reload = useCallback(async () => {
@@ -52,7 +52,10 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
     if (error) {
       toast({ title: "Couldn't load notes", description: error.message, variant: "destructive" });
     } else {
-      setNotes((data ?? []) as AttachedNote[]);
+      const fresh = (data ?? []) as AttachedNote[];
+      setNotes(fresh);
+      // Keep the floating window in sync if it's currently showing this quote
+      notesWindow.setNotes(quotationId, fresh);
     }
     setLoading(false);
   }, [quotationId]);
@@ -191,7 +194,7 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
                     variant="secondary"
                     className="w-full"
                     onClick={() => {
-                      setFloatOpen(true);
+                      notesWindow.open(quotationId, notes);
                       setOpen(false);
                     }}
                   >
@@ -252,12 +255,6 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <FloatingNotesWindow
-        open={floatOpen}
-        notes={notes}
-        onClose={() => setFloatOpen(false)}
-      />
     </>
   );
 };
