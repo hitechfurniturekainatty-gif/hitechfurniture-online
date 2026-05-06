@@ -440,6 +440,27 @@ const AdminQuotations = () => {
             </div>
           </div>
 
+          {!isPO(q.document_type) && (() => {
+            const info = computeStage({
+              status: q.status,
+              advance_amount: q.advance_amount,
+              submitted_for_pricing_at: q.submitted_for_pricing_at,
+              is_direct_order: q.is_direct_order,
+              source_task_id: q.source_task_id,
+            });
+            return (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+                  <Badge variant="outline" className={stageToneClasses(info.tone)}>
+                    Stage {info.stage}: {info.label}
+                  </Badge>
+                  <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
+                </div>
+                <PipelineSteps stage={info.stage} />
+              </div>
+            );
+          })()}
+
           <div className="border-t border-border/50 pt-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {isPO(q.document_type) ? (
