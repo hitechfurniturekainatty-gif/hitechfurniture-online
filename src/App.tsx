@@ -50,6 +50,7 @@ const WorkerJobView = lazy(() => import("./pages/WorkerJobView.tsx"));
 const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
+const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -86,6 +87,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/catalog" element={<Catalog />} />
+            <Route path="/staff-catalog" element={<StaffCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/guide" element={<UserGuide />} />
