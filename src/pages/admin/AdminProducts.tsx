@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
@@ -22,6 +22,14 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
+type Location = {
+  id: string;
+  building: string;
+  floor: string;
+  section: string | null;
+  display_order: number;
+  is_active: boolean;
+};
 type Product = {
   id: string;
   product_name: string;
@@ -39,6 +47,8 @@ type Product = {
   is_published: boolean;
   main_category_id: string;
   sub_category_id: string | null;
+  location_id: string | null;
+  stock_status: "in_stock" | "out_of_stock";
   product_images: { id: string; image_url: string; display_order: number }[];
   deleted_at?: string | null;
 };
@@ -59,6 +69,8 @@ type FormState = {
   is_published: boolean;
   main_category_id: string;
   sub_category_id: string;
+  location_id: string;
+  stock_status: "in_stock" | "out_of_stock";
   images: UploadedImage[];
 };
 
@@ -70,6 +82,8 @@ const emptyForm: FormState = {
   reorder_level: "5",
   is_featured: false, is_published: true,
   main_category_id: "", sub_category_id: "",
+  location_id: "",
+  stock_status: "in_stock",
   images: [],
 };
 
@@ -78,6 +92,9 @@ const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -114,7 +131,16 @@ const AdminProducts = () => {
     load();
     supabase.from("main_categories").select("id, name").order("display_order").then(({ data }) => setMainCats((data ?? []) as MainCat[]));
     supabase.from("sub_categories").select("id, main_category_id, name").order("display_order").then(({ data }) => setSubCats((data ?? []) as SubCat[]));
+    loadLocations();
   }, []);
+
+  const loadLocations = async () => {
+    const { data } = await supabase
+      .from("product_locations")
+      .select("*")
+      .order("display_order");
+    setLocations((data ?? []) as Location[]);
+  };
 
   const filtered = useMemo(() => {
     let list = products;
@@ -161,6 +187,8 @@ const AdminProducts = () => {
       is_published: p.is_published,
       main_category_id: p.main_category_id,
       sub_category_id: p.sub_category_id ?? "",
+      location_id: p.location_id ?? "",
+      stock_status: p.stock_status ?? "in_stock",
       images: p.product_images
         .sort((a, b) => a.display_order - b.display_order)
         .map((i) => ({ url: i.image_url, path: i.image_url })),
@@ -191,6 +219,8 @@ const AdminProducts = () => {
       is_published: form.is_published,
       main_category_id: form.main_category_id,
       sub_category_id: form.sub_category_id || null,
+      location_id: form.location_id || null,
+      stock_status: form.stock_status,
     };
     if (isAdmin) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
 
