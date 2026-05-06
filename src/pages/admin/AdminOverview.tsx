@@ -339,6 +339,30 @@ const AdminOverview = () => {
         </Card>
       )}
 
+      {(isAdmin || isOfficeStaff) && (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <CardTitle className="font-display text-lg sm:text-xl">Workflow Pipeline</CardTitle>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/pipeline">Open monitor</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {ALL_STAGES.map((s) => {
+              const def = STAGE_DEFS[s];
+              return (
+                <Link key={s} to={`/admin/pipeline`} className={`block rounded-lg border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
+                  <p className="font-display text-2xl font-semibold">{pipelineCounts[s]}</p>
+                  <p className="mt-0.5 truncate text-xs font-medium">{def.label}</p>
+                  <p className="text-[10px] opacity-70">With: {def.owner}</p>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-6">
         {groups.map((g) => (
           <section key={g.key} className={`rounded-2xl border p-4 sm:p-5 ${g.accent.replace("text-", "")}`}>
