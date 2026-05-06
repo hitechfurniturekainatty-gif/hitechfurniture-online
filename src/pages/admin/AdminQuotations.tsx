@@ -206,6 +206,7 @@ const AdminQuotations = () => {
             party_phone: draft.party_phone,
             delivery_place: draft.delivery_place ?? "",
             delivery_route_id: draft.delivery_route_id ?? null,
+            is_direct_order: false,
           });
           toast({ title: "Draft resumed" });
         } else {
