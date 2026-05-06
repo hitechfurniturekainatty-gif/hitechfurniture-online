@@ -92,7 +92,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const path = location.pathname;
     const groups: Record<string, string[]> = {
-      operations: ["/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
+      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services"],
       inventory: ["/admin/categories", "/admin/products"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
       team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
