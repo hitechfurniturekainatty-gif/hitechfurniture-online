@@ -1204,10 +1204,10 @@ const AdminQuotationEditor = () => {
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Items ({items.length})</CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
+            <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
               <Package className="mr-1.5 h-4 w-4" />From catalog
             </Button>
-            <Button size="sm" className="flex-1 sm:flex-initial" onClick={addBlankItem}>
+            <Button type="button" size="sm" className="flex-1 sm:flex-initial" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-1.5 h-4 w-4" />Add item
             </Button>
           </div>
@@ -1435,7 +1435,7 @@ const AdminQuotationEditor = () => {
 
           {/* Mobile-friendly add-more button at bottom of list */}
           {items.length > 0 && (
-            <Button variant="outline" className="h-12 w-full border-dashed" onClick={addBlankItem}>
+            <Button type="button" variant="outline" className="h-12 w-full border-dashed" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-2 h-4 w-4" />Add another item
             </Button>
           )}
