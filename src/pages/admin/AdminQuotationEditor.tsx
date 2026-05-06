@@ -193,6 +193,10 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Tracks the most recently added blank item so we can scroll/focus it
+  // into view after render. Prevents the "page jumps to top" feel by
+  // anchoring the user's eye to the new row instead.
+  const pendingFocusItemRef = useRef<string | null>(null);
   // Bumped whenever the quotation's status changes so the history card
   // re-fetches the audit trail.
   const [statusHistoryKey, setStatusHistoryKey] = useState(0);
@@ -340,11 +344,31 @@ const AdminQuotationEditor = () => {
       _dirty: true,
     };
     setItems((p) => [...p, next]);
+    pendingFocusItemRef.current = next.id;
   };
 
   const updateItem = (id: string, patch: Partial<QItem>) => {
     setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch, _dirty: true } : it)));
   };
+
+  // After a new blank item is appended, scroll it into view and focus its
+  // description field. This replaces any browser default scroll-to-top
+  // behaviour the user was seeing when clicking "Add item".
+  useEffect(() => {
+    const pendingId = pendingFocusItemRef.current;
+    if (!pendingId) return;
+    if (!items.some((i) => i.id === pendingId)) return;
+    pendingFocusItemRef.current = null;
+    requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(`[data-item-id="${pendingId}"]`);
+      if (!row) return;
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      const input = row.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        "input, textarea",
+      );
+      input?.focus({ preventScroll: true });
+    });
+  }, [items]);
 
   const removeItem = async (item: QItem) => {
     if (!item._isNew) {
@@ -1180,10 +1204,10 @@ const AdminQuotationEditor = () => {
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Items ({items.length})</CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
+            <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
               <Package className="mr-1.5 h-4 w-4" />From catalog
             </Button>
-            <Button size="sm" className="flex-1 sm:flex-initial" onClick={addBlankItem}>
+            <Button type="button" size="sm" className="flex-1 sm:flex-initial" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-1.5 h-4 w-4" />Add item
             </Button>
           </div>
@@ -1193,7 +1217,7 @@ const AdminQuotationEditor = () => {
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
           {items.map((it, idx) => (
-            <div key={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div key={it.id} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
               {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
@@ -1411,7 +1435,7 @@ const AdminQuotationEditor = () => {
 
           {/* Mobile-friendly add-more button at bottom of list */}
           {items.length > 0 && (
-            <Button variant="outline" className="h-12 w-full border-dashed" onClick={addBlankItem}>
+            <Button type="button" variant="outline" className="h-12 w-full border-dashed" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-2 h-4 w-4" />Add another item
             </Button>
           )}

@@ -666,6 +666,39 @@ export type Database = {
           },
         ]
       }
+      product_locations: {
+        Row: {
+          building: string
+          created_at: string
+          display_order: number
+          floor: string
+          id: string
+          is_active: boolean
+          section: string | null
+          updated_at: string
+        }
+        Insert: {
+          building: string
+          created_at?: string
+          display_order?: number
+          floor: string
+          id?: string
+          is_active?: boolean
+          section?: string | null
+          updated_at?: string
+        }
+        Update: {
+          building?: string
+          created_at?: string
+          display_order?: number
+          floor?: string
+          id?: string
+          is_active?: boolean
+          section?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           available_colors: string[] | null
@@ -678,6 +711,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_published: boolean
+          location_id: string | null
           main_category_id: string
           material: string | null
           mrp: number
@@ -686,6 +720,7 @@ export type Database = {
           product_name: string
           reorder_level: number
           stock_quantity: number
+          stock_status: string
           sub_category_id: string | null
           updated_at: string
         }
@@ -700,6 +735,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          location_id?: string | null
           main_category_id: string
           material?: string | null
           mrp: number
@@ -708,6 +744,7 @@ export type Database = {
           product_name: string
           reorder_level?: number
           stock_quantity?: number
+          stock_status?: string
           sub_category_id?: string | null
           updated_at?: string
         }
@@ -722,6 +759,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          location_id?: string | null
           main_category_id?: string
           material?: string | null
           mrp?: number
@@ -730,10 +768,18 @@ export type Database = {
           product_name?: string
           reorder_level?: number
           stock_quantity?: number
+          stock_status?: string
           sub_category_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "product_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_main_category_id_fkey"
             columns: ["main_category_id"]
@@ -1448,6 +1494,7 @@ export type Database = {
     }
     Functions: {
       backlog_pin_is_set: { Args: never; Returns: boolean }
+      catalog_pin_is_set: { Args: never; Returns: boolean }
       current_worker_id: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1471,7 +1518,9 @@ export type Database = {
         }[]
       }
       set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
+      set_catalog_pin: { Args: { _pin: string }; Returns: undefined }
       verify_backlog_pin: { Args: { _pin: string }; Returns: boolean }
+      verify_catalog_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"

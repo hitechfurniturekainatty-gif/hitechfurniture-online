@@ -12,16 +12,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { StockMovementDialog } from "@/components/admin/StockMovementDialog";
 import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/PriceLabelPrintDialog";
+import { LocationsDialog } from "@/components/admin/LocationsDialog";
+import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
+type Location = {
+  id: string;
+  building: string;
+  floor: string;
+  section: string | null;
+  display_order: number;
+  is_active: boolean;
+};
 type Product = {
   id: string;
   product_name: string;
@@ -39,6 +49,8 @@ type Product = {
   is_published: boolean;
   main_category_id: string;
   sub_category_id: string | null;
+  location_id: string | null;
+  stock_status: "in_stock" | "out_of_stock";
   product_images: { id: string; image_url: string; display_order: number }[];
   deleted_at?: string | null;
 };
@@ -59,6 +71,8 @@ type FormState = {
   is_published: boolean;
   main_category_id: string;
   sub_category_id: string;
+  location_id: string;
+  stock_status: "in_stock" | "out_of_stock";
   images: UploadedImage[];
 };
 
@@ -70,6 +84,8 @@ const emptyForm: FormState = {
   reorder_level: "5",
   is_featured: false, is_published: true,
   main_category_id: "", sub_category_id: "",
+  location_id: "",
+  stock_status: "in_stock",
   images: [],
 };
 
@@ -78,6 +94,9 @@ const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -114,7 +133,16 @@ const AdminProducts = () => {
     load();
     supabase.from("main_categories").select("id, name").order("display_order").then(({ data }) => setMainCats((data ?? []) as MainCat[]));
     supabase.from("sub_categories").select("id, main_category_id, name").order("display_order").then(({ data }) => setSubCats((data ?? []) as SubCat[]));
+    loadLocations();
   }, []);
+
+  const loadLocations = async () => {
+    const { data } = await supabase
+      .from("product_locations")
+      .select("*")
+      .order("display_order");
+    setLocations((data ?? []) as Location[]);
+  };
 
   const filtered = useMemo(() => {
     let list = products;
@@ -161,6 +189,8 @@ const AdminProducts = () => {
       is_published: p.is_published,
       main_category_id: p.main_category_id,
       sub_category_id: p.sub_category_id ?? "",
+      location_id: p.location_id ?? "",
+      stock_status: p.stock_status ?? "in_stock",
       images: p.product_images
         .sort((a, b) => a.display_order - b.display_order)
         .map((i) => ({ url: i.image_url, path: i.image_url })),
@@ -191,6 +221,8 @@ const AdminProducts = () => {
       is_published: form.is_published,
       main_category_id: form.main_category_id,
       sub_category_id: form.sub_category_id || null,
+      location_id: form.location_id || null,
+      stock_status: form.stock_status,
     };
     if (isAdmin) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
 
@@ -261,7 +293,15 @@ const AdminProducts = () => {
             )}
           </p>
         </div>
-        <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
+        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+          <Button variant="outline" onClick={() => setLocationsDialogOpen(true)} className="gap-1.5">
+            <MapPin className="h-4 w-4" /> Locations
+          </Button>
+          <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
+            <KeyRound className="h-4 w-4" /> Catalog PIN
+          </Button>
+          <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -461,6 +501,28 @@ const AdminProducts = () => {
             <Field label="Reorder level (low-stock alert)">
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
             </Field>
+            <Field label="Shop Location">
+              <Select value={form.location_id || "__none"} onValueChange={(v) => setForm({ ...form, location_id: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Choose floor / section…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Not assigned —</SelectItem>
+                  {locations.filter((l) => l.is_active).map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Stock status">
+              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Material">
               <Input value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} placeholder="e.g. Solid wood, fabric" />
             </Field>
@@ -514,6 +576,13 @@ const AdminProducts = () => {
         onOpenChange={setLabelDialogOpen}
         products={selectedProducts as unknown as LabelProduct[]}
       />
+      <LocationsDialog
+        open={locationsDialogOpen}
+        onOpenChange={setLocationsDialogOpen}
+        locations={locations}
+        onChanged={loadLocations}
+      />
+      <CatalogPinDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen} />
     </AdminShell>
   );
 };
