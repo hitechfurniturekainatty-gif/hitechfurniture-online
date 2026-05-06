@@ -19,6 +19,8 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { StockMovementDialog } from "@/components/admin/StockMovementDialog";
 import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/PriceLabelPrintDialog";
+import { LocationsDialog } from "@/components/admin/LocationsDialog";
+import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
