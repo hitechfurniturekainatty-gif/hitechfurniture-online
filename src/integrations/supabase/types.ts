@@ -947,6 +947,7 @@ export type Database = {
           gst_amount: number
           gst_percent: number
           id: string
+          is_direct_order: boolean
           notes: string | null
           party_address: string | null
           party_name: string
@@ -980,6 +981,7 @@ export type Database = {
           gst_amount?: number
           gst_percent?: number
           id?: string
+          is_direct_order?: boolean
           notes?: string | null
           party_address?: string | null
           party_name: string
@@ -1013,6 +1015,7 @@ export type Database = {
           gst_amount?: number
           gst_percent?: number
           id?: string
+          is_direct_order?: boolean
           notes?: string | null
           party_address?: string | null
           party_name?: string
