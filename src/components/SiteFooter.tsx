@@ -1,6 +1,7 @@
 import { Logo } from "./Logo";
 import { BRAND_NAME, WHATSAPP_NUMBER } from "@/lib/brand";
-import { MapPin, Phone, Mail, MessageCircle, Instagram, Facebook } from "lucide-react";
+import { MapPin, Phone, Mail, MessageCircle, Instagram, Facebook, BookOpen, Info } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 
 const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/hy5mbzYsFP2c3vx27?g_st=iw";
@@ -136,7 +137,15 @@ export const SiteFooter = () => {
     <div className="border-t border-border/60">
       <div className="container-page flex flex-col items-center justify-between gap-2 py-5 text-xs text-muted-foreground sm:flex-row">
         <p>© {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
-        <p className="italic">Make your space extraordinary.</p>
+        <div className="flex items-center gap-4">
+          <Link to="/about" className="inline-flex items-center gap-1 hover:text-primary">
+            <Info className="h-3.5 w-3.5" /> About
+          </Link>
+          <Link to="/guide" className="inline-flex items-center gap-1 hover:text-primary">
+            <BookOpen className="h-3.5 w-3.5" /> User Guide
+          </Link>
+          <span className="italic">Make your space extraordinary.</span>
+        </div>
       </div>
     </div>
   </footer>
