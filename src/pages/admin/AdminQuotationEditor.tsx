@@ -38,6 +38,7 @@ import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
+import { notesWindow } from "@/components/admin/notesWindowStore";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
@@ -581,6 +582,9 @@ const AdminQuotationEditor = () => {
     }
 
     toast({ title: "Saved" });
+    // Per UX spec: a successful Save is one of only two ways the floating
+    // internal-notes window may auto-close (the other is the user's X click).
+    notesWindow.close();
     return { idMap, savedItems: updated };
   };
 
@@ -1543,6 +1547,16 @@ const AdminQuotationEditor = () => {
       {canEditPrice && (
         <QuotationStatusHistory quotationId={q.id} refreshKey={statusHistoryKey} />
       )}
+
+      {/* Duplicate Save button at the bottom — saves a long scroll back to the
+          top after adding many items. Hidden on mobile (sticky bar already
+          provides it). Same handler/styling as the top Save button. */}
+      <div className="mt-6 hidden justify-end gap-2 sm:flex">
+        <Button onClick={saveAndPreview} disabled={saving} size="lg" className="min-w-[180px]">
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Quotation
+        </Button>
+      </div>
 
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">

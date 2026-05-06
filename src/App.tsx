@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { BacklogShortcut } from "@/components/admin/BacklogShortcut";
 import { AdminOnly } from "@/components/admin/AdminOnly";
+import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
@@ -78,6 +79,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <BacklogShortcut />
+        {/* Floating internal-notes window — rendered at root so it persists
+            across image picker, gallery, and other in-page dialogs. */}
+        <GlobalNotesWindow />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Index />} />
