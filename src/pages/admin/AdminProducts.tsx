@@ -499,6 +499,28 @@ const AdminProducts = () => {
             <Field label="Reorder level (low-stock alert)">
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
             </Field>
+            <Field label="Shop Location">
+              <Select value={form.location_id || "__none"} onValueChange={(v) => setForm({ ...form, location_id: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Choose floor / section…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Not assigned —</SelectItem>
+                  {locations.filter((l) => l.is_active).map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Stock status">
+              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Material">
               <Input value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} placeholder="e.g. Solid wood, fabric" />
             </Field>
