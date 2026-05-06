@@ -291,7 +291,15 @@ const AdminProducts = () => {
             )}
           </p>
         </div>
-        <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
+        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+          <Button variant="outline" onClick={() => setLocationsDialogOpen(true)} className="gap-1.5">
+            <MapPin className="h-4 w-4" /> Locations
+          </Button>
+          <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
+            <KeyRound className="h-4 w-4" /> Catalog PIN
+          </Button>
+          <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
