@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
+import { computeStage, ALL_STAGES, STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
 
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
 
@@ -41,6 +42,7 @@ const AdminOverview = () => {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
+  const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
 
   useEffect(() => {
     const run = async () => {
@@ -120,6 +122,48 @@ const AdminOverview = () => {
           .order("created_at", { ascending: false })
           .limit(20);
         setAwaitingPricing((data ?? []) as AwaitingPricing[]);
+      }
+
+      // Pipeline summary (admin/office staff)
+      if (isAdmin || isOfficeStaff) {
+        const [qP, jP, tqP] = await Promise.all([
+          supabase.from("quotations").select("id, status, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, document_type").is("deleted_at", null).eq("document_type", "quotation"),
+          supabase.from("job_work_orders").select("quotation_id, status").is("deleted_at", null),
+          supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+        ]);
+        const jobsByQ: Record<string, { total: number; done: number }> = {};
+        ((jP.data ?? []) as any[]).forEach((j) => {
+          if (!j.quotation_id) return;
+          const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0 };
+          cur.total++;
+          if (j.status === "completed" || j.status === "done") cur.done++;
+          jobsByQ[j.quotation_id] = cur;
+        });
+        const tripsByQ: Record<string, { has: boolean; completed: boolean }> = {};
+        ((tqP.data ?? []) as any[]).forEach((tq) => {
+          const cur = tripsByQ[tq.quotation_id] ?? { has: false, completed: false };
+          cur.has = true;
+          if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
+          tripsByQ[tq.quotation_id] = cur;
+        });
+        const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        ((qP.data ?? []) as any[]).forEach((q) => {
+          const j = jobsByQ[q.id];
+          const t = tripsByQ[q.id];
+          const info = computeStage({
+            status: q.status,
+            advance_amount: q.advance_amount,
+            submitted_for_pricing_at: q.submitted_for_pricing_at,
+            is_direct_order: q.is_direct_order,
+            source_task_id: q.source_task_id,
+            jobs_total: j?.total ?? 0,
+            jobs_completed: j?.done ?? 0,
+            has_trip: t?.has ?? false,
+            trip_completed: t?.completed ?? false,
+          });
+          counts[info.stage]++;
+        });
+        setPipelineCounts(counts);
       }
     };
     run();
@@ -291,6 +335,30 @@ const AdminOverview = () => {
                 <Badge variant="outline" className="text-[10px]">Add prices</Badge>
               </Link>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {(isAdmin || isOfficeStaff) && (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <CardTitle className="font-display text-lg sm:text-xl">Workflow Pipeline</CardTitle>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/pipeline">Open monitor</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {ALL_STAGES.map((s) => {
+              const def = STAGE_DEFS[s];
+              return (
+                <Link key={s} to={`/admin/pipeline`} className={`block rounded-lg border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
+                  <p className="font-display text-2xl font-semibold">{pipelineCounts[s]}</p>
+                  <p className="mt-0.5 truncate text-xs font-medium">{def.label}</p>
+                  <p className="text-[10px] opacity-70">With: {def.owner}</p>
+                </Link>
+              );
+            })}
           </CardContent>
         </Card>
       )}

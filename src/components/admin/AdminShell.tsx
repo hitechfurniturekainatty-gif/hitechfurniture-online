@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 
@@ -92,7 +92,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const path = location.pathname;
     const groups: Record<string, string[]> = {
-      operations: ["/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
+      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services"],
       inventory: ["/admin/categories", "/admin/products"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
       team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
@@ -155,6 +155,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
+      { to: "/admin/pipeline", label: "Workflow Pipeline", icon: GitBranch, show: isAdmin },
       { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
       { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
     ]),

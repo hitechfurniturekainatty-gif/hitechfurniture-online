@@ -1,0 +1,1 @@
+ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS is_direct_order boolean NOT NULL DEFAULT false;

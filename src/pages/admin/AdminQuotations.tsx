@@ -23,6 +23,8 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
+import { computeStage, stageToneClasses } from "@/lib/quotationPipeline";
+import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -43,6 +45,10 @@ type Q = {
   document_type: DocType;
   service_type?: string | null;
   salesperson_name?: string | null;
+  advance_amount?: number | null;
+  submitted_for_pricing_at?: string | null;
+  is_direct_order?: boolean | null;
+  source_task_id?: string | null;
 };
 
 const AdminQuotations = () => {
@@ -70,6 +76,7 @@ const AdminQuotations = () => {
     party_phone: "",
     delivery_place: "",
     delivery_route_id: null as string | null,
+    is_direct_order: false,
   });
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
@@ -118,7 +125,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
@@ -199,6 +206,7 @@ const AdminQuotations = () => {
             party_phone: draft.party_phone,
             delivery_place: draft.delivery_place ?? "",
             delivery_route_id: draft.delivery_route_id ?? null,
+            is_direct_order: false,
           });
           toast({ title: "Draft resumed" });
         } else {
@@ -246,6 +254,7 @@ const AdminQuotations = () => {
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
       document_type: newDocType,
+      is_direct_order: !isPO(newDocType) && form.is_direct_order,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -256,7 +265,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false });
     navigate(`/admin/quotations/${data.id}`);
   };
 
@@ -406,6 +415,11 @@ const AdminQuotations = () => {
                     Complaint Repair
                   </Badge>
                 )}
+                {q.is_direct_order && !isPO(q.document_type) && (
+                  <Badge variant="outline" className="w-fit shrink-0 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                    Direct Order
+                  </Badge>
+                )}
               </div>
               <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
                 {q.party_name} <span className="text-primary/70">·</span> {q.party_place}
@@ -425,6 +439,27 @@ const AdminQuotations = () => {
               </p>
             </div>
           </div>
+
+          {!isPO(q.document_type) && (() => {
+            const info = computeStage({
+              status: q.status,
+              advance_amount: q.advance_amount,
+              submitted_for_pricing_at: q.submitted_for_pricing_at,
+              is_direct_order: q.is_direct_order,
+              source_task_id: q.source_task_id,
+            });
+            return (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+                  <Badge variant="outline" className={stageToneClasses(info.tone)}>
+                    Stage {info.stage}: {info.label}
+                  </Badge>
+                  <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
+                </div>
+                <PipelineSteps stage={info.stage} />
+              </div>
+            );
+          })()}
 
           <div className="border-t border-border/50 pt-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -566,6 +601,21 @@ const AdminQuotations = () => {
                   routeId={form.delivery_route_id}
                   onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
                 />
+              )}
+              {!isPO(newDocType) && (
+                <div className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                  <div className="min-w-0 pr-3">
+                    <Label className="cursor-pointer text-sm font-semibold">Direct Order (Shop Stock)</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Skips measurement &amp; pricing — jumps straight to production / delivery.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.is_direct_order}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_direct_order: v }))}
+                    aria-label="Direct order toggle"
+                  />
+                </div>
               )}
               <p className="text-xs text-muted-foreground">
                 ID will auto-generate as{" "}
