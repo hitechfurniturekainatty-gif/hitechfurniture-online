@@ -1198,7 +1198,7 @@ const AdminQuotationEditor = () => {
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
           {items.map((it, idx) => (
-            <div key={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div key={it.id} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
               {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
