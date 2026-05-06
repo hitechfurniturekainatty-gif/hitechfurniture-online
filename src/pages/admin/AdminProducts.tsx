@@ -165,6 +165,63 @@ const AdminProducts = () => {
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
+  // Derive Building / Floor / Section from the selected location_id
+  const selectedLocation = locations.find((l) => l.id === form.location_id) || null;
+  const formBuilding = selectedLocation?.building ?? "";
+  const formFloor = selectedLocation?.floor ?? "";
+  const buildingOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
+    [locations],
+  );
+  const floorOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
+    [locations, formBuilding],
+  );
+  const sectionOptions = useMemo(
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+    [locations, formBuilding, formFloor],
+  );
+
+  const pickBuilding = (b: string) => {
+    // Pick the first matching location for this building (any floor) so the
+    // floor dropdown becomes meaningful but location_id is still set.
+    const first = locations.find((l) => l.is_active && l.building === b);
+    setForm({ ...form, location_id: first?.id ?? "" });
+  };
+  const pickFloor = (f: string) => {
+    const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === f);
+    setForm({ ...form, location_id: first?.id ?? "" });
+  };
+  const pickSection = (id: string) => {
+    setForm({ ...form, location_id: id });
+  };
+
+  const [newSection, setNewSection] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+  const addInlineSection = async () => {
+    const name = newSection.trim();
+    if (!name || !formBuilding || !formFloor) {
+      return toast({ title: "Pick Building & Floor first", variant: "destructive" });
+    }
+    setAddingSection(true);
+    const { data, error } = await supabase
+      .from("product_locations")
+      .insert({
+        building: formBuilding,
+        floor: formFloor,
+        section: name,
+        display_order: (locations[locations.length - 1]?.display_order ?? 0) + 10,
+      })
+      .select("*")
+      .single();
+    setAddingSection(false);
+    if (error || !data) return toast({ title: "Failed", description: error?.message, variant: "destructive" });
+    setNewSection("");
+    await loadLocations();
+    setForm((f) => ({ ...f, location_id: (data as Location).id }));
+    toast({ title: "Section added" });
+  };
+
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
