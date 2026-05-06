@@ -776,6 +776,8 @@ const AdminQuotationEditor = () => {
     const result = await saveAll();
     if (!result) return;
     if (result.savedItems.length === 0) return;
+    // Explicit user Save → close the floating internal-notes window.
+    notesWindow.close();
     navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
