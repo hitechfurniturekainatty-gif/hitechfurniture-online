@@ -574,6 +574,13 @@ const AdminProducts = () => {
         onOpenChange={setLabelDialogOpen}
         products={selectedProducts as unknown as LabelProduct[]}
       />
+      <LocationsDialog
+        open={locationsDialogOpen}
+        onOpenChange={setLocationsDialogOpen}
+        locations={locations}
+        onChanged={loadLocations}
+      />
+      <CatalogPinDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen} />
     </AdminShell>
   );
 };
