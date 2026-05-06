@@ -23,6 +23,8 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
+import { computeStage, stageToneClasses } from "@/lib/quotationPipeline";
+import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -43,6 +45,10 @@ type Q = {
   document_type: DocType;
   service_type?: string | null;
   salesperson_name?: string | null;
+  advance_amount?: number | null;
+  submitted_for_pricing_at?: string | null;
+  is_direct_order?: boolean | null;
+  source_task_id?: string | null;
 };
 
 const AdminQuotations = () => {
@@ -70,6 +76,7 @@ const AdminQuotations = () => {
     party_phone: "",
     delivery_place: "",
     delivery_route_id: null as string | null,
+    is_direct_order: false,
   });
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
@@ -118,7 +125,7 @@ const AdminQuotations = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name")
+      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
@@ -246,6 +253,7 @@ const AdminQuotations = () => {
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
       document_type: newDocType,
+      is_direct_order: !isPO(newDocType) && form.is_direct_order,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -256,7 +264,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false });
     navigate(`/admin/quotations/${data.id}`);
   };
 
