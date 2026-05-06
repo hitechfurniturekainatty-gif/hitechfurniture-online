@@ -415,6 +415,11 @@ const AdminQuotations = () => {
                     Complaint Repair
                   </Badge>
                 )}
+                {q.is_direct_order && !isPO(q.document_type) && (
+                  <Badge variant="outline" className="w-fit shrink-0 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                    Direct Order
+                  </Badge>
+                )}
               </div>
               <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
                 {q.party_name} <span className="text-primary/70">·</span> {q.party_place}
