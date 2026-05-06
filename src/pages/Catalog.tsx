@@ -576,6 +576,15 @@ const Catalog = () => {
         ))}
       </div>
 
+      <div className="mx-auto w-full max-w-7xl px-4 pb-2 text-right">
+        <a
+          href="/staff-catalog"
+          className="text-[10px] text-muted-foreground/40 hover:text-primary"
+          title="Staff access"
+        >
+          · staff ·
+        </a>
+      </div>
       <SiteFooter />
       <WhatsAppFab />
     </div>
