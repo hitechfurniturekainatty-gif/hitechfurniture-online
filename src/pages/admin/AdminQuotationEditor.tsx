@@ -38,6 +38,7 @@ import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
+import { notesWindow } from "@/components/admin/notesWindowStore";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
@@ -581,6 +582,9 @@ const AdminQuotationEditor = () => {
     }
 
     toast({ title: "Saved" });
+    // Per UX spec: a successful Save is one of only two ways the floating
+    // internal-notes window may auto-close (the other is the user's X click).
+    notesWindow.close();
     return { idMap, savedItems: updated };
   };
 
