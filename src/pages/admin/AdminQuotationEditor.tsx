@@ -351,6 +351,25 @@ const AdminQuotationEditor = () => {
     setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch, _dirty: true } : it)));
   };
 
+  // After a new blank item is appended, scroll it into view and focus its
+  // description field. This replaces any browser default scroll-to-top
+  // behaviour the user was seeing when clicking "Add item".
+  useEffect(() => {
+    const pendingId = pendingFocusItemRef.current;
+    if (!pendingId) return;
+    if (!items.some((i) => i.id === pendingId)) return;
+    pendingFocusItemRef.current = null;
+    requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(`[data-item-id="${pendingId}"]`);
+      if (!row) return;
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      const input = row.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        "input, textarea",
+      );
+      input?.focus({ preventScroll: true });
+    });
+  }, [items]);
+
   const removeItem = async (item: QItem) => {
     if (!item._isNew) {
       const { error } = await supabase.from("quotation_items").delete().eq("id", item.id);
