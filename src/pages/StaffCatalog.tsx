@@ -14,6 +14,8 @@ import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search } from "lucide-react";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
+type MainCat = { id: string; name: string };
+type SubCat = { id: string; main_category_id: string; name: string };
 type Product = {
   id: string;
   product_name: string;
@@ -27,6 +29,8 @@ type Product = {
   stock_quantity: number;
   stock_status: "in_stock" | "out_of_stock";
   location_id: string | null;
+  main_category_id: string;
+  sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
 };
 
@@ -42,11 +46,15 @@ const StaffCatalog = () => {
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [mainCats, setMainCats] = useState<MainCat[]>([]);
+  const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [building, setBuilding] = useState<string>("__all");
   const [floor, setFloor] = useState<string>("__all");
   const [locationId, setLocationId] = useState<string>("__all");
+  const [mainCatId, setMainCatId] = useState<string>("__all");
+  const [subCatId, setSubCatId] = useState<string>("__all");
   const [stockFilter, setStockFilter] = useState<"available" | "out" | "all">("available");
   const [search, setSearch] = useState("");
 
@@ -60,11 +68,15 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, product_images(image_url, display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, main_category_id, sub_category_id, product_images(image_url, display_order)")
         .is("deleted_at", null),
-    ]).then(([loc, pr]) => {
+      supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
+    ]).then(([loc, pr, mc, sc]) => {
       setLocations((loc.data ?? []) as Location[]);
       setProducts((pr.data ?? []) as Product[]);
+      setMainCats((mc.data ?? []) as MainCat[]);
+      setSubCats((sc.data ?? []) as SubCat[]);
       setLoading(false);
     });
   }, [unlocked]);
@@ -98,6 +110,8 @@ const StaffCatalog = () => {
     return products.filter((p) => {
       if (stockFilter === "available" && (p.stock_status !== "in_stock" || p.stock_quantity <= 0)) return false;
       if (stockFilter === "out" && p.stock_status === "in_stock" && p.stock_quantity > 0) return false;
+      if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
+      if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
       if (locationId !== "__all") {
         if (p.location_id !== locationId) return false;
       } else if (building !== "__all" || floor !== "__all") {
@@ -109,7 +123,12 @@ const StaffCatalog = () => {
       if (q && !p.product_name.toLowerCase().includes(q) && !p.product_code.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [products, locations, building, floor, locationId, stockFilter, search]);
+  }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
+
+  const subCatOptions = useMemo(
+    () => subCats.filter((s) => mainCatId === "__all" || s.main_category_id === mainCatId),
+    [subCats, mainCatId],
+  );
 
   if (!unlocked) {
     return (
@@ -168,7 +187,27 @@ const StaffCatalog = () => {
         </div>
 
         <Card className="mb-4">
-          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Category</Label>
+              <Select value={mainCatId} onValueChange={(v) => { setMainCatId(v); setSubCatId("__all"); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">All categories</SelectItem>
+                  {mainCats.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Sub-category</Label>
+              <Select value={subCatId} onValueChange={setSubCatId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">All sub-categories</SelectItem>
+                  {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Building</Label>
               <Select value={building} onValueChange={(v) => { setBuilding(v); setFloor("__all"); setLocationId("__all"); }}>

@@ -165,6 +165,63 @@ const AdminProducts = () => {
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
+  // Derive Building / Floor / Section from the selected location_id
+  const selectedLocation = locations.find((l) => l.id === form.location_id) || null;
+  const formBuilding = selectedLocation?.building ?? "";
+  const formFloor = selectedLocation?.floor ?? "";
+  const buildingOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
+    [locations],
+  );
+  const floorOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
+    [locations, formBuilding],
+  );
+  const sectionOptions = useMemo(
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+    [locations, formBuilding, formFloor],
+  );
+
+  const pickBuilding = (b: string) => {
+    // Pick the first matching location for this building (any floor) so the
+    // floor dropdown becomes meaningful but location_id is still set.
+    const first = locations.find((l) => l.is_active && l.building === b);
+    setForm({ ...form, location_id: first?.id ?? "" });
+  };
+  const pickFloor = (f: string) => {
+    const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === f);
+    setForm({ ...form, location_id: first?.id ?? "" });
+  };
+  const pickSection = (id: string) => {
+    setForm({ ...form, location_id: id });
+  };
+
+  const [newSection, setNewSection] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+  const addInlineSection = async () => {
+    const name = newSection.trim();
+    if (!name || !formBuilding || !formFloor) {
+      return toast({ title: "Pick Building & Floor first", variant: "destructive" });
+    }
+    setAddingSection(true);
+    const { data, error } = await supabase
+      .from("product_locations")
+      .insert({
+        building: formBuilding,
+        floor: formFloor,
+        section: name,
+        display_order: (locations[locations.length - 1]?.display_order ?? 0) + 10,
+      })
+      .select("*")
+      .single();
+    setAddingSection(false);
+    if (error || !data) return toast({ title: "Failed", description: error?.message, variant: "destructive" });
+    setNewSection("");
+    await loadLocations();
+    setForm((f) => ({ ...f, location_id: (data as Location).id }));
+    toast({ title: "Section added" });
+  };
+
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
@@ -501,18 +558,49 @@ const AdminProducts = () => {
             <Field label="Reorder level (low-stock alert)">
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
             </Field>
-            <Field label="Shop Location">
-              <Select value={form.location_id || "__none"} onValueChange={(v) => setForm({ ...form, location_id: v === "__none" ? "" : v })}>
-                <SelectTrigger><SelectValue placeholder="Choose floor / section…" /></SelectTrigger>
+            <Field label="Building" >
+              <Select value={formBuilding || "__none"} onValueChange={(v) => v === "__none" ? setForm({ ...form, location_id: "" }) : pickBuilding(v)}>
+                <SelectTrigger><SelectValue placeholder="Choose building…" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— Not assigned —</SelectItem>
-                  {locations.filter((l) => l.is_active).map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
-                    </SelectItem>
-                  ))}
+                  {buildingOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </Field>
+            <Field label="Floor">
+              <Select value={formFloor || "__none"} onValueChange={(v) => v !== "__none" && pickFloor(v)} disabled={!formBuilding}>
+                <SelectTrigger><SelectValue placeholder={formBuilding ? "Choose floor…" : "Pick a building first"} /></SelectTrigger>
+                <SelectContent>
+                  {floorOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Section" wide>
+              <div className="space-y-2">
+                <Select value={form.location_id || "__none"} onValueChange={(v) => v !== "__none" && pickSection(v)} disabled={!formFloor}>
+                  <SelectTrigger><SelectValue placeholder={formFloor ? "Choose section…" : "Pick a floor first"} /></SelectTrigger>
+                  <SelectContent>
+                    {sectionOptions.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.section ? l.section : `(no section · ${l.floor})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formBuilding && formFloor && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSection}
+                      onChange={(e) => setNewSection(e.target.value)}
+                      placeholder="+ Add new section (e.g. Part A)"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInlineSection(); } }}
+                    />
+                    <Button type="button" variant="outline" onClick={addInlineSection} disabled={addingSection || !newSection.trim()}>
+                      {addingSection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </Field>
             <Field label="Stock status">
               <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
