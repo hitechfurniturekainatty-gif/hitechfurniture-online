@@ -576,6 +576,21 @@ const AdminQuotations = () => {
                   onChange={(v) => setForm({ ...form, delivery_place: v.place, delivery_route_id: v.routeId })}
                 />
               )}
+              {!isPO(newDocType) && (
+                <div className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                  <div className="min-w-0 pr-3">
+                    <Label className="cursor-pointer text-sm font-semibold">Direct Order (Shop Stock)</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Skips measurement &amp; pricing — jumps straight to production / delivery.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.is_direct_order}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_direct_order: v }))}
+                    aria-label="Direct order toggle"
+                  />
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 ID will auto-generate as{" "}
                 <span className="font-mono">
