@@ -193,6 +193,10 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Tracks the most recently added blank item so we can scroll/focus it
+  // into view after render. Prevents the "page jumps to top" feel by
+  // anchoring the user's eye to the new row instead.
+  const pendingFocusItemRef = useRef<string | null>(null);
   // Bumped whenever the quotation's status changes so the history card
   // re-fetches the audit trail.
   const [statusHistoryKey, setStatusHistoryKey] = useState(0);
@@ -340,6 +344,7 @@ const AdminQuotationEditor = () => {
       _dirty: true,
     };
     setItems((p) => [...p, next]);
+    pendingFocusItemRef.current = next.id;
   };
 
   const updateItem = (id: string, patch: Partial<QItem>) => {
