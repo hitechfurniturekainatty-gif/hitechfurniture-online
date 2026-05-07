@@ -415,7 +415,14 @@ const StaffCatalog = () => {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-                      <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
+                      {p.offer_price && p.offer_price < p.mrp ? (
+                        <p className="flex items-baseline gap-2">
+                          <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
+                          <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
+                        </p>
+                      ) : (
+                        <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
+                      )}
                       {loc && (
                         <p className="text-[11px] text-muted-foreground">
                           📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
