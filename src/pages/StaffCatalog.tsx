@@ -57,6 +57,8 @@ const StaffCatalog = () => {
   const [subCatId, setSubCatId] = useState<string>("__all");
   const [stockFilter, setStockFilter] = useState<"available" | "out" | "all">("available");
   const [search, setSearch] = useState("");
+  // When user clicks "All <Category>" in sub picker, bypass the sub picker step
+  const [bypassSubPicker, setBypassSubPicker] = useState(false);
 
   useEffect(() => {
     supabase.rpc("catalog_pin_is_set").then(({ data }) => setPinIsSet(!!data));
@@ -168,7 +170,8 @@ const StaffCatalog = () => {
     mainCatId !== "__all" &&
     subCatId === "__all" &&
     !search.trim() &&
-    subCatOptions.length > 0;
+    subCatOptions.length > 0 &&
+    !bypassSubPicker;
 
   if (!unlocked) {
     return (
@@ -345,7 +348,7 @@ const StaffCatalog = () => {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               <button
                 type="button"
-                onClick={() => setSubCatId("__all_show")}
+                onClick={() => setBypassSubPicker(true)}
                 className="group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/15 to-accent/10 p-4 text-center transition-shadow hover:shadow-md"
               >
                 <span className="font-display text-xl text-primary">All</span>
