@@ -149,6 +149,27 @@ const StaffCatalog = () => {
     });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
 
+  // Counts for landing tiles
+  const productCountByCat = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const p of products) m[p.main_category_id] = (m[p.main_category_id] ?? 0) + 1;
+    return m;
+  }, [products]);
+  const productCountBySub = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const p of products) if (p.sub_category_id) m[p.sub_category_id] = (m[p.sub_category_id] ?? 0) + 1;
+    return m;
+  }, [products]);
+
+  const activeMainCat = mainCats.find((c) => c.id === mainCatId);
+  // Three-step navigation mirrors public catalog
+  const isLandingView = mainCatId === "__all" && !search.trim();
+  const isSubPickerView =
+    mainCatId !== "__all" &&
+    subCatId === "__all" &&
+    !search.trim() &&
+    subCatOptions.length > 0;
+
   if (!unlocked) {
     return (
       <div className="flex min-h-screen flex-col">
