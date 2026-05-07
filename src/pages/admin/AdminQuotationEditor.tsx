@@ -623,16 +623,20 @@ const AdminQuotationEditor = () => {
     return result.savedItems;
   };
 
-  // ---- Auto-save on image attach ----
-  // When the user adds/removes any item photo (item, measurement, site,
-  // catalog, sketch), auto-save 1.2s later so they never lose uploaded
-  // images by closing the page or navigating away.
-  // We hash only the image URLs so typing into description/qty/price
-  // does NOT trigger auto-save (those still use the manual Save button).
+  // ---- Silent auto-save (every field) ----
+  // Auto-save 1.2s after the user finishes editing ANY field on an item row
+  // (description, quantity, unit price, measurement notes, image attachments,
+  // sketch, etc.). Debounced so typing is never interrupted; the row simply
+  // persists in the background once the user pauses.
   const imageFingerprint = useMemo(
     () => items.map((it) =>
       [
         it.id,
+        it.description ?? "",
+        it.quantity ?? "",
+        it.unit_price ?? "",
+        it.measurement ?? "",
+        it.catalog_text ?? "",
         it.item_image_url ?? "",
         it.measurement_image_url ?? "",
         it.site_photos ?? "",
