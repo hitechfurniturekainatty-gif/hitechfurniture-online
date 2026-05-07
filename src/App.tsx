@@ -11,6 +11,7 @@ import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
+import CinematicHome from "./pages/CinematicHome.tsx";
 
 // Lazy-loaded: every other route. Big wins:
 // - PDF library (@react-pdf/renderer ~600kb) only loads when admin opens the editor
@@ -85,7 +86,8 @@ const App = () => (
         <GlobalNotesWindow />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<CinematicHome />} />
+            <Route path="/classic" element={<Index />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/staff-catalog" element={<StaffCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
