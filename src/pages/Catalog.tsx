@@ -313,7 +313,7 @@ const Catalog = () => {
                         </Select>
                       </div>
                     )}
-                    <div>
+                    {!hidePrices && (<div>
                       <p className="mb-2 text-sm font-medium">Price range (₹)</p>
                       <div className="flex items-center gap-2">
                         <Input type="number" inputMode="numeric" placeholder="Min" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
@@ -343,7 +343,7 @@ const Catalog = () => {
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </div>)}
                     {materials.length > 0 && (
                       <div>
                         <p className="mb-2 text-sm font-medium">Material</p>
@@ -375,8 +375,8 @@ const Catalog = () => {
                 <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="price_asc">Price: low → high</SelectItem>
-                  <SelectItem value="price_desc">Price: high → low</SelectItem>
+                  {!hidePrices && <SelectItem value="price_asc">Price: low → high</SelectItem>}
+                  {!hidePrices && <SelectItem value="price_desc">Price: high → low</SelectItem>}
                   <SelectItem value="name_asc">Name A–Z</SelectItem>
                 </SelectContent>
               </Select>
