@@ -14,8 +14,8 @@ import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search } from "lucide-react";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
-type MainCat = { id: string; name: string };
-type SubCat = { id: string; main_category_id: string; name: string };
+type MainCat = { id: string; name: string; image_url: string | null };
+type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
 type Product = {
   id: string;
   product_name: string;
@@ -71,8 +71,8 @@ const StaffCatalog = () => {
         .from("products")
         .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, main_category_id, sub_category_id, product_images(image_url, display_order)")
         .is("deleted_at", null),
-      supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
-      supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
+      supabase.from("main_categories").select("id, name, image_url").is("deleted_at", null).order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name, image_url").is("deleted_at", null).order("display_order"),
     ])
       .then(([loc, pr, mc, sc]) => {
         setLocations((loc.data ?? []) as Location[]);
