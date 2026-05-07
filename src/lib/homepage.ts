@@ -30,6 +30,10 @@ export type HomepageSettings = {
   hero_scroll_hint: string | null;
   hero_caption_eyebrow: string | null;
   hero_caption_title: string | null;
+  /** Master switch: when true, prices and MRPs are hidden everywhere on the
+   *  public catalog and product detail pages. Staff catalog (PIN-protected)
+   *  always shows prices. */
+  hide_public_prices: boolean;
 };
 
 export type HeroSlide = {

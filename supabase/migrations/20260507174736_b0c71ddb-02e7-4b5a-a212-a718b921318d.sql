@@ -1,0 +1,1 @@
+ALTER TABLE public.homepage_settings ADD COLUMN IF NOT EXISTS hide_public_prices boolean NOT NULL DEFAULT false;

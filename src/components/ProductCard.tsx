@@ -14,7 +14,7 @@ export type ProductCardData = {
   product_images?: { image_url: string; display_order: number }[];
 };
 
-const ProductCardInner = ({ product }: { product: ProductCardData }) => {
+const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCardData; hidePrice?: boolean }) => {
   // Pick the lowest display_order image without mutating the source array
   // and request a small WebP-rendered variant from Supabase Storage so mobile
   // visitors download ~10–20 KB instead of the full original.
@@ -66,6 +66,7 @@ const ProductCardInner = ({ product }: { product: ProductCardData }) => {
           </h3>
         </div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Code · {product.product_code}</p>
+        {!hidePrice && (
         <div className="flex items-baseline gap-2 pt-1">
           {onOffer ? (
             <>
@@ -78,6 +79,7 @@ const ProductCardInner = ({ product }: { product: ProductCardData }) => {
             <span className="font-display text-xl font-semibold text-primary">{formatINR(product.mrp)}</span>
           )}
         </div>
+        )}
         {product.available_colors && product.available_colors.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {product.available_colors.slice(0, 4).map((c) => (

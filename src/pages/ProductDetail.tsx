@@ -41,6 +41,7 @@ const ProductDetail = () => {
   const [generatingJpg, setGeneratingJpg] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
   const homepage = useHomepageSettings();
+  const hidePrices = !!homepage?.hide_public_prices;
   const waNumber = (homepage?.whatsapp_number ?? "").replace(/[^0-9]/g, "");
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
@@ -401,17 +402,19 @@ Please share more details.`;
           <h1 className="mt-3 font-display text-3xl text-foreground md:text-5xl">{product.product_name}</h1>
           <p className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">Code · {product.product_code}</p>
 
-          <div className="mt-6 flex items-baseline gap-3">
-            {onOffer ? (
-              <>
-                <span className="font-display text-4xl font-semibold text-primary">{formatINR(product.offer_price!)}</span>
-                <span className="text-lg text-muted-foreground line-through">{formatINR(product.mrp)}</span>
-                <Badge className="bg-accent text-accent-foreground">Offer</Badge>
-              </>
-            ) : (
-              <span className="font-display text-4xl font-semibold text-primary">{formatINR(product.mrp)}</span>
-            )}
-          </div>
+          {!hidePrices && (
+            <div className="mt-6 flex items-baseline gap-3">
+              {onOffer ? (
+                <>
+                  <span className="font-display text-4xl font-semibold text-primary">{formatINR(product.offer_price!)}</span>
+                  <span className="text-lg text-muted-foreground line-through">{formatINR(product.mrp)}</span>
+                  <Badge className="bg-accent text-accent-foreground">Offer</Badge>
+                </>
+              ) : (
+                <span className="font-display text-4xl font-semibold text-primary">{formatINR(product.mrp)}</span>
+              )}
+            </div>
+          )}
 
           <div className="mt-3">
             {inStock ? (

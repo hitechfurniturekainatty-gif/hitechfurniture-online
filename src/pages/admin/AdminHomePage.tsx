@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   hero_scroll_hint: "",
   hero_caption_eyebrow: "",
   hero_caption_title: "",
+  hide_public_prices: false,
 };
 
 const AdminHomePage = () => {
@@ -418,6 +419,16 @@ const AdminHomePage = () => {
                 <div className="flex items-center gap-2">
                   <Switch id="show-google-review" checked={settings.show_google_review} onCheckedChange={(v) => setSettings({ ...settings, show_google_review: v })} />
                   <Label htmlFor="show-google-review" className="text-sm">Show "Rate us on Google" section</Label>
+                </div>
+                <div className="flex items-center gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-1.5 dark:bg-amber-950/30">
+                  <Switch
+                    id="hide-public-prices"
+                    checked={settings.hide_public_prices}
+                    onCheckedChange={(v) => setSettings({ ...settings, hide_public_prices: v })}
+                  />
+                  <Label htmlFor="hide-public-prices" className="text-sm font-medium">
+                    Hide ALL prices in public catalog (master switch)
+                  </Label>
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
