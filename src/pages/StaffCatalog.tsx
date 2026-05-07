@@ -64,6 +64,7 @@ const StaffCatalog = () => {
 
   useEffect(() => {
     if (!unlocked) return;
+    setLoading(true);
     Promise.all([
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
@@ -72,13 +73,15 @@ const StaffCatalog = () => {
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
-    ]).then(([loc, pr, mc, sc]) => {
-      setLocations((loc.data ?? []) as Location[]);
-      setProducts((pr.data ?? []) as Product[]);
-      setMainCats((mc.data ?? []) as MainCat[]);
-      setSubCats((sc.data ?? []) as SubCat[]);
-      setLoading(false);
-    });
+    ])
+      .then(([loc, pr, mc, sc]) => {
+        setLocations((loc.data ?? []) as Location[]);
+        setProducts((pr.data ?? []) as Product[]);
+        setMainCats((mc.data ?? []) as MainCat[]);
+        setSubCats((sc.data ?? []) as SubCat[]);
+      })
+      .catch((e) => toast({ title: "Failed to load catalog", description: e.message, variant: "destructive" }))
+      .finally(() => setLoading(false));
   }, [unlocked]);
 
   const verify = async () => {
@@ -100,10 +103,31 @@ const StaffCatalog = () => {
   const locationOptions = useMemo(
     () => locations.filter((l) =>
       (building === "__all" || l.building === building) &&
-      (floor === "__all" || l.floor === floor)
+      (floor === "__all" || l.floor === floor) &&
+      !!l.section
     ),
     [locations, building, floor],
   );
+
+  const subCatOptions = useMemo(
+    () => subCats.filter((s) => mainCatId === "__all" || s.main_category_id === mainCatId),
+    [subCats, mainCatId],
+  );
+
+  // Auto-correct dependent selections when their parent options change so
+  // we never display a stale/invalid selected value.
+  useEffect(() => {
+    if (building !== "__all" && !buildings.includes(building)) setBuilding("__all");
+  }, [buildings, building]);
+  useEffect(() => {
+    if (floor !== "__all" && !floors.includes(floor)) setFloor("__all");
+  }, [floors, floor]);
+  useEffect(() => {
+    if (locationId !== "__all" && !locationOptions.some((l) => l.id === locationId)) setLocationId("__all");
+  }, [locationOptions, locationId]);
+  useEffect(() => {
+    if (subCatId !== "__all" && !subCatOptions.some((s) => s.id === subCatId)) setSubCatId("__all");
+  }, [subCatOptions, subCatId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -124,11 +148,6 @@ const StaffCatalog = () => {
       return true;
     });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
-
-  const subCatOptions = useMemo(
-    () => subCats.filter((s) => mainCatId === "__all" || s.main_category_id === mainCatId),
-    [subCats, mainCatId],
-  );
 
   if (!unlocked) {
     return (
@@ -200,8 +219,8 @@ const StaffCatalog = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Sub-category</Label>
-              <Select value={subCatId} onValueChange={setSubCatId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={subCatId} onValueChange={setSubCatId} disabled={subCatOptions.length === 0}>
+                <SelectTrigger><SelectValue placeholder={subCatOptions.length === 0 ? "—" : "All sub-categories"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All sub-categories</SelectItem>
                   {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -220,8 +239,8 @@ const StaffCatalog = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Floor</Label>
-              <Select value={floor} onValueChange={(v) => { setFloor(v); setLocationId("__all"); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={floor} onValueChange={(v) => { setFloor(v); setLocationId("__all"); }} disabled={floors.length === 0}>
+                <SelectTrigger><SelectValue placeholder={floors.length === 0 ? "—" : "All floors"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All floors</SelectItem>
                   {floors.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -230,13 +249,13 @@ const StaffCatalog = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Section</Label>
-              <Select value={locationId} onValueChange={setLocationId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={locationId} onValueChange={setLocationId} disabled={locationOptions.length === 0}>
+                <SelectTrigger><SelectValue placeholder={locationOptions.length === 0 ? "—" : "All sections"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All sections</SelectItem>
                   {locationOptions.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
-                      {l.section ? l.section : `${l.building} · ${l.floor}`}
+                      {l.section} <span className="text-muted-foreground">· {l.building} · {l.floor}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
