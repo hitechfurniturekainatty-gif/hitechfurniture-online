@@ -233,7 +233,7 @@ const StaffCatalog = () => {
           <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
             <div className="space-y-1.5">
               <Label className="text-xs">Category</Label>
-              <Select value={mainCatId} onValueChange={(v) => { setMainCatId(v); setSubCatId("__all"); }}>
+              <Select value={mainCatId} onValueChange={(v) => { setMainCatId(v); setSubCatId("__all"); setBypassSubPicker(false); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All categories</SelectItem>
