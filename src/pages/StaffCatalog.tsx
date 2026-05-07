@@ -14,8 +14,8 @@ import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search } from "lucide-react";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
-type MainCat = { id: string; name: string; image_url: string | null };
-type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
+type MainCat = { id: string; name: string };
+type SubCat = { id: string; main_category_id: string; name: string };
 type Product = {
   id: string;
   product_name: string;
@@ -57,8 +57,6 @@ const StaffCatalog = () => {
   const [subCatId, setSubCatId] = useState<string>("__all");
   const [stockFilter, setStockFilter] = useState<"available" | "out" | "all">("available");
   const [search, setSearch] = useState("");
-  // When user clicks "All <Category>" in sub picker, bypass the sub picker step
-  const [bypassSubPicker, setBypassSubPicker] = useState(false);
 
   useEffect(() => {
     supabase.rpc("catalog_pin_is_set").then(({ data }) => setPinIsSet(!!data));
@@ -73,8 +71,8 @@ const StaffCatalog = () => {
         .from("products")
         .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, main_category_id, sub_category_id, product_images(image_url, display_order)")
         .is("deleted_at", null),
-      supabase.from("main_categories").select("id, name, image_url").is("deleted_at", null).order("display_order"),
-      supabase.from("sub_categories").select("id, main_category_id, name, image_url").is("deleted_at", null).order("display_order"),
+      supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
     ])
       .then(([loc, pr, mc, sc]) => {
         setLocations((loc.data ?? []) as Location[]);
@@ -151,28 +149,6 @@ const StaffCatalog = () => {
     });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
 
-  // Counts for landing tiles
-  const productCountByCat = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const p of products) m[p.main_category_id] = (m[p.main_category_id] ?? 0) + 1;
-    return m;
-  }, [products]);
-  const productCountBySub = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const p of products) if (p.sub_category_id) m[p.sub_category_id] = (m[p.sub_category_id] ?? 0) + 1;
-    return m;
-  }, [products]);
-
-  const activeMainCat = mainCats.find((c) => c.id === mainCatId);
-  // Three-step navigation mirrors public catalog
-  const isLandingView = mainCatId === "__all" && !search.trim();
-  const isSubPickerView =
-    mainCatId !== "__all" &&
-    subCatId === "__all" &&
-    !search.trim() &&
-    subCatOptions.length > 0 &&
-    !bypassSubPicker;
-
   if (!unlocked) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -233,7 +209,7 @@ const StaffCatalog = () => {
           <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
             <div className="space-y-1.5">
               <Label className="text-xs">Category</Label>
-              <Select value={mainCatId} onValueChange={(v) => { setMainCatId(v); setSubCatId("__all"); setBypassSubPicker(false); }}>
+              <Select value={mainCatId} onValueChange={(v) => { setMainCatId(v); setSubCatId("__all"); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All categories</SelectItem>
@@ -308,92 +284,8 @@ const StaffCatalog = () => {
 
         {loading ? (
           <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : isLandingView ? (
-          mainCats.length === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">No categories yet.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {mainCats.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => { setMainCatId(c.id); setSubCatId("__all"); }}
-                  className="group relative aspect-square overflow-hidden rounded-2xl border bg-card text-left transition-shadow hover:shadow-md"
-                >
-                  {c.image_url ? (
-                    <img src={c.image_url} alt={c.name} loading="lazy" className="h-full w-full object-contain p-4 transition-transform group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
-                      <span className="font-display text-3xl text-primary">{c.name[0]}</span>
-                    </div>
-                  )}
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/0 to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-                    <span className="font-display text-base font-semibold text-background">{c.name}</span>
-                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                      {productCountByCat[c.id] ?? 0}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )
-        ) : isSubPickerView ? (
-          <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setMainCatId("__all")}>
-                <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              <button
-                type="button"
-                onClick={() => setBypassSubPicker(true)}
-                className="group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/15 to-accent/10 p-4 text-center transition-shadow hover:shadow-md"
-              >
-                <span className="font-display text-xl text-primary">All</span>
-                <span className="mt-1 text-xs text-muted-foreground">{activeMainCat?.name}</span>
-                <span className="mt-2 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                  {productCountByCat[activeMainCat?.id ?? ""] ?? 0} pieces
-                </span>
-              </button>
-              {subCatOptions.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSubCatId(s.id)}
-                  className="group relative aspect-square overflow-hidden rounded-2xl border bg-card text-left transition-shadow hover:shadow-md"
-                >
-                  {s.image_url ? (
-                    <img src={s.image_url} alt={s.name} loading="lazy" className="h-full w-full object-contain p-4 transition-transform group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
-                      <span className="font-display text-2xl text-primary">{s.name[0]}</span>
-                    </div>
-                  )}
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/0 to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-                    <span className="font-display text-base font-semibold text-background">{s.name}</span>
-                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                      {productCountBySub[s.id] ?? 0}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </>
         ) : (
           <>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setMainCatId("__all"); setSubCatId("__all"); setSearch(""); }}>
-                <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
-              </Button>
-              {activeMainCat && subCatOptions.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setSubCatId("__all")}>
-                  <ArrowLeft className="mr-1.5 h-4 w-4" /> {activeMainCat.name} sub-categories
-                </Button>
-              )}
-            </div>
             <p className="mb-3 text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? "item" : "items"}</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((p) => {
@@ -415,14 +307,7 @@ const StaffCatalog = () => {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-                      {p.offer_price && p.offer_price < p.mrp ? (
-                        <p className="flex items-baseline gap-2">
-                          <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
-                          <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
-                        </p>
-                      ) : (
-                        <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
-                      )}
+                      <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
                       {loc && (
                         <p className="text-[11px] text-muted-foreground">
                           📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
