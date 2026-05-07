@@ -10,8 +10,6 @@ export default {
       fontFamily: {
         display: ['"Fraunces"', "Georgia", "serif"],
         sans: ['"Inter"', "system-ui", "sans-serif"],
-        cinematic: ['"Sora"', '"Manrope"', "system-ui", "sans-serif"],
-        editorial: ['"Sora"', '"Manrope"', "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
