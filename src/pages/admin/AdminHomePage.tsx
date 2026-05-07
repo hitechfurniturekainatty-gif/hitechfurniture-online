@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   hero_scroll_hint: "",
   hero_caption_eyebrow: "",
   hero_caption_title: "",
+  hide_public_prices: false,
 };
 
 const AdminHomePage = () => {
