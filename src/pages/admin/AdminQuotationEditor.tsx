@@ -351,9 +351,9 @@ const AdminQuotationEditor = () => {
     setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch, _dirty: true } : it)));
   };
 
-  // After a new blank item is appended, scroll it into view and focus its
-  // description field. This replaces any browser default scroll-to-top
-  // behaviour the user was seeing when clicking "Add item".
+  // After a new blank item is appended, focus its description field WITHOUT
+  // scrolling. The user explicitly asked for zero-jump UI when clicking
+  // "Add item" — so we skip scrollIntoView and rely on `preventScroll: true`.
   useEffect(() => {
     const pendingId = pendingFocusItemRef.current;
     if (!pendingId) return;
@@ -362,7 +362,6 @@ const AdminQuotationEditor = () => {
     requestAnimationFrame(() => {
       const row = document.querySelector<HTMLElement>(`[data-item-id="${pendingId}"]`);
       if (!row) return;
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
       const input = row.querySelector<HTMLInputElement | HTMLTextAreaElement>(
         "input, textarea",
       );
