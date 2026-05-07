@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
+import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 
 type MainCat = { id: string; name: string; slug: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; image_url: string | null };
@@ -32,6 +33,8 @@ const PAGE_SIZE = 24;
 
 const Catalog = () => {
   const [params, setParams] = useSearchParams();
+  const homeSettings = useHomepageSettings();
+  const hidePrices = !!homeSettings?.hide_public_prices;
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -562,7 +565,7 @@ const Catalog = () => {
           <>
             <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
               {visibleProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
+                <ProductCard key={p.id} product={p} hidePrice={hidePrices} />
               ))}
             </div>
             {hasMore && (
