@@ -375,6 +375,7 @@ export type Database = {
           hero_headline_line2: string | null
           hero_interior_image_url: string | null
           hero_scroll_hint: string | null
+          hide_public_prices: boolean
           id: string
           instagram_url: string | null
           managing_partner: string | null
@@ -406,6 +407,7 @@ export type Database = {
           hero_headline_line2?: string | null
           hero_interior_image_url?: string | null
           hero_scroll_hint?: string | null
+          hide_public_prices?: boolean
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
@@ -437,6 +439,7 @@ export type Database = {
           hero_headline_line2?: string | null
           hero_interior_image_url?: string | null
           hero_scroll_hint?: string | null
+          hide_public_prices?: boolean
           id?: string
           instagram_url?: string | null
           managing_partner?: string | null
