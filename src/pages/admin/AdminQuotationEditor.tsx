@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
+import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { SketchField } from "@/components/admin/SketchField";
 import { CollapsibleField } from "@/components/admin/CollapsibleField";
