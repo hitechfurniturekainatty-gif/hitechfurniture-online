@@ -195,6 +195,8 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  const savingRef = useRef(false);
+  const headerDirtyRef = useRef(false);
   // Maps temporary client-side ids (e.g. `tmp-xxxx`) to their final DB ids
   // after the row has been inserted. We use this in `updateItem` so async
   // callbacks (image uploads, sketch saves) that captured the original tmp
@@ -294,8 +296,8 @@ const AdminQuotationEditor = () => {
   // local form is clean. If the user has unsaved edits, show a soft toast with
   // a "Reload" action so we never overwrite their work mid-typing.
   useRealtimeQuotation(id, () => {
-    const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
-    if (!headerDirty && !hasUnsavedItems && !saving) {
+    const hasUnsavedItems = itemsRef.current.some((it) => it._dirty || it._isNew);
+    if (!headerDirtyRef.current && !hasUnsavedItems && !savingRef.current) {
       // Silent reload — DO NOT toggle the page-level `loading` flag, otherwise
       // the editor unmounts to a spinner and the browser jumps to the top
       // mid-typing every time our own auto-save echoes back via realtime.
@@ -325,6 +327,7 @@ const AdminQuotationEditor = () => {
       qRef.current = next;
       return next;
     });
+    headerDirtyRef.current = true;
     setHeaderDirty(true);
   };
 
