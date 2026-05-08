@@ -1,7 +1,16 @@
 import { Link } from "react-router-dom";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { formatINR } from "@/lib/brand";
 import { Badge } from "./ui/badge";
+
+export type ProductVariantData = {
+  id: string;
+  color_name: string;
+  color_hex: string | null;
+  image_url: string | null;
+  stock_quantity: number;
+  display_order: number;
+};
 
 export type ProductCardData = {
   id: string;
@@ -12,16 +21,32 @@ export type ProductCardData = {
   available_colors: string[] | null;
   stock_quantity: number;
   product_images?: { image_url: string; display_order: number }[];
+  product_variants?: ProductVariantData[];
 };
 
 const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCardData; hidePrice?: boolean }) => {
+  const variants = useMemo(
+    () =>
+      (product.product_variants ?? [])
+        .slice()
+        .sort((a, b) => a.display_order - b.display_order),
+    [product.product_variants],
+  );
+  const [activeVariantId, setActiveVariantId] = useState<string | null>(null);
+  const activeVariant = variants.find((v) => v.id === activeVariantId) ?? null;
+
+  const baseCover = useMemo(
+    () =>
+      product.product_images
+        ?.slice()
+        .sort((a, b) => a.display_order - b.display_order)[0]?.image_url,
+    [product.product_images],
+  );
   // Pick the lowest display_order image without mutating the source array
   // and request a small WebP-rendered variant from Supabase Storage so mobile
   // visitors download ~10–20 KB instead of the full original.
   const cover = useMemo(() => {
-    const raw = product.product_images
-      ?.slice()
-      .sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+    const raw = activeVariant?.image_url || baseCover;
     if (!raw) return undefined;
     // Only transform Supabase-hosted images (public bucket urls).
     if (raw.includes("/storage/v1/object/public/")) {
@@ -31,8 +56,11 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
         + "width=480&quality=72&resize=contain";
     }
     return raw;
-  }, [product.product_images]);
+  }, [activeVariant, baseCover]);
   const onOffer = product.offer_price && product.offer_price < product.mrp;
+  const totalStock = variants.length > 0
+    ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+    : product.stock_quantity;
 
   return (
     <Link to={`/product/${product.id}`} className="product-card group block">
@@ -55,10 +83,42 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
         {onOffer && (
           <Badge className="absolute left-3 top-3 z-10 bg-accent text-accent-foreground">Offer</Badge>
         )}
-        {product.stock_quantity <= 0 && (
+        {totalStock <= 0 && (
           <Badge variant="secondary" className="absolute right-3 top-3 z-10">Out of stock</Badge>
         )}
       </div>
+      {variants.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+          {variants.map((v) => {
+            const active = v.id === (activeVariantId ?? variants[0]?.id);
+            const out = v.stock_quantity <= 0;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveVariantId(v.id);
+                }}
+                title={`${v.color_name} · ${out ? "Out" : `${v.stock_quantity} in stock`}`}
+                className={cn(
+                  "relative h-6 w-6 rounded-full border-2 transition-all",
+                  active ? "border-primary scale-110 shadow-md" : "border-border hover:border-foreground/40",
+                  out && "opacity-50",
+                )}
+                style={{ backgroundColor: v.color_hex || "#cbd5e1" }}
+                aria-label={`Show ${v.color_name}`}
+              >
+                {!out && (
+                  <span className="absolute -bottom-1 -right-1 rounded-full bg-foreground px-1 text-[8px] font-bold leading-tight text-background">
+                    {v.stock_quantity}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg leading-snug text-foreground line-clamp-2">
@@ -80,7 +140,7 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
           )}
         </div>
         )}
-        {product.available_colors && product.available_colors.length > 0 && (
+        {variants.length === 0 && product.available_colors && product.available_colors.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {product.available_colors.slice(0, 4).map((c) => (
               <span key={c} className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -92,6 +152,15 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
               return acc;
             }, [])}
           </div>
+        )}
+        {activeVariant && (
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-medium text-foreground">{activeVariant.color_name}</span>
+            {" · "}
+            {activeVariant.stock_quantity > 0
+              ? `${activeVariant.stock_quantity} in stock`
+              : "Out of stock"}
+          </p>
         )}
       </div>
     </Link>
