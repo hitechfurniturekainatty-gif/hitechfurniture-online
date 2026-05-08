@@ -263,6 +263,8 @@ const StaffCatalog = () => {
           product_code: e.product.product_code,
           cover_url: e.cover,
           color_label: e.variant?.color_name ?? null,
+          color_hex: e.variant?.color_hex ?? null,
+          stock: e.stock,
         })),
       };
     }
