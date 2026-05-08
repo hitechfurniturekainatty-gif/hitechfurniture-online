@@ -304,12 +304,12 @@ const AdminQuotationEditor = () => {
       // mid-typing every time our own auto-save echoes back via realtime.
       load({ silent: true });
       setStatusHistoryKey((k) => k + 1);
-    } else {
-      toast({
-        title: "Updated by another user",
-        description: "Save your changes, then reload to see the latest version.",
-      });
     }
+    // Otherwise: user is mid-typing or mid-save. Silently skip — the next
+    // clean realtime tick (after their save settles) will reload. We
+    // intentionally suppress the toast because most realtime events are
+    // self-echoes from our own auto-save and the toast was breaking the
+    // user's typing flow (incl. the Space key on some keyboards).
   });
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
