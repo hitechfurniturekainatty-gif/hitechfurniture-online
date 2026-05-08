@@ -248,25 +248,26 @@ const StaffCatalog = () => {
   };
 
   const reorderScope = useMemo(() => {
-    // Reorder available when filtered to a specific section (locationId) OR a specific floor.
+    // Reorder is available when filtered to a specific section. Both pinned
+    // color variants and unpinned products in that section can be sequenced.
     if (locationId !== "__all") {
       const loc = locations.find((l) => l.id === locationId);
-      const list = products
-        .filter((p) => p.location_id === locationId)
-        .sort((a, b) => (a.floor_display_order ?? 0) - (b.floor_display_order ?? 0) || a.product_name.localeCompare(b.product_name));
+      const list = filtered.filter((e) => e.location_id === locationId);
       return {
         canReorder: true,
         label: loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "Selected section",
-        items: list.map<ReorderItem>((p) => ({
-          id: p.id,
-          product_name: p.product_name,
-          product_code: p.product_code,
-          cover_url: p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null,
+        items: list.map<ReorderItem>((e) => ({
+          id: e.refId,
+          kind: e.kind,
+          product_name: e.product.product_name,
+          product_code: e.product.product_code,
+          cover_url: e.cover,
+          color_label: e.variant?.color_name ?? null,
         })),
       };
     }
     return { canReorder: false, label: "", items: [] as ReorderItem[] };
-  }, [locationId, locations, products]);
+  }, [locationId, locations, filtered]);
 
   if (!unlocked) {
     return (
