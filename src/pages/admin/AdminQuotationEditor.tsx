@@ -517,25 +517,60 @@ const AdminQuotationEditor = () => {
   // Pass `{ silent: true }` for background auto-saves so we don't fire a "Saved" toast on
   // every blur — the small indicator badge in the corner is enough feedback.
   const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
-    if (!q) return null;
+    const saveQ = qRef.current ?? q;
+    if (!saveQ) return null;
+    const saveItems = itemsRef.current;
+    const itemFingerprint = (it: QItem) => JSON.stringify([
+      it.description,
+      it.item_image_url,
+      it.measurement,
+      it.measurement_image_url,
+      it.catalog_text,
+      it.catalog_image_url,
+      it.sketch_url,
+      it.site_photos,
+      it.quantity,
+      it.unit_price,
+      it.display_order,
+      it.product_id,
+    ]);
+    const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
+      h.party_name,
+      h.party_place,
+      h.party_phone,
+      h.party_address,
+      h.quotation_date,
+      h.expected_delivery_date,
+      h.gst_percent,
+      h.advance_amount,
+      h.discount_amount,
+      h.status,
+      h.notes,
+      h.terms,
+      h.salesperson_name,
+      h.delivery_place,
+      h.delivery_route_id,
+    ]) : "";
+    const itemSnapshots = new Map(saveItems.map((it) => [it.id, itemFingerprint(it)]));
+    const headerSnapshot = headerFingerprint(saveQ);
     savingRef.current = true;
     setSaving(true);
-    if (headerDirty) {
+    if (headerDirtyRef.current) {
       const { error } = await supabase.from("quotations").update({
-        party_name: q.party_name,
-        party_place: q.party_place,
-        party_phone: q.party_phone,
-        party_address: q.party_address,
-        quotation_date: q.quotation_date,
-        expected_delivery_date: q.expected_delivery_date,
-        gst_percent: q.gst_percent,
-        advance_amount: Math.max(0, Number(q.advance_amount) || 0),
-        discount_amount: Math.max(0, Number(q.discount_amount) || 0),
-        status: q.status,
-        notes: q.notes,
-        terms: q.terms,
-        salesperson_name: q.salesperson_name,
-      }).eq("id", q.id);
+        party_name: saveQ.party_name,
+        party_place: saveQ.party_place,
+        party_phone: saveQ.party_phone,
+        party_address: saveQ.party_address,
+        quotation_date: saveQ.quotation_date,
+        expected_delivery_date: saveQ.expected_delivery_date,
+        gst_percent: saveQ.gst_percent,
+        advance_amount: Math.max(0, Number(saveQ.advance_amount) || 0),
+        discount_amount: Math.max(0, Number(saveQ.discount_amount) || 0),
+        status: saveQ.status,
+        notes: saveQ.notes,
+        terms: saveQ.terms,
+        salesperson_name: saveQ.salesperson_name,
+      }).eq("id", saveQ.id);
       if (error) {
         savingRef.current = false;
         setSaving(false);
@@ -544,7 +579,7 @@ const AdminQuotationEditor = () => {
       }
     }
     const idMap: Record<string, string> = {};
-    const updated: QItem[] = [...items];
+    const updated: QItem[] = [...saveItems];
 
     // Build the work list of dirty rows to insert/update in parallel.
     type Job = { index: number; payload: any; isNew: boolean; tmpId: string; existingId: string };
