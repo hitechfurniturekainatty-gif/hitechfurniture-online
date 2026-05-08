@@ -151,34 +151,91 @@ const StaffCatalog = () => {
     if (subCatId !== "__all" && !subCatOptions.some((s) => s.id === subCatId)) setSubCatId("__all");
   }, [subCatOptions, subCatId]);
 
-  const filtered = useMemo(() => {
+  // Expand each product into one or more "floor entries" so colors that are
+  // physically displayed on different floors show up in their respective
+  // floor lists with their own photo + location-specific stock.
+  const filtered = useMemo<FloorEntry[]>(() => {
     const q = search.trim().toLowerCase();
-    const list = products.filter((p) => {
-      if (stockFilter === "available" && (p.stock_status !== "in_stock" || p.stock_quantity <= 0)) return false;
-      if (stockFilter === "out" && p.stock_status === "in_stock" && p.stock_quantity > 0) return false;
+    const baseCoverOf = (p: Product) =>
+      p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+
+    const matchesCategory = (p: Product) => {
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
       if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
-      if (locationId !== "__all") {
-        if (p.location_id !== locationId) return false;
-      } else if (building !== "__all" || floor !== "__all") {
-        const loc = locations.find((l) => l.id === p.location_id);
-        if (!loc) return false;
-        if (building !== "__all" && loc.building !== building) return false;
-        if (floor !== "__all" && loc.floor !== floor) return false;
-      }
       if (q && !p.product_name.toLowerCase().includes(q) && !p.product_code.toLowerCase().includes(q)) return false;
       return true;
-    });
-    // Sort by physical floor sequence: location order, then floor_display_order, then name.
+    };
+
+    const locInScope = (locId: string | null) => {
+      if (locationId !== "__all") return locId === locationId;
+      if (building === "__all" && floor === "__all") return true;
+      const loc = locations.find((l) => l.id === locId);
+      if (!loc) return false;
+      if (building !== "__all" && loc.building !== building) return false;
+      if (floor !== "__all" && loc.floor !== floor) return false;
+      return true;
+    };
+
+    const stockOk = (qty: number, statusInStock: boolean) => {
+      if (stockFilter === "available") return statusInStock && qty > 0;
+      if (stockFilter === "out") return !(statusInStock && qty > 0);
+      return true;
+    };
+
+    const entries: FloorEntry[] = [];
+    for (const p of products) {
+      if (!matchesCategory(p)) continue;
+      const variants = p.product_variants ?? [];
+      const pinned = variants.filter((v) => !!v.location_id);
+      const unpinned = variants.filter((v) => !v.location_id);
+
+      // 1) Each pinned variant becomes its own row in its location.
+      for (const v of pinned) {
+        if (!locInScope(v.location_id)) continue;
+        if (!stockOk(v.stock_quantity, p.stock_status === "in_stock")) continue;
+        entries.push({
+          key: `v:${v.id}`,
+          kind: "variant",
+          refId: v.id,
+          product: p,
+          variant: v,
+          location_id: v.location_id,
+          floor_display_order: v.floor_display_order ?? 0,
+          cover: v.image_url || baseCoverOf(p),
+          stock: v.stock_quantity,
+        });
+      }
+
+      // 2) Residual product row: covers unpinned variants (or no variants at all).
+      // Skipped when every variant is pinned to a floor — no need to duplicate.
+      const hasResidual = pinned.length === 0 || unpinned.length > 0;
+      if (hasResidual) {
+        if (!locInScope(p.location_id)) continue;
+        const residualStock = unpinned.length > 0
+          ? unpinned.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+          : (variants.length > 0 ? 0 : p.stock_quantity);
+        if (!stockOk(residualStock, p.stock_status === "in_stock")) continue;
+        entries.push({
+          key: `p:${p.id}`,
+          kind: "product",
+          refId: p.id,
+          product: p,
+          variant: null,
+          location_id: p.location_id,
+          floor_display_order: p.floor_display_order ?? 0,
+          cover: baseCoverOf(p),
+          stock: residualStock,
+        });
+      }
+    }
+
     const locOrder = new Map(locations.map((l, i) => [l.id, i]));
-    return list.sort((a, b) => {
+    return entries.sort((a, b) => {
       const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
       const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
       if (la !== lb) return la - lb;
-      const oa = a.floor_display_order ?? 0;
-      const ob = b.floor_display_order ?? 0;
-      if (oa !== ob) return oa - ob;
-      return a.product_name.localeCompare(b.product_name);
+      if (a.floor_display_order !== b.floor_display_order) return a.floor_display_order - b.floor_display_order;
+      return a.product.product_name.localeCompare(b.product.product_name);
     });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
 
