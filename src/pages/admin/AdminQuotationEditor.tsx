@@ -270,6 +270,7 @@ const AdminQuotationEditor = () => {
     itemsRef.current = nextItems;
     setQ(nextQ);
     setItems(nextItems);
+    headerDirtyRef.current = false;
     setHeaderDirty(false);
     if (!opts.silent) setLoading(false);
   };
@@ -517,6 +518,7 @@ const AdminQuotationEditor = () => {
   // every blur — the small indicator badge in the corner is enough feedback.
   const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
     if (!q) return null;
+    savingRef.current = true;
     setSaving(true);
     if (headerDirty) {
       const { error } = await supabase.from("quotations").update({
@@ -535,6 +537,7 @@ const AdminQuotationEditor = () => {
         salesperson_name: q.salesperson_name,
       }).eq("id", q.id);
       if (error) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Save failed", description: error.message, variant: "destructive" });
         return null;
@@ -604,6 +607,7 @@ const AdminQuotationEditor = () => {
       const j = jobs[k];
       const res: any = results[k];
       if (res.error) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Item save failed", description: res.error.message, variant: "destructive" });
         return null;
@@ -621,6 +625,7 @@ const AdminQuotationEditor = () => {
 
     itemsRef.current = updated;
     setItems(updated);
+    headerDirtyRef.current = false;
     setHeaderDirty(false);
 
     // Always recompute and persist header totals from the freshly saved items.
@@ -647,6 +652,7 @@ const AdminQuotationEditor = () => {
         })
         .eq("id", q.id);
       if (totErr) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Total update failed", description: totErr.message, variant: "destructive" });
         return null;
@@ -658,6 +664,7 @@ const AdminQuotationEditor = () => {
       });
     }
 
+    savingRef.current = false;
     setSaving(false);
 
     // Status auto-advance: only the advance-amount → finalized rule remains.
