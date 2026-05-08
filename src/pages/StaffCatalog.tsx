@@ -35,7 +35,24 @@ type Product = {
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
-  product_variants: { id: string; color_name: string; color_hex: string | null; image_url: string | null; stock_quantity: number; display_order: number }[];
+  product_variants: { id: string; color_name: string; color_hex: string | null; image_url: string | null; stock_quantity: number; display_order: number; location_id: string | null; floor_display_order: number }[];
+};
+
+/**
+ * A single row in the staff floor view. A product with N color variants pinned
+ * to physical floors becomes N entries (one per pinned variant) plus one
+ * residual "base" entry for unpinned variants / no variants.
+ */
+type FloorEntry = {
+  key: string;                 // unique row key
+  kind: "product" | "variant"; // what this row points at for reorder/move
+  refId: string;               // product.id when kind=product, variant.id when kind=variant
+  product: Product;
+  variant: Product["product_variants"][number] | null;
+  location_id: string | null;
+  floor_display_order: number;
+  cover: string | null;
+  stock: number;
 };
 
 const SS_KEY = "staff_catalog_unlocked";
@@ -74,7 +91,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order)")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -134,65 +151,123 @@ const StaffCatalog = () => {
     if (subCatId !== "__all" && !subCatOptions.some((s) => s.id === subCatId)) setSubCatId("__all");
   }, [subCatOptions, subCatId]);
 
-  const filtered = useMemo(() => {
+  // Expand each product into one or more "floor entries" so colors that are
+  // physically displayed on different floors show up in their respective
+  // floor lists with their own photo + location-specific stock.
+  const filtered = useMemo<FloorEntry[]>(() => {
     const q = search.trim().toLowerCase();
-    const list = products.filter((p) => {
-      if (stockFilter === "available" && (p.stock_status !== "in_stock" || p.stock_quantity <= 0)) return false;
-      if (stockFilter === "out" && p.stock_status === "in_stock" && p.stock_quantity > 0) return false;
+    const baseCoverOf = (p: Product) =>
+      p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+
+    const matchesCategory = (p: Product) => {
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
       if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
-      if (locationId !== "__all") {
-        if (p.location_id !== locationId) return false;
-      } else if (building !== "__all" || floor !== "__all") {
-        const loc = locations.find((l) => l.id === p.location_id);
-        if (!loc) return false;
-        if (building !== "__all" && loc.building !== building) return false;
-        if (floor !== "__all" && loc.floor !== floor) return false;
-      }
       if (q && !p.product_name.toLowerCase().includes(q) && !p.product_code.toLowerCase().includes(q)) return false;
       return true;
-    });
-    // Sort by physical floor sequence: location order, then floor_display_order, then name.
+    };
+
+    const locInScope = (locId: string | null) => {
+      if (locationId !== "__all") return locId === locationId;
+      if (building === "__all" && floor === "__all") return true;
+      const loc = locations.find((l) => l.id === locId);
+      if (!loc) return false;
+      if (building !== "__all" && loc.building !== building) return false;
+      if (floor !== "__all" && loc.floor !== floor) return false;
+      return true;
+    };
+
+    const stockOk = (qty: number, statusInStock: boolean) => {
+      if (stockFilter === "available") return statusInStock && qty > 0;
+      if (stockFilter === "out") return !(statusInStock && qty > 0);
+      return true;
+    };
+
+    const entries: FloorEntry[] = [];
+    for (const p of products) {
+      if (!matchesCategory(p)) continue;
+      const variants = p.product_variants ?? [];
+      const pinned = variants.filter((v) => !!v.location_id);
+      const unpinned = variants.filter((v) => !v.location_id);
+
+      // 1) Each pinned variant becomes its own row in its location.
+      for (const v of pinned) {
+        if (!locInScope(v.location_id)) continue;
+        if (!stockOk(v.stock_quantity, p.stock_status === "in_stock")) continue;
+        entries.push({
+          key: `v:${v.id}`,
+          kind: "variant",
+          refId: v.id,
+          product: p,
+          variant: v,
+          location_id: v.location_id,
+          floor_display_order: v.floor_display_order ?? 0,
+          cover: v.image_url || baseCoverOf(p),
+          stock: v.stock_quantity,
+        });
+      }
+
+      // 2) Residual product row: covers unpinned variants (or no variants at all).
+      // Skipped when every variant is pinned to a floor — no need to duplicate.
+      const hasResidual = pinned.length === 0 || unpinned.length > 0;
+      if (hasResidual) {
+        if (!locInScope(p.location_id)) continue;
+        const residualStock = unpinned.length > 0
+          ? unpinned.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+          : (variants.length > 0 ? 0 : p.stock_quantity);
+        if (!stockOk(residualStock, p.stock_status === "in_stock")) continue;
+        entries.push({
+          key: `p:${p.id}`,
+          kind: "product",
+          refId: p.id,
+          product: p,
+          variant: null,
+          location_id: p.location_id,
+          floor_display_order: p.floor_display_order ?? 0,
+          cover: baseCoverOf(p),
+          stock: residualStock,
+        });
+      }
+    }
+
     const locOrder = new Map(locations.map((l, i) => [l.id, i]));
-    return list.sort((a, b) => {
+    return entries.sort((a, b) => {
       const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
       const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
       if (la !== lb) return la - lb;
-      const oa = a.floor_display_order ?? 0;
-      const ob = b.floor_display_order ?? 0;
-      if (oa !== ob) return oa - ob;
-      return a.product_name.localeCompare(b.product_name);
+      if (a.floor_display_order !== b.floor_display_order) return a.floor_display_order - b.floor_display_order;
+      return a.product.product_name.localeCompare(b.product.product_name);
     });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
 
   const reloadProducts = async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
+      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order)")
       .is("deleted_at", null);
     setProducts((data ?? []) as Product[]);
   };
 
   const reorderScope = useMemo(() => {
-    // Reorder available when filtered to a specific section (locationId) OR a specific floor.
+    // Reorder is available when filtered to a specific section. Both pinned
+    // color variants and unpinned products in that section can be sequenced.
     if (locationId !== "__all") {
       const loc = locations.find((l) => l.id === locationId);
-      const list = products
-        .filter((p) => p.location_id === locationId)
-        .sort((a, b) => (a.floor_display_order ?? 0) - (b.floor_display_order ?? 0) || a.product_name.localeCompare(b.product_name));
+      const list = filtered.filter((e) => e.location_id === locationId);
       return {
         canReorder: true,
         label: loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "Selected section",
-        items: list.map<ReorderItem>((p) => ({
-          id: p.id,
-          product_name: p.product_name,
-          product_code: p.product_code,
-          cover_url: p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null,
+        items: list.map<ReorderItem>((e) => ({
+          id: e.refId,
+          kind: e.kind,
+          product_name: e.product.product_name,
+          product_code: e.product.product_code,
+          cover_url: e.cover,
+          color_label: e.variant?.color_name ?? null,
         })),
       };
     }
     return { canReorder: false, label: "", items: [] as ReorderItem[] };
-  }, [locationId, locations, products]);
+  }, [locationId, locations, filtered]);
 
   if (!unlocked) {
     return (
@@ -340,9 +415,9 @@ const StaffCatalog = () => {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((p) => {
-                const loc = locations.find((l) => l.id === p.location_id);
-                return <StaffProductCard key={p.id} p={p} loc={loc} />;
+              {filtered.map((entry) => {
+                const loc = locations.find((l) => l.id === entry.location_id);
+                return <StaffProductCard key={entry.key} entry={entry} loc={loc} />;
               })}
             </div>
             {filtered.length === 0 && (
@@ -366,21 +441,27 @@ const StaffCatalog = () => {
 
 export default StaffCatalog;
 
-// ----- Staff product card (with color swatches that switch the photo) -----
-const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined }) => {
-  const variants = (p.product_variants ?? [])
-    .slice()
-    .sort((a, b) => a.display_order - b.display_order);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeVariant = variants.find((v) => v.id === activeId) ?? null;
+// ----- Staff product card (one card per floor entry: product OR pinned color) -----
+const StaffProductCard = ({ entry, loc }: { entry: FloorEntry; loc: Location | undefined }) => {
+  const p = entry.product;
+  const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
+  // When this row represents a color pinned to the current floor, lock the
+  // swatch + photo to that color. Other colors live in their own floor rows.
+  const pinnedVariant = entry.variant;
+  // Side swatches: only show OTHER colors that aren't pinned elsewhere, so
+  // the floor view doesn't suggest stock that lives on a different floor.
+  const sideVariants = pinnedVariant
+    ? []
+    : allVariants.filter((v) => !v.location_id);
+
+  const [activeId, setActiveId] = useState<string | null>(pinnedVariant?.id ?? null);
+  const activeVariant = pinnedVariant ?? sideVariants.find((v) => v.id === activeId) ?? null;
 
   const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
   const cover = activeVariant?.image_url || baseCover;
 
-  const totalStock = variants.length > 0
-    ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
-    : p.stock_quantity;
-  const isOut = p.stock_status !== "in_stock" || totalStock <= 0;
+  const stock = entry.stock;
+  const isOut = p.stock_status !== "in_stock" || stock <= 0;
 
   return (
     <Card className="overflow-hidden">
@@ -389,23 +470,30 @@ const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined })
       </div>
       <CardContent className="space-y-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
+          <p className="font-medium leading-tight line-clamp-2">
+            {p.product_name}
+            {pinnedVariant && (
+              <span className="ml-1 text-xs font-normal text-muted-foreground">· {pinnedVariant.color_name}</span>
+            )}
+          </p>
           {isOut ? (
             <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
           ) : (
-            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {totalStock}</Badge>
+            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">
+              {pinnedVariant ? "Here" : "In stock"} · {stock}
+            </Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-        {variants.length > 0 && (
+        {sideVariants.length > 0 && (
           <div className="pt-1">
             <VariantSwatches
-              variants={variants}
-              activeId={activeId ?? variants[0]?.id ?? null}
+              variants={sideVariants}
+              activeId={activeId ?? sideVariants[0]?.id ?? null}
               onPick={(v) => setActiveId(v.id)}
               size="md"
             />
-            {activeVariant && (
+            {activeVariant && !pinnedVariant && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 <span className="font-medium text-foreground">{activeVariant.color_name}</span>
                 {" · "}
@@ -413,6 +501,11 @@ const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined })
               </p>
             )}
           </div>
+        )}
+        {pinnedVariant && allVariants.length > 1 && (
+          <p className="text-[11px] text-muted-foreground">
+            Other colors of this product are listed under their own floors.
+          </p>
         )}
         {p.offer_price && p.offer_price < p.mrp ? (
           <div className="flex items-baseline gap-2">

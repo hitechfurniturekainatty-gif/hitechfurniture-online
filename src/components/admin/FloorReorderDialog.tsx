@@ -31,6 +31,10 @@ export type ReorderItem = {
   product_name: string;
   product_code: string;
   cover_url?: string | null;
+  /** "product" reorders products.floor_display_order; "variant" reorders product_variants.floor_display_order */
+  kind?: "product" | "variant";
+  /** Display-only color label for variant rows */
+  color_label?: string | null;
 };
 
 export type LocationOption = {
@@ -81,7 +85,10 @@ const Row = ({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.product_name}</p>
-        <p className="truncate text-xs text-muted-foreground">{item.product_code}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {item.product_code}
+          {item.color_label ? <span className="ml-1 text-foreground/70">· {item.color_label}</span> : null}
+        </p>
       </div>
     </li>
   );
@@ -135,9 +142,14 @@ export const FloorReorderDialog = ({
     setSaving(true);
     try {
       // Update each row with its new order. Step 10 to allow easy manual inserts.
-      const updates = items.map((it, idx) =>
-        supabase.from("products").update({ floor_display_order: (idx + 1) * 10 }).eq("id", it.id),
-      );
+      // Variants update product_variants; products update products.
+      const updates = items.map((it, idx) => {
+        const order = (idx + 1) * 10;
+        if (it.kind === "variant") {
+          return supabase.from("product_variants").update({ floor_display_order: order }).eq("id", it.id);
+        }
+        return supabase.from("products").update({ floor_display_order: order }).eq("id", it.id);
+      });
       const results = await Promise.all(updates);
       const firstErr = results.find((r) => r.error)?.error;
       if (firstErr) throw firstErr;
@@ -169,12 +181,24 @@ export const FloorReorderDialog = ({
     if (!moveTarget || selected.size === 0) return;
     setMoving(true);
     try {
-      const ids = Array.from(selected);
-      const { error } = await supabase
-        .from("products")
-        .update({ location_id: moveTarget, floor_display_order: 0 })
-        .in("id", ids);
-      if (error) throw error;
+      const chosen = items.filter((i) => selected.has(i.id));
+      const variantIds = chosen.filter((i) => i.kind === "variant").map((i) => i.id);
+      const productIds = chosen.filter((i) => i.kind !== "variant").map((i) => i.id);
+      if (variantIds.length > 0) {
+        const { error } = await supabase
+          .from("product_variants")
+          .update({ location_id: moveTarget, floor_display_order: 0 })
+          .in("id", variantIds);
+        if (error) throw error;
+      }
+      if (productIds.length > 0) {
+        const { error } = await supabase
+          .from("products")
+          .update({ location_id: moveTarget, floor_display_order: 0 })
+          .in("id", productIds);
+        if (error) throw error;
+      }
+      const ids = [...variantIds, ...productIds];
       const loc = allLocations.find((l) => l.id === moveTarget);
       const label = loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "new location";
       toast({ title: "Items moved", description: `${ids.length} item${ids.length === 1 ? "" : "s"} moved to ${label}.` });
