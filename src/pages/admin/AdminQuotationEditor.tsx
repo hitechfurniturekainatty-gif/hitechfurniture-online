@@ -365,7 +365,11 @@ const AdminQuotationEditor = () => {
       _isNew: true,
       _dirty: true,
     };
-    setItems((p) => [...p, next]);
+    setItems((p) => {
+      const updated = [...p, next];
+      itemsRef.current = updated;
+      return updated;
+    });
     pendingFocusItemRef.current = next.id;
   };
 
@@ -407,7 +411,11 @@ const AdminQuotationEditor = () => {
         return;
       }
     }
-    setItems((p) => p.filter((i) => i.id !== item.id));
+    setItems((p) => {
+      const updated = p.filter((i) => i.id !== item.id);
+      itemsRef.current = updated;
+      return updated;
+    });
   };
 
   const loadProducts = async () => {
@@ -492,7 +500,11 @@ const AdminQuotationEditor = () => {
       _isNew: true,
       _dirty: true,
     };
-    setItems((prev) => [...prev, next]);
+    setItems((prev) => {
+      const updated = [...prev, next];
+      itemsRef.current = updated;
+      return updated;
+    });
     setProductPickerOpen(false);
     toast({ title: "Item added" });
   };
