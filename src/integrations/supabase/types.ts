@@ -708,8 +708,10 @@ export type Database = {
           color_name: string
           created_at: string
           display_order: number
+          floor_display_order: number
           id: string
           image_url: string | null
+          location_id: string | null
           product_id: string
           stock_quantity: number
           updated_at: string
@@ -719,8 +721,10 @@ export type Database = {
           color_name: string
           created_at?: string
           display_order?: number
+          floor_display_order?: number
           id?: string
           image_url?: string | null
+          location_id?: string | null
           product_id: string
           stock_quantity?: number
           updated_at?: string
@@ -730,8 +734,10 @@ export type Database = {
           color_name?: string
           created_at?: string
           display_order?: number
+          floor_display_order?: number
           id?: string
           image_url?: string | null
+          location_id?: string | null
           product_id?: string
           stock_quantity?: number
           updated_at?: string
