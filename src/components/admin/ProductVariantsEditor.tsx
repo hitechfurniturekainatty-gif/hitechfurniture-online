@@ -227,6 +227,12 @@ export const ProductVariantsEditor = ({
                     </p>
                   ) : (
                     <ul className="space-y-1.5">
+                      <li className="grid grid-cols-12 gap-1.5 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="col-span-7">Floor / Location</span>
+                        <span className="col-span-2 text-center">Qty</span>
+                        <span className="col-span-2 text-center">Order</span>
+                        <span className="col-span-1" />
+                      </li>
                       {(v.stocks ?? []).map((s, sIdx) => (
                         <li key={s.id ?? sIdx} className="grid grid-cols-12 gap-1.5 rounded bg-background p-1.5">
                           <Select
