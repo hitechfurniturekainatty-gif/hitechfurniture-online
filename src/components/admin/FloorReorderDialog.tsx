@@ -31,8 +31,8 @@ export type ReorderItem = {
   product_name: string;
   product_code: string;
   cover_url?: string | null;
-  /** "product" reorders products.floor_display_order; "variant" reorders product_variants.floor_display_order */
-  kind?: "product" | "variant";
+  /** "product" reorders products row; "variant_stock" reorders a per-location stock row */
+  kind?: "product" | "variant_stock";
   /** Display-only color label for variant rows */
   color_label?: string | null;
   /** Color hex for swatch display (variant rows) */
@@ -192,8 +192,8 @@ export const FloorReorderDialog = ({
       // Variants update product_variants; products update products.
       const updates = items.map((it, idx) => {
         const order = (idx + 1) * 10;
-        if (it.kind === "variant") {
-          return supabase.from("product_variants").update({ floor_display_order: order }).eq("id", it.id);
+        if (it.kind === "variant_stock") {
+          return supabase.from("product_variant_stock").update({ floor_display_order: order }).eq("id", it.id);
         }
         return supabase.from("products").update({ floor_display_order: order }).eq("id", it.id);
       });
@@ -229,13 +229,16 @@ export const FloorReorderDialog = ({
     setMoving(true);
     try {
       const chosen = items.filter((i) => selected.has(i.id));
-      const variantIds = chosen.filter((i) => i.kind === "variant").map((i) => i.id);
-      const productIds = chosen.filter((i) => i.kind !== "variant").map((i) => i.id);
-      if (variantIds.length > 0) {
+      const stockIds = chosen.filter((i) => i.kind === "variant_stock").map((i) => i.id);
+      const productIds = chosen.filter((i) => i.kind !== "variant_stock").map((i) => i.id);
+      if (stockIds.length > 0) {
+        // Move the per-location stock row to the new location (no merge: if the
+        // variant already has a row in the target it'll be a duplicate, which
+        // the unique constraint blocks — but in practice staff move singletons).
         const { error } = await supabase
-          .from("product_variants")
+          .from("product_variant_stock")
           .update({ location_id: moveTarget, floor_display_order: 0 })
-          .in("id", variantIds);
+          .in("id", stockIds);
         if (error) throw error;
       }
       if (productIds.length > 0) {
@@ -245,7 +248,7 @@ export const FloorReorderDialog = ({
           .in("id", productIds);
         if (error) throw error;
       }
-      const ids = [...variantIds, ...productIds];
+      const ids = [...stockIds, ...productIds];
       const loc = allLocations.find((l) => l.id === moveTarget);
       const label = loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "new location";
       toast({ title: "Items moved", description: `${ids.length} item${ids.length === 1 ? "" : "s"} moved to ${label}.` });
