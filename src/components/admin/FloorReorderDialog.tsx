@@ -85,7 +85,10 @@ const Row = ({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.product_name}</p>
-        <p className="truncate text-xs text-muted-foreground">{item.product_code}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {item.product_code}
+          {item.color_label ? <span className="ml-1 text-foreground/70">· {item.color_label}</span> : null}
+        </p>
       </div>
     </li>
   );
