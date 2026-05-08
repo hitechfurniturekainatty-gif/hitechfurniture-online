@@ -1,7 +1,7 @@
 # Project Memory
 
 ## Core
-Admin app is used by Admin + Staff (multiple roles) simultaneously. Every change must keep the app fast and responsive under concurrent multi-user load — no full-table scans, no blocking UI, prefer indexed queries and React Query caching (staleTime ≥ 60s).
+Whenever any feature, screen, column, field or workflow changes, update `src/lib/guideContent.ts` (CHAPTERS + CHANGELOG section + GUIDE_LAST_UPDATED + bump APP_VERSION). The in-app guide at /guide reads from this file.
 
 ## Memories
-(none yet)
+- [Guide upkeep](mem://preference/guide-upkeep) — How to keep the in-app User Guide in sync
