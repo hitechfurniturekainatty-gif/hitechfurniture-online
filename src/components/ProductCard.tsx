@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { memo, useMemo, useState } from "react";
-import { formatINR } from "@/lib/brand";
+import { formatINR, buildWhatsAppUrl } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
+import { MessageCircle } from "lucide-react";
 
 export type ProductVariantData = {
   id: string;
@@ -63,6 +64,39 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
     ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
     : product.stock_quantity;
 
+  const inquireOnWhatsApp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const colorLine = activeVariant
+      ? `Color: ${activeVariant.color_name}`
+      : product.available_colors && product.available_colors.length > 0
+        ? `Colors available: ${product.available_colors.join(", ")}`
+        : "";
+    const priceLine = !hidePrice
+      ? onOffer
+        ? `Price: ${formatINR(product.offer_price!)} (MRP ${formatINR(product.mrp)})`
+        : `MRP: ${formatINR(product.mrp)}`
+      : "";
+    const productUrl = `${window.location.origin}/product/${product.id}`;
+    const imgUrl = activeVariant?.image_url || baseCover || "";
+    const msg = [
+      "Hello, I'm interested in this product:",
+      "",
+      `Product: ${product.product_name}`,
+      `Code: ${product.product_code}`,
+      priceLine,
+      colorLine,
+      "",
+      imgUrl ? `Photo: ${imgUrl}` : "",
+      `View: ${productUrl}`,
+      "",
+      "Please share more details.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    window.open(buildWhatsAppUrl(msg), "_blank", "noopener");
+  };
+
   return (
     <Link to={`/product/${product.id}`} className="product-card group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
@@ -87,6 +121,16 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
         {totalStock <= 0 && (
           <Badge variant="secondary" className="absolute right-3 top-3 z-10">Out of stock</Badge>
         )}
+        <button
+          type="button"
+          onClick={inquireOnWhatsApp}
+          aria-label="Inquire on WhatsApp"
+          title="Inquire on WhatsApp"
+          className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-md transition-all hover:scale-105 hover:shadow-lg"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          Inquire
+        </button>
       </div>
       {variants.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
