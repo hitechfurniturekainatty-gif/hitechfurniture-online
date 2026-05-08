@@ -35,6 +35,10 @@ export type ReorderItem = {
   kind?: "product" | "variant";
   /** Display-only color label for variant rows */
   color_label?: string | null;
+  /** Color hex for swatch display (variant rows) */
+  color_hex?: string | null;
+  /** Stock count for this row (used for display + stock-sort) */
+  stock?: number;
 };
 
 export type LocationOption = {
@@ -84,12 +88,29 @@ const Row = ({
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{item.product_name}</p>
+        <div className="flex items-center gap-1.5">
+          {item.color_hex && (
+            <span
+              className="inline-block h-3 w-3 shrink-0 rounded-full border"
+              style={{ backgroundColor: item.color_hex }}
+              aria-hidden
+            />
+          )}
+          <p className="truncate text-sm font-medium">{item.product_name}</p>
+        </div>
         <p className="truncate text-xs text-muted-foreground">
           {item.product_code}
           {item.color_label ? <span className="ml-1 text-foreground/70">· {item.color_label}</span> : null}
         </p>
       </div>
+      <span
+        className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-mono ${
+          (item.stock ?? 0) > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"
+        }`}
+        title="Stock available at this location"
+      >
+        {item.stock ?? 0} in stock
+      </span>
     </li>
   );
 };
@@ -135,6 +156,32 @@ export const FloorReorderDialog = ({
       const newIdx = curr.findIndex((i) => i.id === over.id);
       if (oldIdx < 0 || newIdx < 0) return curr;
       return arrayMove(curr, oldIdx, newIdx);
+    });
+  };
+
+  const sortBy = (mode: "color" | "stock" | "name" | "type") => {
+    setItems((curr) => {
+      const next = curr.slice();
+      if (mode === "color") {
+        next.sort((a, b) => {
+          const ac = (a.color_label ?? "~").toLowerCase();
+          const bc = (b.color_label ?? "~").toLowerCase();
+          if (ac !== bc) return ac.localeCompare(bc);
+          return a.product_name.localeCompare(b.product_name);
+        });
+      } else if (mode === "stock") {
+        // High stock first, zero-stock items pushed to the bottom.
+        next.sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0) || a.product_name.localeCompare(b.product_name));
+      } else if (mode === "name") {
+        next.sort((a, b) => a.product_name.localeCompare(b.product_name));
+      } else if (mode === "type") {
+        // Group by base product so all colors of the same item sit next to each other.
+        next.sort((a, b) => {
+          if (a.product_name !== b.product_name) return a.product_name.localeCompare(b.product_name);
+          return (a.color_label ?? "").localeCompare(b.color_label ?? "");
+        });
+      }
+      return next;
     });
   };
 
@@ -259,6 +306,26 @@ export const FloorReorderDialog = ({
             <p className="text-[11px] text-muted-foreground">
               Tick the rows you want to move, pick a destination, then press Move. Use this when items are physically shifted between floors or sections.
             </p>
+          </div>
+        )}
+
+        {items.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Quick sort
+            </span>
+            <Button type="button" size="sm" variant="outline" onClick={() => sortBy("type")}>
+              By item (group colors)
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => sortBy("color")}>
+              By color
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => sortBy("stock")}>
+              By stock (high → low)
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => sortBy("name")}>
+              By name
+            </Button>
           </div>
         )}
 
