@@ -21,7 +21,7 @@ export const handleEnterAsNext = (
   e: KeyboardEvent<HTMLElement>,
   onSubmit?: () => void,
 ) => {
-  if (e.key !== "Enter" || e.shiftKey) return;
+  if (e.defaultPrevented || e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
 
   const target = e.target as HTMLElement | null;
   if (!target) return;
@@ -31,6 +31,23 @@ export const handleEnterAsNext = (
   if (tag === "TEXTAREA") return;
   // Don't hijack Enter on native buttons / links — they have their own action.
   if (tag === "BUTTON" || tag === "A") return;
+  // Keep Enter usable for controls that open/choose options (date pickers,
+  // file pickers, checkboxes, radios, etc.). Only text-like fields use
+  // Enter-as-next; all normal typing keys, including Space, pass through.
+  if (tag === "INPUT") {
+    const type = (target as HTMLInputElement).type;
+    const textLikeTypes = new Set([
+      "",
+      "text",
+      "search",
+      "tel",
+      "url",
+      "email",
+      "number",
+      "password",
+    ]);
+    if (!textLikeTypes.has(type)) return;
+  }
 
   // Only handle Enter coming from form controls.
   if (tag !== "INPUT" && target.getAttribute("role") !== "combobox") return;
@@ -46,7 +63,7 @@ export const handleEnterAsNext = (
   e.preventDefault();
 
   if (idx >= 0 && idx < focusables.length - 1) {
-    focusables[idx + 1].focus();
+    focusables[idx + 1].focus({ preventScroll: true });
     return;
   }
 

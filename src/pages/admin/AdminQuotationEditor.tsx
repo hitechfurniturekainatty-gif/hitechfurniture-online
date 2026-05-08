@@ -190,9 +190,13 @@ const AdminQuotationEditor = () => {
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
+  const qRef = useRef<Quotation | null>(null);
+  const itemsRef = useRef<QItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  const savingRef = useRef(false);
+  const headerDirtyRef = useRef(false);
   // Maps temporary client-side ids (e.g. `tmp-xxxx`) to their final DB ids
   // after the row has been inserted. We use this in `updateItem` so async
   // callbacks (image uploads, sketch saves) that captured the original tmp
@@ -260,8 +264,13 @@ const AdminQuotationEditor = () => {
       return;
     }
     if (e2) toast({ title: "Items load failed", description: e2.message, variant: "destructive" });
-    setQ(quote as Quotation);
-    setItems(((lines ?? []) as QItem[]).map((x) => ({ ...x })));
+    const nextQ = quote as Quotation;
+    const nextItems = ((lines ?? []) as QItem[]).map((x) => ({ ...x }));
+    qRef.current = nextQ;
+    itemsRef.current = nextItems;
+    setQ(nextQ);
+    setItems(nextItems);
+    headerDirtyRef.current = false;
     setHeaderDirty(false);
     if (!opts.silent) setLoading(false);
   };
@@ -288,8 +297,8 @@ const AdminQuotationEditor = () => {
   // local form is clean. If the user has unsaved edits, show a soft toast with
   // a "Reload" action so we never overwrite their work mid-typing.
   useRealtimeQuotation(id, () => {
-    const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
-    if (!headerDirty && !hasUnsavedItems && !saving) {
+    const hasUnsavedItems = itemsRef.current.some((it) => it._dirty || it._isNew);
+    if (!headerDirtyRef.current && !hasUnsavedItems && !savingRef.current) {
       // Silent reload — DO NOT toggle the page-level `loading` flag, otherwise
       // the editor unmounts to a spinner and the browser jumps to the top
       // mid-typing every time our own auto-save echoes back via realtime.
@@ -314,7 +323,12 @@ const AdminQuotationEditor = () => {
   const total = grandTotal;
 
   const updateHeader = (patch: Partial<Quotation>) => {
-    setQ((prev) => (prev ? { ...prev, ...patch } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, ...patch } : prev;
+      qRef.current = next;
+      return next;
+    });
+    headerDirtyRef.current = true;
     setHeaderDirty(true);
   };
 
@@ -355,7 +369,11 @@ const AdminQuotationEditor = () => {
       _isNew: true,
       _dirty: true,
     };
-    setItems((p) => [...p, next]);
+    setItems((p) => {
+      const updated = [...p, next];
+      itemsRef.current = updated;
+      return updated;
+    });
     pendingFocusItemRef.current = next.id;
   };
 
@@ -364,7 +382,11 @@ const AdminQuotationEditor = () => {
     // image uploads that started while a row was still `tmp-...` from being
     // dropped after autosave assigned the row a real id.
     const resolved = tmpIdMapRef.current[id] ?? id;
-    setItems((p) => p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it)));
+    setItems((p) => {
+      const next = p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it));
+      itemsRef.current = next;
+      return next;
+    });
   };
 
   // After a new blank item is appended, focus its description field WITHOUT
@@ -393,7 +415,11 @@ const AdminQuotationEditor = () => {
         return;
       }
     }
-    setItems((p) => p.filter((i) => i.id !== item.id));
+    setItems((p) => {
+      const updated = p.filter((i) => i.id !== item.id);
+      itemsRef.current = updated;
+      return updated;
+    });
   };
 
   const loadProducts = async () => {
@@ -478,7 +504,11 @@ const AdminQuotationEditor = () => {
       _isNew: true,
       _dirty: true,
     };
-    setItems((prev) => [...prev, next]);
+    setItems((prev) => {
+      const updated = [...prev, next];
+      itemsRef.current = updated;
+      return updated;
+    });
     setProductPickerOpen(false);
     toast({ title: "Item added" });
   };
@@ -487,32 +517,69 @@ const AdminQuotationEditor = () => {
   // Pass `{ silent: true }` for background auto-saves so we don't fire a "Saved" toast on
   // every blur — the small indicator badge in the corner is enough feedback.
   const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
-    if (!q) return null;
+    const saveQ = qRef.current ?? q;
+    if (!saveQ) return null;
+    const saveItems = itemsRef.current;
+    const itemFingerprint = (it: QItem) => JSON.stringify([
+      it.description,
+      it.item_image_url,
+      it.measurement,
+      it.measurement_image_url,
+      it.catalog_text,
+      it.catalog_image_url,
+      it.sketch_url,
+      it.site_photos,
+      it.quantity,
+      it.unit_price,
+      it.display_order,
+      it.product_id,
+    ]);
+    const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
+      h.party_name,
+      h.party_place,
+      h.party_phone,
+      h.party_address,
+      h.quotation_date,
+      h.expected_delivery_date,
+      h.gst_percent,
+      h.advance_amount,
+      h.discount_amount,
+      h.status,
+      h.notes,
+      h.terms,
+      h.salesperson_name,
+      h.delivery_place,
+      h.delivery_route_id,
+    ]) : "";
+    const itemSnapshots = new Map(saveItems.map((it) => [it.id, itemFingerprint(it)]));
+    const headerSnapshot = headerFingerprint(saveQ);
+    savingRef.current = true;
     setSaving(true);
-    if (headerDirty) {
+    if (headerDirtyRef.current) {
       const { error } = await supabase.from("quotations").update({
-        party_name: q.party_name,
-        party_place: q.party_place,
-        party_phone: q.party_phone,
-        party_address: q.party_address,
-        quotation_date: q.quotation_date,
-        expected_delivery_date: q.expected_delivery_date,
-        gst_percent: q.gst_percent,
-        advance_amount: Math.max(0, Number(q.advance_amount) || 0),
-        discount_amount: Math.max(0, Number(q.discount_amount) || 0),
-        status: q.status,
-        notes: q.notes,
-        terms: q.terms,
-        salesperson_name: q.salesperson_name,
-      }).eq("id", q.id);
+        party_name: saveQ.party_name,
+        party_place: saveQ.party_place,
+        party_phone: saveQ.party_phone,
+        party_address: saveQ.party_address,
+        quotation_date: saveQ.quotation_date,
+        expected_delivery_date: saveQ.expected_delivery_date,
+        gst_percent: saveQ.gst_percent,
+        advance_amount: Math.max(0, Number(saveQ.advance_amount) || 0),
+        discount_amount: Math.max(0, Number(saveQ.discount_amount) || 0),
+        status: saveQ.status,
+        notes: saveQ.notes,
+        terms: saveQ.terms,
+        salesperson_name: saveQ.salesperson_name,
+      }).eq("id", saveQ.id);
       if (error) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Save failed", description: error.message, variant: "destructive" });
         return null;
       }
     }
     const idMap: Record<string, string> = {};
-    const updated: QItem[] = [...items];
+    const updated: QItem[] = [...saveItems];
 
     // Build the work list of dirty rows to insert/update in parallel.
     type Job = { index: number; payload: any; isNew: boolean; tmpId: string; existingId: string };
@@ -544,7 +611,7 @@ const AdminQuotationEditor = () => {
         tmpId: it.id,
         existingId: it.id,
         payload: {
-          quotation_id: q.id,
+          quotation_id: saveQ.id,
           description: safeDescription,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
@@ -575,6 +642,7 @@ const AdminQuotationEditor = () => {
       const j = jobs[k];
       const res: any = results[k];
       if (res.error) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Item save failed", description: res.error.message, variant: "destructive" });
         return null;
@@ -590,23 +658,42 @@ const AdminQuotationEditor = () => {
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
-    setItems(updated);
-    setHeaderDirty(false);
+    const latestItems = itemsRef.current;
+    const merged = updated.map((saved) => {
+      const originalId = Object.entries(idMap).find(([, newId]) => newId === saved.id)?.[0] ?? saved.id;
+      const latest = latestItems.find((it) => it.id === originalId) ?? latestItems.find((it) => it.id === saved.id);
+      if (latest && itemFingerprint(latest) !== itemSnapshots.get(originalId)) {
+        return { ...latest, id: saved.id, _isNew: false, _dirty: true };
+      }
+      return saved;
+    });
+    latestItems.forEach((latest) => {
+      const resolvedId = tmpIdMapRef.current[latest.id] ?? latest.id;
+      if (!merged.some((it) => it.id === resolvedId) && !updated.some((it) => it.id === resolvedId)) {
+        merged.push({ ...latest, id: resolvedId });
+      }
+    });
+    itemsRef.current = merged;
+    setItems(merged);
+    if (headerFingerprint(qRef.current) === headerSnapshot) {
+      headerDirtyRef.current = false;
+      setHeaderDirty(false);
+    }
 
     // Always recompute and persist header totals from the freshly saved items.
     // Without this, the quotations list (which reads `total`) shows stale
     // amounts when items are added/edited without touching header fields.
     {
-      const newSubtotal = updated.reduce(
+      const newSubtotal = merged.reduce(
         (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
         0,
       );
       const newDiscount = Math.min(
-        Math.max(0, Number(q.discount_amount) || 0),
+        Math.max(0, Number(saveQ.discount_amount) || 0),
         newSubtotal,
       );
       const taxable = Math.max(0, newSubtotal - newDiscount);
-      const newGst = taxable * ((Number(q.gst_percent) || 0) / 100);
+      const newGst = taxable * ((Number(saveQ.gst_percent) || 0) / 100);
       const newTotal = taxable + newGst;
       const { error: totErr } = await supabase
         .from("quotations")
@@ -615,17 +702,21 @@ const AdminQuotationEditor = () => {
           gst_amount: newGst,
           total: newTotal,
         })
-        .eq("id", q.id);
+        .eq("id", saveQ.id);
       if (totErr) {
+        savingRef.current = false;
         setSaving(false);
         toast({ title: "Total update failed", description: totErr.message, variant: "destructive" });
         return null;
       }
-      setQ((prev) =>
-        prev ? { ...prev, subtotal: newSubtotal, gst_amount: newGst, total: newTotal } : prev,
-      );
+      setQ((prev) => {
+        const next = prev ? { ...prev, subtotal: newSubtotal, gst_amount: newGst, total: newTotal } : prev;
+        qRef.current = next;
+        return next;
+      });
     }
 
+    savingRef.current = false;
     setSaving(false);
 
     // Status auto-advance: only the advance-amount → finalized rule remains.
@@ -637,10 +728,14 @@ const AdminQuotationEditor = () => {
       const { data: fresh } = await supabase
         .from("quotations")
         .select("status, advance_amount")
-        .eq("id", q.id)
+        .eq("id", saveQ.id)
         .maybeSingle();
-      if (fresh && fresh.status !== q.status) {
-        setQ((prev) => (prev ? { ...prev, status: fresh.status } : prev));
+      if (fresh && fresh.status !== saveQ.status) {
+        setQ((prev) => {
+          const next = prev ? { ...prev, status: fresh.status } : prev;
+          qRef.current = next;
+          return next;
+        });
         setStatusHistoryKey((k) => k + 1);
       }
     }
@@ -902,7 +997,11 @@ const AdminQuotationEditor = () => {
       toast({ title: "Submit failed", description: qErr.message, variant: "destructive" });
       return;
     }
-    setQ((prev) => (prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev;
+      qRef.current = next;
+      return next;
+    });
     if (q.source_task_id) {
       const { error } = await supabase
         .from("measurement_tasks")
@@ -926,7 +1025,11 @@ const AdminQuotationEditor = () => {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
       return;
     }
-    setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, status: newStatus } : prev;
+      qRef.current = next;
+      return next;
+    });
     setStatusHistoryKey((k) => k + 1);
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
