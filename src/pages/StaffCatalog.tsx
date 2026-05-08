@@ -35,18 +35,36 @@ type Product = {
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
-  product_variants: { id: string; color_name: string; color_hex: string | null; image_url: string | null; stock_quantity: number; display_order: number; location_id: string | null; floor_display_order: number }[];
+  product_variants: {
+    id: string;
+    color_name: string;
+    color_hex: string | null;
+    image_url: string | null;
+    stock_quantity: number;
+    display_order: number;
+    location_id: string | null;
+    floor_display_order: number;
+    product_variant_stock: {
+      id: string;
+      location_id: string;
+      quantity: number;
+      floor_display_order: number;
+    }[];
+  }[];
 };
 
 /**
- * A single row in the staff floor view. A product with N color variants pinned
- * to physical floors becomes N entries (one per pinned variant) plus one
- * residual "base" entry for unpinned variants / no variants.
+ * A single row in the staff floor view. Each (variant × location) stock entry
+ * becomes its own row so a colour stocked in two locations shows up on both
+ * floors with the right quantity. Variants without per-location stock fall
+ * back to a residual "product" row using the product's main location.
  */
 type FloorEntry = {
   key: string;                 // unique row key
-  kind: "product" | "variant"; // what this row points at for reorder/move
-  refId: string;               // product.id when kind=product, variant.id when kind=variant
+  /** "product" reorders products row, "variant_stock" reorders a stock-row */
+  kind: "product" | "variant_stock";
+  /** product.id when kind=product, product_variant_stock.id when kind=variant_stock */
+  refId: string;
   product: Product;
   variant: Product["product_variants"][number] | null;
   location_id: string | null;
@@ -91,7 +109,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order, product_variant_stock(id, location_id, quantity, floor_display_order))")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -186,33 +204,42 @@ const StaffCatalog = () => {
     for (const p of products) {
       if (!matchesCategory(p)) continue;
       const variants = p.product_variants ?? [];
-      const pinned = variants.filter((v) => !!v.location_id);
-      const unpinned = variants.filter((v) => !v.location_id);
 
-      // 1) Each pinned variant becomes its own row in its location.
-      for (const v of pinned) {
-        if (!locInScope(v.location_id)) continue;
-        if (!stockOk(v.stock_quantity, p.stock_status === "in_stock")) continue;
-        entries.push({
-          key: `v:${v.id}`,
-          kind: "variant",
-          refId: v.id,
-          product: p,
-          variant: v,
-          location_id: v.location_id,
-          floor_display_order: v.floor_display_order ?? 0,
-          cover: v.image_url || baseCoverOf(p),
-          stock: v.stock_quantity,
-        });
+      // 1) Each per-location stock row of each variant becomes its own entry.
+      // A variant stocked in 2 floors yields 2 rows (one per floor).
+      // Variants without any stock rows fall under the residual product row.
+      let anyVariantHasStockRows = false;
+      for (const v of variants) {
+        const stockRows = v.product_variant_stock ?? [];
+        if (stockRows.length > 0) anyVariantHasStockRows = true;
+        for (const s of stockRows) {
+          if (!locInScope(s.location_id)) continue;
+          // Hide zero-stock rows on a floor — staff requested cleaner floor view.
+          if (s.quantity <= 0) continue;
+          if (!stockOk(s.quantity, p.stock_status === "in_stock")) continue;
+          entries.push({
+            key: `s:${s.id}`,
+            kind: "variant_stock",
+            refId: s.id,
+            product: p,
+            variant: v,
+            location_id: s.location_id,
+            floor_display_order: s.floor_display_order ?? 0,
+            cover: v.image_url || baseCoverOf(p),
+            stock: s.quantity,
+          });
+        }
       }
 
-      // 2) Residual product row: covers unpinned variants (or no variants at all).
-      // Skipped when every variant is pinned to a floor — no need to duplicate.
-      const hasResidual = pinned.length === 0 || unpinned.length > 0;
+      // 2) Residual product row: covers variants with no per-location stock,
+      // or products with no variants at all. Skipped when every variant has
+      // dedicated stock rows — no need to double-list.
+      const variantsWithoutStock = variants.filter((v) => (v.product_variant_stock ?? []).length === 0);
+      const hasResidual = !anyVariantHasStockRows || variantsWithoutStock.length > 0 || variants.length === 0;
       if (hasResidual) {
         if (!locInScope(p.location_id)) continue;
-        const residualStock = unpinned.length > 0
-          ? unpinned.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+        const residualStock = variantsWithoutStock.length > 0
+          ? variantsWithoutStock.reduce((s, v) => s + (v.stock_quantity || 0), 0)
           : (variants.length > 0 ? 0 : p.stock_quantity);
         if (!stockOk(residualStock, p.stock_status === "in_stock")) continue;
         entries.push({
@@ -242,7 +269,7 @@ const StaffCatalog = () => {
   const reloadProducts = async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order)")
+      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order, product_variant_stock(id, location_id, quantity, floor_display_order))")
       .is("deleted_at", null);
     setProducts((data ?? []) as Product[]);
   };
