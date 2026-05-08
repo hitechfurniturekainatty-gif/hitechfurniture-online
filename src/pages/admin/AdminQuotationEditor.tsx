@@ -520,7 +520,24 @@ const AdminQuotationEditor = () => {
     for (let i = 0; i < updated.length; i++) {
       const it = updated[i];
       if (!it._dirty) continue;
-      if (!it.description.trim()) continue;
+      // Save the row if it has ANY meaningful content — measurement staff
+      // often attach a measurement photo / item photo first and type the
+      // description later. Previously we silently skipped rows with an
+      // empty description, so their work appeared lost on reopen.
+      const hasAnyContent =
+        it.description.trim() ||
+        it.item_image_url ||
+        it.measurement ||
+        it.measurement_image_url ||
+        it.catalog_text ||
+        it.catalog_image_url ||
+        it.sketch_url ||
+        it.site_photos ||
+        it.product_id ||
+        (Number(it.quantity) || 0) > 0 ||
+        (Number(it.unit_price) || 0) > 0;
+      if (!hasAnyContent) continue;
+      const safeDescription = it.description.trim() || "(measurement item)";
       jobs.push({
         index: i,
         isNew: !!it._isNew,
@@ -528,7 +545,7 @@ const AdminQuotationEditor = () => {
         existingId: it.id,
         payload: {
           quotation_id: q.id,
-          description: it.description,
+          description: safeDescription,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
@@ -699,7 +716,19 @@ const AdminQuotationEditor = () => {
     if (imageFingerprint === lastSavedFingerprintRef.current) return;
     // Only auto-save when there's something pending: a savable item OR a
     // dirty header. Empty blank rows are skipped by saveAll itself.
-    const hasSavableItem = items.some((it) => it._dirty && it.description.trim());
+    const hasSavableItem = items.some(
+      (it) =>
+        it._dirty &&
+        (it.description.trim() ||
+          it.item_image_url ||
+          it.measurement ||
+          it.measurement_image_url ||
+          it.catalog_text ||
+          it.catalog_image_url ||
+          it.sketch_url ||
+          it.site_photos ||
+          it.product_id),
+    );
     const hasPending = hasSavableItem || headerDirty;
     if (!hasPending || saving) return;
     const t = setTimeout(async () => {
