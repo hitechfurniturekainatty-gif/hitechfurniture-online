@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
-import { Loader2, Lock, ArrowLeft, Search } from "lucide-react";
+import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
+import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
@@ -29,6 +30,7 @@ type Product = {
   stock_quantity: number;
   stock_status: "in_stock" | "out_of_stock";
   location_id: string | null;
+  floor_display_order: number;
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
@@ -49,6 +51,7 @@ const StaffCatalog = () => {
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   const [building, setBuilding] = useState<string>("__all");
   const [floor, setFloor] = useState<string>("__all");
@@ -69,7 +72,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, main_category_id, sub_category_id, product_images(image_url, display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -131,7 +134,7 @@ const StaffCatalog = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (stockFilter === "available" && (p.stock_status !== "in_stock" || p.stock_quantity <= 0)) return false;
       if (stockFilter === "out" && p.stock_status === "in_stock" && p.stock_quantity > 0) return false;
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
@@ -147,7 +150,47 @@ const StaffCatalog = () => {
       if (q && !p.product_name.toLowerCase().includes(q) && !p.product_code.toLowerCase().includes(q)) return false;
       return true;
     });
+    // Sort by physical floor sequence: location order, then floor_display_order, then name.
+    const locOrder = new Map(locations.map((l, i) => [l.id, i]));
+    return list.sort((a, b) => {
+      const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
+      const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
+      if (la !== lb) return la - lb;
+      const oa = a.floor_display_order ?? 0;
+      const ob = b.floor_display_order ?? 0;
+      if (oa !== ob) return oa - ob;
+      return a.product_name.localeCompare(b.product_name);
+    });
   }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
+
+  const reloadProducts = async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
+      .is("deleted_at", null);
+    setProducts((data ?? []) as Product[]);
+  };
+
+  const reorderScope = useMemo(() => {
+    // Reorder available when filtered to a specific section (locationId) OR a specific floor.
+    if (locationId !== "__all") {
+      const loc = locations.find((l) => l.id === locationId);
+      const list = products
+        .filter((p) => p.location_id === locationId)
+        .sort((a, b) => (a.floor_display_order ?? 0) - (b.floor_display_order ?? 0) || a.product_name.localeCompare(b.product_name));
+      return {
+        canReorder: true,
+        label: loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "Selected section",
+        items: list.map<ReorderItem>((p) => ({
+          id: p.id,
+          product_name: p.product_name,
+          product_code: p.product_code,
+          cover_url: p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null,
+        })),
+      };
+    }
+    return { canReorder: false, label: "", items: [] as ReorderItem[] };
+  }, [locationId, locations, products]);
 
   if (!unlocked) {
     return (
@@ -286,7 +329,14 @@ const StaffCatalog = () => {
           <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
-            <p className="mb-3 text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? "item" : "items"}</p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence</p>
+              {reorderScope.canReorder && (
+                <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
+                  <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Arrange floor order
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((p) => {
                 const cover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
@@ -340,6 +390,13 @@ const StaffCatalog = () => {
           </>
         )}
       </main>
+      <FloorReorderDialog
+        open={reorderOpen}
+        onOpenChange={setReorderOpen}
+        locationLabel={reorderScope.label}
+        items={reorderScope.items}
+        onSaved={reloadProducts}
+      />
       <SiteFooter />
     </div>
   );
