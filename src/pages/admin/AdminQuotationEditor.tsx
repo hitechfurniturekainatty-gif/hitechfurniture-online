@@ -945,7 +945,11 @@ const AdminQuotationEditor = () => {
       toast({ title: "Submit failed", description: qErr.message, variant: "destructive" });
       return;
     }
-    setQ((prev) => (prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, submitted_for_pricing_at: nowIso } : prev;
+      qRef.current = next;
+      return next;
+    });
     if (q.source_task_id) {
       const { error } = await supabase
         .from("measurement_tasks")
@@ -969,7 +973,11 @@ const AdminQuotationEditor = () => {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
       return;
     }
-    setQ((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, status: newStatus } : prev;
+      qRef.current = next;
+      return next;
+    });
     setStatusHistoryKey((k) => k + 1);
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
