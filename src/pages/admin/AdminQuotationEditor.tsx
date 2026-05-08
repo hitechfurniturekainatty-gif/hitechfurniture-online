@@ -190,6 +190,8 @@ const AdminQuotationEditor = () => {
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
+  const qRef = useRef<Quotation | null>(null);
+  const itemsRef = useRef<QItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
@@ -260,8 +262,12 @@ const AdminQuotationEditor = () => {
       return;
     }
     if (e2) toast({ title: "Items load failed", description: e2.message, variant: "destructive" });
-    setQ(quote as Quotation);
-    setItems(((lines ?? []) as QItem[]).map((x) => ({ ...x })));
+    const nextQ = quote as Quotation;
+    const nextItems = ((lines ?? []) as QItem[]).map((x) => ({ ...x }));
+    qRef.current = nextQ;
+    itemsRef.current = nextItems;
+    setQ(nextQ);
+    setItems(nextItems);
     setHeaderDirty(false);
     if (!opts.silent) setLoading(false);
   };
@@ -314,7 +320,11 @@ const AdminQuotationEditor = () => {
   const total = grandTotal;
 
   const updateHeader = (patch: Partial<Quotation>) => {
-    setQ((prev) => (prev ? { ...prev, ...patch } : prev));
+    setQ((prev) => {
+      const next = prev ? { ...prev, ...patch } : prev;
+      qRef.current = next;
+      return next;
+    });
     setHeaderDirty(true);
   };
 
