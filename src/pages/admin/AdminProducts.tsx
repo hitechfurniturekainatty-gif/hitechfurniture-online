@@ -256,16 +256,33 @@ const AdminProducts = () => {
   };
 
   const save = async () => {
-    if (!form.product_name || !form.product_code || !form.mrp || !form.main_category_id) {
-      toast({ title: "Missing required fields", variant: "destructive" });
+    // Only Name + Item photo are mandatory. Everything else is optional and
+    // auto-filled to satisfy DB NOT NULL constraints when left blank.
+    if (!form.product_name.trim()) {
+      toast({ title: "Product name is required", variant: "destructive" });
       return;
     }
+    if (form.images.length === 0) {
+      toast({ title: "At least one product photo is required", variant: "destructive" });
+      return;
+    }
+    let mainCatId = form.main_category_id;
+    if (!mainCatId) {
+      mainCatId = mainCats[0]?.id ?? "";
+      if (!mainCatId) {
+        toast({ title: "Create a category first", description: "Add at least one main category in Categories.", variant: "destructive" });
+        return;
+      }
+    }
+    const autoCode =
+      form.product_code.trim() ||
+      `AUTO-${Date.now().toString(36).toUpperCase()}`;
     setSaving(true);
     const payload: any = {
-      product_name: form.product_name,
-      product_code: form.product_code,
+      product_name: form.product_name.trim(),
+      product_code: autoCode,
       description: form.description || null,
-      mrp: Number(form.mrp),
+      mrp: form.mrp ? Number(form.mrp) : 0,
       offer_price: form.offer_price ? Number(form.offer_price) : null,
       available_colors: form.available_colors
         ? form.available_colors.split(",").map((s) => s.trim()).filter(Boolean)
@@ -276,7 +293,7 @@ const AdminProducts = () => {
       reorder_level: Number(form.reorder_level || 5),
       is_featured: form.is_featured,
       is_published: form.is_published,
-      main_category_id: form.main_category_id,
+      main_category_id: mainCatId,
       sub_category_id: form.sub_category_id || null,
       location_id: form.location_id || null,
       stock_status: form.stock_status,
@@ -513,7 +530,7 @@ const AdminProducts = () => {
                 }}
               />
             </Field>
-            <Field label="Product code *">
+            <Field label="Product code">
               <Input
                 value={form.product_code}
                 onChange={(e) => setForm({ ...form, product_code: e.target.value.toUpperCase() })}
@@ -524,7 +541,7 @@ const AdminProducts = () => {
                 spellCheck={false}
               />
             </Field>
-            <Field label="Main category *">
+            <Field label="Main category">
               <Select value={form.main_category_id} onValueChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}>
                 <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
                 <SelectContent>
@@ -541,7 +558,7 @@ const AdminProducts = () => {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="MRP (₹) *">
+            <Field label="MRP (₹)">
               <Input type="number" min={0} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
             </Field>
             <Field label="Offer price (₹)">
@@ -623,7 +640,7 @@ const AdminProducts = () => {
             <Field label="Description" wide>
               <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </Field>
-            <Field label="Images" wide>
+            <Field label="Images *" wide>
               <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
             </Field>
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
