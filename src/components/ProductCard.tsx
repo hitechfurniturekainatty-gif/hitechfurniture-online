@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { memo, useMemo, useState } from "react";
 import { formatINR } from "@/lib/brand";
 import { Badge } from "./ui/badge";
+import { cn } from "@/lib/utils";
 
 export type ProductVariantData = {
   id: string;
