@@ -67,7 +67,7 @@ const Catalog = () => {
       supabase.from("sub_categories").select("id, main_category_id, name, slug, image_url").order("display_order"),
       supabase
         .from("products")
-        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order)")
+        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),

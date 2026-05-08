@@ -702,6 +702,50 @@ export type Database = {
         }
         Relationships: []
       }
+      product_variants: {
+        Row: {
+          color_hex: string | null
+          color_name: string
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string | null
+          product_id: string
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          color_hex?: string | null
+          color_name: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          product_id: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          color_hex?: string | null
+          color_name?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          product_id?: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           available_colors: string[] | null

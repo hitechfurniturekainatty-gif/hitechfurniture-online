@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
+import { VariantSwatches } from "@/components/VariantSwatches";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
@@ -34,6 +35,7 @@ type Product = {
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
+  product_variants: { id: string; color_name: string; color_hex: string | null; image_url: string | null; stock_quantity: number; display_order: number }[];
 };
 
 const SS_KEY = "staff_catalog_unlocked";
@@ -72,7 +74,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -166,7 +168,7 @@ const StaffCatalog = () => {
   const reloadProducts = async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
+      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
       .is("deleted_at", null);
     setProducts((data ?? []) as Product[]);
   };
@@ -339,49 +341,8 @@ const StaffCatalog = () => {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((p) => {
-                const cover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
                 const loc = locations.find((l) => l.id === p.location_id);
-                const isOut = p.stock_status !== "in_stock" || p.stock_quantity <= 0;
-                return (
-                  <Card key={p.id} className="overflow-hidden">
-                    <div className="aspect-[4/5] bg-muted">
-                      {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
-                    </div>
-                    <CardContent className="space-y-1.5 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
-                        {isOut ? (
-                          <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
-                        ) : (
-                          <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {p.stock_quantity}</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-                      {p.offer_price && p.offer_price < p.mrp ? (
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
-                          <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
-                          <Badge className="bg-accent text-accent-foreground text-[10px]">Offer</Badge>
-                        </div>
-                      ) : (
-                        <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
-                      )}
-                      {loc && (
-                        <p className="text-[11px] text-muted-foreground">
-                          📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
-                        </p>
-                      )}
-                      {p.description && (
-                        <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
-                      )}
-                      {(p.material || p.dimensions) && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {[p.material, p.dimensions].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
+                return <StaffProductCard key={p.id} p={p} loc={loc} />;
               })}
             </div>
             {filtered.length === 0 && (
@@ -404,3 +365,78 @@ const StaffCatalog = () => {
 };
 
 export default StaffCatalog;
+
+// ----- Staff product card (with color swatches that switch the photo) -----
+const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined }) => {
+  const variants = (p.product_variants ?? [])
+    .slice()
+    .sort((a, b) => a.display_order - b.display_order);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeVariant = variants.find((v) => v.id === activeId) ?? null;
+
+  const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+  const cover = activeVariant?.image_url || baseCover;
+
+  const totalStock = variants.length > 0
+    ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+    : p.stock_quantity;
+  const isOut = p.stock_status !== "in_stock" || totalStock <= 0;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="aspect-[4/5] bg-muted">
+        {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
+      </div>
+      <CardContent className="space-y-1.5 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
+          {isOut ? (
+            <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
+          ) : (
+            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {totalStock}</Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
+        {variants.length > 0 && (
+          <div className="pt-1">
+            <VariantSwatches
+              variants={variants}
+              activeId={activeId ?? variants[0]?.id ?? null}
+              onPick={(v) => setActiveId(v.id)}
+              size="md"
+            />
+            {activeVariant && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">{activeVariant.color_name}</span>
+                {" · "}
+                {activeVariant.stock_quantity > 0 ? `${activeVariant.stock_quantity} available` : "Out of stock"}
+              </p>
+            )}
+          </div>
+        )}
+        {p.offer_price && p.offer_price < p.mrp ? (
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
+            <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
+            <Badge className="bg-accent text-accent-foreground text-[10px]">Offer</Badge>
+          </div>
+        ) : (
+          <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
+        )}
+        {loc && (
+          <p className="text-[11px] text-muted-foreground">
+            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+          </p>
+        )}
+        {p.description && (
+          <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
+        )}
+        {(p.material || p.dimensions) && (
+          <p className="text-[11px] text-muted-foreground">
+            {[p.material, p.dimensions].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
