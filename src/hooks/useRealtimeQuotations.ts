@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -11,13 +11,19 @@ import { supabase } from "@/integrations/supabase/client";
  * patch in place, or debounce. This avoids tight coupling.
  */
 export const useRealtimeQuotations = (onChange: () => void) => {
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   useEffect(() => {
     const channel = supabase
       .channel("rt-quotations-list")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "quotations" },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .subscribe();
     return () => {
@@ -37,6 +43,12 @@ export const useRealtimeQuotation = (
   quotationId: string | undefined,
   onChange: () => void
 ) => {
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   useEffect(() => {
     if (!quotationId) return;
     const channel = supabase
@@ -49,7 +61,7 @@ export const useRealtimeQuotation = (
           table: "quotations",
           filter: `id=eq.${quotationId}`,
         },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .on(
         "postgres_changes",
@@ -59,7 +71,7 @@ export const useRealtimeQuotation = (
           table: "quotation_items",
           filter: `quotation_id=eq.${quotationId}`,
         },
-        () => onChange()
+        () => onChangeRef.current()
       )
       .subscribe();
     return () => {
