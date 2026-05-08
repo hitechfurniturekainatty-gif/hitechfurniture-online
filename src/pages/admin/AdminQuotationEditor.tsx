@@ -193,6 +193,11 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Maps temporary client-side ids (e.g. `tmp-xxxx`) to their final DB ids
+  // after the row has been inserted. We use this in `updateItem` so async
+  // callbacks (image uploads, sketch saves) that captured the original tmp
+  // id still land on the correct row even after `saveAll` swapped the id.
+  const tmpIdMapRef = useRef<Record<string, string>>({});
   // Tracks last successful background save timestamp — used by the small
   // floating "All changes saved" indicator so users know their typing
   // is being persisted without any disruptive toast/spinner.
@@ -355,7 +360,11 @@ const AdminQuotationEditor = () => {
   };
 
   const updateItem = (id: string, patch: Partial<QItem>) => {
-    setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch, _dirty: true } : it)));
+    // Resolve a possibly-stale tmp id to its current DB id. This prevents
+    // image uploads that started while a row was still `tmp-...` from being
+    // dropped after autosave assigned the row a real id.
+    const resolved = tmpIdMapRef.current[id] ?? id;
+    setItems((p) => p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it)));
   };
 
   // After a new blank item is appended, focus its description field WITHOUT
