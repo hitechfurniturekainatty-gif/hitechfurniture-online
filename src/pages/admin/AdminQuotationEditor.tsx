@@ -1423,6 +1423,21 @@ const AdminQuotationEditor = () => {
                 </Button>
               </div>
 
+              {/* Quick-preview thumbnail strip — lets office staff/admin
+                  see every photo, sketch, measurement image and site photo
+                  the measurement staff attached, with one click to enlarge. */}
+              {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
+                <div className="border-b bg-muted/20 px-3 py-2">
+                  <AttachmentThumbStrip
+                    itemImageUrl={it.item_image_url}
+                    measurementImageUrl={it.measurement_image_url}
+                    sitePhotos={it.site_photos}
+                    catalogImageUrl={it.catalog_image_url}
+                    sketchUrl={it.sketch_url}
+                  />
+                </div>
+              )}
+
               <div className="space-y-4 p-3 sm:p-4">
                 {/* SECTION 1: Product / Description */}
                 <section className="space-y-2">
