@@ -210,15 +210,22 @@ const AdminCategories = () => {
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   placeholder="e.g. Sofa, Bed, Wardrobe"
                   value={newMain}
                   onChange={(e) => setNewMain(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addMain()}
+                  className="flex-1"
                 />
-                <Button onClick={addMain} disabled={busy || !newMain.trim()}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                <Button
+                  type="button"
+                  onClick={addMain}
+                  disabled={busy || !newMain.trim()}
+                  className="shrink-0"
+                >
+                  {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Add category
                 </Button>
               </div>
               <div>
@@ -306,18 +313,28 @@ const AdminCategories = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   placeholder="e.g. L-Shape, 3-Seater"
                   value={newSub}
                   onChange={(e) => setNewSub(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addSub()}
                   disabled={!newSubParent}
+                  className="flex-1"
                 />
-                <Button onClick={addSub} disabled={busy || !newSub.trim() || !newSubParent}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                <Button
+                  type="button"
+                  onClick={addSub}
+                  disabled={busy || !newSub.trim() || !newSubParent}
+                  className="shrink-0"
+                >
+                  {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Add sub-category
                 </Button>
               </div>
+              {!newSubParent && (
+                <p className="text-xs text-muted-foreground">Choose a parent category first to enable adding.</p>
+              )}
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cover image (optional)</Label>
                 <div className="mt-1.5">
