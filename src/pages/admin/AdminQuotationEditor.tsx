@@ -374,7 +374,11 @@ const AdminQuotationEditor = () => {
     // image uploads that started while a row was still `tmp-...` from being
     // dropped after autosave assigned the row a real id.
     const resolved = tmpIdMapRef.current[id] ?? id;
-    setItems((p) => p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it)));
+    setItems((p) => {
+      const next = p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it));
+      itemsRef.current = next;
+      return next;
+    });
   };
 
   // After a new blank item is appended, focus its description field WITHOUT
