@@ -193,6 +193,10 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Tracks last successful background save timestamp — used by the small
+  // floating "All changes saved" indicator so users know their typing
+  // is being persisted without any disruptive toast/spinner.
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   // Tracks the most recently added blank item so we can scroll/focus it
   // into view after render. Prevents the "page jumps to top" feel by
   // anchoring the user's eye to the new row instead.
@@ -467,8 +471,10 @@ const AdminQuotationEditor = () => {
     toast({ title: "Item added" });
   };
 
-  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections
-  const saveAll = async (): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
+  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
+  // Pass `{ silent: true }` for background auto-saves so we don't fire a "Saved" toast on
+  // every blur — the small indicator badge in the corner is enough feedback.
+  const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
     if (!q) return null;
     setSaving(true);
     if (headerDirty) {
@@ -604,7 +610,7 @@ const AdminQuotationEditor = () => {
       }
     }
 
-    toast({ title: "Saved" });
+    if (!opts.silent) toast({ title: "Saved" });
     return { idMap, savedItems: updated };
   };
 
@@ -629,7 +635,25 @@ const AdminQuotationEditor = () => {
   // sketch, etc.). Debounced so typing is never interrupted; the row simply
   // persists in the background once the user pauses.
   const imageFingerprint = useMemo(
-    () => items.map((it) =>
+    () => [
+      // Header fields — so blurring out of party name / phone / notes etc.
+      // also triggers the silent background save.
+      q?.party_name ?? "",
+      q?.party_place ?? "",
+      q?.party_phone ?? "",
+      q?.party_address ?? "",
+      q?.quotation_date ?? "",
+      q?.expected_delivery_date ?? "",
+      q?.gst_percent ?? "",
+      q?.discount_amount ?? "",
+      q?.advance_amount ?? "",
+      q?.notes ?? "",
+      q?.terms ?? "",
+      q?.salesperson_name ?? "",
+      q?.delivery_place ?? "",
+      q?.delivery_route_id ?? "",
+      "ITEMS",
+      ...items.map((it) =>
       [
         it.id,
         it.description ?? "",
@@ -643,8 +667,9 @@ const AdminQuotationEditor = () => {
         it.catalog_image_url ?? "",
         it.sketch_url ?? "",
       ].join("|")
-    ).join("\n"),
-    [items]
+      ),
+    ].join("\n"),
+    [items, q]
   );
   const lastSavedFingerprintRef = useRef<string>("");
   useEffect(() => {
@@ -654,13 +679,16 @@ const AdminQuotationEditor = () => {
       return;
     }
     if (imageFingerprint === lastSavedFingerprintRef.current) return;
-    // Only auto-save items that have a description (skip blank rows)
-    const hasSavable = items.some((it) => it._dirty && it.description.trim());
-    if (!hasSavable || saving) return;
+    // Only auto-save when there's something pending: a savable item OR a
+    // dirty header. Empty blank rows are skipped by saveAll itself.
+    const hasSavableItem = items.some((it) => it._dirty && it.description.trim());
+    const hasPending = hasSavableItem || headerDirty;
+    if (!hasPending || saving) return;
     const t = setTimeout(async () => {
-      const result = await saveAll();
+      const result = await saveAll({ silent: true });
       if (result) {
         lastSavedFingerprintRef.current = imageFingerprint;
+        setLastSavedAt(new Date());
         if (Object.keys(result.idMap).length > 0) {
           setSelectedItemIds((prev) => {
             const next = new Set<string>();
@@ -669,7 +697,7 @@ const AdminQuotationEditor = () => {
           });
         }
       }
-    }, 1200);
+    }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFingerprint, loading]);
@@ -1913,6 +1941,38 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating non-intrusive auto-save indicator. Hidden in PO read-only
+          flows aren't necessary — saving and dirty are the same flags used
+          across the editor. Position is bottom-right but lifted above the
+          mobile sticky action bar (~80px). */}
+      <div className="pointer-events-none fixed bottom-24 right-3 z-40 sm:bottom-4 sm:right-4">
+        {(() => {
+          const dirty = headerDirty || items.some((i) => i._dirty || i._isNew);
+          if (saving) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </div>
+            );
+          }
+          if (dirty) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes
+              </div>
+            );
+          }
+          if (lastSavedAt) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-md">
+                <CheckCircle2 className="h-3.5 w-3.5" /> All changes saved
+              </div>
+            );
+          }
+          return null;
+        })()}
+      </div>
       </div>
     </AdminShell>
   );
