@@ -62,13 +62,6 @@ const StaffCatalog = () => {
     supabase.rpc("catalog_pin_is_set").then(({ data }) => setPinIsSet(!!data));
   }, []);
 
-  // Auto-lock when leaving the Staff Catalog page (navigation away or unmount)
-  useEffect(() => {
-    return () => {
-      try { sessionStorage.removeItem(SS_KEY); } catch { /* ignore */ }
-    };
-  }, []);
-
   useEffect(() => {
     if (!unlocked) return;
     setLoading(true);
