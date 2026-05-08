@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
+import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { SketchField } from "@/components/admin/SketchField";
 import { CollapsibleField } from "@/components/admin/CollapsibleField";
@@ -304,12 +305,12 @@ const AdminQuotationEditor = () => {
       // mid-typing every time our own auto-save echoes back via realtime.
       load({ silent: true });
       setStatusHistoryKey((k) => k + 1);
-    } else {
-      toast({
-        title: "Updated by another user",
-        description: "Save your changes, then reload to see the latest version.",
-      });
     }
+    // Otherwise: user is mid-typing or mid-save. Silently skip — the next
+    // clean realtime tick (after their save settles) will reload. We
+    // intentionally suppress the toast because most realtime events are
+    // self-echoes from our own auto-save and the toast was breaking the
+    // user's typing flow (incl. the Space key on some keyboards).
   });
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
@@ -1422,6 +1423,21 @@ const AdminQuotationEditor = () => {
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
+
+              {/* Quick-preview thumbnail strip — lets office staff/admin
+                  see every photo, sketch, measurement image and site photo
+                  the measurement staff attached, with one click to enlarge. */}
+              {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
+                <div className="border-b bg-muted/20 px-3 py-2">
+                  <AttachmentThumbStrip
+                    itemImageUrl={it.item_image_url}
+                    measurementImageUrl={it.measurement_image_url}
+                    sitePhotos={it.site_photos}
+                    catalogImageUrl={it.catalog_image_url}
+                    sketchUrl={it.sketch_url}
+                  />
+                </div>
+              )}
 
               <div className="space-y-4 p-3 sm:p-4">
                 {/* SECTION 1: Product / Description */}
