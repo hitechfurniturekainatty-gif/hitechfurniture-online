@@ -265,12 +265,14 @@ const AdminProducts = () => {
       .order("display_order");
     setForm((f) => ({
       ...f,
-      variants: (vData ?? []).map((v) => ({
+      variants: (vData ?? []).map((v: any) => ({
         id: v.id,
         color_name: v.color_name,
         color_hex: v.color_hex ?? "",
         image_url: v.image_url,
         stock_quantity: v.stock_quantity ?? 0,
+        location_id: v.location_id ?? null,
+        floor_display_order: v.floor_display_order ?? 0,
       })),
     }));
   };
@@ -352,6 +354,8 @@ const AdminProducts = () => {
           image_url: v.image_url,
           stock_quantity: Math.max(0, Number(v.stock_quantity) || 0),
           display_order: (i + 1) * 10,
+          location_id: v.location_id || null,
+          floor_display_order: Math.max(0, Number(v.floor_display_order) || 0),
         }));
         await supabase.from("product_variants").insert(vRows);
       }
