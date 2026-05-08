@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS floor_display_order integer NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_products_location_order ON public.products(location_id, floor_display_order);

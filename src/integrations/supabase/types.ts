@@ -711,6 +711,7 @@ export type Database = {
           deleted_by: string | null
           description: string | null
           dimensions: string | null
+          floor_display_order: number
           id: string
           is_featured: boolean
           is_published: boolean
@@ -735,6 +736,7 @@ export type Database = {
           deleted_by?: string | null
           description?: string | null
           dimensions?: string | null
+          floor_display_order?: number
           id?: string
           is_featured?: boolean
           is_published?: boolean
@@ -759,6 +761,7 @@ export type Database = {
           deleted_by?: string | null
           description?: string | null
           dimensions?: string | null
+          floor_display_order?: number
           id?: string
           is_featured?: boolean
           is_published?: boolean
