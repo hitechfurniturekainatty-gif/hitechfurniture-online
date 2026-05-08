@@ -664,9 +664,10 @@ const AdminQuotationEditor = () => {
     const hasSavable = items.some((it) => it._dirty && it.description.trim());
     if (!hasSavable || saving) return;
     const t = setTimeout(async () => {
-      const result = await saveAll();
+      const result = await saveAll({ silent: true });
       if (result) {
         lastSavedFingerprintRef.current = imageFingerprint;
+        setLastSavedAt(new Date());
         if (Object.keys(result.idMap).length > 0) {
           setSelectedItemIds((prev) => {
             const next = new Set<string>();
@@ -675,7 +676,7 @@ const AdminQuotationEditor = () => {
           });
         }
       }
-    }, 1200);
+    }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFingerprint, loading]);
