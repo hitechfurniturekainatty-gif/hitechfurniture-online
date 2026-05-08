@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 
@@ -10,6 +11,15 @@ export type VariantDraft = {
   color_hex: string;
   image_url: string | null;
   stock_quantity: number;
+  location_id?: string | null;
+  floor_display_order?: number;
+};
+
+export type VariantLocationOption = {
+  id: string;
+  building: string;
+  floor: string;
+  section: string | null;
 };
 
 const NAMED_COLORS: Record<string, string> = {
@@ -33,9 +43,13 @@ const guessHex = (name: string): string => {
 export const ProductVariantsEditor = ({
   variants,
   onChange,
+  locations = [],
+  defaultLocationId,
 }: {
   variants: VariantDraft[];
   onChange: (v: VariantDraft[]) => void;
+  locations?: VariantLocationOption[];
+  defaultLocationId?: string | null;
 }) => {
   const [quickName, setQuickName] = useState("");
 
@@ -52,7 +66,14 @@ export const ProductVariantsEditor = ({
     if (!name) return;
     onChange([
       ...variants,
-      { color_name: name, color_hex: guessHex(name), image_url: null, stock_quantity: 0 },
+      {
+        color_name: name,
+        color_hex: guessHex(name),
+        image_url: null,
+        stock_quantity: 0,
+        location_id: defaultLocationId ?? null,
+        floor_display_order: 0,
+      },
     ]);
     setQuickName("");
   };
@@ -143,6 +164,36 @@ export const ProductVariantsEditor = ({
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+              {locations.length > 0 && (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase text-muted-foreground">Currently displayed at</label>
+                    <Select
+                      value={v.location_id ?? "__none"}
+                      onValueChange={(val) => update(idx, { location_id: val === "__none" ? null : val })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Same as product" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">Same as product</SelectItem>
+                        {locations.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase text-muted-foreground">Floor order</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={v.floor_display_order ?? 0}
+                      onChange={(e) => update(idx, { floor_display_order: Math.max(0, Number(e.target.value) || 0) })}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="mt-3 max-w-xs">
                 <p className="mb-1 text-[10px] uppercase text-muted-foreground">Photo for this color (optional)</p>
                 <SingleImagePicker
