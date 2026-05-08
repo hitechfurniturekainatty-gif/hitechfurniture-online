@@ -21,7 +21,7 @@ export const handleEnterAsNext = (
   e: KeyboardEvent<HTMLElement>,
   onSubmit?: () => void,
 ) => {
-  if (e.defaultPrevented || e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+  if (e.defaultPrevented || e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
 
   const target = e.target as HTMLElement | null;
   if (!target) return;
