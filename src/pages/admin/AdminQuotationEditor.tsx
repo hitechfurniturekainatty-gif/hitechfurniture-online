@@ -716,7 +716,19 @@ const AdminQuotationEditor = () => {
     if (imageFingerprint === lastSavedFingerprintRef.current) return;
     // Only auto-save when there's something pending: a savable item OR a
     // dirty header. Empty blank rows are skipped by saveAll itself.
-    const hasSavableItem = items.some((it) => it._dirty && it.description.trim());
+    const hasSavableItem = items.some(
+      (it) =>
+        it._dirty &&
+        (it.description.trim() ||
+          it.item_image_url ||
+          it.measurement ||
+          it.measurement_image_url ||
+          it.catalog_text ||
+          it.catalog_image_url ||
+          it.sketch_url ||
+          it.site_photos ||
+          it.product_id),
+    );
     const hasPending = hasSavableItem || headerDirty;
     if (!hasPending || saving) return;
     const t = setTimeout(async () => {
