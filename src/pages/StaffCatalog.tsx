@@ -14,7 +14,6 @@ import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
-import { useState as useStateLocal } from "react";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
