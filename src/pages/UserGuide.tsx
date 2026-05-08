@@ -137,6 +137,26 @@ const UserGuide = () => {
                           ))}
                         </ul>
                       )}
+                      {s.fields && s.fields.length > 0 && (
+                        <div className="mt-3 overflow-hidden rounded-lg border border-border/70">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground">
+                              <tr>
+                                <th className="px-3 py-2 text-left font-semibold">Field / Column</th>
+                                <th className="px-3 py-2 text-left font-semibold">Purpose / What to enter</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {s.fields.map((f) => (
+                                <tr key={f.name} className="border-t border-border/60 align-top">
+                                  <td className="px-3 py-2 font-medium text-foreground">{f.name}</td>
+                                  <td className="px-3 py-2 text-foreground/80">{f.purpose}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                       {s.tip && (
                         <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
                           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
