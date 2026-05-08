@@ -365,3 +365,78 @@ const StaffCatalog = () => {
 };
 
 export default StaffCatalog;
+
+// ----- Staff product card (with color swatches that switch the photo) -----
+const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined }) => {
+  const variants = (p.product_variants ?? [])
+    .slice()
+    .sort((a, b) => a.display_order - b.display_order);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeVariant = variants.find((v) => v.id === activeId) ?? null;
+
+  const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+  const cover = activeVariant?.image_url || baseCover;
+
+  const totalStock = variants.length > 0
+    ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
+    : p.stock_quantity;
+  const isOut = p.stock_status !== "in_stock" || totalStock <= 0;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="aspect-[4/5] bg-muted">
+        {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
+      </div>
+      <CardContent className="space-y-1.5 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
+          {isOut ? (
+            <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
+          ) : (
+            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {totalStock}</Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
+        {variants.length > 0 && (
+          <div className="pt-1">
+            <VariantSwatches
+              variants={variants}
+              activeId={activeId ?? variants[0]?.id ?? null}
+              onPick={(v) => setActiveId(v.id)}
+              size="md"
+            />
+            {activeVariant && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">{activeVariant.color_name}</span>
+                {" · "}
+                {activeVariant.stock_quantity > 0 ? `${activeVariant.stock_quantity} available` : "Out of stock"}
+              </p>
+            )}
+          </div>
+        )}
+        {p.offer_price && p.offer_price < p.mrp ? (
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
+            <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
+            <Badge className="bg-accent text-accent-foreground text-[10px]">Offer</Badge>
+          </div>
+        ) : (
+          <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
+        )}
+        {loc && (
+          <p className="text-[11px] text-muted-foreground">
+            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+          </p>
+        )}
+        {p.description && (
+          <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
+        )}
+        {(p.material || p.dimensions) && (
+          <p className="text-[11px] text-muted-foreground">
+            {[p.material, p.dimensions].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
