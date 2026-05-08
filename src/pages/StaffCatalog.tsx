@@ -34,6 +34,7 @@ type Product = {
   main_category_id: string;
   sub_category_id: string | null;
   product_images: { image_url: string; display_order: number }[];
+  product_variants: { id: string; color_name: string; color_hex: string | null; image_url: string | null; stock_quantity: number; display_order: number }[];
 };
 
 const SS_KEY = "staff_catalog_unlocked";
@@ -72,7 +73,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
+        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -166,7 +167,7 @@ const StaffCatalog = () => {
   const reloadProducts = async () => {
     const { data } = await supabase
       .from("products")
-      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order)")
+      .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
       .is("deleted_at", null);
     setProducts((data ?? []) as Product[]);
   };
