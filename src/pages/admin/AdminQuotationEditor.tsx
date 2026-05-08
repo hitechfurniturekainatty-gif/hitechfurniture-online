@@ -242,9 +242,9 @@ const AdminQuotationEditor = () => {
   const po = isPO(q?.document_type);
   const showPricing = !po;
 
-  const load = async () => {
+  const load = async (opts: { silent?: boolean } = {}) => {
     if (!id) return;
-    setLoading(true);
+    if (!opts.silent) setLoading(true);
     const [{ data: quote, error: e1 }, { data: lines, error: e2 }] = await Promise.all([
       supabase.from("quotations").select("*").eq("id", id).maybeSingle(),
       supabase.from("quotation_items").select("*").eq("quotation_id", id).order("display_order", { ascending: true }),
@@ -258,7 +258,7 @@ const AdminQuotationEditor = () => {
     setQ(quote as Quotation);
     setItems(((lines ?? []) as QItem[]).map((x) => ({ ...x })));
     setHeaderDirty(false);
-    setLoading(false);
+    if (!opts.silent) setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
@@ -285,7 +285,10 @@ const AdminQuotationEditor = () => {
   useRealtimeQuotation(id, () => {
     const hasUnsavedItems = items.some((it) => it._dirty || it._isNew);
     if (!headerDirty && !hasUnsavedItems && !saving) {
-      load();
+      // Silent reload — DO NOT toggle the page-level `loading` flag, otherwise
+      // the editor unmounts to a spinner and the browser jumps to the top
+      // mid-typing every time our own auto-save echoes back via realtime.
+      load({ silent: true });
       setStatusHistoryKey((k) => k + 1);
     } else {
       toast({
