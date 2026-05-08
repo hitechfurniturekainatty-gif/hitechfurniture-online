@@ -616,6 +616,7 @@ const AdminQuotationEditor = () => {
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
+    itemsRef.current = updated;
     setItems(updated);
     setHeaderDirty(false);
 
@@ -647,9 +648,11 @@ const AdminQuotationEditor = () => {
         toast({ title: "Total update failed", description: totErr.message, variant: "destructive" });
         return null;
       }
-      setQ((prev) =>
-        prev ? { ...prev, subtotal: newSubtotal, gst_amount: newGst, total: newTotal } : prev,
-      );
+      setQ((prev) => {
+        const next = prev ? { ...prev, subtotal: newSubtotal, gst_amount: newGst, total: newTotal } : prev;
+        qRef.current = next;
+        return next;
+      });
     }
 
     setSaving(false);
@@ -666,7 +669,11 @@ const AdminQuotationEditor = () => {
         .eq("id", q.id)
         .maybeSingle();
       if (fresh && fresh.status !== q.status) {
-        setQ((prev) => (prev ? { ...prev, status: fresh.status } : prev));
+        setQ((prev) => {
+          const next = prev ? { ...prev, status: fresh.status } : prev;
+          qRef.current = next;
+          return next;
+        });
         setStatusHistoryKey((k) => k + 1);
       }
     }
