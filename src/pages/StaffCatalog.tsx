@@ -13,6 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
+import { VariantSwatches } from "@/components/VariantSwatches";
+import { useState as useStateLocal } from "react";
 
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
@@ -340,49 +342,8 @@ const StaffCatalog = () => {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((p) => {
-                const cover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
                 const loc = locations.find((l) => l.id === p.location_id);
-                const isOut = p.stock_status !== "in_stock" || p.stock_quantity <= 0;
-                return (
-                  <Card key={p.id} className="overflow-hidden">
-                    <div className="aspect-[4/5] bg-muted">
-                      {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
-                    </div>
-                    <CardContent className="space-y-1.5 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
-                        {isOut ? (
-                          <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
-                        ) : (
-                          <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {p.stock_quantity}</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-                      {p.offer_price && p.offer_price < p.mrp ? (
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-display text-base font-semibold text-primary">{formatINR(p.offer_price)}</span>
-                          <span className="text-xs text-muted-foreground line-through">{formatINR(p.mrp)}</span>
-                          <Badge className="bg-accent text-accent-foreground text-[10px]">Offer</Badge>
-                        </div>
-                      ) : (
-                        <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
-                      )}
-                      {loc && (
-                        <p className="text-[11px] text-muted-foreground">
-                          📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
-                        </p>
-                      )}
-                      {p.description && (
-                        <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
-                      )}
-                      {(p.material || p.dimensions) && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {[p.material, p.dimensions].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
+                return <StaffProductCard key={p.id} p={p} loc={loc} />;
               })}
             </div>
             {filtered.length === 0 && (
