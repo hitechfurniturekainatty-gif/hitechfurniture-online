@@ -275,28 +275,37 @@ const StaffCatalog = () => {
   };
 
   const reorderScope = useMemo(() => {
-    // Reorder is available when filtered to a specific section. Both pinned
-    // color variants and unpinned products in that section can be sequenced.
+    // Reorder is available whenever the staff has narrowed the floor view
+    // (specific section, or a single building / floor). Each per-color
+    // multi-location stock row is sortable on its own.
+    const narrowed = locationId !== "__all" || building !== "__all" || floor !== "__all";
+    if (!narrowed) return { canReorder: false, label: "", items: [] as ReorderItem[] };
+
+    let label = "Filtered floor";
     if (locationId !== "__all") {
       const loc = locations.find((l) => l.id === locationId);
-      const list = filtered.filter((e) => e.location_id === locationId);
-      return {
-        canReorder: true,
-        label: loc ? `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}` : "Selected section",
-        items: list.map<ReorderItem>((e) => ({
-          id: e.refId,
-          kind: e.kind,
-          product_name: e.product.product_name,
-          product_code: e.product.product_code,
-          cover_url: e.cover,
-          color_label: e.variant?.color_name ?? null,
-          color_hex: e.variant?.color_hex ?? null,
-          stock: e.stock,
-        })),
-      };
+      if (loc) label = `${loc.building} · ${loc.floor}${loc.section ? " · " + loc.section : ""}`;
+    } else {
+      const parts: string[] = [];
+      if (building !== "__all") parts.push(building);
+      if (floor !== "__all") parts.push(floor);
+      label = parts.join(" · ") || label;
     }
-    return { canReorder: false, label: "", items: [] as ReorderItem[] };
-  }, [locationId, locations, filtered]);
+    return {
+      canReorder: true,
+      label,
+      items: filtered.map<ReorderItem>((e) => ({
+        id: e.refId,
+        kind: e.kind,
+        product_name: e.product.product_name,
+        product_code: e.product.product_code,
+        cover_url: e.cover,
+        color_label: e.variant?.color_name ?? null,
+        color_hex: e.variant?.color_hex ?? null,
+        stock: e.stock,
+      })),
+    };
+  }, [locationId, building, floor, locations, filtered]);
 
   if (!unlocked) {
     return (
