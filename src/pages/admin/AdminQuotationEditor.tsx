@@ -1941,6 +1941,38 @@ const AdminQuotationEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating non-intrusive auto-save indicator. Hidden in PO read-only
+          flows aren't necessary — saving and dirty are the same flags used
+          across the editor. Position is bottom-right but lifted above the
+          mobile sticky action bar (~80px). */}
+      <div className="pointer-events-none fixed bottom-24 right-3 z-40 sm:bottom-4 sm:right-4">
+        {(() => {
+          const dirty = headerDirty || items.some((i) => i._dirty || i._isNew);
+          if (saving) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </div>
+            );
+          }
+          if (dirty) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Unsaved changes
+              </div>
+            );
+          }
+          if (lastSavedAt) {
+            return (
+              <div className="flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-md">
+                <CheckCircle2 className="h-3.5 w-3.5" /> All changes saved
+              </div>
+            );
+          }
+          return null;
+        })()}
+      </div>
       </div>
     </AdminShell>
   );
