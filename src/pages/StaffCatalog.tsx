@@ -441,21 +441,27 @@ const StaffCatalog = () => {
 
 export default StaffCatalog;
 
-// ----- Staff product card (with color swatches that switch the photo) -----
-const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined }) => {
-  const variants = (p.product_variants ?? [])
-    .slice()
-    .sort((a, b) => a.display_order - b.display_order);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeVariant = variants.find((v) => v.id === activeId) ?? null;
+// ----- Staff product card (one card per floor entry: product OR pinned color) -----
+const StaffProductCard = ({ entry, loc }: { entry: FloorEntry; loc: Location | undefined }) => {
+  const p = entry.product;
+  const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
+  // When this row represents a color pinned to the current floor, lock the
+  // swatch + photo to that color. Other colors live in their own floor rows.
+  const pinnedVariant = entry.variant;
+  // Side swatches: only show OTHER colors that aren't pinned elsewhere, so
+  // the floor view doesn't suggest stock that lives on a different floor.
+  const sideVariants = pinnedVariant
+    ? []
+    : allVariants.filter((v) => !v.location_id);
+
+  const [activeId, setActiveId] = useState<string | null>(pinnedVariant?.id ?? null);
+  const activeVariant = pinnedVariant ?? sideVariants.find((v) => v.id === activeId) ?? null;
 
   const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
   const cover = activeVariant?.image_url || baseCover;
 
-  const totalStock = variants.length > 0
-    ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
-    : p.stock_quantity;
-  const isOut = p.stock_status !== "in_stock" || totalStock <= 0;
+  const stock = entry.stock;
+  const isOut = p.stock_status !== "in_stock" || stock <= 0;
 
   return (
     <Card className="overflow-hidden">
@@ -464,23 +470,30 @@ const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined })
       </div>
       <CardContent className="space-y-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-medium leading-tight line-clamp-2">{p.product_name}</p>
+          <p className="font-medium leading-tight line-clamp-2">
+            {p.product_name}
+            {pinnedVariant && (
+              <span className="ml-1 text-xs font-normal text-muted-foreground">· {pinnedVariant.color_name}</span>
+            )}
+          </p>
           {isOut ? (
             <Badge variant="secondary" className="shrink-0 text-[10px]">Out</Badge>
           ) : (
-            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">In stock · {totalStock}</Badge>
+            <Badge className="shrink-0 bg-primary/10 text-primary text-[10px]">
+              {pinnedVariant ? "Here" : "In stock"} · {stock}
+            </Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground">Code · {p.product_code}</p>
-        {variants.length > 0 && (
+        {sideVariants.length > 0 && (
           <div className="pt-1">
             <VariantSwatches
-              variants={variants}
-              activeId={activeId ?? variants[0]?.id ?? null}
+              variants={sideVariants}
+              activeId={activeId ?? sideVariants[0]?.id ?? null}
               onPick={(v) => setActiveId(v.id)}
               size="md"
             />
-            {activeVariant && (
+            {activeVariant && !pinnedVariant && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 <span className="font-medium text-foreground">{activeVariant.color_name}</span>
                 {" · "}
@@ -488,6 +501,11 @@ const StaffProductCard = ({ p, loc }: { p: Product; loc: Location | undefined })
               </p>
             )}
           </div>
+        )}
+        {pinnedVariant && allVariants.length > 1 && (
+          <p className="text-[11px] text-muted-foreground">
+            Other colors of this product are listed under their own floors.
+          </p>
         )}
         {p.offer_price && p.offer_price < p.mrp ? (
           <div className="flex items-baseline gap-2">
