@@ -396,6 +396,7 @@ const StaffCatalog = () => {
         locationLabel={reorderScope.label}
         items={reorderScope.items}
         onSaved={reloadProducts}
+        allLocations={locations.filter((l) => l.is_active).map((l) => ({ id: l.id, building: l.building, floor: l.floor, section: l.section }))}
       />
       <SiteFooter />
     </div>
