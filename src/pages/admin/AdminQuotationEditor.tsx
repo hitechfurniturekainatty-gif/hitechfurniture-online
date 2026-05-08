@@ -611,7 +611,7 @@ const AdminQuotationEditor = () => {
         tmpId: it.id,
         existingId: it.id,
         payload: {
-          quotation_id: q.id,
+          quotation_id: saveQ.id,
           description: safeDescription,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
@@ -672,11 +672,11 @@ const AdminQuotationEditor = () => {
         0,
       );
       const newDiscount = Math.min(
-        Math.max(0, Number(q.discount_amount) || 0),
+        Math.max(0, Number(saveQ.discount_amount) || 0),
         newSubtotal,
       );
       const taxable = Math.max(0, newSubtotal - newDiscount);
-      const newGst = taxable * ((Number(q.gst_percent) || 0) / 100);
+      const newGst = taxable * ((Number(saveQ.gst_percent) || 0) / 100);
       const newTotal = taxable + newGst;
       const { error: totErr } = await supabase
         .from("quotations")
@@ -685,7 +685,7 @@ const AdminQuotationEditor = () => {
           gst_amount: newGst,
           total: newTotal,
         })
-        .eq("id", q.id);
+        .eq("id", saveQ.id);
       if (totErr) {
         savingRef.current = false;
         setSaving(false);
@@ -711,9 +711,9 @@ const AdminQuotationEditor = () => {
       const { data: fresh } = await supabase
         .from("quotations")
         .select("status, advance_amount")
-        .eq("id", q.id)
+        .eq("id", saveQ.id)
         .maybeSingle();
-      if (fresh && fresh.status !== q.status) {
+      if (fresh && fresh.status !== saveQ.status) {
         setQ((prev) => {
           const next = prev ? { ...prev, status: fresh.status } : prev;
           qRef.current = next;
