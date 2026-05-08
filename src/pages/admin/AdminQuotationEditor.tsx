@@ -635,7 +635,25 @@ const AdminQuotationEditor = () => {
   // sketch, etc.). Debounced so typing is never interrupted; the row simply
   // persists in the background once the user pauses.
   const imageFingerprint = useMemo(
-    () => items.map((it) =>
+    () => [
+      // Header fields — so blurring out of party name / phone / notes etc.
+      // also triggers the silent background save.
+      q?.party_name ?? "",
+      q?.party_place ?? "",
+      q?.party_phone ?? "",
+      q?.party_address ?? "",
+      q?.quotation_date ?? "",
+      q?.expected_delivery_date ?? "",
+      q?.gst_percent ?? "",
+      q?.discount_amount ?? "",
+      q?.advance_amount ?? "",
+      q?.notes ?? "",
+      q?.terms ?? "",
+      q?.salesperson_name ?? "",
+      q?.delivery_place ?? "",
+      q?.delivery_route_id ?? "",
+      "ITEMS",
+      ...items.map((it) =>
       [
         it.id,
         it.description ?? "",
@@ -649,8 +667,9 @@ const AdminQuotationEditor = () => {
         it.catalog_image_url ?? "",
         it.sketch_url ?? "",
       ].join("|")
-    ).join("\n"),
-    [items]
+      ),
+    ].join("\n"),
+    [items, q]
   );
   const lastSavedFingerprintRef = useRef<string>("");
   useEffect(() => {
@@ -660,9 +679,11 @@ const AdminQuotationEditor = () => {
       return;
     }
     if (imageFingerprint === lastSavedFingerprintRef.current) return;
-    // Only auto-save items that have a description (skip blank rows)
-    const hasSavable = items.some((it) => it._dirty && it.description.trim());
-    if (!hasSavable || saving) return;
+    // Only auto-save when there's something pending: a savable item OR a
+    // dirty header. Empty blank rows are skipped by saveAll itself.
+    const hasSavableItem = items.some((it) => it._dirty && it.description.trim());
+    const hasPending = hasSavableItem || headerDirty;
+    if (!hasPending || saving) return;
     const t = setTimeout(async () => {
       const result = await saveAll({ silent: true });
       if (result) {
