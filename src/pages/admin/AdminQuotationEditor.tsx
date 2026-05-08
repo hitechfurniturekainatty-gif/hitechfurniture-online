@@ -193,6 +193,10 @@ const AdminQuotationEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [headerDirty, setHeaderDirty] = useState(false);
+  // Tracks last successful background save timestamp — used by the small
+  // floating "All changes saved" indicator so users know their typing
+  // is being persisted without any disruptive toast/spinner.
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   // Tracks the most recently added blank item so we can scroll/focus it
   // into view after render. Prevents the "page jumps to top" feel by
   // anchoring the user's eye to the new row instead.
