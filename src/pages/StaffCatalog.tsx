@@ -414,9 +414,9 @@ const StaffCatalog = () => {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((p) => {
-                const loc = locations.find((l) => l.id === p.location_id);
-                return <StaffProductCard key={p.id} p={p} loc={loc} />;
+              {filtered.map((entry) => {
+                const loc = locations.find((l) => l.id === entry.location_id);
+                return <StaffProductCard key={entry.key} entry={entry} loc={loc} />;
               })}
             </div>
             {filtered.length === 0 && (
