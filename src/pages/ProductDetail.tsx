@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
-import { buildWhatsAppUrl, formatINR } from "@/lib/brand";
+import { buildWhatsAppUrl, formatINR, WHATSAPP_NUMBER } from "@/lib/brand";
 // PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
 // handlers below — keeping them out of the main bundle dramatically improves
 // first paint on the catalog/product pages.
@@ -42,7 +42,10 @@ const ProductDetail = () => {
   const [sendingWa, setSendingWa] = useState(false);
   const homepage = useHomepageSettings();
   const hidePrices = !!homepage?.hide_public_prices;
-  const waNumber = (homepage?.whatsapp_number ?? "").replace(/[^0-9]/g, "");
+  // Customer inquiries from the public catalog must always reach the admin
+  // line (+91 95266 10404) regardless of any per-staff WhatsApp number set
+  // in homepage settings.
+  const waNumber = WHATSAPP_NUMBER;
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
 
@@ -117,12 +120,16 @@ const ProductDetail = () => {
     ? `Price: ${formatINR(product.offer_price!)} (MRP ${formatINR(product.mrp)})`
     : `MRP: ${formatINR(product.mrp)}`;
   const descLine = product.description ? `\n${product.description}\n` : "";
+  const colorLine = product.available_colors && product.available_colors.length > 0
+    ? `Colors: ${product.available_colors.join(", ")}\n`
+    : "";
   const whatsappMsg = `Hello, I'm interested in this product:
 
 Product: ${product.product_name}
 Code: ${product.product_code}
 ${priceLine}
-${descLine}
+${colorLine}${descLine}
+Photo: ${cover ?? productUrl}
 View / brochure: ${productUrl}
 
 Please share more details.`;
