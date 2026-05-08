@@ -467,8 +467,10 @@ const AdminQuotationEditor = () => {
     toast({ title: "Item added" });
   };
 
-  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections
-  const saveAll = async (): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
+  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
+  // Pass `{ silent: true }` for background auto-saves so we don't fire a "Saved" toast on
+  // every blur — the small indicator badge in the corner is enough feedback.
+  const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
     if (!q) return null;
     setSaving(true);
     if (headerDirty) {
@@ -604,7 +606,7 @@ const AdminQuotationEditor = () => {
       }
     }
 
-    toast({ title: "Saved" });
+    if (!opts.silent) toast({ title: "Saved" });
     return { idMap, savedItems: updated };
   };
 
