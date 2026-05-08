@@ -1,18 +1,26 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, MapPin } from "lucide-react";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
+
+export type VariantStockDraft = {
+  id?: string;
+  location_id: string;
+  quantity: number;
+  floor_display_order?: number;
+};
 
 export type VariantDraft = {
   id?: string;
   color_name: string;
   color_hex: string;
   image_url: string | null;
+  /** Legacy total — auto-derived from `stocks` when any are defined. */
   stock_quantity: number;
-  location_id?: string | null;
-  floor_display_order?: number;
+  /** Per-location stock breakdown (Floor 1: 3 pcs, Godown: 2 pcs, …). */
+  stocks: VariantStockDraft[];
 };
 
 export type VariantLocationOption = {
@@ -56,6 +64,11 @@ export const ProductVariantsEditor = ({
   const update = (idx: number, patch: Partial<VariantDraft>) => {
     const next = variants.slice();
     next[idx] = { ...next[idx], ...patch };
+    // Keep the legacy total in sync with the per-location breakdown so other
+    // surfaces (admin list, public total, low-stock alerts) stay correct.
+    if (patch.stocks) {
+      next[idx].stock_quantity = patch.stocks.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+    }
     onChange(next);
   };
 
@@ -71,12 +84,42 @@ export const ProductVariantsEditor = ({
         color_hex: guessHex(name),
         image_url: null,
         stock_quantity: 0,
-        location_id: defaultLocationId ?? null,
-        floor_display_order: 0,
+        stocks: defaultLocationId
+          ? [{ location_id: defaultLocationId, quantity: 0, floor_display_order: 0 }]
+          : [],
       },
     ]);
     setQuickName("");
   };
+
+  const addStockRow = (idx: number) => {
+    const v = variants[idx];
+    // Pick a location not already used by this variant, falling back to the first.
+    const used = new Set((v.stocks ?? []).map((s) => s.location_id));
+    const next = locations.find((l) => !used.has(l.id)) ?? locations[0];
+    if (!next) return;
+    update(idx, {
+      stocks: [...(v.stocks ?? []), { location_id: next.id, quantity: 0, floor_display_order: 0 }],
+    });
+  };
+  const updateStockRow = (idx: number, sIdx: number, patch: Partial<VariantStockDraft>) => {
+    const v = variants[idx];
+    const stocks = (v.stocks ?? []).slice();
+    stocks[sIdx] = { ...stocks[sIdx], ...patch };
+    update(idx, { stocks });
+  };
+  const removeStockRow = (idx: number, sIdx: number) => {
+    const v = variants[idx];
+    update(idx, { stocks: (v.stocks ?? []).filter((_, i) => i !== sIdx) });
+  };
+
+  const labelFor = useMemo(
+    () => (id: string) => {
+      const l = locations.find((x) => x.id === id);
+      return l ? `${l.building} · ${l.floor}${l.section ? " · " + l.section : ""}` : "—";
+    },
+    [locations],
+  );
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
@@ -144,11 +187,14 @@ export const ProductVariantsEditor = ({
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase text-muted-foreground">Stock</label>
+                    <label className="text-[10px] uppercase text-muted-foreground">
+                      Total stock {(v.stocks?.length ?? 0) > 0 ? "(auto)" : ""}
+                    </label>
                     <Input
                       type="number"
                       min={0}
                       value={v.stock_quantity}
+                      readOnly={(v.stocks?.length ?? 0) > 0}
                       onChange={(e) => update(idx, { stock_quantity: Math.max(0, Number(e.target.value) || 0) })}
                     />
                   </div>
@@ -165,33 +211,68 @@ export const ProductVariantsEditor = ({
                 </Button>
               </div>
               {locations.length > 0 && (
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-[10px] uppercase text-muted-foreground">Currently displayed at</label>
-                    <Select
-                      value={v.location_id ?? "__none"}
-                      onValueChange={(val) => update(idx, { location_id: val === "__none" ? null : val })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Same as product" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">Same as product</SelectItem>
-                        {locations.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="mt-3 space-y-2 rounded-md border border-dashed bg-muted/20 p-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase text-muted-foreground">
+                      <MapPin className="mr-1 inline h-3 w-3" />
+                      Stock by location
+                    </label>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => addStockRow(idx)} className="h-7 px-2 text-xs">
+                      <Plus className="mr-1 h-3 w-3" /> Add location
+                    </Button>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase text-muted-foreground">Floor order</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={v.floor_display_order ?? 0}
-                      onChange={(e) => update(idx, { floor_display_order: Math.max(0, Number(e.target.value) || 0) })}
-                    />
-                  </div>
+                  {(v.stocks ?? []).length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      No location set — this color will appear under the product's main location with the total above.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {(v.stocks ?? []).map((s, sIdx) => (
+                        <li key={s.id ?? sIdx} className="grid grid-cols-12 gap-1.5 rounded bg-background p-1.5">
+                          <Select
+                            value={s.location_id}
+                            onValueChange={(val) => updateStockRow(idx, sIdx, { location_id: val })}
+                          >
+                            <SelectTrigger className="col-span-7 h-8 text-xs"><SelectValue placeholder="Pick location" /></SelectTrigger>
+                            <SelectContent>
+                              {locations.map((l) => (
+                                <SelectItem key={l.id} value={l.id}>
+                                  {l.building} · {l.floor}{l.section ? ` · ${l.section}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={s.quantity}
+                            onChange={(e) => updateStockRow(idx, sIdx, { quantity: Math.max(0, Number(e.target.value) || 0) })}
+                            placeholder="Qty"
+                            className="col-span-2 h-8 text-xs"
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            value={s.floor_display_order ?? 0}
+                            onChange={(e) => updateStockRow(idx, sIdx, { floor_display_order: Math.max(0, Number(e.target.value) || 0) })}
+                            placeholder="Order"
+                            className="col-span-2 h-8 text-xs"
+                            title="Display order on that floor"
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeStockRow(idx, sIdx)}
+                            className="col-span-1 h-8 w-8 text-destructive"
+                            aria-label="Remove location row"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
               <div className="mt-3 max-w-xs">

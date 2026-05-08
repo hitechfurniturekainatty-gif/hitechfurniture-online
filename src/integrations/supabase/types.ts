@@ -702,6 +702,51 @@ export type Database = {
         }
         Relationships: []
       }
+      product_variant_stock: {
+        Row: {
+          created_at: string
+          floor_display_order: number
+          id: string
+          location_id: string
+          quantity: number
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          floor_display_order?: number
+          id?: string
+          location_id: string
+          quantity?: number
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          floor_display_order?: number
+          id?: string
+          location_id?: string
+          quantity?: number
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variant_stock_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "product_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variant_stock_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variants: {
         Row: {
           color_hex: string | null

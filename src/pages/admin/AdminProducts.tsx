@@ -257,10 +257,10 @@ const AdminProducts = () => {
       variants: [],
     });
     setOpen(true);
-    // Load variants for this product
+    // Load variants + their per-location stock breakdown for this product
     const { data: vData } = await supabase
       .from("product_variants")
-      .select("id, color_name, color_hex, image_url, stock_quantity, display_order")
+      .select("id, color_name, color_hex, image_url, stock_quantity, display_order, product_variant_stock(id, location_id, quantity, floor_display_order)")
       .eq("product_id", p.id)
       .order("display_order");
     setForm((f) => ({
@@ -271,8 +271,14 @@ const AdminProducts = () => {
         color_hex: v.color_hex ?? "",
         image_url: v.image_url,
         stock_quantity: v.stock_quantity ?? 0,
-        location_id: v.location_id ?? null,
-        floor_display_order: v.floor_display_order ?? 0,
+        stocks: ((v.product_variant_stock ?? []) as any[])
+          .sort((a, b) => (a.floor_display_order ?? 0) - (b.floor_display_order ?? 0))
+          .map((s) => ({
+            id: s.id,
+            location_id: s.location_id,
+            quantity: s.quantity ?? 0,
+            floor_display_order: s.floor_display_order ?? 0,
+          })),
       })),
     }));
   };
@@ -343,21 +349,59 @@ const AdminProducts = () => {
         }));
         await supabase.from("product_images").insert(rows);
       }
-      // Sync variants: delete all then re-insert in order
+      // Sync variants: delete all (cascades to product_variant_stock) then
+      // re-insert in order. Per-location stock rows are added in a 2nd pass
+      // so we know each freshly-inserted variant id.
       await supabase.from("product_variants").delete().eq("product_id", productId);
       const validVariants = form.variants.filter((v) => v.color_name.trim());
       if (validVariants.length > 0) {
-        const vRows = validVariants.map((v, i) => ({
-          product_id: productId!,
-          color_name: v.color_name.trim(),
-          color_hex: v.color_hex || null,
-          image_url: v.image_url,
-          stock_quantity: Math.max(0, Number(v.stock_quantity) || 0),
-          display_order: (i + 1) * 10,
-          location_id: v.location_id || null,
-          floor_display_order: Math.max(0, Number(v.floor_display_order) || 0),
-        }));
-        await supabase.from("product_variants").insert(vRows);
+        // Total stock = sum of per-location rows (falls back to legacy field).
+        const vRows = validVariants.map((v, i) => {
+          const stocks = (v.stocks ?? []).filter((s) => s.location_id);
+          const total = stocks.length > 0
+            ? stocks.reduce((s, r) => s + (Number(r.quantity) || 0), 0)
+            : Math.max(0, Number(v.stock_quantity) || 0);
+          // For backward-compat, pin the variant to its first location so older
+          // code paths that read `product_variants.location_id` still work.
+          const primaryLoc = stocks[0]?.location_id ?? null;
+          return {
+            product_id: productId!,
+            color_name: v.color_name.trim(),
+            color_hex: v.color_hex || null,
+            image_url: v.image_url,
+            stock_quantity: total,
+            display_order: (i + 1) * 10,
+            location_id: primaryLoc,
+            floor_display_order: Math.max(0, Number(stocks[0]?.floor_display_order) || 0),
+          };
+        });
+        const { data: inserted, error: vErr } = await supabase
+          .from("product_variants")
+          .insert(vRows)
+          .select("id, color_name, display_order");
+        if (vErr) {
+          setSaving(false);
+          return toast({ title: "Failed to save colors", description: vErr.message, variant: "destructive" });
+        }
+        // Insert per-location stock rows. Match by display_order which we set
+        // deterministically just above so ordering is reliable.
+        const stockRows: { variant_id: string; location_id: string; quantity: number; floor_display_order: number }[] = [];
+        validVariants.forEach((v, i) => {
+          const variantRow = (inserted ?? []).find((r: any) => r.display_order === (i + 1) * 10);
+          if (!variantRow) return;
+          for (const s of v.stocks ?? []) {
+            if (!s.location_id) continue;
+            stockRows.push({
+              variant_id: variantRow.id,
+              location_id: s.location_id,
+              quantity: Math.max(0, Number(s.quantity) || 0),
+              floor_display_order: Math.max(0, Number(s.floor_display_order) || 0),
+            });
+          }
+        });
+        if (stockRows.length > 0) {
+          await supabase.from("product_variant_stock").insert(stockRows);
+        }
       }
     }
 
