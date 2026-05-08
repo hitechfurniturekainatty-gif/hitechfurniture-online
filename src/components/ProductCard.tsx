@@ -68,27 +68,28 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
     e.preventDefault();
     e.stopPropagation();
     const colorLine = activeVariant
-      ? `Color: ${activeVariant.color_name}`
+      ? `*Color:* ${activeVariant.color_name}`
       : product.available_colors && product.available_colors.length > 0
-        ? `Colors available: ${product.available_colors.join(", ")}`
+        ? `*Colors available:* ${product.available_colors.join(", ")}`
         : "";
     const priceLine = !hidePrice
       ? onOffer
-        ? `Price: ${formatINR(product.offer_price!)} (MRP ${formatINR(product.mrp)})`
-        : `MRP: ${formatINR(product.mrp)}`
+        ? `*Price:* ${formatINR(product.offer_price!)}  ( *MRP:* ${formatINR(product.mrp)} )`
+        : `*MRP:* ${formatINR(product.mrp)}`
       : "";
     const productUrl = `${window.location.origin}/product/${product.id}`;
     const imgUrl = activeVariant?.image_url || baseCover || "";
     const msg = [
+      "*New Catalog Inquiry*",
       "Hello, I'm interested in this product:",
       "",
-      `Product: ${product.product_name}`,
-      `Code: ${product.product_code}`,
+      `*Product:* ${product.product_name}`,
+      `*Code:* ${product.product_code}`,
       priceLine,
       colorLine,
       "",
-      imgUrl ? `Photo: ${imgUrl}` : "",
-      `View: ${productUrl}`,
+      imgUrl ? `*Photo:* ${imgUrl}` : "",
+      `*View Product:* ${productUrl}`,
       "",
       "Please share more details.",
     ]
