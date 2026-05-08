@@ -658,16 +658,33 @@ const AdminQuotationEditor = () => {
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
-    itemsRef.current = updated;
-    setItems(updated);
-    headerDirtyRef.current = false;
-    setHeaderDirty(false);
+    const latestItems = itemsRef.current;
+    const merged = updated.map((saved) => {
+      const originalId = Object.entries(idMap).find(([, newId]) => newId === saved.id)?.[0] ?? saved.id;
+      const latest = latestItems.find((it) => it.id === originalId) ?? latestItems.find((it) => it.id === saved.id);
+      if (latest && itemFingerprint(latest) !== itemSnapshots.get(originalId)) {
+        return { ...latest, id: saved.id, _isNew: false, _dirty: true };
+      }
+      return saved;
+    });
+    latestItems.forEach((latest) => {
+      const resolvedId = tmpIdMapRef.current[latest.id] ?? latest.id;
+      if (!merged.some((it) => it.id === resolvedId) && !updated.some((it) => it.id === resolvedId)) {
+        merged.push({ ...latest, id: resolvedId });
+      }
+    });
+    itemsRef.current = merged;
+    setItems(merged);
+    if (headerFingerprint(qRef.current) === headerSnapshot) {
+      headerDirtyRef.current = false;
+      setHeaderDirty(false);
+    }
 
     // Always recompute and persist header totals from the freshly saved items.
     // Without this, the quotations list (which reads `total`) shows stale
     // amounts when items are added/edited without touching header fields.
     {
-      const newSubtotal = updated.reduce(
+      const newSubtotal = merged.reduce(
         (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
         0,
       );
