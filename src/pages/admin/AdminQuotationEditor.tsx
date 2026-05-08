@@ -563,7 +563,13 @@ const AdminQuotationEditor = () => {
         return null;
       }
       const newId = res.data?.id ?? j.existingId;
-      if (j.isNew) idMap[j.tmpId] = newId;
+      if (j.isNew) {
+        idMap[j.tmpId] = newId;
+        // Remember the mapping so any in-flight async callbacks (e.g. image
+        // upload that started while the row was still `tmp-...`) can be
+        // re-routed to the now-real row id.
+        tmpIdMapRef.current[j.tmpId] = newId;
+      }
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
