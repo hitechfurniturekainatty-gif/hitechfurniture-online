@@ -23,7 +23,7 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
-import { titleCaseTrim } from "@/lib/textCase";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import { computeStage, stageToneClasses } from "@/lib/quotationPipeline";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
@@ -570,7 +570,7 @@ const AdminQuotations = () => {
                 {isPO(newDocType) ? (
                   <AutoSuggestInput<{ phone: string | null; whatsapp_number: string }>
                     value={form.party_name}
-                    onChange={(v) => setForm((f) => ({ ...f, party_name: v }))}
+                    onChange={(v) => setForm((f) => ({ ...f, party_name: toTitleCase(v) }))}
                     placeholder="Type to search saved workers / suppliers, or enter new"
                     minChars={1}
                     fetchSuggestions={async (q) => {
@@ -596,7 +596,7 @@ const AdminQuotations = () => {
                     }
                   />
                 ) : (
-                  <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} />
+                  <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: toTitleCase(e.target.value) })} />
                 )}
               </div>
               <div className="space-y-1.5">

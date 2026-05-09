@@ -578,7 +578,7 @@ const AdminProducts = () => {
             <Field label="Product name *">
               <AutoSuggestInput
                 value={form.product_name}
-                onChange={(v) => setForm({ ...form, product_name: v })}
+                onChange={(v) => setForm({ ...form, product_name: toTitleCase(v) })}
                 placeholder="Start typing to search existing products…"
                 fetchSuggestions={(q) => {
                   const qq = q.toLowerCase();

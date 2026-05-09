@@ -1338,7 +1338,7 @@ const AdminQuotationEditor = () => {
           className="grid gap-3 sm:grid-cols-2 md:grid-cols-3"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
         >
-          <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: toTitleCase(e.target.value) })} /></div>
           <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
           {!po && (
@@ -1452,7 +1452,7 @@ const AdminQuotationEditor = () => {
                       <Label className="text-xs font-medium">Description *</Label>
                   <AutoSuggestInput
                     value={it.description}
-                    onChange={(v) => updateItem(it.id, { description: v })}
+                    onChange={(v) => updateItem(it.id, { description: toTitleCase(v) })}
                     placeholder="Item name & details — type to search catalog"
                     fetchSuggestions={(query) => {
                       const qq = query.toLowerCase();
