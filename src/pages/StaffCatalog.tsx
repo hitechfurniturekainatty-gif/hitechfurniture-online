@@ -15,6 +15,8 @@ import { Loader2, Lock, Unlock, ArrowLeft, Search, ArrowUpDown, GripVertical, Sh
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
 import { useAuth } from "@/hooks/useAuth";
+import { SnapSearchDialog } from "@/components/staff/SnapSearchDialog";
+import { Camera } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -107,6 +109,7 @@ type FloorEntry = {
 };
 
 const SS_KEY = "staff_catalog_unlocked";
+const SS_PIN_KEY = "staff_catalog_pin";
 
 const StaffCatalog = () => {
   const { isAdmin } = useAuth();
@@ -114,6 +117,10 @@ const StaffCatalog = () => {
     try { return sessionStorage.getItem(SS_KEY) === "1"; } catch { return false; }
   });
   const [pin, setPin] = useState("");
+  const [verifiedPin, setVerifiedPin] = useState<string>(() => {
+    try { return sessionStorage.getItem(SS_PIN_KEY) ?? ""; } catch { return ""; }
+  });
+  const [snapOpen, setSnapOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
 
@@ -179,6 +186,8 @@ const StaffCatalog = () => {
       return toast({ title: "Wrong PIN", variant: "destructive" });
     }
     try { sessionStorage.setItem(SS_KEY, "1"); } catch { /* ignore */ }
+    try { sessionStorage.setItem(SS_PIN_KEY, pin); } catch { /* ignore */ }
+    setVerifiedPin(pin);
     setUnlocked(true);
   };
 
@@ -520,6 +529,31 @@ const StaffCatalog = () => {
           </Button>
         </div>
 
+        {/* SnapSearch — AI vision lookup. Sits above the floor/section selector. */}
+        <Card className="mb-4 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-background">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-primary/10 p-2.5 text-primary">
+                <Camera className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-display text-base leading-tight">SnapSearch</p>
+                <p className="text-xs text-muted-foreground">
+                  Snap any item — AI finds its name, price &amp; exact location.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => setSnapOpen(true)}
+              disabled={!verifiedPin}
+              className="w-full gap-2 sm:w-auto"
+            >
+              <Camera className="h-4 w-4" /> Open SnapSearch
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="mb-4">
           <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
             <div className="space-y-1.5">
@@ -663,6 +697,7 @@ const StaffCatalog = () => {
         onSaved={reloadProducts}
         allLocations={locations.filter((l) => l.is_active).map((l) => ({ id: l.id, building: l.building, floor: l.floor, section: l.section }))}
       />
+      <SnapSearchDialog open={snapOpen} onOpenChange={setSnapOpen} catalogPin={verifiedPin} />
       {/* Admin PIN gate to enable drag-and-drop */}
       {adminPinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur" onClick={() => setAdminPinOpen(false)}>
