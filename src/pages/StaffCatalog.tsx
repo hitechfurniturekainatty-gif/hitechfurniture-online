@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
-import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown, MapPin, Check } from "lucide-react";
+import { Loader2, Lock, Unlock, ArrowLeft, Search, ArrowUpDown, GripVertical, ShieldCheck } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DndContext,
   closestCenter,
