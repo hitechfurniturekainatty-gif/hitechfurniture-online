@@ -673,7 +673,9 @@ const StaffCatalog = () => {
                 <h2 className="font-display text-lg">Enable Admin Edit Mode</h2>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter the admin PIN to unlock drag-and-drop reordering. Staff sessions stay view-only.
+                Enter the <strong>admin (Backlog) PIN</strong> to unlock drag-and-drop reordering.
+                It's the same PIN used to open the admin Backlog page. If no PIN is set yet,
+                an admin can create one by opening Admin → Backlog once.
               </p>
               <Input
                 type="password"
