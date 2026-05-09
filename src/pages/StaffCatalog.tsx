@@ -17,6 +17,7 @@ import { VariantSwatches } from "@/components/VariantSwatches";
 import { useAuth } from "@/hooks/useAuth";
 import { SnapSearchDialog } from "@/components/staff/SnapSearchDialog";
 import { Camera } from "lucide-react";
+import { toTitleCase } from "@/lib/textCase";
 import {
   DndContext,
   closestCenter,
@@ -568,7 +569,7 @@ const StaffCatalog = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All categories</SelectItem>
-                  {mainCats.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  {mainCats.map((m) => <SelectItem key={m.id} value={m.id}>{toTitleCase(m.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -578,7 +579,7 @@ const StaffCatalog = () => {
                 <SelectTrigger><SelectValue placeholder={subCatOptions.length === 0 ? "—" : "All sub-categories"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All sub-categories</SelectItem>
-                  {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{toTitleCase(s.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -825,7 +826,7 @@ const StaffProductCard = ({
       <CardContent className="space-y-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium leading-tight line-clamp-2">
-            {p.product_name}
+            {toTitleCase(p.product_name)}
             {pinnedVariant && (
               <span className="ml-1 text-xs font-normal text-muted-foreground">· {pinnedVariant.color_name}</span>
             )}

@@ -22,6 +22,7 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
@@ -307,7 +308,7 @@ const AdminProducts = () => {
       `AUTO-${Date.now().toString(36).toUpperCase()}`;
     setSaving(true);
     const payload: any = {
-      product_name: form.product_name.trim(),
+      product_name: titleCaseTrim(form.product_name),
       product_code: autoCode,
       description: form.description || null,
       mrp: form.mrp ? Number(form.mrp) : 0,
@@ -518,7 +519,7 @@ const AdminProducts = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="min-w-0 truncate font-medium">{p.product_name}</p>
+                      <p className="min-w-0 truncate font-medium">{toTitleCase(p.product_name)}</p>
                       {p.is_featured && <Badge className="bg-accent text-accent-foreground shrink-0 text-[10px]">Featured</Badge>}
                       {!p.is_published && <Badge variant="secondary" className="shrink-0 text-[10px]">Hidden</Badge>}
                       {isLow && (
@@ -627,7 +628,7 @@ const AdminProducts = () => {
               <Select value={form.main_category_id} onValueChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}>
                 <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
                 <SelectContent>
-                  {mainCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {mainCats.map((c) => <SelectItem key={c.id} value={c.id}>{toTitleCase(c.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -636,7 +637,7 @@ const AdminProducts = () => {
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— None —</SelectItem>
-                  {subsForForm.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  {subsForForm.map((s) => <SelectItem key={s.id} value={s.id}>{toTitleCase(s.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>

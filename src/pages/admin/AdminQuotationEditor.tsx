@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
@@ -558,7 +559,7 @@ const AdminQuotationEditor = () => {
     setSaving(true);
     if (headerDirtyRef.current) {
       const { error } = await supabase.from("quotations").update({
-        party_name: saveQ.party_name,
+        party_name: titleCaseTrim(saveQ.party_name),
         party_place: saveQ.party_place,
         party_phone: saveQ.party_phone,
         party_address: saveQ.party_address,
@@ -605,7 +606,7 @@ const AdminQuotationEditor = () => {
         (Number(it.quantity) || 0) > 0 ||
         (Number(it.unit_price) || 0) > 0;
       if (!hasAnyContent) continue;
-      const safeDescription = it.description.trim() || "(measurement item)";
+      const safeDescription = toTitleCase(it.description.trim()) || "(measurement item)";
       jobs.push({
         index: i,
         isNew: !!it._isNew,
@@ -1251,7 +1252,7 @@ const AdminQuotationEditor = () => {
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
-              {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
+              {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
             <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>

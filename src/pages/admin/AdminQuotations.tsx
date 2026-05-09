@@ -23,6 +23,7 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
+import { titleCaseTrim } from "@/lib/textCase";
 import { computeStage, stageToneClasses } from "@/lib/quotationPipeline";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
@@ -248,7 +249,7 @@ const AdminQuotations = () => {
     }
     const { data, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
-      party_name: form.party_name.trim(),
+      party_name: titleCaseTrim(form.party_name),
       party_place: form.party_place.trim() || "NA",
       party_phone: form.party_phone.trim() || null,
       delivery_place: form.delivery_place.trim() || null,
@@ -422,7 +423,7 @@ const AdminQuotations = () => {
                 )}
               </div>
               <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
-                {q.party_name} <span className="text-primary/70">·</span> {q.party_place}
+                {titleCaseTrim(q.party_name)} <span className="text-primary/70">·</span> {q.party_place}
                 {q.party_phone && (
                   <>
                     {" "}<span className="text-primary/70">·</span>{" "}

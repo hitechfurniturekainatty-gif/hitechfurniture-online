@@ -13,6 +13,7 @@ import { Seo } from "@/components/Seo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { toTitleCase } from "@/lib/textCase";
 import { toast } from "@/hooks/use-toast";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 
@@ -291,7 +292,7 @@ const Catalog = () => {
                         <SelectContent>
                           <SelectItem value="__all__">All categories</SelectItem>
                           {mainCats.map((c) => (
-                            <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+                            <SelectItem key={c.id} value={c.slug}>{toTitleCase(c.name)}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -307,7 +308,7 @@ const Catalog = () => {
                           <SelectContent>
                             <SelectItem value="__all__">All sub-categories</SelectItem>
                             {subsForActive.map((s) => (
-                              <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
+                              <SelectItem key={s.id} value={s.slug}>{toTitleCase(s.name)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -429,7 +430,7 @@ const Catalog = () => {
                   <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/75 via-foreground/0 to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3 z-10 flex items-end justify-between gap-2">
                     <span className="font-display text-base font-semibold text-background">
-                      {c.name}
+                      {toTitleCase(c.name)}
                     </span>
                     <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                       {productCountByCat[c.id] ?? 0}
@@ -447,7 +448,7 @@ const Catalog = () => {
                 <ArrowLeft className="mr-1.5 h-4 w-4" /> All categories
               </Button>
               <Button variant="outline" size="sm" onClick={() => setSub("__all__")}>
-                View all {activeCat?.name}
+                View all {toTitleCase(activeCat?.name ?? "")}
               </Button>
             </div>
 
@@ -465,7 +466,7 @@ const Catalog = () => {
                 className="img-frame group relative flex aspect-square flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary/15 to-accent/10 p-4 text-center transition-smooth hover:shadow-product"
               >
                 <span className="font-display text-xl text-primary">All</span>
-                <span className="mt-1 text-xs text-muted-foreground">{activeCat?.name}</span>
+                <span className="mt-1 text-xs text-muted-foreground">{toTitleCase(activeCat?.name ?? "")}</span>
                 <span className="mt-2 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                   {productCountByCat[activeCat?.id ?? ""] ?? 0} pieces
                 </span>
@@ -493,7 +494,7 @@ const Catalog = () => {
                   <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/75 via-foreground/0 to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3 z-10 flex items-end justify-between gap-2">
                     <span className="font-display text-base font-semibold text-background">
-                      {s.name}
+                      {toTitleCase(s.name)}
                     </span>
                     <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                       {productCountBySub[s.id] ?? 0}
@@ -530,7 +531,7 @@ const Catalog = () => {
               <Chip active={!activeCatSlug} onClick={() => setCat(null)}>All</Chip>
               {mainCats.map((c) => (
                 <Chip key={c.id} active={activeCatSlug === c.slug} onClick={() => setCat(c.slug)}>
-                  {c.name}
+                  {toTitleCase(c.name)}
                 </Chip>
               ))}
             </div>
@@ -538,10 +539,10 @@ const Catalog = () => {
             {/* Sub cat chips */}
             {activeCat && subsForActive.length > 0 && (
               <div className="mb-8 flex flex-wrap gap-2">
-                <Chip subtle active={!activeSubSlug} onClick={() => setSub(null)}>All {activeCat.name}</Chip>
+                <Chip subtle active={!activeSubSlug} onClick={() => setSub(null)}>All {toTitleCase(activeCat.name)}</Chip>
                 {subsForActive.map((s) => (
                   <Chip subtle key={s.id} active={activeSubSlug === s.slug} onClick={() => setSub(s.slug)}>
-                    {s.name}
+                    {toTitleCase(s.name)}
                   </Chip>
                 ))}
               </div>
