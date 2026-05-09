@@ -6,10 +6,11 @@ import { AdminOnly } from "@/components/admin/AdminOnly";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, RefreshCw } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw, Ruler, FileText, Hammer, Truck, CheckCircle2 } from "lucide-react";
 import { computeStage, ALL_STAGES, STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
-import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import { formatINR } from "@/lib/brand";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type Q = {
   id: string;
@@ -27,14 +28,54 @@ type Q = {
 type Job = { quotation_id: string | null; status: string };
 type TripQ = { quotation_id: string; trip: { status: string } | null };
 
+type Task = {
+  id: string;
+  customer_name: string;
+  customer_place: string;
+  status: string;
+  draft_quotation_id: string | null;
+};
+
+type BoardCard = {
+  key: string;
+  stage: PipelineStage;
+  title: string;
+  subtitle: string;
+  meta?: string;
+  total?: number;
+  href?: string;
+  // For stage transitions
+  quotationId?: string;
+  taskId?: string;
+  tripQuotationId?: string;
+  canAdvance?: boolean;
+  nextLabel?: string;
+};
+
+const STAGE_ICON: Record<PipelineStage, React.ReactNode> = {
+  1: <Ruler className="h-4 w-4" />,
+  2: <FileText className="h-4 w-4" />,
+  3: <Hammer className="h-4 w-4" />,
+  4: <Truck className="h-4 w-4" />,
+  5: <CheckCircle2 className="h-4 w-4" />,
+};
+
+// Per-stage column accent (clean & subtle)
+const COLUMN_ACCENT: Record<PipelineStage, string> = {
+  1: "border-t-amber-500",
+  2: "border-t-sky-500",
+  3: "border-t-orange-500",
+  4: "border-t-indigo-500",
+  5: "border-t-emerald-500",
+};
+
 const AdminPipelineMonitor = () => {
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<(Q & { stage: PipelineStage; stageInfo: ReturnType<typeof computeStage> })[]>([]);
-  const [active, setActive] = useState<PipelineStage | "all">("all");
+  const [cards, setCards] = useState<BoardCard[]>([]);
 
   const load = async () => {
     setLoading(true);
-    const [qRes, jRes, tqRes] = await Promise.all([
+    const [qRes, jRes, tqRes, tRes] = await Promise.all([
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, status, total, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
@@ -47,16 +88,23 @@ const AdminPipelineMonitor = () => {
         .is("deleted_at", null),
       supabase
         .from("trip_quotations")
-        .select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+        .select("id, quotation_id, delivered_at, trips:trip_id(status)") as any,
+      supabase
+        .from("measurement_tasks")
+        .select("id, customer_name, customer_place, status, draft_quotation_id")
+        .is("deleted_at", null)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false }),
     ]);
 
     const jobs = ((jRes.data ?? []) as Job[]);
-    const tripsByQ: Record<string, { has: boolean; completed: boolean }> = {};
+    const tripsByQ: Record<string, { has: boolean; completed: boolean; tripQuotationId?: string }> = {};
     ((tqRes.data ?? []) as any[]).forEach((tq) => {
       const qid = tq.quotation_id as string;
       const tStatus = tq.trips?.status as string | undefined;
-      const cur = tripsByQ[qid] ?? { has: false, completed: false };
+      const cur = tripsByQ[qid] ?? { has: false, completed: false, tripQuotationId: tq.id };
       cur.has = true;
+      cur.tripQuotationId = tq.id;
       if (tStatus === "completed" || tq.delivered_at) cur.completed = true;
       tripsByQ[qid] = cur;
     });
@@ -70,7 +118,7 @@ const AdminPipelineMonitor = () => {
       jobsByQ[j.quotation_id] = cur;
     });
 
-    const built = ((qRes.data ?? []) as Q[]).map((q) => {
+    const builtQ: BoardCard[] = ((qRes.data ?? []) as Q[]).map((q) => {
       const j = jobsByQ[q.id];
       const t = tripsByQ[q.id];
       const info = computeStage({
@@ -84,24 +132,72 @@ const AdminPipelineMonitor = () => {
         has_trip: t?.has ?? false,
         trip_completed: t?.completed ?? false,
       });
-      return { ...q, stage: info.stage, stageInfo: info };
+      const next = nextActionFor(info.stage, { advance: Number(q.advance_amount ?? 0), hasJobs: (j?.total ?? 0) > 0, jobsDone: (j?.total ?? 0) > 0 && (j?.done ?? 0) >= (j?.total ?? 0), hasTrip: t?.has ?? false });
+      return {
+        key: `q-${q.id}`,
+        stage: info.stage,
+        title: q.party_name,
+        subtitle: q.party_place,
+        meta: q.quotation_id,
+        total: Number(q.total),
+        href: `/admin/quotations/${q.id}`,
+        quotationId: q.id,
+        tripQuotationId: t?.tripQuotationId,
+        canAdvance: !!next,
+        nextLabel: next ?? undefined,
+      };
     });
-    setRows(built);
+
+    // Stage 1 also pulls measurement tasks that haven't created a quotation yet
+    const taskCards: BoardCard[] = ((tRes.data ?? []) as Task[])
+      .filter((t) => !t.draft_quotation_id)
+      .map((t) => ({
+        key: `t-${t.id}`,
+        stage: 1 as PipelineStage,
+        title: t.customer_name,
+        subtitle: t.customer_place,
+        meta: "Measurement task",
+        href: `/admin/measurement-tasks`,
+        taskId: t.id,
+      }));
+
+    setCards([...taskCards, ...builtQ]);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  const counts = useMemo(() => {
-    const c: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    rows.forEach((r) => { c[r.stage] += 1; });
-    return c;
-  }, [rows]);
+  const byStage = useMemo(() => {
+    const m: Record<PipelineStage, BoardCard[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    cards.forEach((c) => m[c.stage].push(c));
+    return m;
+  }, [cards]);
 
-  const filtered = useMemo(
-    () => (active === "all" ? rows : rows.filter((r) => r.stage === active)),
-    [rows, active],
-  );
+  // Move a card to its next stage with one click.
+  const advance = async (card: BoardCard) => {
+    try {
+      if (card.stage === 4 && card.tripQuotationId) {
+        // Mark as delivered
+        await supabase.from("trip_quotations").update({ delivered_at: new Date().toISOString() }).eq("id", card.tripQuotationId);
+        if (card.quotationId) await supabase.from("quotations").update({ status: "delivered" }).eq("id", card.quotationId);
+        toast({ title: "Marked as delivered" });
+      } else if (card.stage === 2 && card.quotationId) {
+        // Already finalized → nothing here; advancing means moving to production via advance
+        toast({ title: "Open the quotation to record advance / send", description: "Production starts once advance is taken." });
+        return;
+      } else if (card.stage === 1 && card.quotationId) {
+        // Drafted quotation waiting for pricing → admin opens to finalize
+        toast({ title: "Open the quotation to set price & finalize" });
+        return;
+      } else if (card.stage === 3 && card.quotationId) {
+        toast({ title: "Mark all jobs complete in Workers to advance" });
+        return;
+      }
+      await load();
+    } catch (e: any) {
+      toast({ title: "Could not advance", description: e.message, variant: "destructive" });
+    }
+  };
 
   return (
     <AdminOnly>
@@ -110,7 +206,7 @@ const AdminPipelineMonitor = () => {
           <div>
             <h1 className="font-display text-2xl sm:text-3xl">Workflow Pipeline</h1>
             <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              Live status of every quotation across the 5 workflow stages.
+              All active orders across the 5 stages, on one screen.
             </p>
           </div>
           <Button variant="outline" onClick={load} disabled={loading}>
@@ -118,74 +214,85 @@ const AdminPipelineMonitor = () => {
           </Button>
         </div>
 
-        {/* Stage summary cards — click to filter */}
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <button
-            type="button"
-            onClick={() => setActive("all")}
-            className={`rounded-xl border bg-card p-3 text-left transition-smooth hover:shadow-product ${active === "all" ? "border-primary ring-2 ring-primary/30" : ""}`}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">All</p>
-            <p className="font-display text-3xl font-semibold text-foreground">{rows.length}</p>
-          </button>
-          {ALL_STAGES.map((s) => {
-            const def = STAGE_DEFS[s];
-            const isActive = active === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setActive(s)}
-                className={`rounded-xl border p-3 text-left transition-smooth hover:shadow-product ${stageToneClasses(def.tone)} ${isActive ? "ring-2 ring-primary/40" : ""}`}
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
-                <p className="font-display text-3xl font-semibold">{counts[s]}</p>
-                <p className="mt-0.5 truncate text-xs font-medium">{def.label}</p>
-                <p className="text-[10px] opacity-70">With: {def.owner}</p>
-              </button>
-            );
-          })}
-        </div>
-
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : filtered.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">No quotations in this stage.</p>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {filtered.map((q) => (
-              <Card key={q.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <CardTitle className="truncate text-base">{q.party_name} <span className="text-muted-foreground">· {q.party_place}</span></CardTitle>
-                      <p className="truncate font-mono text-xs text-muted-foreground">{q.quotation_id}</p>
+          <div className="-mx-2 grid grid-flow-col auto-cols-[88vw] gap-3 overflow-x-auto pb-3 sm:auto-cols-[60vw] md:auto-cols-[40vw] lg:grid-flow-row lg:auto-cols-auto lg:grid-cols-5 lg:overflow-visible">
+            {ALL_STAGES.map((s) => {
+              const def = STAGE_DEFS[s];
+              const list = byStage[s];
+              return (
+                <div
+                  key={s}
+                  className={cn(
+                    "mx-1 flex min-h-[200px] flex-col rounded-xl border-t-4 bg-muted/30 p-2 lg:mx-0",
+                    COLUMN_ACCENT[s],
+                  )}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("flex h-7 w-7 items-center justify-center rounded-md", stageToneClasses(def.tone))}>{STAGE_ICON[s]}</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Stage {s}</p>
+                        <p className="truncate text-sm font-semibold">{def.label}</p>
+                      </div>
                     </div>
-                    <Badge variant="outline" className={stageToneClasses(q.stageInfo.tone)}>
-                      {q.stageInfo.label}
-                    </Badge>
+                    <Badge variant="outline" className={stageToneClasses(def.tone)}>{list.length}</Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <PipelineSteps stage={q.stage} size="md" showLabels />
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      With: <span className="font-semibold text-foreground">{q.stageInfo.owner}</span>
-                      {q.is_direct_order && <span className="ml-2 rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">Direct order</span>}
-                    </span>
-                    <span className="font-display text-base font-semibold text-foreground">{formatINR(q.total)}</span>
+                  <div className="flex flex-1 flex-col gap-2">
+                    {list.length === 0 ? (
+                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">Empty</p>
+                    ) : (
+                      list.map((card) => (
+                        <Card key={card.key} className="border bg-card transition-smooth hover:shadow-product">
+                          <CardContent className="space-y-2 p-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold">{card.title}</p>
+                              <p className="truncate text-xs text-muted-foreground">{card.subtitle}</p>
+                              {card.meta && <p className="truncate font-mono text-[10px] text-muted-foreground">{card.meta}</p>}
+                            </div>
+                            {typeof card.total === "number" && (
+                              <p className="font-display text-sm font-semibold">{formatINR(card.total)}</p>
+                            )}
+                            <div className="flex gap-1.5">
+                              {card.href && (
+                                <Button asChild size="sm" variant="outline" className="h-7 flex-1 text-xs">
+                                  <Link to={card.href}>Open</Link>
+                                </Button>
+                              )}
+                              {card.canAdvance && card.nextLabel && (
+                                <Button size="sm" className="h-7 flex-1 text-xs" onClick={() => advance(card)}>
+                                  {card.nextLabel} <ArrowRight className="ml-1 h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
                   </div>
-                  <Button asChild size="sm" variant="outline" className="w-full">
-                    <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </AdminShell>
     </AdminOnly>
   );
 };
+
+// Decide if the current stage has a one-click forward action.
+function nextActionFor(
+  stage: PipelineStage,
+  ctx: { advance: number; hasJobs: boolean; jobsDone: boolean; hasTrip: boolean },
+): string | null {
+  switch (stage) {
+    case 4:
+      // Ready for delivery → mark delivered (only if a trip stop exists)
+      return ctx.hasTrip ? "Mark Delivered" : null;
+    default:
+      return null;
+  }
+}
 
 export default AdminPipelineMonitor;
