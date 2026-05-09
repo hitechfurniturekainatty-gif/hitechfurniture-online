@@ -122,6 +122,11 @@ const StaffCatalog = () => {
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [loading, setLoading] = useState(true);
   const [reorderOpen, setReorderOpen] = useState(false);
+  // Optimistic ordering applied while staff drag-and-drop cards on the grid.
+  // Stored as the current ordered list of FloorEntry.key values; cleared
+  // whenever the underlying filtered list changes shape.
+  const [orderOverride, setOrderOverride] = useState<string[] | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   const [building, setBuilding] = useState<string>("__all");
   const [floor, setFloor] = useState<string>("__all");
@@ -325,6 +330,69 @@ const StaffCatalog = () => {
     setProducts((data ?? []) as Product[]);
   };
 
+  // Drop the local order whenever the filter set changes (different keys),
+  // so we don't show a stale order after switching floor / search.
+  const filteredKeySig = filtered.map((e) => e.key).join("|");
+  useEffect(() => {
+    setOrderOverride(null);
+  }, [filteredKeySig]);
+
+  const displayed = useMemo<FloorEntry[]>(() => {
+    if (!orderOverride) return filtered;
+    const map = new Map(filtered.map((e) => [e.key, e]));
+    const seen = new Set<string>();
+    const ordered: FloorEntry[] = [];
+    for (const k of orderOverride) {
+      const e = map.get(k);
+      if (e) { ordered.push(e); seen.add(k); }
+    }
+    for (const e of filtered) if (!seen.has(e.key)) ordered.push(e);
+    return ordered;
+  }, [filtered, orderOverride]);
+
+  // 1-second press-and-hold before a drag starts, so normal taps still work
+  // for opening Move popovers, swatches, etc.
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
+  );
+
+  const onCardDragEnd = async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = displayed.findIndex((x) => x.key === active.id);
+    const newIdx = displayed.findIndex((x) => x.key === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const next = arrayMove(displayed, oldIdx, newIdx);
+    setOrderOverride(next.map((x) => x.key));
+
+    // Persist floor_display_order for every item sharing the moved card's
+    // location, so the new physical sequence sticks across reloads.
+    const movedLoc = next[newIdx].location_id;
+    const sameLoc = next.filter((x) => x.location_id === movedLoc);
+    setSavingOrder(true);
+    try {
+      const updates = sameLoc.map((x, i) => {
+        const order = (i + 1) * 10;
+        if (x.kind === "variant_stock") {
+          return supabase.from("product_variant_stock").update({ floor_display_order: order }).eq("id", x.refId);
+        }
+        return supabase.from("products").update({ floor_display_order: order }).eq("id", x.refId);
+      });
+      const results = await Promise.all(updates);
+      const firstErr = results.find((r) => r.error)?.error;
+      if (firstErr) throw firstErr;
+      toast({ title: "Floor order updated", description: "New position saved." });
+      await reloadProducts();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not save new order";
+      toast({ title: "Failed to save order", description: msg, variant: "destructive" });
+      setOrderOverride(null);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
   const reorderScope = useMemo(() => {
     // Reorder is available whenever the staff has narrowed the floor view
     // (specific section, or a single building / floor). Each per-color
@@ -496,27 +564,35 @@ const StaffCatalog = () => {
         ) : (
           <>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence</p>
+              <p className="text-sm text-muted-foreground">
+                {filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence
+                <span className="ml-2 hidden text-[11px] sm:inline">· press &amp; hold a card 1s to drag into a new position</span>
+                {savingOrder && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
+              </p>
               {reorderScope.canReorder && (
                 <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
                   <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Arrange floor order
                 </Button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((entry) => {
-                const loc = locations.find((l) => l.id === entry.location_id);
-                return (
-                  <StaffProductCard
-                    key={entry.key}
-                    entry={entry}
-                    loc={loc}
-                    locations={locations}
-                    onMoved={reloadProducts}
-                  />
-                );
-              })}
-            </div>
+            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
+              <SortableContext items={displayed.map((e) => e.key)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {displayed.map((entry) => {
+                    const loc = locations.find((l) => l.id === entry.location_id);
+                    return (
+                      <SortableStaffCard
+                        key={entry.key}
+                        entry={entry}
+                        loc={loc}
+                        locations={locations}
+                        onMoved={reloadProducts}
+                      />
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
             {filtered.length === 0 && (
               <p className="py-12 text-center text-muted-foreground">No items match these filters.</p>
             )}
