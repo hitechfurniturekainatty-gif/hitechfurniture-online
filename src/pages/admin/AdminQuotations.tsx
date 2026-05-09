@@ -423,7 +423,7 @@ const AdminQuotations = () => {
                 )}
               </div>
               <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
-                {q.party_name} <span className="text-primary/70">·</span> {q.party_place}
+                {titleCaseTrim(q.party_name)} <span className="text-primary/70">·</span> {q.party_place}
                 {q.party_phone && (
                   <>
                     {" "}<span className="text-primary/70">·</span>{" "}

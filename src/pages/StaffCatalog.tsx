@@ -17,6 +17,7 @@ import { VariantSwatches } from "@/components/VariantSwatches";
 import { useAuth } from "@/hooks/useAuth";
 import { SnapSearchDialog } from "@/components/staff/SnapSearchDialog";
 import { Camera } from "lucide-react";
+import { toTitleCase } from "@/lib/textCase";
 import {
   DndContext,
   closestCenter,
@@ -825,7 +826,7 @@ const StaffProductCard = ({
       <CardContent className="space-y-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium leading-tight line-clamp-2">
-            {p.product_name}
+            {toTitleCase(p.product_name)}
             {pinnedVariant && (
               <span className="ml-1 text-xs font-normal text-muted-foreground">· {pinnedVariant.color_name}</span>
             )}

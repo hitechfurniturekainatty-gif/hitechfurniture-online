@@ -1252,7 +1252,7 @@ const AdminQuotationEditor = () => {
           <div className="min-w-0 flex-1">
             <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
-              {q.party_name} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
+              {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
             <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
           </div>

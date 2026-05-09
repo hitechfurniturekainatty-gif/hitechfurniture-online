@@ -22,7 +22,7 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
-import { titleCaseTrim } from "@/lib/textCase";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
@@ -519,7 +519,7 @@ const AdminProducts = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="min-w-0 truncate font-medium">{p.product_name}</p>
+                      <p className="min-w-0 truncate font-medium">{toTitleCase(p.product_name)}</p>
                       {p.is_featured && <Badge className="bg-accent text-accent-foreground shrink-0 text-[10px]">Featured</Badge>}
                       {!p.is_published && <Badge variant="secondary" className="shrink-0 text-[10px]">Hidden</Badge>}
                       {isLow && (

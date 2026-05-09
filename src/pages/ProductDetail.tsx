@@ -13,6 +13,7 @@ import { buildWhatsAppUrl, formatINR, WHATSAPP_NUMBER } from "@/lib/brand";
 // first paint on the catalog/product pages.
 import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { Seo } from "@/components/Seo";
@@ -406,7 +407,7 @@ Please share more details.`;
               {product.main_categories.name}
             </Link>
           )}
-          <h1 className="mt-3 font-display text-3xl text-foreground md:text-5xl">{product.product_name}</h1>
+          <h1 className="mt-3 font-display text-3xl text-foreground md:text-5xl">{toTitleCase(product.product_name)}</h1>
           <p className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">Code · {product.product_code}</p>
 
           {!hidePrices && (

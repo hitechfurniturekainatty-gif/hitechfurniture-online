@@ -3,6 +3,7 @@ import { memo, useMemo, useState } from "react";
 import { formatINR, buildWhatsAppUrl } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
+import { toTitleCase } from "@/lib/textCase";
 import { MessageCircle } from "lucide-react";
 
 export type ProductVariantData = {
@@ -168,7 +169,7 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg leading-snug text-foreground line-clamp-2">
-            {product.product_name}
+            {toTitleCase(product.product_name)}
           </h3>
         </div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Code · {product.product_code}</p>
