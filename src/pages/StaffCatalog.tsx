@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
-import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown, MapPin, Check } from "lucide-react";
+import { Loader2, Lock, Unlock, ArrowLeft, Search, ArrowUpDown, GripVertical, ShieldCheck } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DndContext,
   closestCenter,
@@ -109,12 +109,21 @@ type FloorEntry = {
 const SS_KEY = "staff_catalog_unlocked";
 
 const StaffCatalog = () => {
+  const { isAdmin } = useAuth();
   const [unlocked, setUnlocked] = useState<boolean>(() => {
     try { return sessionStorage.getItem(SS_KEY) === "1"; } catch { return false; }
   });
   const [pin, setPin] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
+
+  // Admin "Edit positions" mode: only admins can toggle this on, and the
+  // drag-to-reorder handles only appear while it is on. Re-asks for PIN
+  // confirmation on each enable so a left-open laptop can't be misused.
+  const [editMode, setEditMode] = useState(false);
+  const [adminPinOpen, setAdminPinOpen] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
+  const [adminVerifying, setAdminVerifying] = useState(false);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -216,6 +225,20 @@ const StaffCatalog = () => {
     const baseCoverOf = (p: Product) =>
       p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
 
+    // Pick the best cover for the *current location filter*: prefer the photo
+    // of the first variant that has stock physically present at this floor /
+    // section, so the card image always matches what's actually on display.
+    const locationCoverOf = (p: Product): string | null => {
+      const variants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
+      const matchHere = variants.find((v) => {
+        const rows = v.product_variant_stock ?? [];
+        return rows.some((s) => s.quantity > 0 && locInScope(s.location_id));
+      });
+      if (matchHere?.image_url) return matchHere.image_url;
+      const anyVariantWithImg = variants.find((v) => v.image_url);
+      return anyVariantWithImg?.image_url ?? baseCoverOf(p);
+    };
+
     const matchesCategory = (p: Product) => {
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
       if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
@@ -289,7 +312,7 @@ const StaffCatalog = () => {
           variant: null,
           location_id: p.location_id,
           floor_display_order: p.floor_display_order ?? 0,
-          cover: baseCoverOf(p),
+          cover: locationCoverOf(p),
           stock: residualStock,
         });
       }
@@ -350,12 +373,27 @@ const StaffCatalog = () => {
     return ordered;
   }, [filtered, orderOverride]);
 
-  // 1-second press-and-hold before a drag starts, so normal taps still work
-  // for opening Move popovers, swatches, etc.
+  // In edit mode a quick 250ms press starts a drag (admins only). When edit
+  // mode is off the same sensors stay registered but the SortableContext is
+  // disabled below, so cards never pick up.
   const dragSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
   );
+
+  const verifyAdminPin = async () => {
+    setAdminVerifying(true);
+    const { data, error } = await supabase.rpc("verify_backlog_pin", { _pin: adminPin });
+    setAdminVerifying(false);
+    if (error || !data) {
+      toast({ title: "Wrong admin PIN", variant: "destructive" });
+      return;
+    }
+    setEditMode(true);
+    setAdminPinOpen(false);
+    setAdminPin("");
+    toast({ title: "Edit mode on", description: "Drag cards to reorder. Lock when finished." });
+  };
 
   const onCardDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
@@ -566,17 +604,36 @@ const StaffCatalog = () => {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence
-                <span className="ml-2 hidden text-[11px] sm:inline">· hold a card to move it · drag while holding to reorder</span>
+                {editMode && (
+                  <span className="ml-2 hidden text-[11px] text-primary sm:inline">
+                    · admin edit mode — press &amp; hold a card to drag
+                  </span>
+                )}
                 {savingOrder && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
               </p>
-              {reorderScope.canReorder && (
-                <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
-                  <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Arrange floor order
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {isAdmin ? (
+                  editMode ? (
+                    <Button size="sm" variant="default" onClick={() => setEditMode(false)}>
+                      <Lock className="mr-1.5 h-3.5 w-3.5" /> Lock positions
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setAdminPinOpen(true)}>
+                      <Unlock className="mr-1.5 h-3.5 w-3.5" /> Edit positions (admin)
+                    </Button>
+                  )
+                ) : (
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">View only — admin sign-in required to reorder</span>
+                )}
+                {editMode && reorderScope.canReorder && (
+                  <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
+                    <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Bulk arrange
+                  </Button>
+                )}
+              </div>
             </div>
-            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
-              <SortableContext items={displayed.map((e) => e.key)} strategy={rectSortingStrategy}>
+            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={editMode ? onCardDragEnd : undefined}>
+              <SortableContext items={displayed.map((e) => e.key)} strategy={rectSortingStrategy} disabled={!editMode}>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {displayed.map((entry) => {
                     const loc = locations.find((l) => l.id === entry.location_id);
@@ -585,8 +642,7 @@ const StaffCatalog = () => {
                         key={entry.key}
                         entry={entry}
                         loc={loc}
-                        locations={locations}
-                        onMoved={reloadProducts}
+                        editMode={editMode}
                       />
                     );
                   })}
@@ -607,6 +663,37 @@ const StaffCatalog = () => {
         onSaved={reloadProducts}
         allLocations={locations.filter((l) => l.is_active).map((l) => ({ id: l.id, building: l.building, floor: l.floor, section: l.section }))}
       />
+      {/* Admin PIN gate to enable drag-and-drop */}
+      {adminPinOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur" onClick={() => setAdminPinOpen(false)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="space-y-3 p-5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg">Enable Admin Edit Mode</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the admin PIN to unlock drag-and-drop reordering. Staff sessions stay view-only.
+              </p>
+              <Input
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && verifyAdminPin()}
+                placeholder="Admin PIN"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => { setAdminPinOpen(false); setAdminPin(""); }} disabled={adminVerifying}>Cancel</Button>
+                <Button onClick={verifyAdminPin} disabled={adminVerifying || !adminPin}>
+                  {adminVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Unlock
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <SiteFooter />
     </div>
   );
@@ -618,27 +705,37 @@ export default StaffCatalog;
 const SortableStaffCard = ({
   entry,
   loc,
-  locations,
-  onMoved,
+  editMode,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
-  locations: Location[];
-  onMoved: () => void;
+  editMode: boolean;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.key });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: entry.key,
+    disabled: !editMode,
+  });
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging
+      ? CSS.Transform.toString(transform ? { ...transform, scaleX: 1.04, scaleY: 1.04 } : null)
+      : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 30 : undefined,
-    boxShadow: isDragging ? "0 12px 28px hsl(var(--foreground) / 0.18)" : undefined,
-    cursor: isDragging ? "grabbing" : undefined,
+    boxShadow: isDragging
+      ? "0 18px 40px hsl(var(--primary) / 0.30), 0 0 0 2px hsl(var(--primary) / 0.5)"
+      : undefined,
+    cursor: editMode ? (isDragging ? "grabbing" : "grab") : "default",
     touchAction: "manipulation",
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <StaffProductCard entry={entry} loc={loc} locations={locations} onMoved={onMoved} />
+    <div ref={setNodeRef} style={style} {...(editMode ? { ...attributes, ...listeners } : {})} className="relative">
+      {editMode && (
+        <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full bg-primary/90 px-2 py-0.5 text-[10px] font-medium text-primary-foreground shadow">
+          <GripVertical className="h-3 w-3" /> Drag
+        </div>
+      )}
+      <StaffProductCard entry={entry} loc={loc} />
     </div>
   );
 };
@@ -647,13 +744,9 @@ const SortableStaffCard = ({
 const StaffProductCard = ({
   entry,
   loc,
-  locations,
-  onMoved,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
-  locations: Location[];
-  onMoved: () => void;
 }) => {
   const p = entry.product;
   const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
@@ -670,53 +763,15 @@ const StaffProductCard = ({
   const activeVariant = pinnedVariant ?? sideVariants.find((v) => v.id === activeId) ?? null;
 
   const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
-  const cover = activeVariant?.image_url || baseCover;
+  // Prefer (1) the active swatch's image, (2) the entry's resolved location-aware
+  // cover (already picked from a variant present on this floor), (3) base photo.
+  const cover = activeVariant?.image_url || entry.cover || baseCover;
 
   const stock = entry.stock;
   const isOut = p.stock_status !== "in_stock" || stock <= 0;
 
-  // Press-and-hold (without moving the finger) opens the Move popover.
-  // If the user drags after the hold, dnd-kit takes over (1s drag activation).
-  const [moveOpen, setMoveOpen] = useState(false);
-  const holdTimer = useRef<number | null>(null);
-  const startPt = useRef<{ x: number; y: number } | null>(null);
-  const HOLD_MS = 600;
-  const MOVE_TOL = 8;
-  const clearHold = () => {
-    if (holdTimer.current) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-    startPt.current = null;
-  };
-  const onPointerDown = (e: React.PointerEvent) => {
-    // Ignore right-clicks and clicks on interactive controls inside the card
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role=combobox], input, select")) return;
-    startPt.current = { x: e.clientX, y: e.clientY };
-    holdTimer.current = window.setTimeout(() => {
-      setMoveOpen(true);
-      // brief haptic on supporting devices
-      try { navigator.vibrate?.(15); } catch { /* ignore */ }
-    }, HOLD_MS);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!startPt.current) return;
-    const dx = e.clientX - startPt.current.x;
-    const dy = e.clientY - startPt.current.y;
-    if (Math.hypot(dx, dy) > MOVE_TOL) clearHold();
-  };
-
   return (
-    <Card
-      className="overflow-hidden"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={clearHold}
-      onPointerCancel={clearHold}
-      onPointerLeave={clearHold}
-    >
+    <Card className="overflow-hidden">
       <div className="aspect-[4/5] bg-muted">
         {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
       </div>
@@ -769,18 +824,12 @@ const StaffProductCard = ({
           <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
         )}
         {loc && (
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-[11px] text-muted-foreground truncate">
-              📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
-            </p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
-          </div>
+          <p className="text-[11px] text-muted-foreground truncate">
+            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+          </p>
         )}
         {!loc && (
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
-          </div>
+          <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
         )}
         {p.description && (
           <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
@@ -792,148 +841,5 @@ const StaffProductCard = ({
         )}
       </CardContent>
     </Card>
-  );
-};
-
-// ----- Quick "Move to Building / Floor / Section" popover -----
-// Lets staff walking the floor reposition a product (or a single color row) in
-// three taps without opening the bulk reorder dialog.
-const QuickMovePopover = ({
-  entry,
-  locations,
-  onMoved,
-  open: openProp,
-  onOpenChange,
-}: {
-  entry: FloorEntry;
-  locations: Location[];
-  onMoved: () => void;
-  open?: boolean;
-  onOpenChange?: (o: boolean) => void;
-}) => {
-  const current = locations.find((l) => l.id === entry.location_id);
-  const [openInner, setOpenInner] = useState(false);
-  const open = openProp ?? openInner;
-  const setOpen = (o: boolean) => {
-    onOpenChange?.(o);
-    if (openProp === undefined) setOpenInner(o);
-  };
-  const [building, setBuilding] = useState<string>(current?.building ?? "");
-  const [floor, setFloor] = useState<string>(current?.floor ?? "");
-  const [section, setSection] = useState<string>(current?.id ?? "");
-  const [saving, setSaving] = useState(false);
-
-  // Reset selections each time popover opens so it always reflects current loc.
-  useEffect(() => {
-    if (open) {
-      setBuilding(current?.building ?? "");
-      setFloor(current?.floor ?? "");
-      setSection(current?.id ?? "");
-    }
-  }, [open, current?.building, current?.floor, current?.id]);
-
-  const activeLocs = locations.filter((l) => l.is_active);
-  const buildings = Array.from(new Set(activeLocs.map((l) => l.building)));
-  const floors = Array.from(
-    new Set(activeLocs.filter((l) => !building || l.building === building).map((l) => l.floor)),
-  ).sort(floorCompare);
-  const sections = activeLocs.filter(
-    (l) => (!building || l.building === building) && (!floor || l.floor === floor),
-  );
-
-  const save = async () => {
-    if (!section) {
-      toast({ title: "Pick a section", description: "Building → Floor → Section.", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      if (entry.kind === "variant_stock") {
-        const { error } = await supabase
-          .from("product_variant_stock")
-          .update({ location_id: section, floor_display_order: 0 })
-          .eq("id", entry.refId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("products")
-          .update({ location_id: section, floor_display_order: 0 })
-          .eq("id", entry.refId);
-        if (error) throw error;
-      }
-      const dest = locations.find((l) => l.id === section);
-      const label = dest
-        ? `${dest.building} · ${dest.floor}${dest.section ? " · " + dest.section : ""}`
-        : "new location";
-      toast({ title: "Moved", description: `${entry.product.product_name} → ${label}` });
-      setOpen(false);
-      onMoved();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not move item";
-      toast({ title: "Failed to move", description: msg, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 shrink-0 px-1.5 text-[11px] text-primary hover:bg-primary/10"
-          aria-label="Move to another location"
-        >
-          <MapPin className="mr-0.5 h-3 w-3" /> Move
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-2" align="end" onClick={(e) => e.stopPropagation()}>
-        <div>
-          <p className="text-xs font-medium">Move to new spot</p>
-          <p className="text-[11px] text-muted-foreground">{entry.product.product_name}{entry.variant ? ` · ${entry.variant.color_name}` : ""}</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Building</Label>
-          <Select value={building} onValueChange={(v) => { setBuilding(v); setFloor(""); setSection(""); }}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick building" /></SelectTrigger>
-            <SelectContent>
-              {buildings.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Floor</Label>
-          <Select value={floor} onValueChange={(v) => { setFloor(v); setSection(""); }} disabled={!building}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick floor" /></SelectTrigger>
-            <SelectContent>
-              {floors.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Section / Part</Label>
-          <Select value={section} onValueChange={setSection} disabled={!floor || sections.length === 0}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder={sections.length === 0 ? "No sections" : "Pick section"} />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.section ?? "—"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex justify-end gap-1.5 pt-1">
-          <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
-          <Button size="sm" onClick={save} disabled={saving || !section}>
-            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
-            Save
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 };
