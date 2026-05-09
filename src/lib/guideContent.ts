@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.1";
-export const GUIDE_LAST_UPDATED = "2026-05-08";
+export const APP_VERSION = "1.2";
+export const GUIDE_LAST_UPDATED = "2026-05-09";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -643,6 +643,19 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-2",
+        title: "v1.2 — 2026-05-09",
+        audience: ["everyone"],
+        bullets: [
+          "Staff Catalog drag-to-reorder is now Admin-only — admins click 'Edit positions (admin)' and enter the admin PIN to unlock dragging.",
+          "While Edit Mode is on, every card shows a small 'Drag' chip; press & hold (~0.25s) and drop into a new spot to save the new floor sequence instantly for everyone.",
+          "Removed the per-card 'Move' popover — moving items now happens by drag-and-drop (admin) or via the 'Bulk arrange' dialog.",
+          "Dragged cards now scale up slightly and glow with a primary outline for clearer visual feedback.",
+          "Residual product cards now pick a cover image from a colour variant actually stocked on the filtered floor, so the photo on the card matches what's physically on display.",
+          "Staff (non-admin) view is read-only — no accidental position changes possible.",
+        ],
+      },
       {
         id: "v1-1",
         title: "v1.1 — 2026-05-08",
