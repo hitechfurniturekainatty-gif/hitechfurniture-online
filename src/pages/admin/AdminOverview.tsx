@@ -379,6 +379,38 @@ const AdminOverview = () => {
               <Link to="/admin/pipeline">Open monitor</Link>
             </Button>
           </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2 pb-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Link to="/admin/measurement-tasks" className="block rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 transition-smooth hover:shadow-product">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300"><Ruler className="h-3 w-3" /> Measurements</p>
+              <p className="font-display text-2xl font-semibold text-amber-700 dark:text-amber-300">{glance.ongoingMeasurements}</p>
+              <p className="text-[10px] opacity-70">Ongoing</p>
+            </Link>
+            <Link to="/admin/pipeline" className="block rounded-lg border border-orange-500/40 bg-orange-500/10 p-3 transition-smooth hover:shadow-product">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-300"><Hammer className="h-3 w-3" /> Production</p>
+              <p className="font-display text-2xl font-semibold text-orange-700 dark:text-orange-300">{pipelineCounts[3]}</p>
+              <p className="text-[10px] opacity-70">In progress</p>
+            </Link>
+            <Link to="/admin/trips" className="block rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 transition-smooth hover:shadow-product">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300"><Truck className="h-3 w-3" /> Delivery</p>
+              <p className="font-display text-2xl font-semibold text-sky-700 dark:text-sky-300">{pipelineCounts[4]}</p>
+              <p className="text-[10px] opacity-70">Waiting</p>
+            </Link>
+            <Link to="/admin/pipeline" className="block rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 transition-smooth hover:shadow-product">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-3 w-3" /> Delivered</p>
+              <p className="font-display text-2xl font-semibold text-emerald-700 dark:text-emerald-300">{glance.deliveredToday}</p>
+              <p className="text-[10px] opacity-70">Today</p>
+            </Link>
+            <Link to="/admin/pipeline" className="block rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 transition-smooth hover:shadow-product">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-3 w-3" /> Delivered</p>
+              <p className="font-display text-2xl font-semibold text-emerald-700 dark:text-emerald-300">{glance.deliveredMonth}</p>
+              <p className="text-[10px] opacity-70">This month</p>
+            </Link>
+            <div className="block rounded-lg border border-violet-500/40 bg-violet-500/10 p-3">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300"><Wallet className="h-3 w-3" /> Cash collected</p>
+              <p className="font-display text-lg font-semibold text-violet-700 dark:text-violet-300">{formatINR(glance.cashToday)}</p>
+              <p className="text-[10px] opacity-70">Today (balances)</p>
+            </div>
+          </CardContent>
           <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {ALL_STAGES.map((s) => {
               const def = STAGE_DEFS[s];
