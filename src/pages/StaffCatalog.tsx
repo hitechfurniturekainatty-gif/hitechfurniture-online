@@ -673,7 +673,9 @@ const StaffCatalog = () => {
                 <h2 className="font-display text-lg">Enable Admin Edit Mode</h2>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter the admin PIN to unlock drag-and-drop reordering. Staff sessions stay view-only.
+                Enter the <strong>admin (Backlog) PIN</strong> to unlock drag-and-drop reordering.
+                It's the same PIN used to open the admin Backlog page. If no PIN is set yet,
+                an admin can create one by opening Admin → Backlog once.
               </p>
               <Input
                 type="password"
@@ -726,7 +728,11 @@ const SortableStaffCard = ({
       ? "0 18px 40px hsl(var(--primary) / 0.30), 0 0 0 2px hsl(var(--primary) / 0.5)"
       : undefined,
     cursor: editMode ? (isDragging ? "grabbing" : "grab") : "default",
-    touchAction: "manipulation",
+    // CRITICAL for dnd-kit on touch devices: while edit mode is on the card
+    // must claim the touch (touch-action: none) otherwise the browser scrolls
+    // instead of starting the drag and the item never moves.
+    touchAction: editMode ? "none" : "manipulation",
+    userSelect: editMode ? "none" : undefined,
   };
   return (
     <div ref={setNodeRef} style={style} {...(editMode ? { ...attributes, ...listeners } : {})} className="relative">
