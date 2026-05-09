@@ -137,7 +137,8 @@ const StaffCatalog = () => {
 
   const buildings = useMemo(() => Array.from(new Set(locations.map((l) => l.building))), [locations]);
   const floors = useMemo(
-    () => Array.from(new Set(locations.filter((l) => building === "__all" || l.building === building).map((l) => l.floor))),
+    () => Array.from(new Set(locations.filter((l) => building === "__all" || l.building === building).map((l) => l.floor)))
+      .sort(floorCompare),
     [locations, building],
   );
   const locationOptions = useMemo(
@@ -256,7 +257,14 @@ const StaffCatalog = () => {
       }
     }
 
-    const locOrder = new Map(locations.map((l, i) => [l.id, i]));
+    // Build a floor-number-aware order: Floor 1 → Floor 2 → Floor 3 → Ground/Godown last.
+    // Within the same floor, fall back to the location's natural list order.
+    const locOrder = new Map(
+      locations
+        .slice()
+        .sort((a, b) => floorCompare(a.floor, b.floor) || a.building.localeCompare(b.building))
+        .map((l, i) => [l.id, i]),
+    );
     return entries.sort((a, b) => {
       const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
       const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
