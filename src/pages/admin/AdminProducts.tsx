@@ -658,7 +658,7 @@ const AdminProducts = () => {
                         className="flex flex-1 items-center justify-center gap-1 py-2 text-xs hover:bg-accent hover:text-accent-foreground"
                         title="Manage inventory"
                       >
-                        <Boxes className="h-3.5 w-3.5" /> Inventory
+                        <Boxes className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
@@ -666,7 +666,7 @@ const AdminProducts = () => {
                         className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
                         title="Edit"
                       >
-                        <Pencil className="h-3.5 w-3.5" /> Edit
+                        <Pencil className="h-4 w-4" />
                       </button>
                       {isAdmin && (
                         <button
@@ -675,7 +675,7 @@ const AdminProducts = () => {
                           className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs text-destructive hover:bg-destructive/10"
                           title="Delete"
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
