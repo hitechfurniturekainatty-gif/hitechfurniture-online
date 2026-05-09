@@ -374,12 +374,27 @@ const StaffCatalog = () => {
     return ordered;
   }, [filtered, orderOverride]);
 
-  // 1-second press-and-hold before a drag starts, so normal taps still work
-  // for opening Move popovers, swatches, etc.
+  // In edit mode a quick 250ms press starts a drag (admins only). When edit
+  // mode is off the same sensors stay registered but the SortableContext is
+  // disabled below, so cards never pick up.
   const dragSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 1000, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
   );
+
+  const verifyAdminPin = async () => {
+    setAdminVerifying(true);
+    const { data, error } = await supabase.rpc("verify_backlog_pin", { _pin: adminPin });
+    setAdminVerifying(false);
+    if (error || !data) {
+      toast({ title: "Wrong admin PIN", variant: "destructive" });
+      return;
+    }
+    setEditMode(true);
+    setAdminPinOpen(false);
+    setAdminPin("");
+    toast({ title: "Edit mode on", description: "Drag cards to reorder. Lock when finished." });
+  };
 
   const onCardDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
