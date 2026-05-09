@@ -70,20 +70,20 @@ const Row = ({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 rounded-md border bg-card p-2 shadow-sm"
+      className="flex items-center gap-2 sm:gap-3 rounded-md border bg-card p-2 shadow-sm"
     >
       <button
         type="button"
-        className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+        className="cursor-grab touch-none rounded p-2 -m-1 text-muted-foreground hover:bg-muted active:cursor-grabbing active:bg-muted shrink-0"
         aria-label="Drag to reorder"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-5 w-5" />
+        <GripVertical className="h-5 w-5 sm:h-5 sm:w-5" />
       </button>
       <Checkbox checked={selected} onCheckedChange={() => onToggle(item.id)} aria-label="Select to move" />
-      <span className="w-6 shrink-0 text-center text-xs font-mono text-muted-foreground">{index + 1}</span>
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+      <span className="w-5 sm:w-6 shrink-0 text-center text-xs font-mono text-muted-foreground">{index + 1}</span>
+      <div className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded bg-muted">
         {item.cover_url ? (
           <img src={item.cover_url} alt="" className="h-full w-full object-cover" />
         ) : null}
@@ -105,12 +105,13 @@ const Row = ({
         </p>
       </div>
       <span
-        className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-mono ${
+        className={`shrink-0 rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-mono whitespace-nowrap ${
           (item.stock ?? 0) > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"
         }`}
         title="Stock available at this location"
       >
-        {item.stock ?? 0} in stock
+        <span className="hidden sm:inline">{item.stock ?? 0} in stock</span>
+        <span className="sm:hidden">{item.stock ?? 0}</span>
       </span>
     </li>
   );
