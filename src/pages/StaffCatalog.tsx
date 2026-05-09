@@ -726,7 +726,11 @@ const SortableStaffCard = ({
       ? "0 18px 40px hsl(var(--primary) / 0.30), 0 0 0 2px hsl(var(--primary) / 0.5)"
       : undefined,
     cursor: editMode ? (isDragging ? "grabbing" : "grab") : "default",
-    touchAction: "manipulation",
+    // CRITICAL for dnd-kit on touch devices: while edit mode is on the card
+    // must claim the touch (touch-action: none) otherwise the browser scrolls
+    // instead of starting the drag and the item never moves.
+    touchAction: editMode ? "none" : "manipulation",
+    userSelect: editMode ? "none" : undefined,
   };
   return (
     <div ref={setNodeRef} style={style} {...(editMode ? { ...attributes, ...listeners } : {})} className="relative">
