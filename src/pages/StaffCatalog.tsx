@@ -605,17 +605,36 @@ const StaffCatalog = () => {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence
-                <span className="ml-2 hidden text-[11px] sm:inline">· hold a card to move it · drag while holding to reorder</span>
+                {editMode && (
+                  <span className="ml-2 hidden text-[11px] text-primary sm:inline">
+                    · admin edit mode — press &amp; hold a card to drag
+                  </span>
+                )}
                 {savingOrder && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
               </p>
-              {reorderScope.canReorder && (
-                <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
-                  <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Arrange floor order
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {isAdmin ? (
+                  editMode ? (
+                    <Button size="sm" variant="default" onClick={() => setEditMode(false)}>
+                      <Lock className="mr-1.5 h-3.5 w-3.5" /> Lock positions
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setAdminPinOpen(true)}>
+                      <Unlock className="mr-1.5 h-3.5 w-3.5" /> Edit positions (admin)
+                    </Button>
+                  )
+                ) : (
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">View only — admin sign-in required to reorder</span>
+                )}
+                {editMode && reorderScope.canReorder && (
+                  <Button size="sm" variant="outline" onClick={() => setReorderOpen(true)} disabled={reorderScope.items.length === 0}>
+                    <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" /> Bulk arrange
+                  </Button>
+                )}
+              </div>
             </div>
-            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
-              <SortableContext items={displayed.map((e) => e.key)} strategy={rectSortingStrategy}>
+            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={editMode ? onCardDragEnd : undefined}>
+              <SortableContext items={displayed.map((e) => e.key)} strategy={rectSortingStrategy} disabled={!editMode}>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {displayed.map((entry) => {
                     const loc = locations.find((l) => l.id === entry.location_id);
@@ -624,8 +643,7 @@ const StaffCatalog = () => {
                         key={entry.key}
                         entry={entry}
                         loc={loc}
-                        locations={locations}
-                        onMoved={reloadProducts}
+                        editMode={editMode}
                       />
                     );
                   })}
