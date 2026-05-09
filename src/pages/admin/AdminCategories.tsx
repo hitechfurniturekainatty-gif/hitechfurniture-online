@@ -215,7 +215,7 @@ const AdminCategories = () => {
                 <Input
                   placeholder="e.g. Sofa, Bed, Wardrobe"
                   value={newMain}
-                  onChange={(e) => setNewMain(e.target.value)}
+                  onChange={(e) => setNewMain(toTitleCase(e.target.value))}
                   onKeyDown={(e) => e.key === "Enter" && addMain()}
                   className="flex-1"
                 />
@@ -318,7 +318,7 @@ const AdminCategories = () => {
                 <Input
                   placeholder="e.g. L-Shape, 3-Seater"
                   value={newSub}
-                  onChange={(e) => setNewSub(e.target.value)}
+                  onChange={(e) => setNewSub(toTitleCase(e.target.value))}
                   onKeyDown={(e) => e.key === "Enter" && addSub()}
                   disabled={!newSubParent}
                   className="flex-1"
@@ -400,7 +400,7 @@ const AdminCategories = () => {
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
                 <Input
                   value={editMain.name}
-                  onChange={(e) => setEditMain({ ...editMain, name: e.target.value })}
+                  onChange={(e) => setEditMain({ ...editMain, name: toTitleCase(e.target.value) })}
                 />
               </div>
               <div className="space-y-1.5">
@@ -451,7 +451,7 @@ const AdminCategories = () => {
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
                 <Input
                   value={editSub.name}
-                  onChange={(e) => setEditSub({ ...editSub, name: e.target.value })}
+                  onChange={(e) => setEditSub({ ...editSub, name: toTitleCase(e.target.value) })}
                 />
               </div>
               <div className="space-y-1.5">
