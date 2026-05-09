@@ -129,7 +129,7 @@ const AdminPipelineMonitor = () => {
     ((tqRes.data ?? []) as any[]).forEach((tq) => {
       const qid = tq.quotation_id as string;
       const tStatus = tq.trips?.status as string | undefined;
-      const cur = tripsByQ[qid] ?? { has: false, completed: false, tripQuotationId: tq.id };
+      const cur = tripsByQ[qid] ?? { has: false, completed: false, tripQuotationId: tq.id, status: undefined as string | undefined };
       cur.has = true;
       cur.tripQuotationId = tq.id;
       cur.status = tStatus;
