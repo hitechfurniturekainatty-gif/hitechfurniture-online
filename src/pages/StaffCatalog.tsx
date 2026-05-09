@@ -110,12 +110,21 @@ type FloorEntry = {
 const SS_KEY = "staff_catalog_unlocked";
 
 const StaffCatalog = () => {
+  const { isAdmin } = useAuth();
   const [unlocked, setUnlocked] = useState<boolean>(() => {
     try { return sessionStorage.getItem(SS_KEY) === "1"; } catch { return false; }
   });
   const [pin, setPin] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
+
+  // Admin "Edit positions" mode: only admins can toggle this on, and the
+  // drag-to-reorder handles only appear while it is on. Re-asks for PIN
+  // confirmation on each enable so a left-open laptop can't be misused.
+  const [editMode, setEditMode] = useState(false);
+  const [adminPinOpen, setAdminPinOpen] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
+  const [adminVerifying, setAdminVerifying] = useState(false);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -217,6 +226,20 @@ const StaffCatalog = () => {
     const baseCoverOf = (p: Product) =>
       p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
 
+    // Pick the best cover for the *current location filter*: prefer the photo
+    // of the first variant that has stock physically present at this floor /
+    // section, so the card image always matches what's actually on display.
+    const locationCoverOf = (p: Product): string | null => {
+      const variants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
+      const matchHere = variants.find((v) => {
+        const rows = v.product_variant_stock ?? [];
+        return rows.some((s) => s.quantity > 0 && locInScope(s.location_id));
+      });
+      if (matchHere?.image_url) return matchHere.image_url;
+      const anyVariantWithImg = variants.find((v) => v.image_url);
+      return anyVariantWithImg?.image_url ?? baseCoverOf(p);
+    };
+
     const matchesCategory = (p: Product) => {
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
       if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
@@ -290,7 +313,7 @@ const StaffCatalog = () => {
           variant: null,
           location_id: p.location_id,
           floor_display_order: p.floor_display_order ?? 0,
-          cover: baseCoverOf(p),
+          cover: locationCoverOf(p),
           stock: residualStock,
         });
       }
