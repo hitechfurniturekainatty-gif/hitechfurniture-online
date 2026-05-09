@@ -614,6 +614,35 @@ const StaffCatalog = () => {
 
 export default StaffCatalog;
 
+// ----- Sortable wrapper: long-press to pick up a card and drop in a new spot -----
+const SortableStaffCard = ({
+  entry,
+  loc,
+  locations,
+  onMoved,
+}: {
+  entry: FloorEntry;
+  loc: Location | undefined;
+  locations: Location[];
+  onMoved: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.key });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 30 : undefined,
+    boxShadow: isDragging ? "0 12px 28px hsl(var(--foreground) / 0.18)" : undefined,
+    cursor: isDragging ? "grabbing" : undefined,
+    touchAction: "manipulation",
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <StaffProductCard entry={entry} loc={loc} locations={locations} onMoved={onMoved} />
+    </div>
+  );
+};
+
 // ----- Staff product card (one card per floor entry: product OR pinned color) -----
 const StaffProductCard = ({
   entry,
