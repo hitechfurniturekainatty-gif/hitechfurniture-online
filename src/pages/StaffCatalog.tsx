@@ -281,14 +281,24 @@ const StaffCatalog = () => {
         .sort((a, b) => floorCompare(a.floor, b.floor) || a.building.localeCompare(b.building))
         .map((l, i) => [l.id, i]),
     );
+    // Group items on the same floor by product type — sofas together, then
+    // wardrobes, then chairs, etc. — using the admin-defined category order.
+    const mainOrder = new Map(mainCats.map((m, i) => [m.id, i]));
+    const subOrder = new Map(subCats.map((s, i) => [s.id, i]));
     return entries.sort((a, b) => {
       const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
       const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
       if (la !== lb) return la - lb;
+      const ma = mainOrder.get(a.product.main_category_id) ?? 1e9;
+      const mb = mainOrder.get(b.product.main_category_id) ?? 1e9;
+      if (ma !== mb) return ma - mb;
+      const sa = a.product.sub_category_id ? subOrder.get(a.product.sub_category_id) ?? 1e9 : 1e9;
+      const sb = b.product.sub_category_id ? subOrder.get(b.product.sub_category_id) ?? 1e9 : 1e9;
+      if (sa !== sb) return sa - sb;
       if (a.floor_display_order !== b.floor_display_order) return a.floor_display_order - b.floor_display_order;
       return a.product.product_name.localeCompare(b.product.product_name);
     });
-  }, [products, locations, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
+  }, [products, locations, mainCats, subCats, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
 
   const reloadProducts = async () => {
     const { data } = await supabase
