@@ -15,6 +15,22 @@ import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
 
+/**
+ * Sort floor labels by the leading number when present, so "Floor 1",
+ * "Floor 2", "Floor 10" line up naturally and named floors like "Ground"
+ * or "Godown" fall after the numbered ones.
+ */
+const floorNum = (s: string): number => {
+  const m = (s || "").match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : Number.POSITIVE_INFINITY;
+};
+const floorCompare = (a: string, b: string): number => {
+  const na = floorNum(a);
+  const nb = floorNum(b);
+  if (na !== nb) return na - nb;
+  return (a || "").localeCompare(b || "");
+};
+
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
