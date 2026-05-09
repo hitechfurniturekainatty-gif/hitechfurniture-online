@@ -366,8 +366,8 @@ const AdminCategories = () => {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{s.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{parent?.name ?? "—"} · /{s.slug}</p>
+                      <p className="truncate font-medium">{toTitleCase(s.name)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{parent ? toTitleCase(parent.name) : "—"} · /{s.slug}</p>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => startEditSub(s)}>
                       <Pencil className="h-4 w-4" />
@@ -442,7 +442,7 @@ const AdminCategories = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {mainCats.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{toTitleCase(c.name)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

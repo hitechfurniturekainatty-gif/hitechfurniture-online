@@ -628,7 +628,7 @@ const AdminProducts = () => {
               <Select value={form.main_category_id} onValueChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}>
                 <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
                 <SelectContent>
-                  {mainCats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {mainCats.map((c) => <SelectItem key={c.id} value={c.id}>{toTitleCase(c.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -637,7 +637,7 @@ const AdminProducts = () => {
                 <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— None —</SelectItem>
-                  {subsForForm.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  {subsForForm.map((s) => <SelectItem key={s.id} value={s.id}>{toTitleCase(s.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>

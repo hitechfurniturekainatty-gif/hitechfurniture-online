@@ -579,7 +579,7 @@ const StaffCatalog = () => {
                 <SelectTrigger><SelectValue placeholder={subCatOptions.length === 0 ? "—" : "All sub-categories"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All sub-categories</SelectItem>
-                  {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  {subCatOptions.map((s) => <SelectItem key={s.id} value={s.id}>{toTitleCase(s.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
