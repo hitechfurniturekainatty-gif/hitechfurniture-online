@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
-import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown } from "lucide-react";
+import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown, MapPin, Check } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
 
@@ -489,7 +490,15 @@ const StaffCatalog = () => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {filtered.map((entry) => {
                 const loc = locations.find((l) => l.id === entry.location_id);
-                return <StaffProductCard key={entry.key} entry={entry} loc={loc} />;
+                return (
+                  <StaffProductCard
+                    key={entry.key}
+                    entry={entry}
+                    loc={loc}
+                    locations={locations}
+                    onMoved={reloadProducts}
+                  />
+                );
               })}
             </div>
             {filtered.length === 0 && (
@@ -514,7 +523,17 @@ const StaffCatalog = () => {
 export default StaffCatalog;
 
 // ----- Staff product card (one card per floor entry: product OR pinned color) -----
-const StaffProductCard = ({ entry, loc }: { entry: FloorEntry; loc: Location | undefined }) => {
+const StaffProductCard = ({
+  entry,
+  loc,
+  locations,
+  onMoved,
+}: {
+  entry: FloorEntry;
+  loc: Location | undefined;
+  locations: Location[];
+  onMoved: () => void;
+}) => {
   const p = entry.product;
   const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
   // When this row represents a color pinned to the current floor, lock the
@@ -589,9 +608,18 @@ const StaffProductCard = ({ entry, loc }: { entry: FloorEntry; loc: Location | u
           <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
         )}
         {loc && (
-          <p className="text-[11px] text-muted-foreground">
-            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
-          </p>
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-[11px] text-muted-foreground truncate">
+              📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+            </p>
+            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} />
+          </div>
+        )}
+        {!loc && (
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
+            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} />
+          </div>
         )}
         {p.description && (
           <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
@@ -603,5 +631,139 @@ const StaffProductCard = ({ entry, loc }: { entry: FloorEntry; loc: Location | u
         )}
       </CardContent>
     </Card>
+  );
+};
+
+// ----- Quick "Move to Building / Floor / Section" popover -----
+// Lets staff walking the floor reposition a product (or a single color row) in
+// three taps without opening the bulk reorder dialog.
+const QuickMovePopover = ({
+  entry,
+  locations,
+  onMoved,
+}: {
+  entry: FloorEntry;
+  locations: Location[];
+  onMoved: () => void;
+}) => {
+  const current = locations.find((l) => l.id === entry.location_id);
+  const [open, setOpen] = useState(false);
+  const [building, setBuilding] = useState<string>(current?.building ?? "");
+  const [floor, setFloor] = useState<string>(current?.floor ?? "");
+  const [section, setSection] = useState<string>(current?.id ?? "");
+  const [saving, setSaving] = useState(false);
+
+  // Reset selections each time popover opens so it always reflects current loc.
+  useEffect(() => {
+    if (open) {
+      setBuilding(current?.building ?? "");
+      setFloor(current?.floor ?? "");
+      setSection(current?.id ?? "");
+    }
+  }, [open, current?.building, current?.floor, current?.id]);
+
+  const activeLocs = locations.filter((l) => l.is_active);
+  const buildings = Array.from(new Set(activeLocs.map((l) => l.building)));
+  const floors = Array.from(
+    new Set(activeLocs.filter((l) => !building || l.building === building).map((l) => l.floor)),
+  ).sort(floorCompare);
+  const sections = activeLocs.filter(
+    (l) => (!building || l.building === building) && (!floor || l.floor === floor),
+  );
+
+  const save = async () => {
+    if (!section) {
+      toast({ title: "Pick a section", description: "Building → Floor → Section.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      if (entry.kind === "variant_stock") {
+        const { error } = await supabase
+          .from("product_variant_stock")
+          .update({ location_id: section, floor_display_order: 0 })
+          .eq("id", entry.refId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("products")
+          .update({ location_id: section, floor_display_order: 0 })
+          .eq("id", entry.refId);
+        if (error) throw error;
+      }
+      const dest = locations.find((l) => l.id === section);
+      const label = dest
+        ? `${dest.building} · ${dest.floor}${dest.section ? " · " + dest.section : ""}`
+        : "new location";
+      toast({ title: "Moved", description: `${entry.product.product_name} → ${label}` });
+      setOpen(false);
+      onMoved();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not move item";
+      toast({ title: "Failed to move", description: msg, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 shrink-0 px-1.5 text-[11px] text-primary hover:bg-primary/10"
+          aria-label="Move to another location"
+        >
+          <MapPin className="mr-0.5 h-3 w-3" /> Move
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 space-y-2" align="end" onClick={(e) => e.stopPropagation()}>
+        <div>
+          <p className="text-xs font-medium">Move to new spot</p>
+          <p className="text-[11px] text-muted-foreground">{entry.product.product_name}{entry.variant ? ` · ${entry.variant.color_name}` : ""}</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11px]">Building</Label>
+          <Select value={building} onValueChange={(v) => { setBuilding(v); setFloor(""); setSection(""); }}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick building" /></SelectTrigger>
+            <SelectContent>
+              {buildings.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11px]">Floor</Label>
+          <Select value={floor} onValueChange={(v) => { setFloor(v); setSection(""); }} disabled={!building}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick floor" /></SelectTrigger>
+            <SelectContent>
+              {floors.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11px]">Section / Part</Label>
+          <Select value={section} onValueChange={setSection} disabled={!floor || sections.length === 0}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder={sections.length === 0 ? "No sections" : "Pick section"} />
+            </SelectTrigger>
+            <SelectContent>
+              {sections.map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.section ?? "—"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex justify-end gap-1.5 pt-1">
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={save} disabled={saving || !section}>
+            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
