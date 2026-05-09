@@ -3,13 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2 } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Hammer, Wallet } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
 import { computeStage, ALL_STAGES, STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
+import { formatINR } from "@/lib/brand";
 
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
 
@@ -43,6 +44,7 @@ const AdminOverview = () => {
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+  const [glance, setGlance] = useState({ ongoingMeasurements: 0, deliveredToday: 0, deliveredMonth: 0, cashToday: 0 });
 
   useEffect(() => {
     const run = async () => {
@@ -164,6 +166,36 @@ const AdminOverview = () => {
           counts[info.stage]++;
         });
         setPipelineCounts(counts);
+
+        // At-a-glance: ongoing measurements + delivered today/this month + cash
+        const now = new Date();
+        const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
+        const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const [{ count: measureCount }, todayDel, monthDel] = await Promise.all([
+          supabase.from("measurement_tasks").select("id", { count: "exact", head: true })
+            .is("deleted_at", null).neq("status", "completed"),
+          supabase.from("trip_quotations").select("quotation_id, delivered_at")
+            .gte("delivered_at", startToday.toISOString()),
+          supabase.from("trip_quotations").select("quotation_id, delivered_at")
+            .gte("delivered_at", startMonth.toISOString()),
+        ]);
+        const todayIds = ((todayDel.data ?? []) as any[]).map((r) => r.quotation_id);
+        let cashToday = 0;
+        if (todayIds.length) {
+          const { data: qs } = await supabase
+            .from("quotations")
+            .select("id,total,advance_amount")
+            .in("id", todayIds);
+          (qs ?? []).forEach((q: any) => {
+            cashToday += Math.max(Number(q.total ?? 0) - Number(q.advance_amount ?? 0), 0);
+          });
+        }
+        setGlance({
+          ongoingMeasurements: measureCount ?? 0,
+          deliveredToday: (todayDel.data ?? []).length,
+          deliveredMonth: (monthDel.data ?? []).length,
+          cashToday,
+        });
       }
     };
     run();
