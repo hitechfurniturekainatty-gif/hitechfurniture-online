@@ -17,6 +17,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   arrayMove,
@@ -69,20 +70,20 @@ const Row = ({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 rounded-md border bg-card p-2 shadow-sm"
+      className="flex items-center gap-2 sm:gap-3 rounded-md border bg-card p-2 shadow-sm"
     >
       <button
         type="button"
-        className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+        className="cursor-grab touch-none rounded p-2 -m-1 text-muted-foreground hover:bg-muted active:cursor-grabbing active:bg-muted shrink-0"
         aria-label="Drag to reorder"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-5 w-5" />
+        <GripVertical className="h-5 w-5 sm:h-5 sm:w-5" />
       </button>
       <Checkbox checked={selected} onCheckedChange={() => onToggle(item.id)} aria-label="Select to move" />
-      <span className="w-6 shrink-0 text-center text-xs font-mono text-muted-foreground">{index + 1}</span>
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+      <span className="w-5 sm:w-6 shrink-0 text-center text-xs font-mono text-muted-foreground">{index + 1}</span>
+      <div className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded bg-muted">
         {item.cover_url ? (
           <img src={item.cover_url} alt="" className="h-full w-full object-cover" />
         ) : null}
@@ -104,12 +105,13 @@ const Row = ({
         </p>
       </div>
       <span
-        className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-mono ${
+        className={`shrink-0 rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-mono whitespace-nowrap ${
           (item.stock ?? 0) > 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground"
         }`}
         title="Stock available at this location"
       >
-        {item.stock ?? 0} in stock
+        <span className="hidden sm:inline">{item.stock ?? 0} in stock</span>
+        <span className="sm:hidden">{item.stock ?? 0}</span>
       </span>
     </li>
   );
@@ -143,8 +145,12 @@ export const FloorReorderDialog = ({
   }, [initialItems, open]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    // Pointer = mouse / pen. Use distance to avoid drag on accidental clicks.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    // Touch needs a slightly longer press so the page can still scroll
+    // vertically by swiping anywhere on the row. Drag only kicks in when
+    // the finger is held still on the grip handle.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -264,7 +270,7 @@ export const FloorReorderDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Arrange floor order</DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -335,8 +341,16 @@ export const FloorReorderDialog = ({
         {items.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">No products in this location yet.</p>
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto pr-1">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <div
+            className="max-h-[55vh] sm:max-h-[60vh] overflow-y-auto overscroll-contain pr-1 -mx-1 px-1"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={onDragEnd}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+            >
               <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 <ul className="space-y-2">
                   {items.map((it, idx) => (
