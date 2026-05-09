@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
@@ -111,6 +111,13 @@ const AdminProducts = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    if (typeof window === "undefined") return "list";
+    return (localStorage.getItem("admin_products_view") as "list" | "grid") || "list";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("admin_products_view", viewMode); } catch {}
+  }, [viewMode]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -477,6 +484,28 @@ const AdminProducts = () => {
           <AlertTriangle className="h-3.5 w-3.5" />
           Low stock {lowStockCount > 0 && `(${lowStockCount})`}
         </Button>
+        <div className="ml-auto inline-flex rounded-md border bg-background p-0.5">
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "list" ? "default" : "ghost"}
+            onClick={() => setViewMode("list")}
+            className="h-8 gap-1.5 px-2"
+            title="List view"
+          >
+            <ListIcon className="h-3.5 w-3.5" /> List
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            onClick={() => setViewMode("grid")}
+            className="h-8 gap-1.5 px-2"
+            title="Grid view"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" /> Grid
+          </Button>
+        </div>
       </div>
 
       {selected.size > 0 && (
@@ -496,6 +525,7 @@ const AdminProducts = () => {
         </div>
       )}
 
+      {viewMode === "list" ? (
       <Card>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
@@ -563,6 +593,99 @@ const AdminProducts = () => {
           </ul>
         </CardContent>
       </Card>
+      ) : (
+        <div>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
+              No products yet. Click "Add product" to begin.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              {filtered.map((p) => {
+                const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+                const isSelected = selected.has(p.id);
+                const isLow = p.stock_quantity <= (p.reorder_level ?? 5);
+                return (
+                  <div
+                    key={p.id}
+                    className={`group flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md ${isSelected ? "ring-2 ring-primary" : ""}`}
+                  >
+                    <div className="relative aspect-square bg-muted">
+                      {cover ? (
+                        <img src={cover} alt={p.product_name} className="h-full w-full object-contain p-2" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No image</div>
+                      )}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(p.id)}
+                        aria-label={`Select ${p.product_name} for label printing`}
+                        className="absolute left-2 top-2 h-4 w-4 cursor-pointer accent-primary"
+                      />
+                      <div className="absolute right-2 top-2 flex flex-col items-end gap-1">
+                        {p.is_featured && <Badge className="bg-accent text-accent-foreground text-[10px]">Featured</Badge>}
+                        {!p.is_published && <Badge variant="secondary" className="text-[10px]">Hidden</Badge>}
+                        {isLow && (
+                          <Badge variant="destructive" className="gap-0.5 text-[10px]">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            {p.stock_quantity === 0 ? "Out" : "Low"}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-1 flex-col gap-1 p-3">
+                      <p className="line-clamp-2 text-sm font-medium leading-snug" title={toTitleCase(p.product_name)}>
+                        {toTitleCase(p.product_name)}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
+                      <p className="text-sm">
+                        <span className="font-semibold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setStockProduct(p)}
+                        className={`text-left text-xs underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-muted-foreground"}`}
+                        title="Manage stock"
+                      >
+                        Stock: {p.stock_quantity}
+                      </button>
+                    </div>
+                    <div className="flex items-stretch border-t">
+                      <button
+                        type="button"
+                        onClick={() => setStockProduct(p)}
+                        className="flex flex-1 items-center justify-center gap-1 py-2 text-xs hover:bg-accent hover:text-accent-foreground"
+                        title="Manage inventory"
+                      >
+                        <Boxes className="h-3.5 w-3.5" /> Inventory
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(p)}
+                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => remove(p)}
+                          className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs text-destructive hover:bg-destructive/10"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
