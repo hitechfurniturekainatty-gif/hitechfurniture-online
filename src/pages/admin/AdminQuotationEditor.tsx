@@ -606,7 +606,7 @@ const AdminQuotationEditor = () => {
         (Number(it.quantity) || 0) > 0 ||
         (Number(it.unit_price) || 0) > 0;
       if (!hasAnyContent) continue;
-      const safeDescription = it.description.trim() || "(measurement item)";
+      const safeDescription = toTitleCase(it.description.trim()) || "(measurement item)";
       jobs.push({
         index: i,
         isNew: !!it._isNew,
