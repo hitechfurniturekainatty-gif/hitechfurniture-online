@@ -345,6 +345,15 @@ const StaffCatalog = () => {
       const la = a.location_id ? locOrder.get(a.location_id) ?? 1e9 : 1e9;
       const lb = b.location_id ? locOrder.get(b.location_id) ?? 1e9 : 1e9;
       if (la !== lb) return la - lb;
+      // Honor manual floor order first within a location — staff drag-and-drop
+      // wins over category ordering, otherwise saved positions get shuffled
+      // back by the category sort below on every reload.
+      const aHas = (a.floor_display_order ?? 0) > 0;
+      const bHas = (b.floor_display_order ?? 0) > 0;
+      if (aHas && bHas && a.floor_display_order !== b.floor_display_order) {
+        return a.floor_display_order - b.floor_display_order;
+      }
+      if (aHas !== bHas) return aHas ? -1 : 1;
       const ma = mainOrder.get(a.product.main_category_id) ?? 1e9;
       const mb = mainOrder.get(b.product.main_category_id) ?? 1e9;
       if (ma !== mb) return ma - mb;
