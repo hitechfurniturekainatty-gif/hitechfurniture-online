@@ -5,14 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText, Wallet, Package } from "lucide-react";
+import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
 import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { toast } from "@/hooks/use-toast";
-import { formatINR } from "@/lib/brand";
 
 type Trip = {
   id: string;
@@ -22,29 +21,14 @@ type Trip = {
   notes: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
-type Q = {
-  id: string;
-  quotation_id: string;
-  party_name: string;
-  party_place: string;
-  party_phone: string | null;
-  party_address: string | null;
-  delivery_place: string | null;
-  total: number;
-  advance_amount: number | null;
-};
-type QItem = { id: string; quotation_id: string; description: string; quantity: number };
+type Q = { id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null; delivery_place: string | null };
+type QExt = Q & { expected_delivery_date: string | null };
 
 const AdminMyTrips = () => {
-  const { user, isDelivery, isOfficeStaff, isAdmin } = useAuth();
-  // Drivers-only mode: hide pricing internals (subtotal, GST, unit prices).
-  // Office/admin still see everything when they open this page.
-  const driverOnly = isDelivery && !isOfficeStaff && !isAdmin;
+  const { user, isDelivery, isOfficeStaff } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripQs, setTripQs] = useState<TripQ[]>([]);
   const [quotes, setQuotes] = useState<Q[]>([]);
-  const [items, setItems] = useState<QItem[]>([]);
-  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
@@ -86,23 +70,15 @@ const AdminMyTrips = () => {
       if (qids.length) {
         const { data: qs } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, total, advance_amount")
+          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
-        const { data: its } = await supabase
-          .from("quotation_items")
-          .select("id, quotation_id, description, quantity")
-          .in("quotation_id", qids)
-          .order("display_order");
-        setItems((its ?? []) as QItem[]);
       } else {
         setQuotes([]);
-        setItems([]);
       }
     } else {
       setTripQs([]);
       setQuotes([]);
-      setItems([]);
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
     setLoading(false);
@@ -122,14 +98,11 @@ const AdminMyTrips = () => {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
       return;
     }
-    // Bump the quotation itself to 'delivered' so the pipeline + admin
-    // dashboard reflect completion immediately.
-    await supabase.from("quotations").update({ status: "delivered" }).eq("id", stop.quotation_id);
     toast({ title: "Marked delivered" });
-    // If all stops on this trip are delivered → completed; else in_transit.
+    // If all stops on this trip are delivered, mark trip delivered. Else, mark in_transit.
     const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
     const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
-    const newStatus = allDelivered ? "completed" : "in_transit";
+    const newStatus = allDelivered ? "delivered" : "in_transit";
     await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
     load();
   };
@@ -235,109 +208,50 @@ const AdminMyTrips = () => {
 
               <div className="space-y-2">
                 <h2 className="font-display text-lg">Stops ({stops.length})</h2>
-                {stops.map((s, i) => {
-                  const q = s.q;
-                  const total = Number(q?.total ?? 0);
-                  const advance = Number(q?.advance_amount ?? 0);
-                  const balance = Math.max(total - advance, 0);
-                  const stopItems = q ? items.filter((it) => it.quotation_id === q.id) : [];
-                  const expanded = !!openItems[s.id];
-                  const address = q?.party_address || q?.delivery_place || q?.party_place || "";
-                  const mapsUrl = address
-                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-                    : null;
-                  return (
-                    <Card key={s.id}>
-                      <CardContent className="flex flex-col gap-3 p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                            {i + 1}
-                          </span>
-                          <span className="font-mono text-xs font-semibold">{q?.quotation_id}</span>
-                          {s.delivered_at && <Badge variant="default" className="text-[10px]">Delivered</Badge>}
-                        </div>
-                        <p className="text-base font-semibold leading-tight">{q?.party_name}</p>
-
-                        {/* Address — tap opens Google Maps */}
-                        {address && (
-                          <a
-                            href={mapsUrl ?? "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-start gap-1.5 rounded-md border border-border bg-muted/40 p-2 text-sm leading-snug active:bg-muted"
-                          >
-                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                            <span className="flex-1">{address}</span>
-                          </a>
-                        )}
-
-                        {/* Balance Amount — only label shown, no breakdown */}
-                        <div className="flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
-                          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                            <Wallet className="h-3.5 w-3.5" /> Balance to collect
-                          </span>
-                          <span className="font-display text-xl font-semibold text-emerald-700 dark:text-emerald-300">
-                            {formatINR(balance)}
-                          </span>
-                        </div>
-
-                        {/* Items list (description + qty only — no prices) */}
-                        {stopItems.length > 0 && (
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => setOpenItems((m) => ({ ...m, [s.id]: !m[s.id] }))}
-                              className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm active:bg-muted"
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <Package className="h-4 w-4" /> {stopItems.length} item{stopItems.length === 1 ? "" : "s"}
-                              </span>
-                              <span className="text-xs text-muted-foreground">{expanded ? "Hide" : "View"}</span>
-                            </button>
-                            {expanded && (
-                              <ul className="mt-2 space-y-1 rounded-md border border-border bg-muted/30 p-2 text-sm">
-                                {stopItems.map((it) => (
-                                  <li key={it.id} className="flex items-start justify-between gap-2">
-                                    <span className="flex-1 leading-snug">{it.description}</span>
-                                    <span className="shrink-0 font-mono text-xs text-muted-foreground">× {Number(it.quantity)}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                          {q?.party_phone && (
-                            <>
-                              <Button asChild size="sm" variant="outline" className="flex-1 min-w-[6.5rem]">
-                                <a href={`tel:${q.party_phone}`}><Phone className="mr-1.5 h-4 w-4" /> Call</a>
-                              </Button>
-                              <Button asChild size="sm" variant="outline" className="flex-1 min-w-[6.5rem]">
-                                <a href={`https://wa.me/${q.party_phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
-                                  <MessageCircle className="mr-1.5 h-4 w-4" /> WhatsApp
-                                </a>
-                              </Button>
-                            </>
-                          )}
-                          {!driverOnly && q && (
-                            <Button asChild size="sm" variant="secondary">
-                              <Link to={`/delivery-note/${q.id}`}>
-                                <FileText className="mr-1.5 h-4 w-4" /> Delivery slip
-                              </Link>
+                {stops.map((s, i) => (
+                  <Card key={s.id}>
+                    <CardContent className="flex flex-col gap-2 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                          {i + 1}
+                        </span>
+                        <span className="font-mono text-xs font-semibold">{s.q?.quotation_id}</span>
+                        {s.delivered_at && <Badge variant="default" className="text-[10px]">Delivered</Badge>}
+                      </div>
+                      <p className="text-sm font-medium">{s.q?.party_name}</p>
+                      <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                        {s.q?.party_address || s.q?.delivery_place || s.q?.party_place}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {s.q?.party_phone && (
+                          <>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={`tel:${s.q.party_phone}`}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a>
                             </Button>
-                          )}
-                        </div>
-
-                        {!s.delivered_at && (
-                          <Button size="lg" onClick={() => markDelivered(s)} className="w-full">
-                            <Check className="mr-1.5 h-4 w-4" /> Mark as Delivered
+                            <Button asChild size="sm" variant="outline">
+                              <a href={`https://wa.me/${s.q.party_phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                                <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> WhatsApp
+                              </a>
+                            </Button>
+                          </>
+                        )}
+                        {s.q && (
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/delivery-note/${s.q.id}`}>
+                              <FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip
+                            </Link>
                           </Button>
                         )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                        {!s.delivered_at && (
+                          <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto">
+                            <Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </>
           )}
