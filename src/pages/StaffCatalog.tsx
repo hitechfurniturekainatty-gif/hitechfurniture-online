@@ -21,6 +21,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -386,8 +387,13 @@ const StaffCatalog = () => {
   // mode is off the same sensors stay registered but the SortableContext is
   // disabled below, so cards never pick up.
   const dragSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
+    // Mouse: start drag after a tiny movement (no hold needed) so desktop users
+    // can click-and-drag instantly.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // Touch: keep press-and-hold so scrolling still works on phones/tablets.
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
+    // Fallback pointer sensor (pen, etc.)
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   const verifyAdminPin = async () => {
