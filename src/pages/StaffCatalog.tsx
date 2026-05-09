@@ -802,13 +802,22 @@ const QuickMovePopover = ({
   entry,
   locations,
   onMoved,
+  open: openProp,
+  onOpenChange,
 }: {
   entry: FloorEntry;
   locations: Location[];
   onMoved: () => void;
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
 }) => {
   const current = locations.find((l) => l.id === entry.location_id);
-  const [open, setOpen] = useState(false);
+  const [openInner, setOpenInner] = useState(false);
+  const open = openProp ?? openInner;
+  const setOpen = (o: boolean) => {
+    onOpenChange?.(o);
+    if (openProp === undefined) setOpenInner(o);
+  };
   const [building, setBuilding] = useState<string>(current?.building ?? "");
   const [floor, setFloor] = useState<string>(current?.floor ?? "");
   const [section, setSection] = useState<string>(current?.id ?? "");
