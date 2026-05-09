@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -52,7 +52,7 @@ type BoardCard = {
   nextLabel?: string;
 };
 
-const STAGE_ICON: Record<PipelineStage, React.ReactNode> = {
+const STAGE_ICON: Record<PipelineStage, ReactNode> = {
   1: <Ruler className="h-4 w-4" />,
   2: <FileText className="h-4 w-4" />,
   3: <Hammer className="h-4 w-4" />,
