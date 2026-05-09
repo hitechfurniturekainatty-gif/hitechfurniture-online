@@ -22,6 +22,7 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
+import { titleCaseTrim } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
@@ -307,7 +308,7 @@ const AdminProducts = () => {
       `AUTO-${Date.now().toString(36).toUpperCase()}`;
     setSaving(true);
     const payload: any = {
-      product_name: form.product_name.trim(),
+      product_name: titleCaseTrim(form.product_name),
       product_code: autoCode,
       description: form.description || null,
       mrp: form.mrp ? Number(form.mrp) : 0,

@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
@@ -558,7 +559,7 @@ const AdminQuotationEditor = () => {
     setSaving(true);
     if (headerDirtyRef.current) {
       const { error } = await supabase.from("quotations").update({
-        party_name: saveQ.party_name,
+        party_name: titleCaseTrim(saveQ.party_name),
         party_place: saveQ.party_place,
         party_phone: saveQ.party_phone,
         party_address: saveQ.party_address,
