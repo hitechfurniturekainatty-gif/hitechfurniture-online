@@ -664,6 +664,37 @@ const StaffCatalog = () => {
         onSaved={reloadProducts}
         allLocations={locations.filter((l) => l.is_active).map((l) => ({ id: l.id, building: l.building, floor: l.floor, section: l.section }))}
       />
+      {/* Admin PIN gate to enable drag-and-drop */}
+      {adminPinOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur" onClick={() => setAdminPinOpen(false)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="space-y-3 p-5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg">Enable Admin Edit Mode</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the admin PIN to unlock drag-and-drop reordering. Staff sessions stay view-only.
+              </p>
+              <Input
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && verifyAdminPin()}
+                placeholder="Admin PIN"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => { setAdminPinOpen(false); setAdminPin(""); }} disabled={adminVerifying}>Cancel</Button>
+                <Button onClick={verifyAdminPin} disabled={adminVerifying || !adminPin}>
+                  {adminVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Unlock
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <SiteFooter />
     </div>
   );
@@ -675,27 +706,37 @@ export default StaffCatalog;
 const SortableStaffCard = ({
   entry,
   loc,
-  locations,
-  onMoved,
+  editMode,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
-  locations: Location[];
-  onMoved: () => void;
+  editMode: boolean;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.key });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: entry.key,
+    disabled: !editMode,
+  });
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging
+      ? CSS.Transform.toString(transform ? { ...transform, scaleX: 1.04, scaleY: 1.04 } : null)
+      : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 30 : undefined,
-    boxShadow: isDragging ? "0 12px 28px hsl(var(--foreground) / 0.18)" : undefined,
-    cursor: isDragging ? "grabbing" : undefined,
+    boxShadow: isDragging
+      ? "0 18px 40px hsl(var(--primary) / 0.30), 0 0 0 2px hsl(var(--primary) / 0.5)"
+      : undefined,
+    cursor: editMode ? (isDragging ? "grabbing" : "grab") : "default",
     touchAction: "manipulation",
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <StaffProductCard entry={entry} loc={loc} locations={locations} onMoved={onMoved} />
+    <div ref={setNodeRef} style={style} {...(editMode ? { ...attributes, ...listeners } : {})} className="relative">
+      {editMode && (
+        <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full bg-primary/90 px-2 py-0.5 text-[10px] font-medium text-primary-foreground shadow">
+          <GripVertical className="h-3 w-3" /> Drag
+        </div>
+      )}
+      <StaffProductCard entry={entry} loc={loc} />
     </div>
   );
 };
@@ -704,13 +745,9 @@ const SortableStaffCard = ({
 const StaffProductCard = ({
   entry,
   loc,
-  locations,
-  onMoved,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
-  locations: Location[];
-  onMoved: () => void;
 }) => {
   const p = entry.product;
   const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
@@ -727,53 +764,15 @@ const StaffProductCard = ({
   const activeVariant = pinnedVariant ?? sideVariants.find((v) => v.id === activeId) ?? null;
 
   const baseCover = p.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
-  const cover = activeVariant?.image_url || baseCover;
+  // Prefer (1) the active swatch's image, (2) the entry's resolved location-aware
+  // cover (already picked from a variant present on this floor), (3) base photo.
+  const cover = activeVariant?.image_url || entry.cover || baseCover;
 
   const stock = entry.stock;
   const isOut = p.stock_status !== "in_stock" || stock <= 0;
 
-  // Press-and-hold (without moving the finger) opens the Move popover.
-  // If the user drags after the hold, dnd-kit takes over (1s drag activation).
-  const [moveOpen, setMoveOpen] = useState(false);
-  const holdTimer = useRef<number | null>(null);
-  const startPt = useRef<{ x: number; y: number } | null>(null);
-  const HOLD_MS = 600;
-  const MOVE_TOL = 8;
-  const clearHold = () => {
-    if (holdTimer.current) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-    startPt.current = null;
-  };
-  const onPointerDown = (e: React.PointerEvent) => {
-    // Ignore right-clicks and clicks on interactive controls inside the card
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, [role=combobox], input, select")) return;
-    startPt.current = { x: e.clientX, y: e.clientY };
-    holdTimer.current = window.setTimeout(() => {
-      setMoveOpen(true);
-      // brief haptic on supporting devices
-      try { navigator.vibrate?.(15); } catch { /* ignore */ }
-    }, HOLD_MS);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!startPt.current) return;
-    const dx = e.clientX - startPt.current.x;
-    const dy = e.clientY - startPt.current.y;
-    if (Math.hypot(dx, dy) > MOVE_TOL) clearHold();
-  };
-
   return (
-    <Card
-      className="overflow-hidden"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={clearHold}
-      onPointerCancel={clearHold}
-      onPointerLeave={clearHold}
-    >
+    <Card className="overflow-hidden">
       <div className="aspect-[4/5] bg-muted">
         {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
       </div>
@@ -826,18 +825,12 @@ const StaffProductCard = ({
           <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
         )}
         {loc && (
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-[11px] text-muted-foreground truncate">
-              📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
-            </p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
-          </div>
+          <p className="text-[11px] text-muted-foreground truncate">
+            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+          </p>
         )}
         {!loc && (
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
-          </div>
+          <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
         )}
         {p.description && (
           <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>
@@ -849,148 +842,5 @@ const StaffProductCard = ({
         )}
       </CardContent>
     </Card>
-  );
-};
-
-// ----- Quick "Move to Building / Floor / Section" popover -----
-// Lets staff walking the floor reposition a product (or a single color row) in
-// three taps without opening the bulk reorder dialog.
-const QuickMovePopover = ({
-  entry,
-  locations,
-  onMoved,
-  open: openProp,
-  onOpenChange,
-}: {
-  entry: FloorEntry;
-  locations: Location[];
-  onMoved: () => void;
-  open?: boolean;
-  onOpenChange?: (o: boolean) => void;
-}) => {
-  const current = locations.find((l) => l.id === entry.location_id);
-  const [openInner, setOpenInner] = useState(false);
-  const open = openProp ?? openInner;
-  const setOpen = (o: boolean) => {
-    onOpenChange?.(o);
-    if (openProp === undefined) setOpenInner(o);
-  };
-  const [building, setBuilding] = useState<string>(current?.building ?? "");
-  const [floor, setFloor] = useState<string>(current?.floor ?? "");
-  const [section, setSection] = useState<string>(current?.id ?? "");
-  const [saving, setSaving] = useState(false);
-
-  // Reset selections each time popover opens so it always reflects current loc.
-  useEffect(() => {
-    if (open) {
-      setBuilding(current?.building ?? "");
-      setFloor(current?.floor ?? "");
-      setSection(current?.id ?? "");
-    }
-  }, [open, current?.building, current?.floor, current?.id]);
-
-  const activeLocs = locations.filter((l) => l.is_active);
-  const buildings = Array.from(new Set(activeLocs.map((l) => l.building)));
-  const floors = Array.from(
-    new Set(activeLocs.filter((l) => !building || l.building === building).map((l) => l.floor)),
-  ).sort(floorCompare);
-  const sections = activeLocs.filter(
-    (l) => (!building || l.building === building) && (!floor || l.floor === floor),
-  );
-
-  const save = async () => {
-    if (!section) {
-      toast({ title: "Pick a section", description: "Building → Floor → Section.", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      if (entry.kind === "variant_stock") {
-        const { error } = await supabase
-          .from("product_variant_stock")
-          .update({ location_id: section, floor_display_order: 0 })
-          .eq("id", entry.refId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("products")
-          .update({ location_id: section, floor_display_order: 0 })
-          .eq("id", entry.refId);
-        if (error) throw error;
-      }
-      const dest = locations.find((l) => l.id === section);
-      const label = dest
-        ? `${dest.building} · ${dest.floor}${dest.section ? " · " + dest.section : ""}`
-        : "new location";
-      toast({ title: "Moved", description: `${entry.product.product_name} → ${label}` });
-      setOpen(false);
-      onMoved();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not move item";
-      toast({ title: "Failed to move", description: msg, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 shrink-0 px-1.5 text-[11px] text-primary hover:bg-primary/10"
-          aria-label="Move to another location"
-        >
-          <MapPin className="mr-0.5 h-3 w-3" /> Move
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-2" align="end" onClick={(e) => e.stopPropagation()}>
-        <div>
-          <p className="text-xs font-medium">Move to new spot</p>
-          <p className="text-[11px] text-muted-foreground">{entry.product.product_name}{entry.variant ? ` · ${entry.variant.color_name}` : ""}</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Building</Label>
-          <Select value={building} onValueChange={(v) => { setBuilding(v); setFloor(""); setSection(""); }}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick building" /></SelectTrigger>
-            <SelectContent>
-              {buildings.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Floor</Label>
-          <Select value={floor} onValueChange={(v) => { setFloor(v); setSection(""); }} disabled={!building}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick floor" /></SelectTrigger>
-            <SelectContent>
-              {floors.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px]">Section / Part</Label>
-          <Select value={section} onValueChange={setSection} disabled={!floor || sections.length === 0}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder={sections.length === 0 ? "No sections" : "Pick section"} />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.section ?? "—"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex justify-end gap-1.5 pt-1">
-          <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
-          <Button size="sm" onClick={save} disabled={saving || !section}>
-            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
-            Save
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 };
