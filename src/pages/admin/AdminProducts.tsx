@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
@@ -625,21 +626,21 @@ const AdminProducts = () => {
               />
             </Field>
             <Field label="Main category">
-              <Select value={form.main_category_id} onValueChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}>
-                <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
-                <SelectContent>
-                  {mainCats.map((c) => <SelectItem key={c.id} value={c.id}>{toTitleCase(c.name)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.main_category_id}
+                onChange={(v) => setForm({ ...form, main_category_id: v, sub_category_id: "" })}
+                options={mainCats.map((c) => ({ value: c.id, label: toTitleCase(c.name) }))}
+                placeholder="Choose…"
+              />
             </Field>
             <Field label="Sub-category">
-              <Select value={form.sub_category_id || "__none"} onValueChange={(v) => setForm({ ...form, sub_category_id: v === "__none" ? "" : v })} disabled={!form.main_category_id}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— None —</SelectItem>
-                  {subsForForm.map((s) => <SelectItem key={s.id} value={s.id}>{toTitleCase(s.name)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.sub_category_id || "__none"}
+                onChange={(v) => setForm({ ...form, sub_category_id: v === "__none" ? "" : v })}
+                options={[{ value: "__none", label: "— None —" }, ...subsForForm.map((s) => ({ value: s.id, label: toTitleCase(s.name) }))]}
+                placeholder="Optional"
+                disabled={!form.main_category_id}
+              />
             </Field>
             <Field label="MRP (₹)">
               <Input type="number" min={0} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
@@ -659,34 +660,31 @@ const AdminProducts = () => {
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
             </Field>
             <Field label="Building" >
-              <Select value={formBuilding || "__none"} onValueChange={(v) => v === "__none" ? setForm({ ...form, location_id: "" }) : pickBuilding(v)}>
-                <SelectTrigger><SelectValue placeholder="Choose building…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— Not assigned —</SelectItem>
-                  {buildingOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={formBuilding || "__none"}
+                onChange={(v) => v === "__none" ? setForm({ ...form, location_id: "" }) : pickBuilding(v)}
+                options={[{ value: "__none", label: "— Not assigned —" }, ...buildingOptions.map((b) => ({ value: b, label: b }))]}
+                placeholder="Choose building…"
+              />
             </Field>
             <Field label="Floor">
-              <Select value={formFloor || "__none"} onValueChange={(v) => v !== "__none" && pickFloor(v)} disabled={!formBuilding}>
-                <SelectTrigger><SelectValue placeholder={formBuilding ? "Choose floor…" : "Pick a building first"} /></SelectTrigger>
-                <SelectContent>
-                  {floorOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={formFloor || ""}
+                onChange={(v) => v && pickFloor(v)}
+                options={floorOptions.map((f) => ({ value: f, label: f }))}
+                placeholder={formBuilding ? "Choose floor…" : "Pick a building first"}
+                disabled={!formBuilding}
+              />
             </Field>
             <Field label="Section" wide>
               <div className="space-y-2">
-                <Select value={form.location_id || "__none"} onValueChange={(v) => v !== "__none" && pickSection(v)} disabled={!formFloor}>
-                  <SelectTrigger><SelectValue placeholder={formFloor ? "Choose section…" : "Pick a floor first"} /></SelectTrigger>
-                  <SelectContent>
-                    {sectionOptions.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.section ? l.section : `(no section · ${l.floor})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.location_id || ""}
+                  onChange={(v) => v && pickSection(v)}
+                  options={sectionOptions.map((l) => ({ value: l.id, label: l.section ? l.section : `(no section · ${l.floor})` }))}
+                  placeholder={formFloor ? "Choose section…" : "Pick a floor first"}
+                  disabled={!formFloor}
+                />
                 {formBuilding && formFloor && (
                   <div className="flex gap-2">
                     <Input
