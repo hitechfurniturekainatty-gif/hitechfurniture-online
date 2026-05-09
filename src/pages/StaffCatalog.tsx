@@ -15,6 +15,22 @@ import { formatINR } from "@/lib/brand";
 import { Loader2, Lock, ArrowLeft, Search, ArrowUpDown, MapPin, Check } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /**
  * Sort floor labels by the leading number when present, so "Floor 1",
