@@ -5,13 +5,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText } from "lucide-react";
+import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText, Wallet, Package } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
 import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { toast } from "@/hooks/use-toast";
+import { formatINR } from "@/lib/brand";
 
 type Trip = {
   id: string;
@@ -21,14 +22,29 @@ type Trip = {
   notes: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
-type Q = { id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null; delivery_place: string | null };
-type QExt = Q & { expected_delivery_date: string | null };
+type Q = {
+  id: string;
+  quotation_id: string;
+  party_name: string;
+  party_place: string;
+  party_phone: string | null;
+  party_address: string | null;
+  delivery_place: string | null;
+  total: number;
+  advance_amount: number | null;
+};
+type QItem = { id: string; quotation_id: string; description: string; quantity: number };
 
 const AdminMyTrips = () => {
-  const { user, isDelivery, isOfficeStaff } = useAuth();
+  const { user, isDelivery, isOfficeStaff, isAdmin } = useAuth();
+  // Drivers-only mode: hide pricing internals (subtotal, GST, unit prices).
+  // Office/admin still see everything when they open this page.
+  const driverOnly = isDelivery && !isOfficeStaff && !isAdmin;
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripQs, setTripQs] = useState<TripQ[]>([]);
   const [quotes, setQuotes] = useState<Q[]>([]);
+  const [items, setItems] = useState<QItem[]>([]);
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
@@ -70,15 +86,23 @@ const AdminMyTrips = () => {
       if (qids.length) {
         const { data: qs } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date")
+          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, total, advance_amount")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
+        const { data: its } = await supabase
+          .from("quotation_items")
+          .select("id, quotation_id, description, quantity")
+          .in("quotation_id", qids)
+          .order("display_order");
+        setItems((its ?? []) as QItem[]);
       } else {
         setQuotes([]);
+        setItems([]);
       }
     } else {
       setTripQs([]);
       setQuotes([]);
+      setItems([]);
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
     setLoading(false);
@@ -98,11 +122,14 @@ const AdminMyTrips = () => {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
       return;
     }
+    // Bump the quotation itself to 'delivered' so the pipeline + admin
+    // dashboard reflect completion immediately.
+    await supabase.from("quotations").update({ status: "delivered" }).eq("id", stop.quotation_id);
     toast({ title: "Marked delivered" });
-    // If all stops on this trip are delivered, mark trip delivered. Else, mark in_transit.
+    // If all stops on this trip are delivered → completed; else in_transit.
     const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
     const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
-    const newStatus = allDelivered ? "delivered" : "in_transit";
+    const newStatus = allDelivered ? "completed" : "in_transit";
     await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
     load();
   };
