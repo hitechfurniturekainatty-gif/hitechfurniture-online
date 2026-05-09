@@ -569,7 +569,7 @@ const StaffCatalog = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">All categories</SelectItem>
-                  {mainCats.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  {mainCats.map((m) => <SelectItem key={m.id} value={m.id}>{toTitleCase(m.name)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
