@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -566,7 +566,7 @@ const StaffCatalog = () => {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 {filtered.length} {filtered.length === 1 ? "item" : "items"} · floor sequence
-                <span className="ml-2 hidden text-[11px] sm:inline">· press &amp; hold a card 1s to drag into a new position</span>
+                <span className="ml-2 hidden text-[11px] sm:inline">· hold a card to move it · drag while holding to reorder</span>
                 {savingOrder && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
               </p>
               {reorderScope.canReorder && (
