@@ -404,7 +404,7 @@ Please share more details.`;
               to={`/catalog?cat=${product.main_categories.slug}`}
               className="text-xs font-semibold uppercase tracking-[0.25em] text-accent hover:underline"
             >
-              {product.main_categories.name}
+              {toTitleCase(product.main_categories.name)}
             </Link>
           )}
           <h1 className="mt-3 font-display text-3xl text-foreground md:text-5xl">{toTitleCase(product.product_name)}</h1>

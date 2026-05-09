@@ -12,7 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { Trash2, Plus, Loader2, ImageIcon, Pencil, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
-import { titleCaseTrim } from "@/lib/textCase";
+import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string; slug: string; display_order: number; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; display_order: number; image_url: string | null };
@@ -269,7 +269,7 @@ const AdminCategories = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{c.name}</p>
+                    <p className="truncate font-medium">{toTitleCase(c.name)}</p>
                     <p className="truncate text-xs text-muted-foreground">/{c.slug}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {subCats.filter((s) => s.main_category_id === c.id).length} sub-categories
@@ -309,7 +309,7 @@ const AdminCategories = () => {
                   <SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose main category" /></SelectTrigger>
                   <SelectContent>
                     {mainCats.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{toTitleCase(c.name)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
