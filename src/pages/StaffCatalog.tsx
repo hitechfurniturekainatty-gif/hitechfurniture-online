@@ -675,8 +675,48 @@ const StaffProductCard = ({
   const stock = entry.stock;
   const isOut = p.stock_status !== "in_stock" || stock <= 0;
 
+  // Press-and-hold (without moving the finger) opens the Move popover.
+  // If the user drags after the hold, dnd-kit takes over (1s drag activation).
+  const [moveOpen, setMoveOpen] = useState(false);
+  const holdTimer = useRef<number | null>(null);
+  const startPt = useRef<{ x: number; y: number } | null>(null);
+  const HOLD_MS = 600;
+  const MOVE_TOL = 8;
+  const clearHold = () => {
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    startPt.current = null;
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    // Ignore right-clicks and clicks on interactive controls inside the card
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, [role=combobox], input, select")) return;
+    startPt.current = { x: e.clientX, y: e.clientY };
+    holdTimer.current = window.setTimeout(() => {
+      setMoveOpen(true);
+      // brief haptic on supporting devices
+      try { navigator.vibrate?.(15); } catch { /* ignore */ }
+    }, HOLD_MS);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!startPt.current) return;
+    const dx = e.clientX - startPt.current.x;
+    const dy = e.clientY - startPt.current.y;
+    if (Math.hypot(dx, dy) > MOVE_TOL) clearHold();
+  };
+
   return (
-    <Card className="overflow-hidden">
+    <Card
+      className="overflow-hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={clearHold}
+      onPointerCancel={clearHold}
+      onPointerLeave={clearHold}
+    >
       <div className="aspect-[4/5] bg-muted">
         {cover ? <img src={cover} alt={p.product_name} loading="lazy" className="h-full w-full object-contain" /> : null}
       </div>
@@ -733,13 +773,13 @@ const StaffProductCard = ({
             <p className="text-[11px] text-muted-foreground truncate">
               📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
             </p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} />
+            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
           </div>
         )}
         {!loc && (
           <div className="flex items-center justify-between gap-1">
             <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
-            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} />
+            <QuickMovePopover entry={entry} locations={locations} onMoved={onMoved} open={moveOpen} onOpenChange={setMoveOpen} />
           </div>
         )}
         {p.description && (
