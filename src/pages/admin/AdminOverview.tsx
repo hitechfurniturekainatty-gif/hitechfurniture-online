@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles, TrendingUp } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,16 @@ const AdminOverview = () => {
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  // 30-day trend series for sparklines
+  const [trendDays, setTrendDays] = useState(30);
+  const [trends, setTrends] = useState<{
+    quotByDay: number[];
+    tripsByDay: number[];
+    statusTotals: Record<string, number>;
+    outForDelivery: number;
+    tripsActive: number;
+    tripsCompleted: number;
+  }>({ quotByDay: [], tripsByDay: [], statusTotals: {}, outForDelivery: 0, tripsActive: 0, tripsCompleted: 0 });
   // Fulfillment split metrics (Ready Stock vs Custom Production)
   const [fulfillment, setFulfillment] = useState({
     quotsReadyOnly: 0,
@@ -216,9 +226,45 @@ const AdminOverview = () => {
         setPipelineCounts(counts);
         setFulfillment({ quotsReadyOnly, quotsCustomOnly, quotsMixed, itemsReadyInWarehouse, itemsInProduction, jobsInWarehouse, jobsDispatched });
       }
+
+      // Trend series — last `trendDays` days for quotations created and trips planned.
+      if (isAdmin || isOfficeStaff) {
+        const days = trendDays;
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - (days - 1));
+        const startIso = start.toISOString();
+        const startDate = startIso.slice(0, 10);
+        const [qT, tT] = await Promise.all([
+          supabase.from("quotations").select("created_at, status").is("deleted_at", null).gte("created_at", startIso),
+          supabase.from("trips").select("trip_date, status").is("deleted_at", null).gte("trip_date", startDate),
+        ]);
+        const quotByDay = new Array(days).fill(0);
+        const tripsByDay = new Array(days).fill(0);
+        const statusTotals: Record<string, number> = {};
+        const dayIndex = (iso: string) => {
+          const d = new Date(iso); d.setHours(0, 0, 0, 0);
+          return Math.floor((d.getTime() - start.getTime()) / 86400000);
+        };
+        ((qT.data ?? []) as any[]).forEach((q) => {
+          const i = dayIndex(q.created_at);
+          if (i >= 0 && i < days) quotByDay[i]++;
+          const s = normalizeStatus(q.status || "drafted");
+          statusTotals[s] = (statusTotals[s] ?? 0) + 1;
+        });
+        let outForDelivery = 0, tripsActive = 0, tripsCompleted = 0;
+        ((tT.data ?? []) as any[]).forEach((t) => {
+          const i = dayIndex(t.trip_date);
+          if (i >= 0 && i < days) tripsByDay[i]++;
+          if (t.status === "completed") tripsCompleted++;
+          else if (t.status === "in_progress") { outForDelivery++; tripsActive++; }
+          else if (t.status === "planned") tripsActive++;
+        });
+        setTrends({ quotByDay, tripsByDay, statusTotals, outForDelivery, tripsActive, tripsCompleted });
+      }
     };
     run();
-  }, [user?.id, isMeasurementStaff, isOfficeStaff, isAdmin]);
+  }, [user?.id, isMeasurementStaff, isOfficeStaff, isAdmin, trendDays]);
 
   // Measurement-only staff: redirect to personal page
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) {
@@ -427,6 +473,64 @@ const AdminOverview = () => {
         </Card>
       )}
 
+      {/* Trend sparklines — quotations & deliveries over the last N days */}
+      {(isAdmin || isOfficeStaff) && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 font-display text-base sm:text-lg">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Quotations Trend
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">New quotations created per day · last {trendDays} days</p>
+              </div>
+              <RangeToggle value={trendDays} onChange={setTrendDays} />
+            </CardHeader>
+            <CardContent>
+              <Sparkline data={trends.quotByDay} stroke="hsl(var(--primary))" height={64} />
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+                {Object.entries(trends.statusTotals)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 5)
+                  .map(([s, n]) => (
+                    <Badge key={s} variant={statusBadgeVariant(s)} className="capitalize">
+                      {statusLabel(s)} · {n}
+                    </Badge>
+                  ))}
+                {Object.keys(trends.statusTotals).length === 0 && (
+                  <span className="text-muted-foreground">No quotations in this window.</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 font-display text-base sm:text-lg">
+                  <Truck className="h-4 w-4 text-sky-600" />
+                  Deliveries Trend
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">Trips planned per day · last {trendDays} days</p>
+              </div>
+              <RangeToggle value={trendDays} onChange={setTrendDays} />
+            </CardHeader>
+            <CardContent>
+              <Sparkline data={trends.tripsByDay} stroke="hsl(var(--sky, 199 89% 48%))" fallbackStroke="#0284c7" height={64} />
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800">Out for Delivery · {trends.outForDelivery}</Badge>
+                <Badge variant="secondary" className="bg-sky-100 text-sky-800">Active trips · {trends.tripsActive}</Badge>
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Completed · {trends.tripsCompleted}</Badge>
+                <Link to="/admin/trips" className="ml-auto inline-flex items-center text-[11px] font-medium text-primary hover:underline">
+                  Open trips <ArrowRight className="ml-0.5 h-3 w-3" />
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Fulfillment Split — Ready Stock vs Custom Production (per item routing) */}
       {(isAdmin || isOfficeStaff) && (
         <Card className="mb-6 border-primary/20">
@@ -606,3 +710,49 @@ const AdminOverview = () => {
 };
 
 export default AdminOverview;
+
+// ---------- Lightweight chart helpers (no extra deps) ----------
+
+const Sparkline = ({ data, stroke = "hsl(var(--primary))", fallbackStroke, height = 56 }: { data: number[]; stroke?: string; fallbackStroke?: string; height?: number }) => {
+  if (!data || data.length === 0) {
+    return <div className="flex h-14 items-center justify-center text-xs text-muted-foreground">No data yet.</div>;
+  }
+  const w = 600; // viewBox width — scales to container
+  const h = 100;
+  const max = Math.max(1, ...data);
+  const stepX = data.length > 1 ? w / (data.length - 1) : 0;
+  const points = data.map((v, i) => `${(i * stepX).toFixed(1)},${(h - (v / max) * (h - 8) - 2).toFixed(1)}`);
+  const path = `M ${points.join(" L ")}`;
+  const area = `${path} L ${(w).toFixed(1)},${h} L 0,${h} Z`;
+  const lastIdx = data.length - 1;
+  const lastX = lastIdx * stepX;
+  const lastY = h - (data[lastIdx] / max) * (h - 8) - 2;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
+      <defs>
+        <linearGradient id="spark-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#spark-fill)" stroke="none" />
+      <path d={path} fill="none" stroke={stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" style={fallbackStroke ? { stroke: fallbackStroke } : undefined} />
+      <circle cx={lastX} cy={lastY} r={3.5} fill={fallbackStroke || stroke} />
+    </svg>
+  );
+};
+
+const RangeToggle = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
+  <div className="inline-flex items-center rounded-md border bg-card p-0.5 text-[11px]">
+    {[7, 14, 30].map((d) => (
+      <button
+        key={d}
+        type="button"
+        onClick={() => onChange(d)}
+        className={`rounded px-2 py-0.5 font-medium transition-colors ${value === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        {d}d
+      </button>
+    ))}
+  </div>
+);
