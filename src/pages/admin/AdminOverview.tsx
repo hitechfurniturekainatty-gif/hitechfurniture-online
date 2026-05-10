@@ -242,7 +242,11 @@ const AdminOverview = () => {
   const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
-    isOfficeStaff && { label: "Drafted quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=drafted" },
+    isOfficeStaff && { label: "Stage 1 · Client Hub", value: pipelineCounts[1], icon: Ruler, to: "/admin/pipeline" },
+    isOfficeStaff && { label: "Stage 3 · OPS", value: pipelineCounts[3], icon: FileText, to: "/admin/quotations?status=stage3" },
+    isOfficeStaff && { label: "Stage 4 · Production", value: fulfillment.itemsInProduction, icon: HardHat, to: "/admin/pipeline" },
+    isOfficeStaff && { label: "Stage 5 · Warehouse", value: fulfillment.itemsReadyInWarehouse + fulfillment.jobsInWarehouse, icon: Warehouse, to: "/admin/pipeline" },
+    isOfficeStaff && { label: "Partially Ready", value: fulfillment.quotsMixed, icon: Layers, to: "/admin/quotations" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
     isAdmin && { label: "Production Unit", value: stats.workers, icon: HardHat, to: "/admin/workers" },
@@ -250,7 +254,8 @@ const AdminOverview = () => {
 
   const logisticsCards: StatCard[] = isOfficeStaff
     ? [
-        { label: "Logistics Mapping", value: 0, icon: Map, to: "/admin/logistics" },
+        { label: "Stage 6 · Out for Delivery", value: pipelineCounts[6], icon: Truck, to: "/admin/logistics" },
+        { label: "Logistics Mapping", value: pipelineCounts[6], icon: Map, to: "/admin/logistics" },
         { label: "Trips", value: 0, icon: Truck, to: "/admin/trips" },
         ...(isAdmin ? [{ label: "Route Manager", value: 0, icon: Route, to: "/admin/routes" }] : []),
       ]
@@ -268,7 +273,7 @@ const AdminOverview = () => {
     {
       key: "sales",
       title: "Sales & Services",
-      subtitle: "Quotations, customer services and complaints",
+      subtitle: "6-stage pipeline counts, services and complaints",
       icon: ShoppingBag,
       // Green / success theme
       accent: "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
@@ -277,7 +282,7 @@ const AdminOverview = () => {
     {
       key: "logistics",
       title: "Logistics & Fleet",
-      subtitle: "Routes, trips and live mapping",
+      subtitle: "Stage 6 dispatch — Out for Delivery, trips and routes",
       icon: Truck,
       // Blue / info theme
       accent: "border-sky-500/30 bg-sky-500/5 text-sky-600 dark:text-sky-400",
@@ -392,7 +397,10 @@ const AdminOverview = () => {
       {(isAdmin || isOfficeStaff) && (
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-            <CardTitle className="font-display text-lg sm:text-xl">Workflow Pipeline</CardTitle>
+            <div>
+              <CardTitle className="font-display text-lg sm:text-xl">Quotations by Status</CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">Live counts across the new 6-stage automated pipeline.</p>
+            </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/admin/pipeline">Open monitor</Link>
             </Button>
