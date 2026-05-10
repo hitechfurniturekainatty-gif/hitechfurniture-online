@@ -1429,7 +1429,7 @@ const AdminQuotationEditor = () => {
               {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  {canEditPrice && !it._isNew && (
+                  {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
                     <Checkbox
                       className="h-5 w-5"
                       checked={selectedItemIds.has(it.id)}
@@ -1439,6 +1439,22 @@ const AdminQuotationEditor = () => {
                   )}
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Item #{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateItem(it.id, {
+                        fulfillment_route: it.fulfillment_route === "custom" ? "ready_stock" : "custom",
+                      })
+                    }
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                      it.fulfillment_route === "custom"
+                        ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    }`}
+                    title="Toggle routing: Ready Stock skips production; Custom goes to Production Unit"
+                  >
+                    {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
+                  </button>
                   {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
                     <span className="ml-2 font-mono text-sm font-semibold text-primary">
                       {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
