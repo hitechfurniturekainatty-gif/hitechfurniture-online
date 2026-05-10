@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles, TrendingUp } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,16 @@ const AdminOverview = () => {
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  // 30-day trend series for sparklines
+  const [trendDays, setTrendDays] = useState(30);
+  const [trends, setTrends] = useState<{
+    quotByDay: number[];
+    tripsByDay: number[];
+    statusTotals: Record<string, number>;
+    outForDelivery: number;
+    tripsActive: number;
+    tripsCompleted: number;
+  }>({ quotByDay: [], tripsByDay: [], statusTotals: {}, outForDelivery: 0, tripsActive: 0, tripsCompleted: 0 });
   // Fulfillment split metrics (Ready Stock vs Custom Production)
   const [fulfillment, setFulfillment] = useState({
     quotsReadyOnly: 0,
@@ -216,9 +226,45 @@ const AdminOverview = () => {
         setPipelineCounts(counts);
         setFulfillment({ quotsReadyOnly, quotsCustomOnly, quotsMixed, itemsReadyInWarehouse, itemsInProduction, jobsInWarehouse, jobsDispatched });
       }
+
+      // Trend series — last `trendDays` days for quotations created and trips planned.
+      if (isAdmin || isOfficeStaff) {
+        const days = trendDays;
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - (days - 1));
+        const startIso = start.toISOString();
+        const startDate = startIso.slice(0, 10);
+        const [qT, tT] = await Promise.all([
+          supabase.from("quotations").select("created_at, status").is("deleted_at", null).gte("created_at", startIso),
+          supabase.from("trips").select("trip_date, status").is("deleted_at", null).gte("trip_date", startDate),
+        ]);
+        const quotByDay = new Array(days).fill(0);
+        const tripsByDay = new Array(days).fill(0);
+        const statusTotals: Record<string, number> = {};
+        const dayIndex = (iso: string) => {
+          const d = new Date(iso); d.setHours(0, 0, 0, 0);
+          return Math.floor((d.getTime() - start.getTime()) / 86400000);
+        };
+        ((qT.data ?? []) as any[]).forEach((q) => {
+          const i = dayIndex(q.created_at);
+          if (i >= 0 && i < days) quotByDay[i]++;
+          const s = normalizeStatus(q.status || "drafted");
+          statusTotals[s] = (statusTotals[s] ?? 0) + 1;
+        });
+        let outForDelivery = 0, tripsActive = 0, tripsCompleted = 0;
+        ((tT.data ?? []) as any[]).forEach((t) => {
+          const i = dayIndex(t.trip_date);
+          if (i >= 0 && i < days) tripsByDay[i]++;
+          if (t.status === "completed") tripsCompleted++;
+          else if (t.status === "in_progress") { outForDelivery++; tripsActive++; }
+          else if (t.status === "planned") tripsActive++;
+        });
+        setTrends({ quotByDay, tripsByDay, statusTotals, outForDelivery, tripsActive, tripsCompleted });
+      }
     };
     run();
-  }, [user?.id, isMeasurementStaff, isOfficeStaff, isAdmin]);
+  }, [user?.id, isMeasurementStaff, isOfficeStaff, isAdmin, trendDays]);
 
   // Measurement-only staff: redirect to personal page
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) {
