@@ -470,6 +470,7 @@ export type Database = {
           status: string
           status_updated_at: string
           updated_at: string
+          warehouse_status: string
           worker_id: string
         }
         Insert: {
@@ -488,6 +489,7 @@ export type Database = {
           status?: string
           status_updated_at?: string
           updated_at?: string
+          warehouse_status?: string
           worker_id: string
         }
         Update: {
@@ -506,6 +508,7 @@ export type Database = {
           status?: string
           status_updated_at?: string
           updated_at?: string
+          warehouse_status?: string
           worker_id?: string
         }
         Relationships: [
@@ -1095,6 +1098,7 @@ export type Database = {
           gst_percent: number
           id: string
           is_direct_order: boolean
+          lead_type: string
           notes: string | null
           party_address: string | null
           party_name: string
@@ -1129,6 +1133,7 @@ export type Database = {
           gst_percent?: number
           id?: string
           is_direct_order?: boolean
+          lead_type?: string
           notes?: string | null
           party_address?: string | null
           party_name: string
@@ -1163,6 +1168,7 @@ export type Database = {
           gst_percent?: number
           id?: string
           is_direct_order?: boolean
+          lead_type?: string
           notes?: string | null
           party_address?: string | null
           party_name?: string
@@ -1426,7 +1432,9 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          has_issue: boolean
           id: string
+          issue_note: string | null
           notes: string | null
           route_id: string | null
           status: string
@@ -1439,7 +1447,9 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          has_issue?: boolean
           id?: string
+          issue_note?: string | null
           notes?: string | null
           route_id?: string | null
           status?: string
@@ -1452,7 +1462,9 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          has_issue?: boolean
           id?: string
+          issue_note?: string | null
           notes?: string | null
           route_id?: string | null
           status?: string
