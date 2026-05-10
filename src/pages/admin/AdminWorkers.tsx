@@ -276,7 +276,7 @@ const AdminWorkers = () => {
       {!authLoading && isAdmin && (<>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Workers</h1>
+          <h1 className="font-display text-2xl sm:text-3xl">Production Unit</h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">Contacts for assigning Job Work Orders via WhatsApp.</p>
         </div>
         <Button onClick={startNew} className="w-full sm:w-auto"><UserPlus className="mr-2 h-4 w-4" /> Add worker</Button>

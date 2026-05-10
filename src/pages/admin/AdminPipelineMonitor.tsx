@@ -93,7 +93,7 @@ const AdminPipelineMonitor = () => {
   useEffect(() => { load(); }, []);
 
   const counts = useMemo(() => {
-    const c: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const c: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     rows.forEach((r) => { c[r.stage] += 1; });
     return c;
   }, [rows]);
@@ -110,7 +110,7 @@ const AdminPipelineMonitor = () => {
           <div>
             <h1 className="font-display text-2xl sm:text-3xl">Workflow Pipeline</h1>
             <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              Live status of every quotation across the 5 workflow stages.
+              Live status of every quotation across the 6 workflow stages.
             </p>
           </div>
           <Button variant="outline" onClick={load} disabled={loading}>
