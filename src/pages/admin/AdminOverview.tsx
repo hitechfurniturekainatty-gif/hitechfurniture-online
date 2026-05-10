@@ -300,20 +300,20 @@ const AdminOverview = () => {
             </CardContent>
           </Card>
 
-          {/* In-Progress Quotations (renamed from Awaiting Pricing) */}
+          {/* OPS: In-Progress (renamed from Awaiting Pricing) */}
           {isOfficeStaff && (
             <Card className="border-emerald-500/40 bg-emerald-500/5">
               <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
                 <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  In-Progress Quotations
+                  OPS: In-Progress
                   <Badge variant="secondary" className="ml-1">{awaitingPricing.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {awaitingPricing.length === 0 ? (
                   <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
-                    No quotations awaiting pricing right now.
+                    No quotations in OPS right now.
                   </p>
                 ) : (
                   awaitingPricing.slice(0, 5).map((q) => (
@@ -335,7 +335,7 @@ const AdminOverview = () => {
                   ))
                 )}
                 <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                  <Link to="/admin/quotations?status=drafted">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                  <Link to="/admin/quotations?status=stage3">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
                 </Button>
               </CardContent>
             </Card>

@@ -1304,12 +1304,12 @@ const AdminQuotationEditor = () => {
         </div>
       </div>
 
-      {/* Banner: this quotation came from a measurement task and is awaiting pricing */}
+      {/* Banner: this quotation came from a measurement task and is in OPS */}
       {canEditPrice && submittedForPricing && normalizeStatus(q.status) === "drafted" && (
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="text-sm">
-            <p className="font-medium text-foreground">Measurement complete — awaiting pricing</p>
+            <p className="font-medium text-foreground">Measurement complete — OPS: In-Progress</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Field staff submitted measurements and items. Add unit prices, GST and any extra notes, then save.</p>
           </div>
         </div>
