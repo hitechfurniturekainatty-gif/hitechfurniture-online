@@ -24,7 +24,7 @@ import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
-import { computeStage, stageToneClasses } from "@/lib/quotationPipeline";
+import { computeStage, stageToneClasses, ALL_STAGES, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
   saveNewQuotationDraft,
@@ -52,11 +52,44 @@ type Q = {
   source_task_id?: string | null;
 };
 
+type StageFilterKey =
+  | "all"
+  | "active"
+  | "stage1"
+  | "stage2"
+  | "stage3"
+  | "stage4"
+  | "stage5"
+  | "stage6"
+  | "rejected";
+
+const STAGE_FILTER_KEYS: StageFilterKey[] = [
+  "active",
+  "all",
+  "stage1",
+  "stage2",
+  "stage3",
+  "stage4",
+  "stage5",
+  "stage6",
+  "rejected",
+];
+
+const stageFilterLabel = (k: StageFilterKey) => {
+  if (k === "all") return "All";
+  if (k === "active") return "Active";
+  if (k === "rejected") return "Rejected";
+  const num = Number(k.replace("stage", "")) as PipelineStage;
+  return STAGE_DEFS[num].label;
+};
+
 const AdminQuotations = () => {
   const { user, isAdmin, isOfficeStaff } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<Q[]>([]);
+  const [jobAgg, setJobAgg] = useState<Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }>>({});
+  const [tripAgg, setTripAgg] = useState<Record<string, { has: boolean; completed: boolean }>>({});
   const [creatorMap, setCreatorMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -124,11 +157,37 @@ const AdminQuotations = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("quotations")
-      .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+    const [{ data, error }, jRes, tqRes] = await Promise.all([
+      supabase
+        .from("quotations")
+        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
+      supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
+      supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+    ]);
+    // Aggregate jobs per quotation
+    const jobs: Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }> = {};
+    ((jRes.data ?? []) as any[]).forEach((j) => {
+      if (!j.quotation_id) return;
+      const cur = jobs[j.quotation_id] ?? { total: 0, done: 0, in_warehouse: 0, dispatched: 0 };
+      cur.total += 1;
+      if (j.status === "completed" || j.status === "done") cur.done += 1;
+      const ws = j.warehouse_status;
+      if (ws === "in_warehouse" || ws === "ready_to_pack" || ws === "ready_for_dispatch") cur.in_warehouse += 1;
+      if (ws === "dispatched") cur.dispatched += 1;
+      jobs[j.quotation_id] = cur;
+    });
+    setJobAgg(jobs);
+    const trips: Record<string, { has: boolean; completed: boolean }> = {};
+    ((tqRes.data ?? []) as any[]).forEach((tq) => {
+      const qid = tq.quotation_id as string;
+      const cur = trips[qid] ?? { has: false, completed: false };
+      cur.has = true;
+      if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
+      trips[qid] = cur;
+    });
+    setTripAgg(trips);
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
       const list = (data ?? []) as Q[];
@@ -282,9 +341,21 @@ const AdminQuotations = () => {
     }
   };
 
-  // 4-status workflow + an "Active" view that hides delivered & rejected
-  // so the dashboard stays focused on what still needs work.
-  const STATUS_FILTERS = ["active", "all", "drafted", "finalized", "delivered", "rejected"] as const;
+  // Helper: compute the full stage for a quotation using aggregates.
+  const stageFor = (q: Q) =>
+    computeStage({
+      status: q.status,
+      advance_amount: q.advance_amount,
+      submitted_for_pricing_at: q.submitted_for_pricing_at,
+      is_direct_order: q.is_direct_order,
+      source_task_id: q.source_task_id,
+      jobs_total: jobAgg[q.id]?.total ?? 0,
+      jobs_completed: jobAgg[q.id]?.done ?? 0,
+      jobs_in_warehouse: jobAgg[q.id]?.in_warehouse ?? 0,
+      jobs_dispatched: jobAgg[q.id]?.dispatched ?? 0,
+      has_trip: tripAgg[q.id]?.has ?? false,
+      trip_completed: tripAgg[q.id]?.completed ?? false,
+    });
 
   // Apply doc-type tab + search BEFORE the status filter so each tab's status
   // counts only count the rows visible in that tab.
@@ -353,26 +424,33 @@ const AdminQuotations = () => {
       docFiltered.filter((r) => {
         const s = normalizeStatus(r.status);
         if (statusFilter === "all") return true;
-        if (statusFilter === "active") return s !== "delivered" && s !== "rejected";
-        return s === statusFilter;
+        if (statusFilter === "rejected") return s === "rejected";
+        // Hide rejected from every other tab.
+        if (s === "rejected") return false;
+        if (statusFilter === "active") return s !== "delivered";
+        if (statusFilter.startsWith("stage")) {
+          const num = Number(statusFilter.replace("stage", "")) as PipelineStage;
+          return stageFor(r).stage === num;
+        }
+        return true;
       }),
-    [docFiltered, statusFilter],
+    [docFiltered, statusFilter, jobAgg, tripAgg],
   );
 
   const counts = useMemo(() => {
+    const nonRejected = docFiltered.filter((r) => normalizeStatus(r.status) !== "rejected");
     const c: Record<string, number> = {
       all: docFiltered.length,
-      active: docFiltered.filter((r) => {
-        const s = normalizeStatus(r.status);
-        return s !== "delivered" && s !== "rejected";
-      }).length,
+      active: nonRejected.filter((r) => normalizeStatus(r.status) !== "delivered").length,
+      rejected: docFiltered.filter((r) => normalizeStatus(r.status) === "rejected").length,
+      stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0, stage6: 0,
     };
-    for (const k of STATUS_FILTERS) {
-      if (k === "all" || k === "active") continue;
-      c[k] = docFiltered.filter((r) => normalizeStatus(r.status) === k).length;
-    }
+    nonRejected.forEach((r) => {
+      const st = stageFor(r).stage;
+      c[`stage${st}`] = (c[`stage${st}`] ?? 0) + 1;
+    });
     return c;
-  }, [docFiltered]);
+  }, [docFiltered, jobAgg, tripAgg]);
 
   // Top-level tab counts ignore the status filter so users always see how many
   // quotations vs POs exist overall (within the current search).
@@ -454,13 +532,7 @@ const AdminQuotations = () => {
           </div>
 
           {!isPO(q.document_type) && (() => {
-            const info = computeStage({
-              status: q.status,
-              advance_amount: q.advance_amount,
-              submitted_for_pricing_at: q.submitted_for_pricing_at,
-              is_direct_order: q.is_direct_order,
-              source_task_id: q.source_task_id,
-            });
+            const info = stageFor(q);
             return (
               <div className="rounded-lg border bg-muted/30 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-xs">
@@ -469,7 +541,7 @@ const AdminQuotations = () => {
                   </Badge>
                   <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
                 </div>
-                <PipelineSteps stage={info.stage} />
+                <PipelineSteps stage={info.stage} showLabels />
               </div>
             );
           })()}
@@ -680,15 +752,11 @@ const AdminQuotations = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_FILTERS.map((k) => {
-              const label =
-                k === "all" ? "All statuses" : k === "active" ? "Active (Drafted + Finalized)" : statusLabel(k);
-              return (
-                <SelectItem key={k} value={k}>
-                  {label} ({counts[k] ?? 0})
-                </SelectItem>
-              );
-            })}
+            {STAGE_FILTER_KEYS.map((k) => (
+              <SelectItem key={k} value={k}>
+                {stageFilterLabel(k)} ({counts[k] ?? 0})
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {isOfficeStaff && (
@@ -732,15 +800,11 @@ const AdminQuotations = () => {
       ) : (
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
-            {STATUS_FILTERS.map((k) => {
-              const label =
-                k === "all" ? "All" : k === "active" ? "Active" : statusLabel(k);
-              return (
-                <TabsTrigger key={k} value={k} className="capitalize whitespace-nowrap">
-                  {label} ({counts[k] ?? 0})
-                </TabsTrigger>
-              );
-            })}
+            {STAGE_FILTER_KEYS.map((k) => (
+              <TabsTrigger key={k} value={k} className="whitespace-nowrap">
+                {stageFilterLabel(k)} ({counts[k] ?? 0})
+              </TabsTrigger>
+            ))}
           </TabsList>
           <TabsContent value={statusFilter} className="mt-4 grid gap-3">
             {filtered.map(renderRow)}
