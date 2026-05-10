@@ -200,7 +200,7 @@ const AdminOverview = () => {
     isOfficeStaff && { label: "Drafted quotations", value: stats.drafts, icon: Ruler, to: "/admin/quotations?status=drafted" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
-    isAdmin && { label: "Workers", value: stats.workers, icon: HardHat, to: "/admin/workers" },
+    isAdmin && { label: "Production Unit", value: stats.workers, icon: HardHat, to: "/admin/workers" },
   ].filter(Boolean) as StatCard[];
 
   const logisticsCards: StatCard[] = isOfficeStaff
