@@ -50,6 +50,16 @@ export function useAuth() {
   // any authenticated app user (admin/staff/measurement_staff)
   const isStaff = isOfficeStaff || isMeasurementStaff || isDelivery || isWorker;
 
+  // Canonical landing route per role — used by AdminOverview to redirect
+  // staff who shouldn't see the full pipeline grid.
+  const roleHome: string =
+    isAdmin ? "/admin"
+      : isOfficeStaff ? "/admin"
+        : isWorker && !isOfficeStaff && !isAdmin ? "/worker"
+          : isMeasurementStaff ? "/admin/my-work"
+            : isDelivery ? "/admin/my-trips"
+              : "/admin";
+
   return {
     user,
     roles,
@@ -60,6 +70,7 @@ export function useAuth() {
     isDelivery,
     isWorker,
     isStaff,
+    roleHome,
     signOut: () => supabase.auth.signOut(),
   };
 }
