@@ -386,8 +386,28 @@ const AdminQuotationEditor = () => {
     // image uploads that started while a row was still `tmp-...` from being
     // dropped after autosave assigned the row a real id.
     const resolved = tmpIdMapRef.current[id] ?? id;
+    // Intelligent routing: if the user adds any customization (measurement,
+    // sketch, site photos, dimensions text, custom catalog cloth photo) flip
+    // this row to "custom" automatically — unless the user has explicitly
+    // toggled the route in the same patch.
+    const customizationKeys: (keyof QItem)[] = [
+      "measurement",
+      "measurement_image_url",
+      "sketch_url",
+      "site_photos",
+      "catalog_image_url",
+    ];
+    const touchedCustomization = customizationKeys.some((k) => k in patch && !!patch[k]);
+    const routeExplicit = "fulfillment_route" in patch;
     setItems((p) => {
-      const next = p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it));
+      const next = p.map((it) => {
+        if (it.id !== resolved) return it;
+        const merged: QItem = { ...it, ...patch, _dirty: true };
+        if (touchedCustomization && !routeExplicit && merged.fulfillment_route === "ready_stock") {
+          merged.fulfillment_route = "custom";
+        }
+        return merged;
+      });
       itemsRef.current = next;
       return next;
     });
