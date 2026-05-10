@@ -90,6 +90,7 @@ const AdminQuotations = () => {
   const [rows, setRows] = useState<Q[]>([]);
   const [jobAgg, setJobAgg] = useState<Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }>>({});
   const [tripAgg, setTripAgg] = useState<Record<string, { has: boolean; completed: boolean }>>({});
+  const [itemAgg, setItemAgg] = useState<Record<string, { total: number; ready: number; custom: number }>>({});
   const [creatorMap, setCreatorMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -157,7 +158,7 @@ const AdminQuotations = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data, error }, jRes, tqRes] = await Promise.all([
+    const [{ data, error }, jRes, tqRes, itRes] = await Promise.all([
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
@@ -165,6 +166,7 @@ const AdminQuotations = () => {
         .order("created_at", { ascending: false }),
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
       supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+      supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
     ]);
     // Aggregate jobs per quotation
     const jobs: Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }> = {};
@@ -188,6 +190,17 @@ const AdminQuotations = () => {
       trips[qid] = cur;
     });
     setTripAgg(trips);
+    const itemAggMap: Record<string, { total: number; ready: number; custom: number }> = {};
+    ((itRes.data ?? []) as any[]).forEach((it) => {
+      const qid = it.quotation_id as string;
+      if (!qid) return;
+      const cur = itemAggMap[qid] ?? { total: 0, ready: 0, custom: 0 };
+      cur.total += 1;
+      if (it.fulfillment_route === "custom") cur.custom += 1;
+      else cur.ready += 1;
+      itemAggMap[qid] = cur;
+    });
+    setItemAgg(itemAggMap);
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
       const list = (data ?? []) as Q[];
@@ -355,6 +368,9 @@ const AdminQuotations = () => {
       jobs_dispatched: jobAgg[q.id]?.dispatched ?? 0,
       has_trip: tripAgg[q.id]?.has ?? false,
       trip_completed: tripAgg[q.id]?.completed ?? false,
+      items_total: itemAgg[q.id]?.total ?? 0,
+      items_ready_stock: itemAgg[q.id]?.ready ?? 0,
+      items_custom: itemAgg[q.id]?.custom ?? 0,
     });
 
   // Apply doc-type tab + search BEFORE the status filter so each tab's status

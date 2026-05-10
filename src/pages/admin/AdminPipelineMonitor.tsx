@@ -29,12 +29,12 @@ type TripQ = { quotation_id: string; trip: { status: string } | null };
 
 const AdminPipelineMonitor = () => {
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<(Q & { stage: PipelineStage; stageInfo: ReturnType<typeof computeStage> })[]>([]);
+  const [rows, setRows] = useState<(Q & { stage: PipelineStage; stageInfo: ReturnType<typeof computeStage>; items_ready: number; items_custom: number })[]>([]);
   const [active, setActive] = useState<PipelineStage | "all">("all");
 
   const load = async () => {
     setLoading(true);
-    const [qRes, jRes, tqRes] = await Promise.all([
+    const [qRes, jRes, tqRes, itRes] = await Promise.all([
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, status, total, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
@@ -48,6 +48,7 @@ const AdminPipelineMonitor = () => {
       supabase
         .from("trip_quotations")
         .select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+      supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
     ]);
 
     const jobs = ((jRes.data ?? []) as Job[]);
@@ -69,6 +70,16 @@ const AdminPipelineMonitor = () => {
       if (j.status === "completed" || j.status === "done") cur.done += 1;
       jobsByQ[j.quotation_id] = cur;
     });
+    const itemsByQ: Record<string, { total: number; ready: number; custom: number }> = {};
+    ((itRes.data ?? []) as any[]).forEach((it) => {
+      const qid = it.quotation_id as string;
+      if (!qid) return;
+      const cur = itemsByQ[qid] ?? { total: 0, ready: 0, custom: 0 };
+      cur.total += 1;
+      if (it.fulfillment_route === "custom") cur.custom += 1;
+      else cur.ready += 1;
+      itemsByQ[qid] = cur;
+    });
 
     const built = ((qRes.data ?? []) as Q[]).map((q) => {
       const j = jobsByQ[q.id];
@@ -83,8 +94,17 @@ const AdminPipelineMonitor = () => {
         jobs_completed: j?.done ?? 0,
         has_trip: t?.has ?? false,
         trip_completed: t?.completed ?? false,
+        items_total: itemsByQ[q.id]?.total ?? 0,
+        items_ready_stock: itemsByQ[q.id]?.ready ?? 0,
+        items_custom: itemsByQ[q.id]?.custom ?? 0,
       });
-      return { ...q, stage: info.stage, stageInfo: info };
+      return {
+        ...q,
+        stage: info.stage,
+        stageInfo: info,
+        items_ready: itemsByQ[q.id]?.ready ?? 0,
+        items_custom: itemsByQ[q.id]?.custom ?? 0,
+      };
     });
     setRows(built);
     setLoading(false);
@@ -168,6 +188,19 @@ const AdminPipelineMonitor = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <PipelineSteps stage={q.stage} size="md" showLabels />
+                  {q.items_ready > 0 && q.items_custom > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                        {q.items_ready} ready in warehouse
+                      </span>
+                      <span className="rounded border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-semibold text-violet-700 dark:text-violet-300">
+                        {q.items_custom} in production
+                      </span>
+                      <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
+                        Partially Ready
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
                       With: <span className="font-semibold text-foreground">{q.stageInfo.owner}</span>

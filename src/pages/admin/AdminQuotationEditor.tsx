@@ -60,6 +60,7 @@ type QItem = {
   amount: number;
   display_order: number;
   product_id: string | null;
+  fulfillment_route: "ready_stock" | "custom";
   _isNew?: boolean;
   _dirty?: boolean;
 };
@@ -368,6 +369,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
+      fulfillment_route: "ready_stock",
       _isNew: true,
       _dirty: true,
     };
@@ -384,8 +386,28 @@ const AdminQuotationEditor = () => {
     // image uploads that started while a row was still `tmp-...` from being
     // dropped after autosave assigned the row a real id.
     const resolved = tmpIdMapRef.current[id] ?? id;
+    // Intelligent routing: if the user adds any customization (measurement,
+    // sketch, site photos, dimensions text, custom catalog cloth photo) flip
+    // this row to "custom" automatically — unless the user has explicitly
+    // toggled the route in the same patch.
+    const customizationKeys: (keyof QItem)[] = [
+      "measurement",
+      "measurement_image_url",
+      "sketch_url",
+      "site_photos",
+      "catalog_image_url",
+    ];
+    const touchedCustomization = customizationKeys.some((k) => k in patch && !!patch[k]);
+    const routeExplicit = "fulfillment_route" in patch;
     setItems((p) => {
-      const next = p.map((it) => (it.id === resolved ? { ...it, ...patch, _dirty: true } : it));
+      const next = p.map((it) => {
+        if (it.id !== resolved) return it;
+        const merged: QItem = { ...it, ...patch, _dirty: true };
+        if (touchedCustomization && !routeExplicit && merged.fulfillment_route === "ready_stock") {
+          merged.fulfillment_route = "custom";
+        }
+        return merged;
+      });
       itemsRef.current = next;
       return next;
     });
@@ -503,6 +525,7 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
+      fulfillment_route: "ready_stock",
       _isNew: true,
       _dirty: true,
     };
@@ -535,6 +558,7 @@ const AdminQuotationEditor = () => {
       it.unit_price,
       it.display_order,
       it.product_id,
+      it.fulfillment_route,
     ]);
     const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
       h.party_name,
@@ -627,6 +651,7 @@ const AdminQuotationEditor = () => {
           amount: (Number(it.quantity) || 0) * (canEditPrice ? Number(it.unit_price) || 0 : 0),
           display_order: it.display_order,
           product_id: it.product_id,
+          fulfillment_route: it.fulfillment_route ?? "ready_stock",
         },
       });
     }
@@ -1404,7 +1429,7 @@ const AdminQuotationEditor = () => {
               {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  {canEditPrice && !it._isNew && (
+                  {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
                     <Checkbox
                       className="h-5 w-5"
                       checked={selectedItemIds.has(it.id)}
@@ -1414,6 +1439,22 @@ const AdminQuotationEditor = () => {
                   )}
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Item #{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateItem(it.id, {
+                        fulfillment_route: it.fulfillment_route === "custom" ? "ready_stock" : "custom",
+                      })
+                    }
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                      it.fulfillment_route === "custom"
+                        ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    }`}
+                    title="Toggle routing: Ready Stock skips production; Custom goes to Production Unit"
+                  >
+                    {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
+                  </button>
                   {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
                     <span className="ml-2 font-mono text-sm font-semibold text-primary">
                       {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}

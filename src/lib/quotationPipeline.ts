@@ -20,6 +20,10 @@ export type PipelineInput = {
   // Aggregated delivery trip state.
   has_trip?: boolean;
   trip_completed?: boolean;
+  // Per-item routing aggregates (intelligent routing).
+  items_total?: number;
+  items_ready_stock?: number;   // fulfillment_route = 'ready_stock'
+  items_custom?: number;        // fulfillment_route = 'custom'
 };
 
 // 6-stage admin blueprint:
@@ -64,12 +68,28 @@ export const computeStage = (q: PipelineInput): StageInfo => {
     return { stage: 5, ...STAGE_DEFS[5] };
   }
 
+  // Intelligent per-item routing: if a quotation has ONLY ready-stock items
+  // and has been finalized/advanced, skip Production and land in Warehouse.
+  const itemsTotal = q.items_total ?? 0;
+  const customCount = q.items_custom ?? 0;
+  const readyCount = q.items_ready_stock ?? 0;
+  const advance = Number(q.advance_amount ?? 0);
+  const isFinalizedish = s === "finalized" || advance > 0 || s === "active";
+  if (
+    itemsTotal > 0 &&
+    customCount === 0 &&
+    readyCount > 0 &&
+    isFinalizedish &&
+    !q.jobs_total
+  ) {
+    return { stage: 5, ...STAGE_DEFS[5] };
+  }
+
   // Production: has jobs assigned (including completed but not yet warehoused).
   if (q.jobs_total && q.jobs_total > 0) return { stage: 4, ...STAGE_DEFS[4] };
 
   // OPS: finalized, has advance, measurement submitted for pricing, or
   // any "active" quotation that's been promoted out of drafted.
-  const advance = Number(q.advance_amount ?? 0);
   if (s === "finalized" || s === "active" || advance > 0 || q.submitted_for_pricing_at) {
     return { stage: 3, ...STAGE_DEFS[3] };
   }

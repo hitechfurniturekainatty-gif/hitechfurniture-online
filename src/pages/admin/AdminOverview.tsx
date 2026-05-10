@@ -128,10 +128,11 @@ const AdminOverview = () => {
 
       // Pipeline summary (admin/office staff)
       if (isAdmin || isOfficeStaff) {
-        const [qP, jP, tqP] = await Promise.all([
+        const [qP, jP, tqP, itP] = await Promise.all([
           supabase.from("quotations").select("id, status, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, document_type").is("deleted_at", null).eq("document_type", "quotation"),
           supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
           supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+          supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
         ]);
         const jobsByQ: Record<string, { total: number; done: number; warehouse: number; dispatched: number }> = {};
         ((jP.data ?? []) as any[]).forEach((j) => {
@@ -150,6 +151,16 @@ const AdminOverview = () => {
           if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
           tripsByQ[tq.quotation_id] = cur;
         });
+        const itemsByQ: Record<string, { total: number; ready: number; custom: number }> = {};
+        ((itP.data ?? []) as any[]).forEach((it) => {
+          const qid = it.quotation_id as string;
+          if (!qid) return;
+          const cur = itemsByQ[qid] ?? { total: 0, ready: 0, custom: 0 };
+          cur.total += 1;
+          if (it.fulfillment_route === "custom") cur.custom += 1;
+          else cur.ready += 1;
+          itemsByQ[qid] = cur;
+        });
         const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
         ((qP.data ?? []) as any[]).forEach((q) => {
           const j = jobsByQ[q.id];
@@ -166,6 +177,9 @@ const AdminOverview = () => {
             jobs_dispatched: j?.dispatched ?? 0,
             has_trip: t?.has ?? false,
             trip_completed: t?.completed ?? false,
+            items_total: itemsByQ[q.id]?.total ?? 0,
+            items_ready_stock: itemsByQ[q.id]?.ready ?? 0,
+            items_custom: itemsByQ[q.id]?.custom ?? 0,
           });
           counts[info.stage]++;
         });

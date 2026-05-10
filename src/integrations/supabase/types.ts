@@ -986,6 +986,7 @@ export type Database = {
           created_at: string
           description: string
           display_order: number
+          fulfillment_route: string
           id: string
           item_image_url: string | null
           measurement: string | null
@@ -1004,6 +1005,7 @@ export type Database = {
           created_at?: string
           description: string
           display_order?: number
+          fulfillment_route?: string
           id?: string
           item_image_url?: string | null
           measurement?: string | null
@@ -1022,6 +1024,7 @@ export type Database = {
           created_at?: string
           description?: string
           display_order?: number
+          fulfillment_route?: string
           id?: string
           item_image_url?: string | null
           measurement?: string | null
