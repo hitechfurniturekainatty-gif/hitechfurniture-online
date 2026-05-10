@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { shareLiveLink } from "@/lib/shareLink";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
@@ -820,6 +821,16 @@ const AdminQuotationPreview = () => {
               busy={sharing}
               onPdf={downloadPdf}
               onJpg={() => buildAndShare("download")}
+              onShareLink={async () => {
+                if (!q) return;
+                await shareLiveLink({
+                  kind: "quotation",
+                  rowId: q.id,
+                  message: `Quotation ${q.quotation_id} — live document (always latest):`,
+                  phone: q.party_phone,
+                  openWhatsApp: !!q.party_phone,
+                });
+              }}
               triggerClassName="h-11 flex-1 sm:flex-initial"
               pdfTooltip="PDF — full quotation for customer"
               jpgTooltip="JPG — high-res images for WhatsApp"
