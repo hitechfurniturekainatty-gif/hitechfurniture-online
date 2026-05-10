@@ -39,6 +39,7 @@ import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/li
 import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { shareLiveLink } from "@/lib/shareLink";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { notesWindow } from "@/components/admin/notesWindowStore";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1126,6 +1127,22 @@ const AdminQuotationEditor = () => {
 
     // Note: sharing on WhatsApp no longer changes the status. The 4-status
     // workflow only moves to "finalized" via Advance Received or admin action.
+  };
+
+  // Live mobile-link share — generates a short URL to the always-up-to-date
+  // public mobile view of this quotation, copies it and offers WhatsApp.
+  const shareLink = async () => {
+    if (!q) return;
+    const msg = po
+      ? `Purchase Order ${q.quotation_id} — live document:`
+      : `Quotation ${q.quotation_id} — live document (always latest):`;
+    await shareLiveLink({
+      kind: "quotation",
+      rowId: q.id,
+      message: msg,
+      phone: q.party_phone,
+      openWhatsApp: !!q.party_phone,
+    });
   };
 
   // ---- Job Work ----
