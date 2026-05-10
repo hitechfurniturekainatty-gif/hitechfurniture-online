@@ -477,34 +477,49 @@ const AdminOverview = () => {
               <Sparkles className="h-5 w-5 text-primary" />
               What's new
             </CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Latest improvements live in your workspace.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Latest improvements live in your workspace — May 2026.</p>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border bg-card p-3">
-                <Layers className="mb-1.5 h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold">6-Stage Pipeline</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Client Hub → Dimensions → OPS → Production → Warehouse → Logistics, with auto-transitions.</p>
+                <div className="mb-1 flex items-center justify-between">
+                  <Link2 className="h-4 w-4 text-emerald-600" />
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">NEW</span>
+                </div>
+                <p className="text-sm font-semibold">Live Mobile Share Link</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">A 3rd export option next to JPG / PDF — pinch-zoom URL that auto-updates with every edit, WhatsApp-ready.</p>
               </div>
               <div className="rounded-xl border bg-card p-3">
-                <Warehouse className="mb-1.5 h-4 w-4 text-emerald-600" />
-                <p className="text-sm font-semibold">Ready Stock vs Custom</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Mark items per quotation — Ready Stock skips Production and goes straight to Warehouse.</p>
+                <div className="mb-1 flex items-center justify-between">
+                  <Warehouse className="h-4 w-4 text-amber-600" />
+                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">NEW</span>
+                </div>
+                <p className="text-sm font-semibold">Per-Item Ready Stock vs Custom</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Toggle each line item — Ready Stock skips Production and goes straight to Warehouse. Mixed orders show "Partially Ready".</p>
               </div>
               <div className="rounded-xl border bg-card p-3">
-                <Link2 className="mb-1.5 h-4 w-4 text-emerald-600" />
-                <p className="text-sm font-semibold">Live Share Link</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">A 3rd export option — a mobile, zoomable URL that always shows the latest version.</p>
+                <div className="mb-1 flex items-center justify-between">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">NEW</span>
+                </div>
+                <p className="text-sm font-semibold">6-Stage Automated Pipeline</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Client Hub → Dimensions → OPS → Production → Warehouse → Logistics. Files move automatically as work progresses.</p>
               </div>
               <div className="rounded-xl border bg-card p-3">
-                <Users className="mb-1.5 h-4 w-4 text-sky-600" />
-                <p className="text-sm font-semibold">Role-based Dashboards</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Measurement, Production Unit and Delivery now land on screens tailored to their role.</p>
+                <div className="mb-1 flex items-center justify-between">
+                  <Users className="h-4 w-4 text-sky-600" />
+                  <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">NEW</span>
+                </div>
+                <p className="text-sm font-semibold">Role-Based Dashboards & Guide</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Office, Measurement, Production Unit and Delivery each land on a tailored screen — and the User Guide now shows only their relevant chapters.</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild size="sm" variant="outline">
                 <Link to="/admin/pipeline">Open Pipeline Monitor <ArrowRight className="ml-1 h-3 w-3" /></Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/admin/quotations">Try per-item routing <ArrowRight className="ml-1 h-3 w-3" /></Link>
               </Button>
               <Button asChild size="sm" variant="ghost">
                 <Link to="/guide">Read the guide <ArrowRight className="ml-1 h-3 w-3" /></Link>
