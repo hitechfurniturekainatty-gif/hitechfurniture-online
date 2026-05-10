@@ -369,6 +369,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
+      fulfillment_route: "ready_stock",
       _isNew: true,
       _dirty: true,
     };
@@ -504,6 +505,7 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
+      fulfillment_route: "ready_stock",
       _isNew: true,
       _dirty: true,
     };
