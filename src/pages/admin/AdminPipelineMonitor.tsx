@@ -29,7 +29,7 @@ type TripQ = { quotation_id: string; trip: { status: string } | null };
 
 const AdminPipelineMonitor = () => {
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<(Q & { stage: PipelineStage; stageInfo: ReturnType<typeof computeStage> })[]>([]);
+  const [rows, setRows] = useState<(Q & { stage: PipelineStage; stageInfo: ReturnType<typeof computeStage>; items_ready: number; items_custom: number })[]>([]);
   const [active, setActive] = useState<PipelineStage | "all">("all");
 
   const load = async () => {
