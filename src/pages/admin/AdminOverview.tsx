@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2 } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ type UpcomingDelivery = {
   quotation_id: string;
   party_name: string;
   party_place: string | null;
+  party_phone: string | null;
   expected_delivery_date: string;
   status: string;
   total: number;
@@ -28,6 +29,7 @@ type AwaitingPricing = {
   quotation_id: string;
   party_name: string;
   party_place: string | null;
+  party_phone: string | null;
   created_at: string;
   created_by: string | null;
 };
@@ -42,7 +44,7 @@ const AdminOverview = () => {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
-  const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+  const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
 
   useEffect(() => {
     const run = async () => {
@@ -97,7 +99,7 @@ const AdminOverview = () => {
         const toStr = in2.toISOString().slice(0, 10);
         let q = supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, expected_delivery_date, status, total, created_by")
+          .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, total, created_by")
           .is("deleted_at", null)
           .not("expected_delivery_date", "is", null)
           .gte("expected_delivery_date", fromStr)
@@ -115,7 +117,7 @@ const AdminOverview = () => {
       if (isOfficeStaff) {
         const { data } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, created_at, created_by, source_task_id")
+          .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by, source_task_id")
           .is("deleted_at", null)
           .eq("status", "drafted")
           .not("submitted_for_pricing_at", "is", null)
@@ -128,15 +130,17 @@ const AdminOverview = () => {
       if (isAdmin || isOfficeStaff) {
         const [qP, jP, tqP] = await Promise.all([
           supabase.from("quotations").select("id, status, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, document_type").is("deleted_at", null).eq("document_type", "quotation"),
-          supabase.from("job_work_orders").select("quotation_id, status").is("deleted_at", null),
+          supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
           supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
         ]);
-        const jobsByQ: Record<string, { total: number; done: number }> = {};
+        const jobsByQ: Record<string, { total: number; done: number; warehouse: number; dispatched: number }> = {};
         ((jP.data ?? []) as any[]).forEach((j) => {
           if (!j.quotation_id) return;
-          const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0 };
+          const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0, warehouse: 0, dispatched: 0 };
           cur.total++;
           if (j.status === "completed" || j.status === "done") cur.done++;
+          if (j.warehouse_status === "in_warehouse" || j.warehouse_status === "ready_to_pack" || j.warehouse_status === "ready_for_dispatch") cur.warehouse++;
+          if (j.warehouse_status === "dispatched") cur.dispatched++;
           jobsByQ[j.quotation_id] = cur;
         });
         const tripsByQ: Record<string, { has: boolean; completed: boolean }> = {};
@@ -146,7 +150,7 @@ const AdminOverview = () => {
           if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
           tripsByQ[tq.quotation_id] = cur;
         });
-        const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
         ((qP.data ?? []) as any[]).forEach((q) => {
           const j = jobsByQ[q.id];
           const t = tripsByQ[q.id];
@@ -158,6 +162,8 @@ const AdminOverview = () => {
             source_task_id: q.source_task_id,
             jobs_total: j?.total ?? 0,
             jobs_completed: j?.done ?? 0,
+            jobs_in_warehouse: j?.warehouse ?? 0,
+            jobs_dispatched: j?.dispatched ?? 0,
             has_trip: t?.has ?? false,
             trip_completed: t?.completed ?? false,
           });
