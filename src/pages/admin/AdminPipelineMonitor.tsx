@@ -188,6 +188,19 @@ const AdminPipelineMonitor = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <PipelineSteps stage={q.stage} size="md" showLabels />
+                  {q.items_ready > 0 && q.items_custom > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                        {q.items_ready} ready in warehouse
+                      </span>
+                      <span className="rounded border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 font-semibold text-violet-700 dark:text-violet-300">
+                        {q.items_custom} in production
+                      </span>
+                      <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
+                        Partially Ready
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
                       With: <span className="font-semibold text-foreground">{q.stageInfo.owner}</span>
