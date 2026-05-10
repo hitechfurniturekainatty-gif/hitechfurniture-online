@@ -465,6 +465,7 @@ export type Database = {
           job_type: string
           notes: string | null
           quotation_id: string | null
+          share_token: string | null
           source_complaint_id: string | null
           source_service_id: string | null
           status: string
@@ -484,6 +485,7 @@ export type Database = {
           job_type?: string
           notes?: string | null
           quotation_id?: string | null
+          share_token?: string | null
           source_complaint_id?: string | null
           source_service_id?: string | null
           status?: string
@@ -503,6 +505,7 @@ export type Database = {
           job_type?: string
           notes?: string | null
           quotation_id?: string | null
+          share_token?: string | null
           source_complaint_id?: string | null
           source_service_id?: string | null
           status?: string
@@ -1111,6 +1114,7 @@ export type Database = {
           quotation_id: string
           salesperson_name: string | null
           service_type: string
+          share_token: string | null
           source_complaint_id: string | null
           source_service_id: string | null
           source_task_id: string | null
@@ -1146,6 +1150,7 @@ export type Database = {
           quotation_id: string
           salesperson_name?: string | null
           service_type?: string
+          share_token?: string | null
           source_complaint_id?: string | null
           source_service_id?: string | null
           source_task_id?: string | null
@@ -1181,6 +1186,7 @@ export type Database = {
           quotation_id?: string
           salesperson_name?: string | null
           service_type?: string
+          share_token?: string | null
           source_complaint_id?: string | null
           source_service_id?: string | null
           source_task_id?: string | null
@@ -1612,6 +1618,8 @@ export type Database = {
       backlog_pin_is_set: { Args: never; Returns: boolean }
       catalog_pin_is_set: { Args: never; Returns: boolean }
       current_worker_id: { Args: never; Returns: string }
+      get_shared_job_work_order: { Args: { p_token: string }; Returns: Json }
+      get_shared_quotation: { Args: { p_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

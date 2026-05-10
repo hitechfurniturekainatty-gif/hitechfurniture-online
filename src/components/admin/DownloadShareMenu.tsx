@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Download, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Download, FileText, Image as ImageIcon, Link2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,6 +31,12 @@ export type DownloadShareMenuProps = {
   onPdf: () => unknown | Promise<unknown>;
   /** Called when the user picks the JPG action. */
   onJpg: () => unknown | Promise<unknown>;
+  /**
+   * Optional — called when the user picks the live mobile-link action.
+   * When omitted the third icon is hidden (back-compat for places where a
+   * shareable URL doesn't make sense, e.g. the catalog product card).
+   */
+  onShareLink?: () => unknown | Promise<unknown>;
   /** Disables both actions while a generation is in progress. */
   busy?: boolean;
   /** Optional override for the trigger label. */
@@ -45,6 +51,8 @@ export type DownloadShareMenuProps = {
   pdfTooltip?: string;
   /** Override tooltip text on the JPG icon. */
   jpgTooltip?: string;
+  /** Override tooltip text on the Link icon. */
+  linkTooltip?: string;
   /** Hide trigger label so only the icon shows (useful in dense bars). */
   iconOnly?: boolean;
   /** Disable the entire trigger. */
@@ -54,6 +62,7 @@ export type DownloadShareMenuProps = {
 export function DownloadShareMenu({
   onPdf,
   onJpg,
+  onShareLink,
   busy = false,
   label = "Download / Share",
   triggerVariant = "outline",
@@ -61,6 +70,7 @@ export function DownloadShareMenu({
   triggerClassName,
   pdfTooltip = "PDF — full document for customer",
   jpgTooltip = "JPG — high-res images for WhatsApp / worker",
+  linkTooltip = "Share Link — live, zoomable mobile view (always up-to-date)",
   iconOnly = false,
   disabled = false,
 }: DownloadShareMenuProps) {
@@ -128,6 +138,27 @@ export function DownloadShareMenu({
               </TooltipTrigger>
               <TooltipContent side="bottom">{jpgTooltip}</TooltipContent>
             </Tooltip>
+
+            {onShareLink && (
+              <>
+                <span className="h-6 w-px bg-border" aria-hidden />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                      onClick={() => handlePick(onShareLink)}
+                      disabled={busy}
+                      aria-label="Share live mobile link"
+                    >
+                      <Link2 className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{linkTooltip}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
         </TooltipProvider>
       </PopoverContent>

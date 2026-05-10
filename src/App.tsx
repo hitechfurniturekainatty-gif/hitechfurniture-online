@@ -47,6 +47,8 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
 const WorkerJobView = lazy(() => import("./pages/WorkerJobView.tsx"));
+const SharedQuotationView = lazy(() => import("./pages/SharedQuotationView.tsx"));
+const SharedJobView = lazy(() => import("./pages/SharedJobView.tsx"));
 const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
@@ -120,6 +122,8 @@ const App = () => (
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
+            <Route path="/s/q/:token" element={<SharedQuotationView />} />
+            <Route path="/s/j/:token" element={<SharedJobView />} />
             <Route path="/delivery-note/:id" element={<DeliveryNote />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
