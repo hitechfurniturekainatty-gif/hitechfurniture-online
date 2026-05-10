@@ -28,8 +28,11 @@ const ROLE_OPTIONS: { value: GuideRole; label: string }[] = [
 
 const UserGuide = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isWorker, isDelivery } = useAuth();
-  const initialRole: GuideRole = isAdmin
-    ? "admin"
+  // Non-admin staff are locked to their own role's guide so they aren't
+  // distracted by procedures that don't apply to them. Admin sees the full
+  // role switcher (including Everyone) and can pivot to any view.
+  const lockedRole: GuideRole | null = isAdmin
+    ? null
     : isOfficeStaff
     ? "office"
     : isMeasurementStaff
@@ -38,10 +41,12 @@ const UserGuide = () => {
     ? "worker"
     : isDelivery
     ? "delivery"
-    : "everyone";
+    : null;
+  const initialRole: GuideRole = lockedRole ?? (isAdmin ? "admin" : "everyone");
   const [role, setRole] = useState<GuideRole>(initialRole);
 
-  const chapters = useMemo(() => filterChaptersForRole(role), [role]);
+  const effectiveRole = lockedRole ?? role;
+  const chapters = useMemo(() => filterChaptersForRole(effectiveRole), [effectiveRole]);
 
   return (
     <>
@@ -62,16 +67,22 @@ const UserGuide = () => {
         </header>
 
         <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-2">
-          {ROLE_OPTIONS.map((r) => (
-            <Button
-              key={r.value}
-              size="sm"
-              variant={role === r.value ? "default" : "outline"}
-              onClick={() => setRole(r.value)}
-            >
-              {r.label}
-            </Button>
-          ))}
+          {lockedRole ? (
+            <Badge variant="secondary" className="px-3 py-1 text-xs uppercase tracking-wider">
+              Showing: {ROLE_OPTIONS.find((r) => r.value === lockedRole)?.label} guide
+            </Badge>
+          ) : (
+            ROLE_OPTIONS.map((r) => (
+              <Button
+                key={r.value}
+                size="sm"
+                variant={role === r.value ? "default" : "outline"}
+                onClick={() => setRole(r.value)}
+              >
+                {r.label}
+              </Button>
+            ))
+          )}
           <Button size="sm" variant="ghost" onClick={() => window.print()}>
             <Printer className="mr-1 h-4 w-4" /> Print
           </Button>
