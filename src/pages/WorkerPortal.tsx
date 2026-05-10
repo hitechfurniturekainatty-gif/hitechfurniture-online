@@ -209,13 +209,14 @@ const WorkerPortal = () => {
         // When the worker finishes a job, automatically push the file into
         // the Warehouse stage by flipping warehouse_status to 'in_warehouse'.
         // The pipeline reads this to move the quotation to Stage 5.
-        const patch: Record<string, any> = { status: nextStatus };
-        if (nextStatus === "completed" || nextStatus === "done") {
-          patch.warehouse_status = "in_warehouse";
-        }
+        const isFinished = nextStatus === "completed" || nextStatus === "done";
         const { error } = await supabase
           .from("job_work_orders")
-          .update(patch)
+          .update(
+            isFinished
+              ? { status: nextStatus, warehouse_status: "in_warehouse" }
+              : { status: nextStatus }
+          )
           .eq("id", dialogJob.id);
         if (error) throw error;
       }
