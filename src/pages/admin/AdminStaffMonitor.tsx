@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Search, Ruler, FileText, HardHat, Truck, ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Search, Ruler, FileText, HardHat, Truck, ArrowRight, CheckCircle2, Clock, Sparkles, Layers, Warehouse, Link2, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 type StaffUser = {
@@ -180,7 +180,7 @@ const AdminStaffMonitor = () => {
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="staff">Office</TabsTrigger>
             <TabsTrigger value="measurement_staff">Measurement</TabsTrigger>
-            <TabsTrigger value="worker">Workers</TabsTrigger>
+            <TabsTrigger value="worker">Production Unit</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
             <TabsTrigger value="admin">Admins</TabsTrigger>
           </TabsList>
@@ -199,24 +199,59 @@ const AdminStaffMonitor = () => {
           </TabsContent>
         </Tabs>
 
+        {/* What's new — latest platform updates relevant to staff monitoring */}
+        <Card className="mb-4 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-base sm:text-lg">
+              <Sparkles className="h-4 w-4 text-primary" />
+              What's new in the workflow
+            </CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">May 2026 updates that change how staff move work forward.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border bg-card p-3">
+                <Layers className="mb-1.5 h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">6-Stage Auto Pipeline</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Files move automatically: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Warehouse className="mb-1.5 h-4 w-4 text-amber-600" />
+                <p className="text-sm font-semibold">Per-Item Routing</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Ready Stock items skip Production and go straight to Warehouse — Production Unit only sees custom builds.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Users className="mb-1.5 h-4 w-4 text-sky-600" />
+                <p className="text-sm font-semibold">Role-Based Dashboards</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Each staff member lands on a screen tailored to their role — Office, Measurement, Production Unit, Delivery.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Link2 className="mb-1.5 h-4 w-4 text-emerald-600" />
+                <p className="text-sm font-semibold">Live Mobile Share Link</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Share a zoomable, always-up-to-date URL with workers via WhatsApp — no stale PDFs.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Workflow legend so everyone reads the lanes the same way */}
         <Card className="mb-4 border-dashed">
           <CardContent className="grid gap-2 p-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><Ruler className="h-3.5 w-3.5 text-primary" /> Measurement staff</p>
-              <p className="text-muted-foreground">Open task → fill items + measurements → <span className="font-medium text-emerald-700 dark:text-emerald-300">Submit for pricing</span> = complete.</p>
+              <p className="text-muted-foreground">Open Dimensions task → fill items + measurements → <span className="font-medium text-emerald-700 dark:text-emerald-300">Submit for pricing</span> = complete.</p>
             </div>
             <div>
               <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><FileText className="h-3.5 w-3.5 text-primary" /> Office staff</p>
-              <p className="text-muted-foreground">Open quotation → add prices &amp; save → assign work → send to customer → <span className="font-medium text-emerald-700 dark:text-emerald-300">delivered</span> = complete.</p>
+              <p className="text-muted-foreground">Open quotation → mark each item Ready Stock or Custom → price &amp; assign → <span className="font-medium text-emerald-700 dark:text-emerald-300">delivered</span> = complete.</p>
             </div>
             <div>
-              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><HardHat className="h-3.5 w-3.5 text-primary" /> Workers</p>
-              <p className="text-muted-foreground">Job assigned → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">done</span> = complete.</p>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><HardHat className="h-3.5 w-3.5 text-primary" /> Production Unit</p>
+              <p className="text-muted-foreground">Custom job assigned → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">done</span> → auto-moves to Warehouse.</p>
             </div>
             <div>
               <p className="mb-1 flex items-center gap-1.5 font-semibold text-foreground"><Truck className="h-3.5 w-3.5 text-primary" /> Delivery</p>
-              <p className="text-muted-foreground">Trip planned → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">completed</span> = complete.</p>
+              <p className="text-muted-foreground">Trip planned (Out for Delivery / Delayed) → in progress → <span className="font-medium text-emerald-700 dark:text-emerald-300">completed</span> = complete.</p>
             </div>
           </CardContent>
         </Card>
