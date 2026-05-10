@@ -558,6 +558,7 @@ const AdminQuotationEditor = () => {
       it.unit_price,
       it.display_order,
       it.product_id,
+      it.fulfillment_route,
     ]);
     const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
       h.party_name,
@@ -650,6 +651,7 @@ const AdminQuotationEditor = () => {
           amount: (Number(it.quantity) || 0) * (canEditPrice ? Number(it.unit_price) || 0 : 0),
           display_order: it.display_order,
           product_id: it.product_id,
+          fulfillment_route: it.fulfillment_route ?? "ready_stock",
         },
       });
     }
