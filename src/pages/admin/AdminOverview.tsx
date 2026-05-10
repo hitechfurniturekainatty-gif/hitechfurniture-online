@@ -258,93 +258,92 @@ const AdminOverview = () => {
         </p>
       </div>
 
-      {upcoming.length > 0 && (
-        <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-              <CalendarClock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              Upcoming deliveries (next 2 days)
-              <Badge variant="secondary" className="ml-1">{upcoming.length}</Badge>
-            </CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/quotations">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {upcoming.map((q) => {
-              const d = new Date(q.expected_delivery_date + "T00:00:00");
-              const today = new Date(); today.setHours(0, 0, 0, 0);
-              const days = Math.round((d.getTime() - today.getTime()) / 86400000);
-              const dueLabel = days <= 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
-              const dueTone = days <= 0
-                ? "bg-destructive/15 text-destructive border-destructive/30"
-                : days === 1
-                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
-                : "bg-muted text-foreground border-border";
-              return (
-                <Link
-                  key={q.id}
-                  to={`/admin/quotations/${q.id}`}
-                  className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-medium text-foreground">{q.party_name}</span>
-                      {q.party_place && (
-                        <span className="truncate text-xs text-muted-foreground">· {q.party_place}</span>
+      {/* Top Highlight Grids: Upcoming Deliveries + In-Progress Quotations */}
+      {(isAdmin || isOfficeStaff || isMeasurementStaff) && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Upcoming Deliveries */}
+          <Card className="border-amber-500/40 bg-amber-500/5">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+              <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+                <CalendarClock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                Upcoming Deliveries
+                <Badge variant="secondary" className="ml-1">{upcoming.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {upcoming.length === 0 ? (
+                <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
+                  No deliveries scheduled in the next 2 days.
+                </p>
+              ) : (
+                upcoming.slice(0, 5).map((q) => (
+                  <Link
+                    key={q.id}
+                    to={`/admin/quotations/${q.id}`}
+                    className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
+                  >
+                    <p className="truncate font-medium text-foreground">{q.party_name}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {q.party_phone && (
+                        <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
                       )}
-                      <Badge variant={statusBadgeVariant(q.status)} className="text-[10px]">
-                        {statusLabel(q.status)}
-                      </Badge>
+                      {q.party_place && (
+                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
+                      )}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.quotation_id}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${dueTone}`}>
-                      {dueLabel}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {d.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </CardContent>
-        </Card>
+                  </Link>
+                ))
+              )}
+              <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                <Link to="/admin/quotations">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* In-Progress Quotations (renamed from Awaiting Pricing) */}
+          {isOfficeStaff && (
+            <Card className="border-emerald-500/40 bg-emerald-500/5">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+                <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  In-Progress Quotations
+                  <Badge variant="secondary" className="ml-1">{awaitingPricing.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {awaitingPricing.length === 0 ? (
+                  <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
+                    No quotations awaiting pricing right now.
+                  </p>
+                ) : (
+                  awaitingPricing.slice(0, 5).map((q) => (
+                    <Link
+                      key={q.id}
+                      to={`/admin/quotations/${q.id}`}
+                      className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
+                    >
+                      <p className="truncate font-medium text-foreground">{q.party_name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {q.party_phone && (
+                          <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
+                        )}
+                        {q.party_place && (
+                          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
+                        )}
+                      </div>
+                    </Link>
+                  ))
+                )}
+                <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                  <Link to="/admin/quotations?status=drafted">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
-      {isOfficeStaff && awaitingPricing.length > 0 && (
-        <Card className="mb-6 border-emerald-500/40 bg-emerald-500/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              Awaiting pricing
-              <Badge variant="secondary" className="ml-1">{awaitingPricing.length}</Badge>
-            </CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/quotations?status=drafted">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-xs text-muted-foreground">Measurement staff submitted these — add prices, GST and finalize.</p>
-            {awaitingPricing.slice(0, 5).map((q) => (
-              <Link
-                key={q.id}
-                to={`/admin/quotations/${q.id}`}
-                className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{q.party_name}{q.party_place ? <span className="text-xs text-muted-foreground"> · {q.party_place}</span> : null}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{q.quotation_id}</p>
-                </div>
-                <Badge variant="outline" className="text-[10px]">Add prices</Badge>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
+      {/* 6-Stage Pipeline: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics */}
       {(isAdmin || isOfficeStaff) && (
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
@@ -353,18 +352,24 @@ const AdminOverview = () => {
               <Link to="/admin/pipeline">Open monitor</Link>
             </Button>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {ALL_STAGES.map((s) => {
-              const def = STAGE_DEFS[s];
-              return (
-                <Link key={s} to={`/admin/pipeline`} className={`block rounded-lg border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
-                  <p className="font-display text-2xl font-semibold">{pipelineCounts[s]}</p>
-                  <p className="mt-0.5 truncate text-xs font-medium">{def.label}</p>
-                  <p className="text-[10px] opacity-70">With: {def.owner}</p>
-                </Link>
-              );
-            })}
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {ALL_STAGES.map((s) => {
+                const def = STAGE_DEFS[s];
+                return (
+                  <Link
+                    key={s}
+                    to={`/admin/pipeline`}
+                    className={`group relative block rounded-xl border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
+                    <p className="font-display text-2xl font-semibold">{pipelineCounts[s]}</p>
+                    <p className="mt-0.5 truncate text-sm font-semibold">{def.label}</p>
+                    <p className="text-[10px] opacity-70">{def.owner}</p>
+                  </Link>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
