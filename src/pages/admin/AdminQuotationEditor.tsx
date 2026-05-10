@@ -60,6 +60,7 @@ type QItem = {
   amount: number;
   display_order: number;
   product_id: string | null;
+  fulfillment_route: "ready_stock" | "custom";
   _isNew?: boolean;
   _dirty?: boolean;
 };
