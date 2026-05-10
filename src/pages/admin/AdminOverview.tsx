@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,16 @@ const AdminOverview = () => {
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  // Fulfillment split metrics (Ready Stock vs Custom Production)
+  const [fulfillment, setFulfillment] = useState({
+    quotsReadyOnly: 0,
+    quotsCustomOnly: 0,
+    quotsMixed: 0,
+    itemsReadyInWarehouse: 0,
+    itemsInProduction: 0,
+    jobsInWarehouse: 0,
+    jobsDispatched: 0,
+  });
 
   useEffect(() => {
     const run = async () => {
@@ -162,6 +172,13 @@ const AdminOverview = () => {
           itemsByQ[qid] = cur;
         });
         const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        let quotsReadyOnly = 0, quotsCustomOnly = 0, quotsMixed = 0;
+        let itemsReadyInWarehouse = 0, itemsInProduction = 0;
+        let jobsInWarehouse = 0, jobsDispatched = 0;
+        Object.values(jobsByQ).forEach((j) => {
+          jobsInWarehouse += j.warehouse;
+          jobsDispatched += j.dispatched;
+        });
         ((qP.data ?? []) as any[]).forEach((q) => {
           const j = jobsByQ[q.id];
           const t = tripsByQ[q.id];
@@ -182,8 +199,22 @@ const AdminOverview = () => {
             items_custom: itemsByQ[q.id]?.custom ?? 0,
           });
           counts[info.stage]++;
+          const it = itemsByQ[q.id];
+          if (it && it.total > 0) {
+            if (it.ready > 0 && it.custom === 0) quotsReadyOnly++;
+            else if (it.custom > 0 && it.ready === 0) quotsCustomOnly++;
+            else if (it.ready > 0 && it.custom > 0) quotsMixed++;
+            // Items "ready in warehouse" count only when the quotation has
+            // reached at least Stage 5 (Warehouse) — before that they're
+            // still being prepped in OPS.
+            if (info.stage >= 5) itemsReadyInWarehouse += it.ready;
+            // Custom items are "in production" while their quotation is in
+            // Production (Stage 4) and not yet handed off.
+            if (info.stage === 4) itemsInProduction += it.custom;
+          }
         });
         setPipelineCounts(counts);
+        setFulfillment({ quotsReadyOnly, quotsCustomOnly, quotsMixed, itemsReadyInWarehouse, itemsInProduction, jobsInWarehouse, jobsDispatched });
       }
     };
     run();
@@ -383,6 +414,101 @@ const AdminOverview = () => {
                   </Link>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fulfillment Split — Ready Stock vs Custom Production (per item routing) */}
+      {(isAdmin || isOfficeStaff) && (
+        <Card className="mb-6 border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+                <Layers className="h-5 w-5 text-primary" />
+                Fulfillment Split
+              </CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Per-item routing — Ready Stock items skip production and go straight to Warehouse.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Ready Stock only</p>
+                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsReadyOnly}</p>
+                <p className="text-[10px] text-muted-foreground">Quotations</p>
+              </div>
+              <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">Custom only</p>
+                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsCustomOnly}</p>
+                <p className="text-[10px] text-muted-foreground">Quotations</p>
+              </div>
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Partially Ready</p>
+                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsMixed}</p>
+                <p className="text-[10px] text-muted-foreground">Mixed quotations</p>
+              </div>
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
+                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                  <Warehouse className="h-3 w-3" /> In Warehouse
+                </p>
+                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.itemsReadyInWarehouse + fulfillment.jobsInWarehouse}</p>
+                <p className="text-[10px] text-muted-foreground">Items ready to pack</p>
+              </div>
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
+                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400">
+                  <HardHat className="h-3 w-3" /> In Production
+                </p>
+                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.itemsInProduction}</p>
+                <p className="text-[10px] text-muted-foreground">Custom items being built</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* What's New — recent platform updates so admins can quickly see / try them */}
+      {isAdmin && (
+        <Card className="mb-6 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+              <Sparkles className="h-5 w-5 text-primary" />
+              What's new
+            </CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">Latest improvements live in your workspace.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border bg-card p-3">
+                <Layers className="mb-1.5 h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">6-Stage Pipeline</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Client Hub → Dimensions → OPS → Production → Warehouse → Logistics, with auto-transitions.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Warehouse className="mb-1.5 h-4 w-4 text-emerald-600" />
+                <p className="text-sm font-semibold">Ready Stock vs Custom</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Mark items per quotation — Ready Stock skips Production and goes straight to Warehouse.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Link2 className="mb-1.5 h-4 w-4 text-emerald-600" />
+                <p className="text-sm font-semibold">Live Share Link</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">A 3rd export option — a mobile, zoomable URL that always shows the latest version.</p>
+              </div>
+              <div className="rounded-xl border bg-card p-3">
+                <Users className="mb-1.5 h-4 w-4 text-sky-600" />
+                <p className="text-sm font-semibold">Role-based Dashboards</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Measurement, Production Unit and Delivery now land on screens tailored to their role.</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/pipeline">Open Pipeline Monitor <ArrowRight className="ml-1 h-3 w-3" /></Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/guide">Read the guide <ArrowRight className="ml-1 h-3 w-3" /></Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
