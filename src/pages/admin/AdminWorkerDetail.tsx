@@ -136,7 +136,11 @@ const AdminWorkerDetail = () => {
   const updateStatus = async (job: Job, next: string) => {
     if (next === job.status) return;
     setSavingId(job.id);
-    const { error } = await supabase.from("job_work_orders").update({ status: next }).eq("id", job.id);
+    const isFinished = next === "completed" || next === "done";
+    const { error } = await supabase
+      .from("job_work_orders")
+      .update(isFinished ? { status: next, warehouse_status: "in_warehouse" } : { status: next })
+      .eq("id", job.id);
     setSavingId(null);
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
