@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,16 @@ const AdminOverview = () => {
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
   const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
+  // Fulfillment split metrics (Ready Stock vs Custom Production)
+  const [fulfillment, setFulfillment] = useState({
+    quotsReadyOnly: 0,
+    quotsCustomOnly: 0,
+    quotsMixed: 0,
+    itemsReadyInWarehouse: 0,
+    itemsInProduction: 0,
+    jobsInWarehouse: 0,
+    jobsDispatched: 0,
+  });
 
   useEffect(() => {
     const run = async () => {
@@ -162,6 +172,13 @@ const AdminOverview = () => {
           itemsByQ[qid] = cur;
         });
         const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        let quotsReadyOnly = 0, quotsCustomOnly = 0, quotsMixed = 0;
+        let itemsReadyInWarehouse = 0, itemsInProduction = 0;
+        let jobsInWarehouse = 0, jobsDispatched = 0;
+        Object.values(jobsByQ).forEach((j) => {
+          jobsInWarehouse += j.warehouse;
+          jobsDispatched += j.dispatched;
+        });
         ((qP.data ?? []) as any[]).forEach((q) => {
           const j = jobsByQ[q.id];
           const t = tripsByQ[q.id];
@@ -182,8 +199,22 @@ const AdminOverview = () => {
             items_custom: itemsByQ[q.id]?.custom ?? 0,
           });
           counts[info.stage]++;
+          const it = itemsByQ[q.id];
+          if (it && it.total > 0) {
+            if (it.ready > 0 && it.custom === 0) quotsReadyOnly++;
+            else if (it.custom > 0 && it.ready === 0) quotsCustomOnly++;
+            else if (it.ready > 0 && it.custom > 0) quotsMixed++;
+            // Items "ready in warehouse" count only when the quotation has
+            // reached at least Stage 5 (Warehouse) — before that they're
+            // still being prepped in OPS.
+            if (info.stage >= 5) itemsReadyInWarehouse += it.ready;
+            // Custom items are "in production" while their quotation is in
+            // Production (Stage 4) and not yet handed off.
+            if (info.stage === 4) itemsInProduction += it.custom;
+          }
         });
         setPipelineCounts(counts);
+        setFulfillment({ quotsReadyOnly, quotsCustomOnly, quotsMixed, itemsReadyInWarehouse, itemsInProduction, jobsInWarehouse, jobsDispatched });
       }
     };
     run();
