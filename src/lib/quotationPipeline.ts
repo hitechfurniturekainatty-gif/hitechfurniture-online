@@ -67,9 +67,10 @@ export const computeStage = (q: PipelineInput): StageInfo => {
   // Production: has jobs assigned (including completed but not yet warehoused).
   if (q.jobs_total && q.jobs_total > 0) return { stage: 4, ...STAGE_DEFS[4] };
 
-  // OPS: finalized, has advance, or measurement submitted for pricing.
+  // OPS: finalized, has advance, measurement submitted for pricing, or
+  // any "active" quotation that's been promoted out of drafted.
   const advance = Number(q.advance_amount ?? 0);
-  if (s === "finalized" || advance > 0 || q.submitted_for_pricing_at) {
+  if (s === "finalized" || s === "active" || advance > 0 || q.submitted_for_pricing_at) {
     return { stage: 3, ...STAGE_DEFS[3] };
   }
 
