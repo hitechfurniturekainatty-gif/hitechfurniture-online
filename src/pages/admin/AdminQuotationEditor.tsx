@@ -1335,6 +1335,7 @@ const AdminQuotationEditor = () => {
               <DownloadShareMenu
                 onPdf={downloadPdf}
                 onJpg={downloadJpg}
+                onShareLink={shareLink}
                 pdfTooltip="PDF — full quotation for customer"
                 jpgTooltip="JPG — high-res images for WhatsApp"
               />
@@ -1847,6 +1848,7 @@ const AdminQuotationEditor = () => {
             <DownloadShareMenu
               onPdf={downloadPdf}
               onJpg={downloadJpg}
+              onShareLink={shareLink}
               triggerClassName="h-11 px-2 w-full"
               label="Save"
               pdfTooltip="PDF — full quotation"
