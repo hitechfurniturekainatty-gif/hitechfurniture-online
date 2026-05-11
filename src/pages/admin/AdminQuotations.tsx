@@ -281,6 +281,7 @@ const AdminQuotations = () => {
             delivery_place: draft.delivery_place ?? "",
             delivery_route_id: draft.delivery_route_id ?? null,
             is_direct_order: false,
+            lead_type: "lead",
           });
           toast({ title: "Draft resumed" });
         } else {
@@ -339,7 +340,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead" });
     navigate(`/admin/quotations/${data.id}`);
   };
 
