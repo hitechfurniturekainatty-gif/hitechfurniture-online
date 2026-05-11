@@ -187,6 +187,7 @@ export const ROLE_MANUALS: Record<AppRole, ManualSection[]> = {
   ],
 };
 
+
 export const roleLabel = (role: AppRole): string =>
   ({
     admin: "Admin",
