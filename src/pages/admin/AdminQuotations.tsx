@@ -52,6 +52,8 @@ type Q = {
   submitted_for_pricing_at?: string | null;
   is_direct_order?: boolean | null;
   source_task_id?: string | null;
+  lead_type?: string | null;
+  pipeline_stage?: number | null;
 };
 
 type StageFilterKey =
@@ -101,6 +103,7 @@ const AdminQuotations = () => {
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
   const [staffFilter, setStaffFilterState] = useState<string>(searchParams.get("staff") ?? "all");
   const [salesFilter, setSalesFilterState] = useState<string>(searchParams.get("sales") ?? "all");
+  const [leadFilter, setLeadFilterState] = useState<string>(searchParams.get("lead") ?? "all");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -146,6 +149,12 @@ const AdminQuotations = () => {
     if (v === "all") next.delete("sales"); else next.set("sales", v);
     setSearchParams(next, { replace: true });
   };
+  const setLeadFilter = (v: string) => {
+    setLeadFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("lead"); else next.set("lead", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
@@ -155,6 +164,8 @@ const AdminQuotations = () => {
     if (staffFromUrl !== staffFilter) setStaffFilterState(staffFromUrl);
     const salesFromUrl = searchParams.get("sales") ?? "all";
     if (salesFromUrl !== salesFilter) setSalesFilterState(salesFromUrl);
+    const leadFromUrl = searchParams.get("lead") ?? "all";
+    if (leadFromUrl !== leadFilter) setLeadFilterState(leadFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -171,7 +182,7 @@ const AdminQuotations = () => {
     const [{ data, error }, jRes, tqRes, itRes] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
+        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
@@ -461,6 +472,22 @@ const AdminQuotations = () => {
     }
   };
 
+  // Direct stage change for admin/staff — manually transition a quotation
+  // to any pipeline stage from the Client Hub list. Uses the quotations RLS
+  // update policy (admin/staff already permitted).
+  const changeStage = async (q: Q, nextStage: PipelineStage) => {
+    const { error } = await supabase
+      .from("quotations")
+      .update({ pipeline_stage: nextStage })
+      .eq("id", q.id);
+    if (error) {
+      toast({ title: "Couldn't move stage", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Moved to Stage ${nextStage}: ${STAGE_DEFS[nextStage].label}` });
+    load();
+  };
+
   // Helper: compute the full stage for a quotation using aggregates.
   const stageFor = (q: Q) =>
     computeStage({
@@ -488,6 +515,10 @@ const AdminQuotations = () => {
       // Treat missing document_type as 'quotation' (legacy rows).
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return false;
+      if (!isPO(t) && leadFilter !== "all") {
+        const lt = (r.lead_type ?? "lead").toString();
+        if (lt !== leadFilter) return false;
+      }
       if (isOfficeStaff && staffFilter !== "all") {
         if (staffFilter === "__none__") {
           if (r.created_by) return false;
@@ -510,7 +541,7 @@ const AdminQuotations = () => {
         r.party_place.toLowerCase().includes(s)
       );
     });
-  }, [rows, search, docTab, staffFilter, salesFilter, isOfficeStaff]);
+  }, [rows, search, docTab, staffFilter, salesFilter, leadFilter, isOfficeStaff]);
 
   // Distinct staff options derived from the loaded rows (within current doc tab).
   const staffOptions = useMemo(() => {
@@ -658,11 +689,28 @@ const AdminQuotations = () => {
             const info = stageFor(q);
             return (
               <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <Badge variant="outline" className={stageToneClasses(info.tone)}>
                     Stage {info.stage}: {info.label}
                   </Badge>
                   <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
+                  {(isAdmin || isOfficeStaff) && (
+                    <Select
+                      value={String(info.stage)}
+                      onValueChange={(v) => changeStage(q, Number(v) as PipelineStage)}
+                    >
+                      <SelectTrigger className="h-7 w-[170px] text-[11px]">
+                        <SelectValue placeholder="Move to…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_STAGES.map((s) => (
+                          <SelectItem key={s} value={String(s)} className="text-xs">
+                            Stage {s}: {STAGE_DEFS[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <PipelineSteps stage={info.stage} showLabels />
               </div>
@@ -960,6 +1008,30 @@ const AdminQuotations = () => {
               </TabsTrigger>
             ))}
           </TabsList>
+          {!isPO(docTab) && (statusFilter === "stage1" || leadFilter !== "all") && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                Client Hub category:
+              </span>
+              {[
+                { v: "all", label: "All" },
+                { v: "lead", label: "Leads" },
+                { v: "direct_deal", label: "Direct Deals" },
+                { v: "consultation", label: "Consultations" },
+                { v: "custom_project", label: "Custom Projects" },
+              ].map((o) => (
+                <Button
+                  key={o.v}
+                  size="sm"
+                  variant={leadFilter === o.v ? "default" : "outline"}
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setLeadFilter(o.v)}
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          )}
           <TabsContent value={statusFilter} className="mt-4 grid gap-3">
             {filtered.map(renderRow)}
             {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}

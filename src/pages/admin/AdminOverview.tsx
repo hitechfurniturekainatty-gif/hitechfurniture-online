@@ -354,6 +354,31 @@ const AdminOverview = () => {
         </p>
       </div>
 
+      {/* 2-Day Delivery Reminder — prominent banner so deliveries within
+          the next 48 hours never get missed. Click jumps to the filtered list. */}
+      {(isAdmin || isOfficeStaff) && upcoming.length > 0 && (
+        <Link
+          to="/admin/quotations?status=stage6"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border-2 border-amber-500/60 bg-gradient-to-r from-amber-500/15 to-amber-500/5 p-4 shadow-sm transition-smooth hover:shadow-product"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20">
+              <CalendarClock className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+            </div>
+            <div>
+              <p className="font-display text-base font-semibold text-amber-900 dark:text-amber-200">
+                {upcoming.length} {upcoming.length === 1 ? "delivery" : "deliveries"} due within 2 days
+              </p>
+              <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                {upcoming.slice(0, 3).map((u) => u.party_name).join(", ")}
+                {upcoming.length > 3 ? ` +${upcoming.length - 3} more` : ""} — tap to review
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+        </Link>
+      )}
+
       {/* Top Highlight Grids: Upcoming Deliveries + In-Progress Quotations */}
       {(isAdmin || isOfficeStaff || isMeasurementStaff) && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
