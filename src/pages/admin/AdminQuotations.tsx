@@ -351,15 +351,6 @@ const AdminQuotations = () => {
     const lt = isQuotation ? form.lead_type : "lead";
     const isDirect = isQuotation && lt === "direct_deal";
     const isCustom = isQuotation && lt === "custom_project";
-    if (isCustom && !form.assigned_to) {
-      setCreating(false);
-      toast({
-        title: "Pick a Dimensions assignee",
-        description: "Custom Projects auto-create a measurement task — choose who should visit the site.",
-        variant: "destructive",
-      });
-      return;
-    }
     const nowIso = new Date().toISOString();
 
     // Stage-2 routing: for Custom Projects, create the measurement task FIRST so
@@ -375,7 +366,7 @@ const AdminQuotations = () => {
           customer_place: form.party_place.trim() || "NA",
           customer_phone: form.party_phone.trim() || null,
           requirement: null,
-          assigned_to: form.assigned_to,
+          assigned_to: null,
           created_by: user?.id ?? null,
           status: "pending",
         })
@@ -845,31 +836,10 @@ const AdminQuotations = () => {
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
                     {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
-                    {form.lead_type === "custom_project" && "A pending task will be created in the Dimensions Dashboard for the chosen assignee."}
+                   {form.lead_type === "custom_project" && "A pending task lands in the Dimensions pool — any measurement staff on duty can pick it up."}
                     {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
                     {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
                   </p>
-                  {form.lead_type === "custom_project" && (
-                    <div className="space-y-1.5 pt-2">
-                      <Label className="text-xs font-medium">Assign Dimensions to *</Label>
-                      <Select
-                        value={form.assigned_to}
-                        onValueChange={(v) => setForm((f) => ({ ...f, assigned_to: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={staffLoaded ? "Select measurement staff" : "Loading staff…"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {measurementStaff.map((s) => (
-                            <SelectItem key={s.user_id} value={s.user_id}>
-                              {s.display_name || s.email}
-                              {s.role === "measurement_staff" ? " (Field)" : s.role === "admin" ? " (Admin)" : " (Staff)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
