@@ -499,6 +499,10 @@ const AdminQuotations = () => {
       // Treat missing document_type as 'quotation' (legacy rows).
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return false;
+      if (!isPO(t) && leadFilter !== "all") {
+        const lt = (r.lead_type ?? "lead").toString();
+        if (lt !== leadFilter) return false;
+      }
       if (isOfficeStaff && staffFilter !== "all") {
         if (staffFilter === "__none__") {
           if (r.created_by) return false;
@@ -521,7 +525,7 @@ const AdminQuotations = () => {
         r.party_place.toLowerCase().includes(s)
       );
     });
-  }, [rows, search, docTab, staffFilter, salesFilter, isOfficeStaff]);
+  }, [rows, search, docTab, staffFilter, salesFilter, leadFilter, isOfficeStaff]);
 
   // Distinct staff options derived from the loaded rows (within current doc tab).
   const staffOptions = useMemo(() => {
