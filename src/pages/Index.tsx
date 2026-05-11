@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, Copy, Check, QrCode, Star } from "lucide-react";
+import { ArrowRight, Copy, Check, QrCode, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Logo } from "@/components/Logo";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { HeroWindowReveal } from "@/components/HeroWindowReveal";
@@ -37,9 +36,6 @@ const Index = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
-  // Global loading guard — prevents the brief flash of the placeholder
-  // hero before homepage data finishes loading.
-  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     // Fire both queries in parallel — saves one full round-trip on mobile.
@@ -69,48 +65,36 @@ const Index = () => {
       setSlides(hp.slides);
       setSections(hp.sections);
       setSettings(hp.settings);
-      setInitializing(false);
-    }).catch(() => {
-      if (!cancelled) setInitializing(false);
-    });
+    }).catch(() => { /* fail silent — page still renders */ });
 
-    // Realtime: when admin reorders / edits / adds main categories, refresh instantly.
-    const channel = supabase
-      .channel("home-main-categories")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "main_categories" },
-        () => { loadCategories(); },
-      )
-      .subscribe();
-
-    // Prefetch downstream chunks well after first paint, so they never
-    // compete with the LCP image / hero. ProductDetail no longer drags the
-    // PDF lib (loaded on-demand inside its handlers), so this stays cheap.
-    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-    const prefetch = () => { import("./Catalog.tsx"); import("./ProductDetail.tsx"); };
-    if (idle) idle(prefetch, { timeout: 4000 }); else setTimeout(prefetch, 3000);
+    // Defer realtime websocket + chunk prefetch to idle time so they
+    // never compete with the LCP image / first paint on slow networks.
+    type IdleCb = (cb: () => void, opts?: { timeout: number }) => number;
+    const idle = (window as unknown as { requestIdleCallback?: IdleCb }).requestIdleCallback;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    const setup = () => {
+      if (cancelled) return;
+      channel = supabase
+        .channel("home-main-categories")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "main_categories" },
+          () => { loadCategories(); },
+        )
+        .subscribe();
+      import("./Catalog.tsx"); import("./ProductDetail.tsx");
+    };
+    if (idle) idle(setup, { timeout: 4000 }); else setTimeout(setup, 2500);
 
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
   const heroIntro = sections.find((s) => s.section_key === "hero_intro");
   // All sections except hero_intro render below the hero. Honour admin display_order.
   const belowSections = sections.filter((s) => s.section_key !== "hero_intro");
-
-  // Global Loading Guard — show a clean branded splash until homepage data is
-  // ready. Prevents the brief flash of the legacy split hero on refresh.
-  if (initializing) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <Logo className="h-16 w-auto" />
-        <Loader2 className="h-5 w-5 animate-spin text-primary/70" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
