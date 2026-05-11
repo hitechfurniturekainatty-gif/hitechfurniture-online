@@ -103,6 +103,7 @@ const AdminQuotations = () => {
   const [statusFilter, setStatusFilterState] = useState<string>(searchParams.get("status") ?? "active");
   const [staffFilter, setStaffFilterState] = useState<string>(searchParams.get("staff") ?? "all");
   const [salesFilter, setSalesFilterState] = useState<string>(searchParams.get("sales") ?? "all");
+  const [leadFilter, setLeadFilterState] = useState<string>(searchParams.get("lead") ?? "all");
   // Top-level "Quotation" vs "Purchase Order" tab. Stored in URL so deep-links work.
   const initialDocTab = (searchParams.get("doc") as DocType) ?? "quotation";
   const [docTab, setDocTabState] = useState<DocType>(initialDocTab);
@@ -148,6 +149,12 @@ const AdminQuotations = () => {
     if (v === "all") next.delete("sales"); else next.set("sales", v);
     setSearchParams(next, { replace: true });
   };
+  const setLeadFilter = (v: string) => {
+    setLeadFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("lead"); else next.set("lead", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
@@ -157,6 +164,8 @@ const AdminQuotations = () => {
     if (staffFromUrl !== staffFilter) setStaffFilterState(staffFromUrl);
     const salesFromUrl = searchParams.get("sales") ?? "all";
     if (salesFromUrl !== salesFilter) setSalesFilterState(salesFromUrl);
+    const leadFromUrl = searchParams.get("lead") ?? "all";
+    if (leadFromUrl !== leadFilter) setLeadFilterState(leadFromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
