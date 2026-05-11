@@ -689,11 +689,28 @@ const AdminQuotations = () => {
             const info = stageFor(q);
             return (
               <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <Badge variant="outline" className={stageToneClasses(info.tone)}>
                     Stage {info.stage}: {info.label}
                   </Badge>
                   <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
+                  {(isAdmin || isOfficeStaff) && (
+                    <Select
+                      value={String(info.stage)}
+                      onValueChange={(v) => changeStage(q, Number(v) as PipelineStage)}
+                    >
+                      <SelectTrigger className="h-7 w-[170px] text-[11px]">
+                        <SelectValue placeholder="Move to…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_STAGES.map((s) => (
+                          <SelectItem key={s} value={String(s)} className="text-xs">
+                            Stage {s}: {STAGE_DEFS[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <PipelineSteps stage={info.stage} showLabels />
               </div>
