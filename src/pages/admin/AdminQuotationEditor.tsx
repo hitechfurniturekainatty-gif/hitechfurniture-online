@@ -1476,7 +1476,22 @@ const AdminQuotationEditor = () => {
       {/* Items */}
       <Card className="mb-4">
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base">Items ({items.length})</CardTitle>
+          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+            <span>Items ({items.length})</span>
+            {items.length > 0 && (() => {
+              const delivered = items.filter((i) => !!i.delivered_at).length;
+              const dispatched = items.filter((i) => !!i.dispatched_at && !i.delivered_at).length;
+              const pending = items.length - delivered - dispatched;
+              return (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  {delivered}/{items.length} delivered
+                  {dispatched > 0 && <span className="text-sky-700 dark:text-sky-300">· {dispatched} in transit</span>}
+                  {pending > 0 && <span>· {pending} pending</span>}
+                </span>
+              );
+            })()}
+          </CardTitle>
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
               <Package className="mr-1.5 h-4 w-4" />From catalog
