@@ -46,6 +46,8 @@ type Q = {
   total: number;
   created_at: string;
   created_by: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
   document_type: DocType;
   service_type?: string | null;
   salesperson_name?: string | null;
