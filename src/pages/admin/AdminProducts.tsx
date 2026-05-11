@@ -312,8 +312,8 @@ const AdminProducts = () => {
       }
     }
     const autoCode =
-      form.product_code.trim() ||
-      `AUTO-${Date.now().toString(36).toUpperCase()}`;
+      titleCaseTrim(form.product_code) ||
+      `Auto-${Date.now().toString(36)}`;
     setSaving(true);
     const payload: any = {
       product_name: titleCaseTrim(form.product_name),
@@ -740,10 +740,10 @@ const AdminProducts = () => {
             <Field label="Product code">
               <Input
                 value={form.product_code}
-                onChange={(e) => setForm({ ...form, product_code: e.target.value.toUpperCase() })}
+                onChange={(e) => setForm({ ...form, product_code: toTitleCase(e.target.value) })}
                 placeholder="e.g. HS-234"
-                className="uppercase tracking-wide"
-                autoCapitalize="characters"
+                className="tracking-wide"
+                autoCapitalize="words"
                 autoComplete="off"
                 spellCheck={false}
               />
