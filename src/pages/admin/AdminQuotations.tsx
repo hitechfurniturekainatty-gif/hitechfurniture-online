@@ -115,7 +115,14 @@ const AdminQuotations = () => {
     delivery_route_id: null as string | null,
     is_direct_order: false,
     lead_type: "lead" as "lead" | "direct_deal" | "consultation" | "custom_project",
+    assigned_to: "" as string,
   });
+  // Measurement staff list — lazy-loaded when "Custom Project" is chosen so we
+  // can auto-create a Dimensions task on save (real Stage-2 routing, not just a tag).
+  const [measurementStaff, setMeasurementStaff] = useState<
+    { user_id: string; email: string | null; display_name: string | null; whatsapp_number: string | null; role: string | null }[]
+  >([]);
+  const [staffLoaded, setStaffLoaded] = useState(false);
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
@@ -227,6 +234,22 @@ const AdminQuotations = () => {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Lazy-load measurement staff the first time the user picks "Custom Project"
+  // (or opens the dialog with that already chosen).
+  useEffect(() => {
+    if (!open || form.lead_type !== "custom_project" || staffLoaded) return;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("list-staff-users");
+      if (error) {
+        toast({ title: "Couldn't load staff list", description: error.message, variant: "destructive" });
+        return;
+      }
+      const all = (data?.users ?? []) as typeof measurementStaff;
+      setMeasurementStaff(all.filter((u) => u.role === "measurement_staff" || u.role === "staff" || u.role === "admin"));
+      setStaffLoaded(true);
+    })();
+  }, [open, form.lead_type, staffLoaded]);
 
   // Live updates: when any user creates/edits/deletes a quotation,
   // refresh the list. Debounced so a burst of updates only triggers one reload.
