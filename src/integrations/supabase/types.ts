@@ -1023,7 +1023,9 @@ export type Database = {
           catalog_image_url: string | null
           catalog_text: string | null
           created_at: string
+          delivered_at: string | null
           description: string
+          dispatched_at: string | null
           display_order: number
           fulfillment_route: string
           id: string
@@ -1042,7 +1044,9 @@ export type Database = {
           catalog_image_url?: string | null
           catalog_text?: string | null
           created_at?: string
+          delivered_at?: string | null
           description: string
+          dispatched_at?: string | null
           display_order?: number
           fulfillment_route?: string
           id?: string
@@ -1061,7 +1065,9 @@ export type Database = {
           catalog_image_url?: string | null
           catalog_text?: string | null
           created_at?: string
+          delivered_at?: string | null
           description?: string
+          dispatched_at?: string | null
           display_order?: number
           fulfillment_route?: string
           id?: string
