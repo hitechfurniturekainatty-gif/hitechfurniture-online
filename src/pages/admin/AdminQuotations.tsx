@@ -307,6 +307,7 @@ const AdminQuotations = () => {
             delivery_route_id: draft.delivery_route_id ?? null,
             is_direct_order: false,
             lead_type: "lead",
+            assigned_to: "",
           });
           toast({ title: "Draft resumed" });
         } else {
