@@ -583,7 +583,7 @@ export type Database = {
       }
       measurement_tasks: {
         Row: {
-          assigned_to: string
+          assigned_to: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -600,7 +600,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_to: string
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -617,7 +617,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_to?: string
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
