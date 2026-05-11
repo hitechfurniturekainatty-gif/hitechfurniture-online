@@ -32,7 +32,8 @@ type Row = {
 };
 
 const AdminWarehouse = () => {
-  const { isOfficeStaff } = useAuth();
+  const { isOfficeStaff, isWarehouse, isDelivery } = useAuth();
+  const canAccess = isOfficeStaff || isWarehouse || isDelivery;
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
 
@@ -64,8 +65,8 @@ const AdminWarehouse = () => {
   };
 
   useEffect(() => {
-    if (isOfficeStaff) load();
-  }, [isOfficeStaff]);
+    if (canAccess) load();
+  }, [canAccess]);
 
   const buckets = useMemo(() => {
     const ready: Row[] = [];
@@ -99,10 +100,10 @@ const AdminWarehouse = () => {
     load();
   };
 
-  if (!isOfficeStaff) {
+  if (!canAccess) {
     return (
       <AdminShell>
-        <p className="text-muted-foreground">Office staff or admin access required.</p>
+        <p className="text-muted-foreground">Warehouse, office staff, delivery or admin access required.</p>
       </AdminShell>
     );
   }

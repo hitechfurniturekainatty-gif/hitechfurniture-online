@@ -15,7 +15,7 @@ import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRou
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
 
-type Role = "admin" | "staff" | "measurement_staff" | "delivery";
+type Role = "admin" | "staff" | "measurement_staff" | "delivery" | "warehouse";
 type StaffRow = {
   user_id: string;
   email: string | null;
@@ -30,12 +30,14 @@ const roleLabel: Record<Role, string> = {
   staff: "Office Staff",
   measurement_staff: "Measurement Staff",
   delivery: "Delivery Driver",
+  warehouse: "Warehouse",
 };
 const roleColor: Record<Role, string> = {
   admin: "bg-primary text-primary-foreground",
   staff: "bg-secondary text-secondary-foreground",
   measurement_staff: "bg-accent text-accent-foreground",
   delivery: "bg-muted text-foreground border border-border",
+  warehouse: "bg-muted text-foreground border border-border",
 };
 
 const AdminStaff = () => {
@@ -244,6 +246,7 @@ const AdminStaff = () => {
                      <SelectItem value="staff">Office Staff</SelectItem>
                      <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
                      <SelectItem value="delivery">Delivery Driver (trips only)</SelectItem>
+                     <SelectItem value="warehouse">Warehouse (stock & dispatch)</SelectItem>
                    </SelectContent>
                 </Select>
               </div>
@@ -369,6 +372,7 @@ const AdminStaff = () => {
                     <SelectItem value="staff">Office Staff</SelectItem>
                     <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
                     <SelectItem value="delivery">Delivery Driver</SelectItem>
+                    <SelectItem value="warehouse">Warehouse</SelectItem>
                   </SelectContent>
                 </Select>
                 {editing.user_id === user?.id && (

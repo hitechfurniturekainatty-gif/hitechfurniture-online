@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "staff" | "measurement_staff" | "delivery" | "worker";
+export type AppRole = "admin" | "staff" | "measurement_staff" | "delivery" | "worker" | "warehouse";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -47,8 +47,9 @@ export function useAuth() {
   const isOfficeStaff = roles.includes("staff") || isAdmin;
   const isDelivery = roles.includes("delivery");
   const isWorker = roles.includes("worker");
+  const isWarehouse = roles.includes("warehouse");
   // any authenticated app user (admin/staff/measurement_staff)
-  const isStaff = isOfficeStaff || isMeasurementStaff || isDelivery || isWorker;
+  const isStaff = isOfficeStaff || isMeasurementStaff || isDelivery || isWorker || isWarehouse;
 
   // Canonical landing route per role — used by AdminOverview to redirect
   // staff who shouldn't see the full pipeline grid.
@@ -56,9 +57,10 @@ export function useAuth() {
     isAdmin ? "/admin"
       : isOfficeStaff ? "/admin"
         : isWorker && !isOfficeStaff && !isAdmin ? "/worker"
-          : isMeasurementStaff ? "/admin/my-work"
-            : isDelivery ? "/admin/my-trips"
-              : "/admin";
+          : isWarehouse ? "/admin/warehouse"
+            : isMeasurementStaff ? "/admin/my-work"
+              : isDelivery ? "/admin/my-trips"
+                : "/admin";
 
   return {
     user,
@@ -69,6 +71,7 @@ export function useAuth() {
     isMeasurementStaff,
     isDelivery,
     isWorker,
+    isWarehouse,
     isStaff,
     roleHome,
     signOut: () => supabase.auth.signOut(),
