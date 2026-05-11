@@ -359,6 +359,11 @@ const AdminQuotationEditor = () => {
   }, []);
 
   const addBlankItem = () => {
+    // Default route by customer category: Custom Project / Consultation
+    // skews to custom production; everything else assumes ready stock.
+    const lt = q?.lead_type ?? "lead";
+    const defaultRoute: "ready_stock" | "custom" =
+      lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
       description: "",
@@ -374,7 +379,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
-      fulfillment_route: "ready_stock",
+      fulfillment_route: defaultRoute,
       _isNew: true,
       _dirty: true,
     };
@@ -530,7 +535,10 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
-      fulfillment_route: "ready_stock",
+      fulfillment_route:
+        (q?.lead_type === "custom_project" || q?.lead_type === "consultation")
+          ? "custom"
+          : "ready_stock",
       _isNew: true,
       _dirty: true,
     };
