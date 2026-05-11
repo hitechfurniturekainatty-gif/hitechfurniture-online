@@ -425,8 +425,8 @@ const AdminQuotations = () => {
 
     // Salesperson attribution — record the creating staff's display name on the
     // quotation regardless of category (used by the "Salesperson" filter).
-    let salespersonName: string | null = null;
-    if (user?.id) {
+    let salespersonName: string | null = form.salesperson_name.trim() || null;
+    if (!salespersonName && user?.id) {
       const { data: prof } = await supabase
         .from("profiles")
         .select("display_name, email")
