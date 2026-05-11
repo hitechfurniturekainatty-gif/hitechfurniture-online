@@ -185,6 +185,18 @@ export const ROLE_MANUALS: Record<AppRole, ManualSection[]> = {
     },
     COMMON_FAQ,
   ],
+  warehouse: [
+    {
+      title: "Your daily workflow",
+      bullets: [
+        "Open Warehouse to see Ready, Pending Production, and In Transit items.",
+        "When a Ready Stock item is picked, mark it Dispatched.",
+        "Custom items appear automatically once the workshop completes them.",
+        "Update stock counts after each receipt or dispatch so the catalog stays accurate.",
+      ],
+    },
+    COMMON_FAQ,
+  ],
 };
 
 
