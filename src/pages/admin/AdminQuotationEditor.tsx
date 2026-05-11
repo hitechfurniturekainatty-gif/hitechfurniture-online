@@ -63,6 +63,8 @@ type QItem = {
   display_order: number;
   product_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
+  dispatched_at?: string | null;
+  delivered_at?: string | null;
   _isNew?: boolean;
   _dirty?: boolean;
 };
@@ -91,6 +93,7 @@ type Quotation = {
   salesperson_name: string | null;
   source_task_id?: string | null;
   submitted_for_pricing_at?: string | null;
+  lead_type?: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
