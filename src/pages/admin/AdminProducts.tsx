@@ -702,7 +702,8 @@ const AdminProducts = () => {
             <Field label="Product name *">
               <AutoSuggestInput
                 value={form.product_name}
-                onChange={(v) => setForm({ ...form, product_name: toTitleCase(v) })}
+                onChange={(v) => setForm({ ...form, product_name: v })}
+                onBlur={() => setForm((prev) => ({ ...prev, product_name: toTitleCase(prev.product_name) }))}
                 placeholder="Start typing to search existing products…"
                 fetchSuggestions={(q) => {
                   const qq = q.toLowerCase();
@@ -740,7 +741,8 @@ const AdminProducts = () => {
             <Field label="Product code">
               <Input
                 value={form.product_code}
-                onChange={(e) => setForm({ ...form, product_code: toTitleCase(e.target.value) })}
+                onChange={(e) => setForm({ ...form, product_code: e.target.value })}
+                onBlur={(e) => setForm((prev) => ({ ...prev, product_code: toTitleCase(e.target.value) }))}
                 placeholder="e.g. HS-234"
                 className="tracking-wide"
                 autoCapitalize="words"
