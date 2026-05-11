@@ -281,6 +281,51 @@ const AdminMyTrips = () => {
                         <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                         {s.q?.party_address || s.q?.delivery_place || s.q?.party_place}
                       </p>
+
+                      {/* Collect-from-customer pill — visible to both delivery & office.
+                          Per spec: hide every other monetary field by default. */}
+                      {s.q && (
+                        <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                              Collect from Customer
+                            </p>
+                            <p className="font-display text-xl font-bold text-emerald-800 dark:text-emerald-200">
+                              {formatINR(balanceToCollect(s.q))}
+                            </p>
+                          </div>
+                          <IndianRupee className="h-6 w-6 text-emerald-600/70 dark:text-emerald-400/70" />
+                        </div>
+                      )}
+
+                      {/* Admin / OPS toggle to allow this driver to view full pricing.
+                          Delivery staff cannot flip this — RLS blocks the update too. */}
+                      {s.q && isOfficeStaff && (
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold">Show Price to Delivery Team</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {s.q.show_price_to_delivery
+                                ? "Driver can open ‘View Full Pricing’ for this stop."
+                                : "Hidden — driver only sees the amount to collect."}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={s.q.show_price_to_delivery}
+                            onCheckedChange={(v) => s.q && togglePriceVisibility(s.q, v)}
+                            disabled={savingToggleId === s.q.id}
+                            aria-label="Show price to delivery team"
+                          />
+                        </div>
+                      )}
+
+                      {/* Lock indicator for delivery role when pricing is hidden. */}
+                      {s.q && isDelivery && !s.q.show_price_to_delivery && (
+                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Lock className="h-3 w-3" /> Pricing details hidden by office.
+                        </p>
+                      )}
+
                       <div className="flex flex-wrap gap-2">
                         {s.q?.party_phone && (
                           <>
@@ -301,6 +346,11 @@ const AdminMyTrips = () => {
                             </Link>
                           </Button>
                         )}
+                        {s.q && s.q.show_price_to_delivery && (
+                          <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}>
+                            <Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing
+                          </Button>
+                        )}
                         {!s.delivered_at && (
                           <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto">
                             <Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered
@@ -315,6 +365,47 @@ const AdminMyTrips = () => {
           )}
         </div>
       )}
+
+      {/* Item-wise price breakdown — only opens when admin has flipped the toggle. */}
+      <Dialog open={!!pricingFor} onOpenChange={(o) => !o && setPricingFor(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Full Pricing — {pricingFor?.quotation_id}</DialogTitle>
+          </DialogHeader>
+          {pricingLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-3">
+              <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-md border border-border">
+                {pricingItems.map((it) => (
+                  <div key={it.id} className="flex items-start justify-between gap-2 border-b border-border/60 px-3 py-2 text-sm last:border-b-0">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{it.description}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {it.quantity} × {formatINR(Number(it.unit_price))}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-mono text-sm font-semibold">{formatINR(Number(it.amount))}</p>
+                  </div>
+                ))}
+                {pricingItems.length === 0 && (
+                  <p className="px-3 py-4 text-center text-xs text-muted-foreground">No line items.</p>
+                )}
+              </div>
+              {pricingFor && (
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total (incl. GST)</span><span className="font-semibold">{formatINR(Number(pricingFor.total ?? 0))}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Advance paid</span><span>{formatINR(Number(pricingFor.advance_amount ?? 0))}</span></div>
+                  <div className="mt-1 flex justify-between border-t border-border pt-1 text-emerald-700 dark:text-emerald-300">
+                    <span className="font-semibold">Collect from Customer</span>
+                    <span className="font-bold">{formatINR(balanceToCollect(pricingFor))}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
