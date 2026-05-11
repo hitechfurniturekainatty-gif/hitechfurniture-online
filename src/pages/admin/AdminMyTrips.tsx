@@ -82,7 +82,7 @@ const AdminMyTrips = () => {
       if (qids.length) {
         const { data: qs } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date")
+          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
       } else {
