@@ -5,13 +5,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText } from "lucide-react";
+import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText, IndianRupee, Eye, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
 import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatINR } from "@/lib/brand";
 
 type Trip = {
   id: string;
@@ -21,8 +24,17 @@ type Trip = {
   notes: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
-type Q = { id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null; delivery_place: string | null };
+type Q = {
+  id: string; quotation_id: string; party_name: string; party_place: string;
+  party_phone: string | null; party_address: string | null; delivery_place: string | null;
+  total: number; advance_amount: number | null; show_price_to_delivery: boolean;
+};
 type QExt = Q & { expected_delivery_date: string | null };
+
+type PricingItem = {
+  id: string; description: string; quantity: number;
+  unit_price: number; amount: number;
+};
 
 const AdminMyTrips = () => {
   const { user, isDelivery, isOfficeStaff } = useAuth();
