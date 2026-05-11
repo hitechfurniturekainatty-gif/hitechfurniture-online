@@ -1115,6 +1115,7 @@ export type Database = {
           salesperson_name: string | null
           service_type: string
           share_token: string | null
+          show_price_to_delivery: boolean
           source_complaint_id: string | null
           source_service_id: string | null
           source_task_id: string | null
@@ -1151,6 +1152,7 @@ export type Database = {
           salesperson_name?: string | null
           service_type?: string
           share_token?: string | null
+          show_price_to_delivery?: boolean
           source_complaint_id?: string | null
           source_service_id?: string | null
           source_task_id?: string | null
@@ -1187,6 +1189,7 @@ export type Database = {
           salesperson_name?: string | null
           service_type?: string
           share_token?: string | null
+          show_price_to_delivery?: boolean
           source_complaint_id?: string | null
           source_service_id?: string | null
           source_task_id?: string | null

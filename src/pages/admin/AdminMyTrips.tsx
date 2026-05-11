@@ -5,13 +5,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText } from "lucide-react";
+import { Loader2, Phone, MessageCircle, Check, MapPin, Truck, FileText, IndianRupee, Eye, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
 import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
 import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatINR } from "@/lib/brand";
 
 type Trip = {
   id: string;
@@ -21,8 +24,17 @@ type Trip = {
   notes: string | null;
 };
 type TripQ = { id: string; trip_id: string; quotation_id: string; stop_order: number; delivered_at: string | null };
-type Q = { id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null; delivery_place: string | null };
+type Q = {
+  id: string; quotation_id: string; party_name: string; party_place: string;
+  party_phone: string | null; party_address: string | null; delivery_place: string | null;
+  total: number; advance_amount: number | null; show_price_to_delivery: boolean;
+};
 type QExt = Q & { expected_delivery_date: string | null };
+
+type PricingItem = {
+  id: string; description: string; quantity: number;
+  unit_price: number; amount: number;
+};
 
 const AdminMyTrips = () => {
   const { user, isDelivery, isOfficeStaff } = useAuth();
@@ -32,6 +44,10 @@ const AdminMyTrips = () => {
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
+  const [pricingFor, setPricingFor] = useState<Q | null>(null);
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [savingToggleId, setSavingToggleId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -70,7 +86,7 @@ const AdminMyTrips = () => {
       if (qids.length) {
         const { data: qs } = await supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date")
+          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
       } else {
@@ -105,6 +121,48 @@ const AdminMyTrips = () => {
     const newStatus = allDelivered ? "delivered" : "in_transit";
     await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
     load();
+  };
+
+  // Admin/OPS only — flip the per-quotation price visibility for the delivery team.
+  // Delivery role itself is blocked at the RLS layer (quotations_update policy).
+  const togglePriceVisibility = async (q: Q, next: boolean) => {
+    setSavingToggleId(q.id);
+    const { error } = await supabase
+      .from("quotations")
+      .update({ show_price_to_delivery: next })
+      .eq("id", q.id);
+    setSavingToggleId(null);
+    if (error) {
+      toast({ title: "Couldn't update", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQuotes((prev) => prev.map((row) => (row.id === q.id ? { ...row, show_price_to_delivery: next } : row)));
+    toast({ title: next ? "Pricing visible to delivery" : "Pricing hidden from delivery" });
+  };
+
+  const openPricing = async (q: Q) => {
+    setPricingFor(q);
+    setPricingItems([]);
+    setPricingLoading(true);
+    const { data, error } = await supabase
+      .from("quotation_items")
+      .select("id, description, quantity, unit_price, amount")
+      .eq("quotation_id", q.id)
+      .order("display_order", { ascending: true });
+    setPricingLoading(false);
+    if (error) {
+      toast({ title: "Couldn't load pricing", description: error.message, variant: "destructive" });
+      return;
+    }
+    setPricingItems((data ?? []) as PricingItem[]);
+  };
+
+  // "Collect from Customer" amount per spec: balance = total − advance
+  // (full total when no advance has been recorded).
+  const balanceToCollect = (q: Q | undefined) => {
+    if (!q) return 0;
+    const adv = Number(q.advance_amount ?? 0);
+    return Math.max(Number(q.total ?? 0) - adv, 0);
   };
 
   const trip = trips.find((t) => t.id === activeTrip) ?? trips[0] ?? null;
@@ -223,6 +281,51 @@ const AdminMyTrips = () => {
                         <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                         {s.q?.party_address || s.q?.delivery_place || s.q?.party_place}
                       </p>
+
+                      {/* Collect-from-customer pill — visible to both delivery & office.
+                          Per spec: hide every other monetary field by default. */}
+                      {s.q && (
+                        <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                              Collect from Customer
+                            </p>
+                            <p className="font-display text-xl font-bold text-emerald-800 dark:text-emerald-200">
+                              {formatINR(balanceToCollect(s.q))}
+                            </p>
+                          </div>
+                          <IndianRupee className="h-6 w-6 text-emerald-600/70 dark:text-emerald-400/70" />
+                        </div>
+                      )}
+
+                      {/* Admin / OPS toggle to allow this driver to view full pricing.
+                          Delivery staff cannot flip this — RLS blocks the update too. */}
+                      {s.q && isOfficeStaff && (
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold">Show Price to Delivery Team</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {s.q.show_price_to_delivery
+                                ? "Driver can open ‘View Full Pricing’ for this stop."
+                                : "Hidden — driver only sees the amount to collect."}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={s.q.show_price_to_delivery}
+                            onCheckedChange={(v) => s.q && togglePriceVisibility(s.q, v)}
+                            disabled={savingToggleId === s.q.id}
+                            aria-label="Show price to delivery team"
+                          />
+                        </div>
+                      )}
+
+                      {/* Lock indicator for delivery role when pricing is hidden. */}
+                      {s.q && isDelivery && !s.q.show_price_to_delivery && (
+                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Lock className="h-3 w-3" /> Pricing details hidden by office.
+                        </p>
+                      )}
+
                       <div className="flex flex-wrap gap-2">
                         {s.q?.party_phone && (
                           <>
@@ -243,6 +346,11 @@ const AdminMyTrips = () => {
                             </Link>
                           </Button>
                         )}
+                        {s.q && s.q.show_price_to_delivery && (
+                          <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}>
+                            <Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing
+                          </Button>
+                        )}
                         {!s.delivered_at && (
                           <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto">
                             <Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered
@@ -257,6 +365,47 @@ const AdminMyTrips = () => {
           )}
         </div>
       )}
+
+      {/* Item-wise price breakdown — only opens when admin has flipped the toggle. */}
+      <Dialog open={!!pricingFor} onOpenChange={(o) => !o && setPricingFor(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Full Pricing — {pricingFor?.quotation_id}</DialogTitle>
+          </DialogHeader>
+          {pricingLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-3">
+              <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-md border border-border">
+                {pricingItems.map((it) => (
+                  <div key={it.id} className="flex items-start justify-between gap-2 border-b border-border/60 px-3 py-2 text-sm last:border-b-0">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{it.description}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {it.quantity} × {formatINR(Number(it.unit_price))}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-mono text-sm font-semibold">{formatINR(Number(it.amount))}</p>
+                  </div>
+                ))}
+                {pricingItems.length === 0 && (
+                  <p className="px-3 py-4 text-center text-xs text-muted-foreground">No line items.</p>
+                )}
+              </div>
+              {pricingFor && (
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total (incl. GST)</span><span className="font-semibold">{formatINR(Number(pricingFor.total ?? 0))}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Advance paid</span><span>{formatINR(Number(pricingFor.advance_amount ?? 0))}</span></div>
+                  <div className="mt-1 flex justify-between border-t border-border pt-1 text-emerald-700 dark:text-emerald-300">
+                    <span className="font-semibold">Collect from Customer</span>
+                    <span className="font-bold">{formatINR(balanceToCollect(pricingFor))}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
