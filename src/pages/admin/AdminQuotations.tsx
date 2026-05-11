@@ -112,6 +112,7 @@ const AdminQuotations = () => {
     delivery_place: "",
     delivery_route_id: null as string | null,
     is_direct_order: false,
+    lead_type: "lead" as "lead" | "direct_deal" | "consultation" | "custom_project",
   });
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
