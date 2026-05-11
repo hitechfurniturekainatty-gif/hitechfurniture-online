@@ -359,6 +359,17 @@ const AdminQuotations = () => {
     // up in the assignee's Pending list immediately.
     let sourceTaskId: string | null = null;
     if (isCustom) {
+      // Auto-assign to the measurement staff. We have a single measurement
+      // staff in the team, so look them up and assign directly — no shared
+      // pool, no manual picker.
+      let assigneeId: string | null = null;
+      const { data: msRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "measurement_staff");
+      if (msRoles && msRoles.length >= 1) {
+        assigneeId = msRoles[0].user_id as string;
+      }
       const { data: task, error: taskErr } = await supabase
         .from("measurement_tasks")
         .insert({
@@ -366,7 +377,7 @@ const AdminQuotations = () => {
           customer_place: form.party_place.trim() || "NA",
           customer_phone: form.party_phone.trim() || null,
           requirement: null,
-          assigned_to: null,
+          assigned_to: assigneeId,
           created_by: user?.id ?? null,
           status: "pending",
         })
