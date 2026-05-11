@@ -456,6 +456,30 @@ const AdminQuotationEditor = () => {
     });
   };
 
+  // Per-item dispatch / delivery actions. Persists immediately so warehouse
+  // and logistics dashboards (and the completion trigger) see the change
+  // even before the next autosave fires.
+  const setItemFulfillmentTimestamps = async (
+    item: QItem,
+    patch: { dispatched_at?: string | null; delivered_at?: string | null },
+  ) => {
+    if (item._isNew) {
+      toast({ title: "Save the item first", description: "Add a description so we can save it before marking dispatch/delivery.", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("quotation_items").update(patch).eq("id", item.id);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setItems((p) => {
+      const updated = p.map((i) => (i.id === item.id ? { ...i, ...patch } : i));
+      itemsRef.current = updated;
+      return updated;
+    });
+    toast({ title: patch.delivered_at ? "Marked delivered" : patch.dispatched_at ? "Marked dispatched" : "Reset to pending" });
+  };
+
   const loadProducts = async () => {
     const [{ data: pr }, { data: mc }, { data: sc }] = await Promise.all([
       supabase
