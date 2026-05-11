@@ -643,6 +643,42 @@ export type Database = {
           },
         ]
       }
+      pipeline_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          quotation_id: string
+          read_at: string | null
+          read_by: string | null
+          stage: number
+          target_role: Database["public"]["Enums"]["app_role"]
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          quotation_id: string
+          read_at?: string | null
+          read_by?: string | null
+          stage: number
+          target_role: Database["public"]["Enums"]["app_role"]
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          quotation_id?: string
+          read_at?: string | null
+          read_by?: string | null
+          stage?: number
+          target_role?: Database["public"]["Enums"]["app_role"]
+          title?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           created_at: string
@@ -1110,6 +1146,7 @@ export type Database = {
           party_name: string
           party_phone: string | null
           party_place: string
+          pipeline_stage: number
           quotation_date: string
           quotation_id: string
           salesperson_name: string | null
@@ -1147,6 +1184,7 @@ export type Database = {
           party_name: string
           party_phone?: string | null
           party_place: string
+          pipeline_stage?: number
           quotation_date?: string
           quotation_id: string
           salesperson_name?: string | null
@@ -1184,6 +1222,7 @@ export type Database = {
           party_name?: string
           party_phone?: string | null
           party_place?: string
+          pipeline_stage?: number
           quotation_date?: string
           quotation_id?: string
           salesperson_name?: string | null
@@ -1646,6 +1685,16 @@ export type Database = {
       }
       set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
       set_catalog_pin: { Args: { _pin: string }; Returns: undefined }
+      set_quotation_stage: {
+        Args: {
+          _body: string
+          _quotation_id: string
+          _stage: number
+          _target_role: Database["public"]["Enums"]["app_role"]
+          _title: string
+        }
+        Returns: undefined
+      }
       verify_backlog_pin: { Args: { _pin: string }; Returns: boolean }
       verify_catalog_pin: { Args: { _pin: string }; Returns: boolean }
     }
