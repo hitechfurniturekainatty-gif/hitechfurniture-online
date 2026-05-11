@@ -722,18 +722,26 @@ const AdminQuotations = () => {
                 />
               )}
               {!isPO(newDocType) && (
-                <div className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                  <div className="min-w-0 pr-3">
-                    <Label className="cursor-pointer text-sm font-semibold">Direct Order (Shop Stock)</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Skips measurement &amp; pricing — jumps straight to production / delivery.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={form.is_direct_order}
-                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_direct_order: v }))}
-                    aria-label="Direct order toggle"
-                  />
+                <div className="space-y-1.5 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                  <Label className="text-sm font-semibold">Client Hub Category *</Label>
+                  <Select
+                    value={form.lead_type}
+                    onValueChange={(v) => setForm((f) => ({ ...f, lead_type: v as typeof f.lead_type }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lead">Lead — stays in Client Hub for follow-up</SelectItem>
+                      <SelectItem value="direct_deal">Direct Deal — auto-routes to OPS for pricing</SelectItem>
+                      <SelectItem value="consultation">Consultation — stays in Client Hub</SelectItem>
+                      <SelectItem value="custom_project">Custom Project — routes to Dimensions: Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
+                    {form.lead_type === "custom_project" && "Open the editor and click ‘Assign Dimensions’ to dispatch the measurement team."}
+                    {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
+                    {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
+                  </p>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
