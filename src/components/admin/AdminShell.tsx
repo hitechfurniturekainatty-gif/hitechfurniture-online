@@ -158,7 +158,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
-      { to: "/admin/quotations?status=stage1&lead=consultation", label: "Admin Tasks", icon: LifeBuoy, show: isOfficeStaff },
+      { to: "/admin/quotations?status=stage1&lead=consultation", label: "Admin Tasks", icon: Activity, show: isOfficeStaff },
       { to: "/admin/pipeline", label: "Workflow Pipeline", icon: GitBranch, show: isAdmin },
       { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
       { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
