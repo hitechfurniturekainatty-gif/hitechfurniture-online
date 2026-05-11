@@ -112,6 +112,7 @@ const AdminQuotations = () => {
     delivery_place: "",
     delivery_route_id: null as string | null,
     is_direct_order: false,
+    lead_type: "lead" as "lead" | "direct_deal" | "consultation" | "custom_project",
   });
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
@@ -280,6 +281,7 @@ const AdminQuotations = () => {
             delivery_place: draft.delivery_place ?? "",
             delivery_route_id: draft.delivery_route_id ?? null,
             is_direct_order: false,
+            lead_type: "lead",
           });
           toast({ title: "Draft resumed" });
         } else {
@@ -319,6 +321,11 @@ const AdminQuotations = () => {
       toast({ title: "Failed to generate ID", description: qidErr?.message, variant: "destructive" });
       return;
     }
+    const isQuotation = !isPO(newDocType);
+    const lt = isQuotation ? form.lead_type : "lead";
+    const isDirect = isQuotation && lt === "direct_deal";
+    const isCustom = isQuotation && lt === "custom_project";
+    const nowIso = new Date().toISOString();
     const { data, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
       party_name: titleCaseTrim(form.party_name),
@@ -327,7 +334,10 @@ const AdminQuotations = () => {
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
       document_type: newDocType,
-      is_direct_order: !isPO(newDocType) && form.is_direct_order,
+      is_direct_order: isDirect,
+      lead_type: lt,
+      // Direct deals skip Client Hub + Dimensions and land straight in OPS for pricing.
+      submitted_for_pricing_at: isDirect ? nowIso : null,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -338,7 +348,15 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead" });
+    if (isCustom) {
+      toast({
+        title: "Custom Project created",
+        description: "Assign the Dimensions team from the editor to move it to Stage 2.",
+      });
+    } else if (isDirect) {
+      toast({ title: "Direct Deal created", description: "Moved to OPS for pricing." });
+    }
     navigate(`/admin/quotations/${data.id}`);
   };
 
@@ -704,18 +722,26 @@ const AdminQuotations = () => {
                 />
               )}
               {!isPO(newDocType) && (
-                <div className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                  <div className="min-w-0 pr-3">
-                    <Label className="cursor-pointer text-sm font-semibold">Direct Order (Shop Stock)</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Skips measurement &amp; pricing — jumps straight to production / delivery.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={form.is_direct_order}
-                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_direct_order: v }))}
-                    aria-label="Direct order toggle"
-                  />
+                <div className="space-y-1.5 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                  <Label className="text-sm font-semibold">Client Hub Category *</Label>
+                  <Select
+                    value={form.lead_type}
+                    onValueChange={(v) => setForm((f) => ({ ...f, lead_type: v as typeof f.lead_type }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lead">Lead — stays in Client Hub for follow-up</SelectItem>
+                      <SelectItem value="direct_deal">Direct Deal — auto-routes to OPS for pricing</SelectItem>
+                      <SelectItem value="consultation">Consultation — stays in Client Hub</SelectItem>
+                      <SelectItem value="custom_project">Custom Project — routes to Dimensions: Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
+                    {form.lead_type === "custom_project" && "Open the editor and click ‘Assign Dimensions’ to dispatch the measurement team."}
+                    {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
+                    {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
+                  </p>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
