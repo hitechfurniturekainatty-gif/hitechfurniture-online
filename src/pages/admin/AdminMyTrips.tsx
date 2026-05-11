@@ -44,6 +44,10 @@ const AdminMyTrips = () => {
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
+  const [pricingFor, setPricingFor] = useState<Q | null>(null);
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [savingToggleId, setSavingToggleId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -117,6 +121,48 @@ const AdminMyTrips = () => {
     const newStatus = allDelivered ? "delivered" : "in_transit";
     await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
     load();
+  };
+
+  // Admin/OPS only — flip the per-quotation price visibility for the delivery team.
+  // Delivery role itself is blocked at the RLS layer (quotations_update policy).
+  const togglePriceVisibility = async (q: Q, next: boolean) => {
+    setSavingToggleId(q.id);
+    const { error } = await supabase
+      .from("quotations")
+      .update({ show_price_to_delivery: next })
+      .eq("id", q.id);
+    setSavingToggleId(null);
+    if (error) {
+      toast({ title: "Couldn't update", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQuotes((prev) => prev.map((row) => (row.id === q.id ? { ...row, show_price_to_delivery: next } : row)));
+    toast({ title: next ? "Pricing visible to delivery" : "Pricing hidden from delivery" });
+  };
+
+  const openPricing = async (q: Q) => {
+    setPricingFor(q);
+    setPricingItems([]);
+    setPricingLoading(true);
+    const { data, error } = await supabase
+      .from("quotation_items")
+      .select("id, description, quantity, unit_price, amount")
+      .eq("quotation_id", q.id)
+      .order("display_order", { ascending: true });
+    setPricingLoading(false);
+    if (error) {
+      toast({ title: "Couldn't load pricing", description: error.message, variant: "destructive" });
+      return;
+    }
+    setPricingItems((data ?? []) as PricingItem[]);
+  };
+
+  // "Collect from Customer" amount per spec: balance = total − advance
+  // (full total when no advance has been recorded).
+  const balanceToCollect = (q: Q | undefined) => {
+    if (!q) return 0;
+    const adv = Number(q.advance_amount ?? 0);
+    return Math.max(Number(q.total ?? 0) - adv, 0);
   };
 
   const trip = trips.find((t) => t.id === activeTrip) ?? trips[0] ?? null;
