@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { email, password, display_name, role, whatsapp_number } = body || {};
     if (!email || !password || !role) return json({ error: 'email, password, role required' }, 200);
-    if (!['admin', 'staff', 'measurement_staff', 'delivery'].includes(role)) return json({ error: 'invalid role' }, 200);
+    if (!['admin', 'staff', 'measurement_staff', 'delivery', 'warehouse'].includes(role)) return json({ error: 'invalid role' }, 200);
     if (typeof password !== 'string' || password.length < 8) {
       return json({ error: 'Password must be at least 8 characters' }, 200);
     }
