@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.2";
-export const GUIDE_LAST_UPDATED = "2026-05-09";
+export const APP_VERSION = "1.3";
+export const GUIDE_LAST_UPDATED = "2026-05-11";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -41,7 +41,11 @@ export const ABOUT = {
   highlights: [
     "Public website with live catalog, hero animation and Google review CTA.",
     "Role-based logins for Admin, Office Staff, Measurement Staff, Workers and Delivery.",
-    "5-stage Workflow Pipeline: Pricing → Quotation Sent → Production → Delivery → Delivered.",
+    "6-stage automated Workflow Pipeline: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics.",
+    "Client Hub Category on every new quotation (Lead / Direct Deal / Consultation / Custom Project) auto-routes the file to the right stage.",
+    "Stage cards on the Overview deep-link straight into a filtered Quotations list (e.g. clicking 'Logistics' opens only Logistics-stage files).",
+    "Department-specific data privacy: production never sees prices, delivery sees per-stop balance, admin/OPS can flip 'Show Price to Delivery' per quotation.",
+    "Interactive in-app help — floating Help button on every admin page, role-specific manual, field tooltips and one-line action hints under primary buttons.",
     "Multi-location stock per colour variant with floor-wise display order.",
     "Direct Order (shop stock) shortcut that skips measurement and pricing.",
     "Service & Complaint Hub for repairs, warranty issues and conversions to paid quotes.",
@@ -521,7 +525,7 @@ export const CHAPTERS: GuideChapter[] = [
   // ────────────────────────────────────────────────────────────
   {
     id: "pipeline",
-    title: "Workflow Pipeline (5 stages)",
+    title: "Workflow Pipeline (6 stages)",
     audience: ["everyone"],
     sections: [
       {
@@ -529,13 +533,15 @@ export const CHAPTERS: GuideChapter[] = [
         title: "Stages and owners",
         audience: ["everyone"],
         bullets: [
-          "Stage 1 — Waiting for Pricing · Owner: Office Staff · Trigger: Measurement Staff submits.",
-          "Stage 2 — Quotation Sent · Owner: Customer · Trigger: Office finalizes.",
-          "Stage 3 — Ready for Production · Owner: Workers · Trigger: Advance received / job assigned.",
-          "Stage 4 — Ready for Delivery · Owner: Delivery Team · Trigger: All worker jobs done.",
-          "Stage 5 — Delivered · Trigger: Delivery trip marked complete.",
+          "Stage 1 — Client Hub · Owner: Sales / Admin · Where new Leads, Direct Deals and Consultations land.",
+          "Stage 2 — Dimensions · Owner: Measurement Team · Triggered by Custom Project category or 'Assign Dimensions'.",
+          "Stage 3 — OPS · Owner: Office Staff · Triggered when measurement is submitted, advance is received, or category is Direct Deal.",
+          "Stage 4 — Production · Owner: Workers · Triggered when OPS finalizes and any item is routed 'Custom'.",
+          "Stage 5 — Warehouse · Owner: Warehouse Team · Ready-stock items skip Production and land here directly.",
+          "Stage 6 — Logistics · Owner: Delivery Team · Triggered when items are dispatched or added to a trip.",
         ],
-        tip: "Green = completed, Orange = current, Grey = upcoming. Direct Orders skip Stages 1 & 2.",
+        tip:
+          "Click any stage card on the Overview to drill into a filtered Quotations list — the heading changes to e.g. 'Logistics Queue' so you always know what you're looking at.",
       },
     ],
   },
@@ -643,6 +649,20 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-3",
+        title: "v1.3 — 2026-05-11",
+        audience: ["everyone"],
+        bullets: [
+          "Workflow Pipeline expanded from 5 → 6 stages: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics.",
+          "New 'Client Hub Category' dropdown on Create Quotation (Lead, Direct Deal, Consultation, Custom Project) drives automated routing — Direct Deals jump to OPS, Custom Projects route to Dimensions.",
+          "Trigger-based stage movement: measurement submission → OPS, OPS finalize → Production / Warehouse, dispatch → Logistics. No manual status updates.",
+          "Overview pipeline grid + KPI cards now deep-link into a filtered Quotations list (Stage 1–6). The list heading switches to 'Client Hub Queue', 'OPS Queue', 'Logistics Queue' etc.",
+          "Department-specific data privacy: production hides prices/phones; delivery sees per-stop 'Collect from Customer' amount; admin/OPS can toggle 'Show Price to Delivery Team' per quotation to expose item-wise pricing when needed.",
+          "Interactive Help System rolled out — floating Help button on every admin page opens a role-specific user manual (Admin, OPS, Measurement, Worker, Delivery) with search and a tip-toggle. Field-level (?) tooltips and consequence hints under primary buttons start with the Create Quotation flow.",
+          "Admin Overview gained 7/14/30-day trend sparklines for new quotations and out-for-delivery counts.",
+        ],
+      },
       {
         id: "v1-2",
         title: "v1.2 — 2026-05-09",
