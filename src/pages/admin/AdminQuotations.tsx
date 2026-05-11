@@ -204,7 +204,7 @@ const AdminQuotations = () => {
     const [{ data, error }, jRes, tqRes, itRes] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage")
+        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
@@ -248,8 +248,11 @@ const AdminQuotations = () => {
     else {
       const list = (data ?? []) as Q[];
       setRows(list);
-      // Fetch display names for unique created_by ids
-      const ids = Array.from(new Set(list.map((r) => r.created_by).filter(Boolean) as string[]));
+      // Fetch display names for unique created_by + updated_by ids
+      const ids = Array.from(new Set([
+        ...list.map((r) => r.created_by),
+        ...list.map((r) => r.updated_by),
+      ].filter(Boolean) as string[]));
       if (ids.length) {
         const { data: profiles } = await supabase
           .from("profiles")
