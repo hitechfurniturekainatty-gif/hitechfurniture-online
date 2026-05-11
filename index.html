@@ -23,9 +23,6 @@
     <!-- Preconnect to Supabase so the home page's first DB call skips the TLS/DNS handshake -->
     <link rel="preconnect" href="https://thwleiywbpyccgtacczv.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://thwleiywbpyccgtacczv.supabase.co" />
-    <!-- Preload the LCP hero image so it fetches in parallel with the JS bundle.
-         This is the villa arch shown immediately on the home page. -->
-    <link rel="preload" as="image" href="/og-image.jpg" fetchpriority="high" />
     <!-- Non-blocking font load: critical for mobile networks. Fonts apply once ready, but text paints immediately with system fallback. -->
     <link
       rel="preload"
