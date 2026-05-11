@@ -1168,6 +1168,7 @@ export type Database = {
           terms: string | null
           total: number
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           advance_amount?: number
@@ -1206,6 +1207,7 @@ export type Database = {
           terms?: string | null
           total?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           advance_amount?: number
@@ -1244,6 +1246,7 @@ export type Database = {
           terms?: string | null
           total?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
