@@ -572,6 +572,8 @@ const AdminQuotationEditor = () => {
       it.display_order,
       it.product_id,
       it.fulfillment_route,
+      it.dispatched_at ?? null,
+      it.delivered_at ?? null,
     ]);
     const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
       h.party_name,
@@ -665,6 +667,8 @@ const AdminQuotationEditor = () => {
           display_order: it.display_order,
           product_id: it.product_id,
           fulfillment_route: it.fulfillment_route ?? "ready_stock",
+          dispatched_at: it.dispatched_at ?? null,
+          delivered_at: it.delivered_at ?? null,
         },
       });
     }
