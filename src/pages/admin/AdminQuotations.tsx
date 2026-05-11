@@ -472,6 +472,22 @@ const AdminQuotations = () => {
     }
   };
 
+  // Direct stage change for admin/staff — manually transition a quotation
+  // to any pipeline stage from the Client Hub list. Uses the quotations RLS
+  // update policy (admin/staff already permitted).
+  const changeStage = async (q: Q, nextStage: PipelineStage) => {
+    const { error } = await supabase
+      .from("quotations")
+      .update({ pipeline_stage: nextStage })
+      .eq("id", q.id);
+    if (error) {
+      toast({ title: "Couldn't move stage", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Moved to Stage ${nextStage}: ${STAGE_DEFS[nextStage].label}` });
+    load();
+  };
+
   // Helper: compute the full stage for a quotation using aggregates.
   const stageFor = (q: Q) =>
     computeStage({
