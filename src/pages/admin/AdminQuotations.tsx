@@ -19,6 +19,7 @@ import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
@@ -119,6 +120,7 @@ const AdminQuotations = () => {
     is_direct_order: false,
     lead_type: "lead" as "lead" | "direct_deal" | "consultation" | "custom_project",
     assigned_to: "" as string,
+    salesperson_name: "" as string,
   });
   // Measurement staff list — lazy-loaded when "Custom Project" is chosen so we
   // can auto-create a Dimensions task on save (real Stage-2 routing, not just a tag).
@@ -126,6 +128,24 @@ const AdminQuotations = () => {
     { user_id: string; email: string | null; display_name: string | null; whatsapp_number: string | null; role: string | null }[]
   >([]);
   const [staffLoaded, setStaffLoaded] = useState(false);
+  // All sales-capable staff names — used to populate the salesperson picker
+  // inside the New Quotation dialog.
+  const [salesStaffOptions, setSalesStaffOptions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("list-staff-users");
+      if (cancelled || error) return;
+      const users = (data?.users ?? []) as Array<{ display_name?: string | null; email?: string | null; role?: string | null }>;
+      const names = users
+        .filter((u) => u.role && u.role !== "delivery")
+        .map((u) => (u.display_name || u.email || "").trim())
+        .filter(Boolean);
+      setSalesStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
   // Auto-save / resume state for the "New Quotation" dialog
   const [resumeOffered, setResumeOffered] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
