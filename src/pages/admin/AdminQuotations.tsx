@@ -707,6 +707,11 @@ const AdminQuotations = () => {
                     · Sales: <span className="font-medium text-foreground">{q.salesperson_name}</span>
                   </span>
                 )}
+                {q.updated_by && q.updated_at && q.updated_by !== q.created_by && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    · Edited by <span className="font-medium text-foreground">{creatorMap[q.updated_by] ?? "Staff"}</span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
