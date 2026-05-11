@@ -321,6 +321,11 @@ const AdminQuotations = () => {
       toast({ title: "Failed to generate ID", description: qidErr?.message, variant: "destructive" });
       return;
     }
+    const isQuotation = !isPO(newDocType);
+    const lt = isQuotation ? form.lead_type : "lead";
+    const isDirect = isQuotation && lt === "direct_deal";
+    const isCustom = isQuotation && lt === "custom_project";
+    const nowIso = new Date().toISOString();
     const { data, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
       party_name: titleCaseTrim(form.party_name),
@@ -329,7 +334,10 @@ const AdminQuotations = () => {
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
       document_type: newDocType,
-      is_direct_order: !isPO(newDocType) && form.is_direct_order,
+      is_direct_order: isDirect,
+      lead_type: lt,
+      // Direct deals skip Client Hub + Dimensions and land straight in OPS for pricing.
+      submitted_for_pricing_at: isDirect ? nowIso : null,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
