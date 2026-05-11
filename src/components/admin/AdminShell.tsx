@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
+import { HelpFab } from "@/components/help/HelpFab";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
@@ -307,6 +308,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
         </aside>
         <main className="min-w-0 pb-6">{children}</main>
       </div>
+      <HelpFab />
     </div>
   );
 };
