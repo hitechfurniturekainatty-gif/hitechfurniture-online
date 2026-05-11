@@ -745,11 +745,11 @@ const AdminQuotations = () => {
               ) : (
                 <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
               )}
-              <div className={`grid gap-2 sm:flex sm:items-center ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-2 sm:flex sm:items-center ${(isAdmin || isOfficeStaff) ? "grid-cols-2" : "grid-cols-1"}`}>
                 <Button size="sm" asChild className="h-10 w-full px-4 sm:w-auto">
                   <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
                 </Button>
-                {isAdmin && (
+                {(isAdmin || isOfficeStaff) && (
                   <Button size="sm" variant="outline" className="h-10 w-full sm:w-auto" onClick={() => remove(q)}>
                     <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                     Delete
