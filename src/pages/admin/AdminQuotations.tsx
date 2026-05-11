@@ -845,10 +845,31 @@ const AdminQuotations = () => {
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
                     {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
-                    {form.lead_type === "custom_project" && "Open the editor and click ‘Assign Dimensions’ to dispatch the measurement team."}
+                    {form.lead_type === "custom_project" && "A pending task will be created in the Dimensions Dashboard for the chosen assignee."}
                     {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
                     {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
                   </p>
+                  {form.lead_type === "custom_project" && (
+                    <div className="space-y-1.5 pt-2">
+                      <Label className="text-xs font-medium">Assign Dimensions to *</Label>
+                      <Select
+                        value={form.assigned_to}
+                        onValueChange={(v) => setForm((f) => ({ ...f, assigned_to: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={staffLoaded ? "Select measurement staff" : "Loading staff…"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {measurementStaff.map((s) => (
+                            <SelectItem key={s.user_id} value={s.user_id}>
+                              {s.display_name || s.email}
+                              {s.role === "measurement_staff" ? " (Field)" : s.role === "admin" ? " (Admin)" : " (Staff)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
