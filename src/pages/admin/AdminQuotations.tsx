@@ -25,6 +25,8 @@ import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker"
 import { type DocType, docLabel, docTagClasses, isPO } from "@/lib/docType";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import { computeStage, stageToneClasses, ALL_STAGES, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
+import { HelpHint } from "@/components/help/HelpHint";
+import { ActionHint } from "@/components/help/ActionHint";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import {
   saveNewQuotationDraft,
@@ -680,7 +682,10 @@ const AdminQuotations = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{isPO(newDocType) ? "Worker / Supplier name *" : "Customer name *"}</Label>
+                <Label className="flex items-center gap-1.5">
+                  {isPO(newDocType) ? "Worker / Supplier name *" : "Customer name *"}
+                  <HelpHint id="quotation.party_name" />
+                </Label>
                 {isPO(newDocType) ? (
                   <AutoSuggestInput<{ phone: string | null; whatsapp_number: string }>
                     value={form.party_name}
@@ -714,14 +719,20 @@ const AdminQuotations = () => {
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>{isPO(newDocType) ? "Place (optional)" : "Place *"}</Label>
+                <Label className="flex items-center gap-1.5">
+                  {isPO(newDocType) ? "Place (optional)" : "Place *"}
+                  <HelpHint id="quotation.party_place" />
+                </Label>
                 <Input
                   value={form.party_place}
                   onChange={(e) => setForm({ ...form, party_place: e.target.value })}
                   placeholder="e.g. Wayanad"
                 />
               </div>
-              <div className="space-y-1.5"><Label>Phone</Label><Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">Phone <HelpHint id="quotation.party_phone" /></Label>
+                <Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} />
+              </div>
               {!isPO(newDocType) && (
                 <DeliveryRoutePicker
                   place={form.delivery_place}
@@ -731,7 +742,10 @@ const AdminQuotations = () => {
               )}
               {!isPO(newDocType) && (
                 <div className="space-y-1.5 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
-                  <Label className="text-sm font-semibold">Client Hub Category *</Label>
+                  <Label className="flex items-center gap-1.5 text-sm font-semibold">
+                    Client Hub Category *
+                    <HelpHint id="quotation.lead_type" />
+                  </Label>
                   <Select
                     value={form.lead_type}
                     onValueChange={(v) => setForm((f) => ({ ...f, lead_type: v as typeof f.lead_type }))}
@@ -768,7 +782,10 @@ const AdminQuotations = () => {
             </div>
             <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
               <Button variant="outline" onClick={() => handleOpenChange(false)} className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={create} disabled={creating} className="w-full sm:w-auto">{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create & open</Button>
+              <div className="w-full sm:w-auto">
+                <Button onClick={create} disabled={creating} className="w-full sm:w-auto">{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create & open</Button>
+                <ActionHint id="quotation.create" />
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

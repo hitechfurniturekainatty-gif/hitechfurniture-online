@@ -1,57 +1,68 @@
-## Goal
-Connect existing quotation statuses + worker job statuses to the new 6-stage pipeline (Client Hub → Dimensions → OPS → Production → Warehouse → Logistics), so files transition automatically end-to-end. Restrict each staff role to their stage. Standardize cards to show Name / Place / Phone.
+# Interactive Help System
 
-## 1. Status → Stage mapping (logic only, no schema change)
+A consistent help layer across the app so a brand-new user (Admin, OPS, Worker, Delivery) can self-onboard without training.
 
-`src/lib/quotationPipeline.ts` already defines the 6 stages. Refine `computeStage` so it matches the spec exactly:
+## What you'll see
 
-- `status='drafted'` and no `source_task_id` → **Stage 1 Client Hub**
-- `source_task_id` set, measurement_task still `pending` / `in_progress` → **Stage 2 Dimensions**
-- `submitted_for_pricing_at` set OR `status='active'` with no jobs → **Stage 3 OPS**
-- `status='finalized'` (advance recorded) and `jobs_total=0` → **Stage 3 OPS** (auto-create job pending) — UI then shows "Ready for Production"
-- `jobs_total>0` and not all completed → **Stage 4 Production**
-- All jobs completed (or `jobs_in_warehouse>0`) and not dispatched → **Stage 5 Warehouse**
-- `jobs_dispatched>0` OR `has_trip` OR `status='delivered'` → **Stage 6 Logistics**
-- `status='rejected'` → archive (excluded from pipeline counts)
+1. A small `?` help icon next to important input fields. Hover/tap shows a tooltip with a plain-English explanation and a real-world example.
+2. A confirmation hint under primary action buttons explaining what happens next ("This will move the order to Production and notify workshop").
+3. A floating **Help** button (bottom-right) on every admin page that opens a role-specific user manual drawer — written for the logged-in user's role only.
+4. A first-login "Quick Tour" tooltip walkthrough that highlights the 3–5 most important controls on each main page.
 
-## 2. Automation triggers (frontend, no DB triggers)
+## Scope of pages covered
 
-- **Assign Dimensions** click in Client Hub: already creates a `measurement_tasks` row + sets `source_task_id`. Confirm flow keeps quotation `status='drafted'` so `computeStage` returns Dimensions.
-- **Measurement submitted for pricing** (existing button): sets `submitted_for_pricing_at` → falls into OPS automatically.
-- **Finalize quotation** (existing): on success, if no `job_work_orders` exist, the editor will auto-prompt "Assign to Production Unit" (link to assignment dialog). No silent insert — keeps human-in-the-loop but visible in OPS as "Ready for Production".
-- **Worker marks job Completed**: existing `bump_job_status_updated_at` already fires. Add: when a job moves to `status='completed'`, set `warehouse_status='in_warehouse'` (client-side update inside `WorkerJobView` after the status update). Quotation now appears in Stage 5.
-- **Trip created / job dispatched**: existing logistics flow already pushes to Stage 6.
+- Admin Overview · Quotations list & editor · Measurement Tasks · Workers/Production · Warehouse/Logistics · My Trips · Staff Monitor · Pipeline Monitor
 
-## 3. Role-based dashboards
+## Technical plan
 
-`useAuth` already exposes `isAdmin / isOfficeStaff / isMeasurementStaff / isDelivery / isWorker`. Make `/admin` (AdminOverview) role-aware:
+### 1. Reusable primitives (`src/components/help/`)
+- `HelpHint.tsx` — small `(?)` icon that wraps shadcn `Tooltip`. Props: `title`, `example?`, `side?`. Used inline next to `<Label>`.
+- `ActionHint.tsx` — muted one-liner under a button explaining the consequence. Props: `children`, `tone?` (`info | warn | success`).
+- `HelpDrawer.tsx` — shadcn `Sheet` opened by the floating button. Renders the manual for the **current role** with collapsible sections, search box, and "Open full guide" link to `/guide`.
+- `HelpFab.tsx` — fixed bottom-right floating button (auto-hides on `/`, `/auth`, `/worker/*` public flows). Reads role from `useAuth`.
+- `QuickTour.tsx` — lightweight coach-mark overlay (no extra deps; pure Tailwind + portal). Stores `seenTours` in `localStorage` so it shows once per page per user.
 
-- **admin** → full 6-stage grid (current view).
-- **measurement_staff** → redirect to `/admin/my-work` (already shows their tasks). Hide sidebar items except My Work.
-- **office staff (OPS)** → land on `/admin/quotations?stage=stage3` filtered to OPS by default. Sidebar limited to Client Hub / Quotations / Logistics.
-- **delivery** → redirect to `/admin/my-trips` (existing).
-- **worker** → already redirected to `/worker` portal.
+### 2. Content layer (`src/lib/help/`)
+A single typed source of truth so copy is easy to update:
+- `fieldHelp.ts` — `Record<string, { title: string; example?: string }>` keyed by stable field IDs (e.g. `quotation.party_phone`, `quotation.advance_amount`, `task.requirement`).
+- `actionHelp.ts` — keyed by action ID (e.g. `quotation.submit_for_pricing`, `quotation.finalize`, `job.mark_done`, `trip.start`).
+- `roleManuals.ts` — `Record<AppRole, ManualSection[]>` with sections like "Your daily workflow", "Common tasks", "FAQ". One manual each for `admin`, `staff` (OPS), `measurement_staff`, `worker` (production), `delivery`.
+- `tours.ts` — per-route step lists (`{ selector, title, body }[]`).
 
-Implementation: add a `roleHome` helper in `useAuth` and apply it in `AdminOverview` (early `<Navigate>`) and in `AdminShell` to filter sidebar entries.
+### 3. Integration touchpoints
 
-## 4. UI consistency
+- Mount `HelpFab` once inside `AdminShell` so it appears on every admin page automatically. Worker portal gets its own simpler `WorkerHelpFab`.
+- Wire `HelpHint` into the high-traffic forms first:
+  - Create Quotation dialog (lead type, party fields, advance, GST, delivery route).
+  - Quotation Editor (per-item routing, fulfillment route, measurement upload, finalize).
+  - Measurement Task form (assigned_to, requirement).
+  - Trip planner (route, driver, stops).
+  - Staff create dialog (role select).
+- Wire `ActionHint` under destructive / state-changing buttons: "Submit for Pricing", "Finalize", "Send to Production", "Mark Dispatched", "Start Trip", "Mark Delivered".
+- Trigger `QuickTour` on first visit per route based on role.
 
-- Every quotation/job/trip card across AdminQuotations, AdminMyWork, AdminWorkers, AdminLogistics, AdminMyTrips: ensure **Name • Phone • Place** is rendered (most already do; audit and patch the 1–2 missing cards).
-- Apply pastel stage chips using existing `stageToneClasses`.
-- Global rename pass: search for any remaining "Workers", "Manage Workers", "Assign Measurement" in user-visible strings and update.
+### 4. Role-aware behavior
+`HelpDrawer` reads role from `useAuth()` and renders only that role's manual. Admin sees a role-switcher inside the drawer to preview other roles' manuals (useful for training new hires).
 
-## 5. Files to edit
+### 5. Persistence
+- Tour seen flags: `localStorage` key `help.tours.<routeKey>.<userId>`.
+- "Don't show tips again" toggle inside the help drawer → `localStorage` key `help.tipsEnabled` (defaults true). When off, `HelpHint` icons are hidden but `ActionHint` lines stay (they're cheap and always useful).
 
-- `src/lib/quotationPipeline.ts` — refine `computeStage` rules.
-- `src/hooks/useAuth.ts` — add `roleHome`.
-- `src/pages/admin/AdminOverview.tsx` — role-based redirect at top.
-- `src/components/admin/AdminShell.tsx` — filter sidebar by role; finish rename pass.
-- `src/pages/admin/AdminQuotations.tsx` — ensure default stage filter honors `?stage=…`; rejected excluded from "active".
-- `src/pages/admin/AdminQuotationEditor.tsx` — after Finalize, prompt to assign Production.
-- `src/pages/WorkerJobView.tsx` — when marking completed, also set `warehouse_status='in_warehouse'`.
-- Card audit: `AdminMyWork.tsx`, `AdminMeasurementTasks.tsx`, `AdminLogistics.tsx`, `AdminMyTrips.tsx`, `AdminWorkers.tsx`.
+### 6. Styling
+- Uses existing semantic tokens (`muted-foreground`, `primary`, `border`).
+- `HelpHint` icon: `lucide-react` `HelpCircle`, `h-3.5 w-3.5 text-muted-foreground hover:text-primary`.
+- `HelpFab`: rounded-full primary button, 44px tap target, `shadow-product`.
 
-## Out of scope
-- No new DB tables/columns (existing schema covers everything).
-- No edge function changes.
-- Existing PIN/backlog flows untouched.
+### 7. Out of scope (this pass)
+- Translations / i18n (English only for now).
+- Video walkthroughs.
+- Editing manual content from the admin UI (content lives in code; easy to update, no DB).
+
+## Rollout order
+1. Build primitives + content scaffolding.
+2. Mount `HelpFab` + role manuals (immediate value, zero risk to existing forms).
+3. Add `HelpHint` to Create Quotation + Quotation Editor (highest-traffic forms).
+4. Add `ActionHint` to the 6 workflow-changing buttons.
+5. Add `QuickTour` for Admin Overview, Quotations list, Worker portal, My Trips.
+
+After step 2 the app is already significantly more self-explanatory; later steps are incremental.
