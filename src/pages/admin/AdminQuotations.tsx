@@ -991,6 +991,30 @@ const AdminQuotations = () => {
               </TabsTrigger>
             ))}
           </TabsList>
+          {!isPO(docTab) && (statusFilter === "stage1" || leadFilter !== "all") && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                Client Hub category:
+              </span>
+              {[
+                { v: "all", label: "All" },
+                { v: "lead", label: "Leads" },
+                { v: "direct_deal", label: "Direct Deals" },
+                { v: "consultation", label: "Consultations" },
+                { v: "custom_project", label: "Custom Projects" },
+              ].map((o) => (
+                <Button
+                  key={o.v}
+                  size="sm"
+                  variant={leadFilter === o.v ? "default" : "outline"}
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setLeadFilter(o.v)}
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          )}
           <TabsContent value={statusFilter} className="mt-4 grid gap-3">
             {filtered.map(renderRow)}
             {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
