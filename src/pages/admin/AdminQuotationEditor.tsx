@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -1387,18 +1388,26 @@ const AdminQuotationEditor = () => {
           {!po && (
             <div className="space-y-1.5">
               <Label>Salesperson / Staff name</Label>
-              <Input
-                className="h-11"
-                value={q.salesperson_name ?? ""}
-                onChange={(e) => updateHeader({ salesperson_name: e.target.value })}
-                placeholder="Who attended the customer?"
-                list="salesperson-options"
-              />
-              <datalist id="salesperson-options">
-                {staffOptions.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
+              <div className="flex gap-2">
+                <SearchableSelect
+                  className="h-11 flex-1"
+                  value={q.salesperson_name ?? ""}
+                  onChange={(v) => updateHeader({ salesperson_name: v })}
+                  options={staffOptions.map((s) => ({ value: s, label: s }))}
+                  placeholder="Select salesperson…"
+                  emptyText="No staff found"
+                />
+                {q.salesperson_name ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11"
+                    onClick={() => updateHeader({ salesperson_name: "" })}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
             </div>
           )}
           <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
