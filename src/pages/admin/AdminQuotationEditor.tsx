@@ -63,6 +63,8 @@ type QItem = {
   display_order: number;
   product_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
+  dispatched_at?: string | null;
+  delivered_at?: string | null;
   _isNew?: boolean;
   _dirty?: boolean;
 };
@@ -91,6 +93,7 @@ type Quotation = {
   salesperson_name: string | null;
   source_task_id?: string | null;
   submitted_for_pricing_at?: string | null;
+  lead_type?: string | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
@@ -356,6 +359,11 @@ const AdminQuotationEditor = () => {
   }, []);
 
   const addBlankItem = () => {
+    // Default route by customer category: Custom Project / Consultation
+    // skews to custom production; everything else assumes ready stock.
+    const lt = q?.lead_type ?? "lead";
+    const defaultRoute: "ready_stock" | "custom" =
+      lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
     const next: QItem = {
       id: `tmp-${crypto.randomUUID()}`,
       description: "",
@@ -371,7 +379,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
-      fulfillment_route: "ready_stock",
+      fulfillment_route: defaultRoute,
       _isNew: true,
       _dirty: true,
     };
@@ -446,6 +454,30 @@ const AdminQuotationEditor = () => {
       itemsRef.current = updated;
       return updated;
     });
+  };
+
+  // Per-item dispatch / delivery actions. Persists immediately so warehouse
+  // and logistics dashboards (and the completion trigger) see the change
+  // even before the next autosave fires.
+  const setItemFulfillmentTimestamps = async (
+    item: QItem,
+    patch: { dispatched_at?: string | null; delivered_at?: string | null },
+  ) => {
+    if (item._isNew) {
+      toast({ title: "Save the item first", description: "Add a description so we can save it before marking dispatch/delivery.", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("quotation_items").update(patch).eq("id", item.id);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setItems((p) => {
+      const updated = p.map((i) => (i.id === item.id ? { ...i, ...patch } : i));
+      itemsRef.current = updated;
+      return updated;
+    });
+    toast({ title: patch.delivered_at ? "Marked delivered" : patch.dispatched_at ? "Marked dispatched" : "Reset to pending" });
   };
 
   const loadProducts = async () => {
@@ -527,7 +559,10 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
-      fulfillment_route: "ready_stock",
+      fulfillment_route:
+        (q?.lead_type === "custom_project" || q?.lead_type === "consultation")
+          ? "custom"
+          : "ready_stock",
       _isNew: true,
       _dirty: true,
     };
@@ -561,6 +596,8 @@ const AdminQuotationEditor = () => {
       it.display_order,
       it.product_id,
       it.fulfillment_route,
+      it.dispatched_at ?? null,
+      it.delivered_at ?? null,
     ]);
     const headerFingerprint = (h: Quotation | null) => h ? JSON.stringify([
       h.party_name,
@@ -654,6 +691,8 @@ const AdminQuotationEditor = () => {
           display_order: it.display_order,
           product_id: it.product_id,
           fulfillment_route: it.fulfillment_route ?? "ready_stock",
+          dispatched_at: it.dispatched_at ?? null,
+          delivered_at: it.delivered_at ?? null,
         },
       });
     }
@@ -1437,7 +1476,22 @@ const AdminQuotationEditor = () => {
       {/* Items */}
       <Card className="mb-4">
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base">Items ({items.length})</CardTitle>
+          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+            <span>Items ({items.length})</span>
+            {items.length > 0 && (() => {
+              const delivered = items.filter((i) => !!i.delivered_at).length;
+              const dispatched = items.filter((i) => !!i.dispatched_at && !i.delivered_at).length;
+              const pending = items.length - delivered - dispatched;
+              return (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  {delivered}/{items.length} delivered
+                  {dispatched > 0 && <span className="text-sky-700 dark:text-sky-300">· {dispatched} in transit</span>}
+                  {pending > 0 && <span>· {pending} pending</span>}
+                </span>
+              );
+            })()}
+          </CardTitle>
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
               <Package className="mr-1.5 h-4 w-4" />From catalog
@@ -1482,15 +1536,66 @@ const AdminQuotationEditor = () => {
                   >
                     {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
                   </button>
+                  {/* Per-item dispatch / delivery status pill */}
+                  {!it._isNew && (it.delivered_at ? (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      ✓ Delivered
+                    </span>
+                  ) : it.dispatched_at ? (
+                    <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                      In transit
+                    </span>
+                  ) : null)}
                   {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
                     <span className="ml-2 font-mono text-sm font-semibold text-primary">
                       {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
                     </span>
                   )}
                 </div>
-                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  {canEditPrice && !it._isNew && !it.delivered_at && (
+                    <>
+                      {!it.dispatched_at ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-[11px]"
+                          onClick={() => setItemFulfillmentTimestamps(it, { dispatched_at: new Date().toISOString() })}
+                          title="Mark this line as dispatched from warehouse"
+                        >
+                          Dispatch
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-[11px]"
+                          onClick={() => setItemFulfillmentTimestamps(it, { delivered_at: new Date().toISOString() })}
+                          title="Mark this line as delivered to the customer"
+                        >
+                          Deliver
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {canEditPrice && !it._isNew && (it.dispatched_at || it.delivered_at) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-[11px] text-muted-foreground"
+                      onClick={() => setItemFulfillmentTimestamps(it, { dispatched_at: null, delivered_at: null })}
+                      title="Reset dispatch/delivery state"
+                    >
+                      Reset
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
 
               {/* Quick-preview thumbnail strip — lets office staff/admin
