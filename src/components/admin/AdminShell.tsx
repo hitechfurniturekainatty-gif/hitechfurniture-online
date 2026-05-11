@@ -10,7 +10,7 @@ import { HelpFab } from "@/components/help/HelpFab";
 import { PipelineNotificationsBell } from "@/components/admin/PipelineNotificationsBell";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
-  const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
+  const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, isWarehouse, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -160,7 +160,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
       { to: "/admin/quotations?status=stage1&lead=consultation", label: "Admin Tasks", icon: Activity, show: isOfficeStaff },
       { to: "/admin/pipeline", label: "Workflow Pipeline", icon: GitBranch, show: isAdmin },
-      { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff },
+      { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff || isWorker },
       { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
     ]),
   };
@@ -174,9 +174,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const logistics: GroupItem = {
     kind: "group", id: "logistics", label: "Logistics & Delivery", icon: Map,
     children: filt([
-      { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff },
-      { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff },
-      { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff },
+      { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff || isDelivery || isWarehouse },
+      { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff || isDelivery || isWarehouse },
+      { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff || isDelivery },
       { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
     ]),
   };
