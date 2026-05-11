@@ -339,6 +339,7 @@ const AdminQuotations = () => {
             is_direct_order: false,
             lead_type: "lead",
             assigned_to: "",
+            salesperson_name: "",
           });
           toast({ title: "Draft resumed" });
         } else {
@@ -465,7 +466,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead", assigned_to: "" });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead", assigned_to: "", salesperson_name: "" });
     if (isCustom) {
       toast({
         title: "Custom Project created",
