@@ -890,6 +890,33 @@ const AdminQuotations = () => {
                 <Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} />
               </div>
               {!isPO(newDocType) && (
+                <div className="space-y-1.5">
+                  <Label>Salesperson / Staff name</Label>
+                  <div className="flex gap-2">
+                    <SearchableSelect
+                      className="flex-1"
+                      value={form.salesperson_name}
+                      onChange={(v) => setForm((f) => ({ ...f, salesperson_name: v }))}
+                      options={salesStaffOptions.map((s) => ({ value: s, label: s }))}
+                      placeholder="Defaults to you — pick another to attribute"
+                      emptyText="No staff found"
+                    />
+                    {form.salesperson_name ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setForm((f) => ({ ...f, salesperson_name: "" }))}
+                      >
+                        Clear
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Leave blank to attribute this quotation to yourself.
+                  </p>
+                </div>
+              )}
+              {!isPO(newDocType) && (
                 <DeliveryRoutePicker
                   place={form.delivery_place}
                   routeId={form.delivery_route_id}
