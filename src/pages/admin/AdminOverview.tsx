@@ -288,10 +288,10 @@ const AdminOverview = () => {
   const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
-    isOfficeStaff && { label: "Stage 1 · Client Hub", value: pipelineCounts[1], icon: Ruler, to: "/admin/pipeline" },
+    isOfficeStaff && { label: "Stage 1 · Client Hub", value: pipelineCounts[1], icon: Ruler, to: "/admin/quotations?status=stage1" },
     isOfficeStaff && { label: "Stage 3 · OPS", value: pipelineCounts[3], icon: FileText, to: "/admin/quotations?status=stage3" },
-    isOfficeStaff && { label: "Stage 4 · Production", value: pipelineCounts[4], icon: HardHat, to: "/admin/pipeline" },
-    isOfficeStaff && { label: "Stage 5 · Warehouse", value: pipelineCounts[5], icon: Warehouse, to: "/admin/pipeline" },
+    isOfficeStaff && { label: "Stage 4 · Production", value: pipelineCounts[4], icon: HardHat, to: "/admin/quotations?status=stage4" },
+    isOfficeStaff && { label: "Stage 5 · Warehouse", value: pipelineCounts[5], icon: Warehouse, to: "/admin/quotations?status=stage5" },
     isOfficeStaff && { label: "Partially Ready", value: fulfillment.quotsMixed, icon: Layers, to: "/admin/quotations" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
     isOfficeStaff && { label: "Open complaints", value: stats.openComplaints, icon: AlertTriangle, to: "/admin/services?tab=complaint" },
@@ -300,7 +300,7 @@ const AdminOverview = () => {
 
   const logisticsCards: StatCard[] = isOfficeStaff
     ? [
-        { label: "Stage 6 · Out for Delivery", value: pipelineCounts[6], icon: Truck, to: "/admin/logistics" },
+        { label: "Stage 6 · Out for Delivery", value: pipelineCounts[6], icon: Truck, to: "/admin/quotations?status=stage6" },
         { label: "Logistics Mapping", value: pipelineCounts[6], icon: Map, to: "/admin/logistics" },
         { label: "Trips", value: 0, icon: Truck, to: "/admin/trips" },
         ...(isAdmin ? [{ label: "Route Manager", value: 0, icon: Route, to: "/admin/routes" }] : []),
@@ -458,7 +458,7 @@ const AdminOverview = () => {
                 return (
                   <Link
                     key={s}
-                    to={`/admin/pipeline`}
+                    to={`/admin/quotations?status=stage${s}`}
                     className={`group relative block rounded-xl border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}
                   >
                     <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>

@@ -609,9 +609,17 @@ const AdminQuotations = () => {
     <AdminShell>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Quotations & Purchase Orders</h1>
+          <h1 className="font-display text-2xl sm:text-3xl">
+            {statusFilter.startsWith("stage")
+              ? `${stageFilterLabel(statusFilter as StageFilterKey)} Queue`
+              : statusFilter === "rejected"
+              ? "Rejected Quotations"
+              : "Quotations & Purchase Orders"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            Customer quotations and worker / supplier POs in one place.
+            {statusFilter.startsWith("stage")
+              ? `Showing only quotations currently in the ${stageFilterLabel(statusFilter as StageFilterKey)} stage.`
+              : "Customer quotations and worker / supplier POs in one place."}
           </p>
         </div>
         <Dialog open={open} onOpenChange={handleOpenChange}>
