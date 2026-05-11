@@ -26,10 +26,10 @@ type StaffRow = {
 };
 
 const roleLabel: Record<Role, string> = {
-  admin: "Admin",
-  staff: "Office Staff",
-  measurement_staff: "Measurement Staff",
-  delivery: "Delivery Driver",
+  admin: "General Manager",
+  staff: "Sales / Operations",
+  measurement_staff: "Technical Surveyor",
+  delivery: "Logistics & Installation",
 };
 const roleColor: Record<Role, string> = {
   admin: "bg-primary text-primary-foreground",
@@ -240,10 +240,10 @@ const AdminStaff = () => {
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                    <SelectContent>
-                     <SelectItem value="admin">Admin (full access)</SelectItem>
-                     <SelectItem value="staff">Office Staff</SelectItem>
-                     <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
-                     <SelectItem value="delivery">Delivery Driver (trips only)</SelectItem>
+                     <SelectItem value="admin">General Manager / System Admin (full access)</SelectItem>
+                     <SelectItem value="staff">Sales Consultant / Operations Coordinator (office)</SelectItem>
+                     <SelectItem value="measurement_staff">Technical Surveyor (site visits)</SelectItem>
+                     <SelectItem value="delivery">Logistics & Installation Lead (trips)</SelectItem>
                    </SelectContent>
                 </Select>
               </div>
@@ -365,10 +365,10 @@ const AdminStaff = () => {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="staff">Office Staff</SelectItem>
-                    <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
-                    <SelectItem value="delivery">Delivery Driver</SelectItem>
+                    <SelectItem value="admin">General Manager / System Admin</SelectItem>
+                    <SelectItem value="staff">Sales Consultant / Operations Coordinator</SelectItem>
+                    <SelectItem value="measurement_staff">Technical Surveyor</SelectItem>
+                    <SelectItem value="delivery">Logistics & Installation Lead</SelectItem>
                   </SelectContent>
                 </Select>
                 {editing.user_id === user?.id && (
