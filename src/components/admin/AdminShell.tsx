@@ -303,10 +303,10 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
           </nav>
           <p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">
             Role: <span className="font-semibold text-foreground">{
-              isAdmin ? "General Manager"
-                : isDelivery && !isOfficeStaff && !isMeasurementStaff ? "Logistics & Installation"
-                : isMeasurementStaff && !isOfficeStaff ? "Technical Surveyor"
-                : "Sales / Operations"
+              isAdmin ? "Admin"
+                : isDelivery && !isOfficeStaff && !isMeasurementStaff ? "Delivery"
+                : isMeasurementStaff && !isOfficeStaff ? "Measurement Staff"
+                : "Staff"
             }</span>
           </p>
         </aside>
