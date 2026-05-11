@@ -351,7 +351,56 @@ const AdminQuotations = () => {
     const lt = isQuotation ? form.lead_type : "lead";
     const isDirect = isQuotation && lt === "direct_deal";
     const isCustom = isQuotation && lt === "custom_project";
+    if (isCustom && !form.assigned_to) {
+      setCreating(false);
+      toast({
+        title: "Pick a Dimensions assignee",
+        description: "Custom Projects auto-create a measurement task — choose who should visit the site.",
+        variant: "destructive",
+      });
+      return;
+    }
     const nowIso = new Date().toISOString();
+
+    // Stage-2 routing: for Custom Projects, create the measurement task FIRST so
+    // we can stamp source_task_id on the quotation. That's what makes
+    // computeStage() report Stage 2 (Dimensions) and what makes the task show
+    // up in the assignee's Pending list immediately.
+    let sourceTaskId: string | null = null;
+    if (isCustom) {
+      const { data: task, error: taskErr } = await supabase
+        .from("measurement_tasks")
+        .insert({
+          customer_name: titleCaseTrim(form.party_name),
+          customer_place: form.party_place.trim() || "NA",
+          customer_phone: form.party_phone.trim() || null,
+          requirement: null,
+          assigned_to: form.assigned_to,
+          created_by: user?.id ?? null,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+      if (taskErr || !task) {
+        setCreating(false);
+        toast({ title: "Couldn't create Dimensions task", description: taskErr?.message, variant: "destructive" });
+        return;
+      }
+      sourceTaskId = task.id as string;
+    }
+
+    // Salesperson attribution — record the creating staff's display name on the
+    // quotation regardless of category (used by the "Salesperson" filter).
+    let salespersonName: string | null = null;
+    if (user?.id) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("display_name, email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      salespersonName = prof?.display_name || prof?.email || null;
+    }
+
     const { data, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
       party_name: titleCaseTrim(form.party_name),
@@ -364,6 +413,8 @@ const AdminQuotations = () => {
       lead_type: lt,
       // Direct deals skip Client Hub + Dimensions and land straight in OPS for pricing.
       submitted_for_pricing_at: isDirect ? nowIso : null,
+      source_task_id: sourceTaskId,
+      salesperson_name: salespersonName,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
@@ -371,18 +422,28 @@ const AdminQuotations = () => {
       toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       return;
     }
+    // Link the freshly-created task back to the draft so the assignee can open it.
+    if (sourceTaskId) {
+      await supabase
+        .from("measurement_tasks")
+        .update({ draft_quotation_id: data.id })
+        .eq("id", sourceTaskId);
+    }
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead" });
+    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead", assigned_to: "" });
     if (isCustom) {
       toast({
         title: "Custom Project created",
-        description: "Assign the Dimensions team from the editor to move it to Stage 2.",
+        description: "A pending Dimensions task has been assigned. It now sits in Stage 2.",
       });
     } else if (isDirect) {
       toast({ title: "Direct Deal created", description: "Moved to OPS for pricing." });
     }
+    // Refresh list so the new row + correct stage appears immediately
+    // (in addition to the realtime channel).
+    load();
     navigate(`/admin/quotations/${data.id}`);
   };
 
