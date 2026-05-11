@@ -7,6 +7,7 @@ import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, Fi
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
+import { PipelineNotificationsBell } from "@/components/admin/PipelineNotificationsBell";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, signOut } = useAuth();
@@ -218,6 +219,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
             <Button asChild size="default" variant="ghost" className="hidden sm:inline-flex text-base">
               <Link to="/" target="_blank"><ExternalLink className="mr-1 h-5 w-5" /> View site</Link>
             </Button>
+            <PipelineNotificationsBell />
             <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
               <LogOut className="h-5 w-5" />
             </Button>
