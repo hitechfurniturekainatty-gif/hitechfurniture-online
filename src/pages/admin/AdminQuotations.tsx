@@ -52,6 +52,8 @@ type Q = {
   submitted_for_pricing_at?: string | null;
   is_direct_order?: boolean | null;
   source_task_id?: string | null;
+  lead_type?: string | null;
+  pipeline_stage?: number | null;
 };
 
 type StageFilterKey =
