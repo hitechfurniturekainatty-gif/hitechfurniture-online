@@ -107,7 +107,7 @@ export const HeroWindowReveal = () => {
             src={interiorImg}
             alt="Luxury showroom interior with emerald green velvet sofa, brass arc lamp and walnut coffee table"
             className="absolute inset-0 h-full w-full object-cover object-[60%_center] sm:object-center"
-            loading="eager"
+            loading="lazy"
             decoding="async"
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)]" />
@@ -169,7 +169,7 @@ export const HeroWindowReveal = () => {
             className="absolute inset-0 h-full w-full object-cover object-[50%_30%] sm:object-center"
             loading="eager"
             decoding="async"
-            fetchPriority="high"
+            {...({ fetchpriority: "high" } as Record<string, string>)}
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
         </div>

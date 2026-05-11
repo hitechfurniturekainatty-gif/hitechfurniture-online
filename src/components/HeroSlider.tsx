@@ -66,7 +66,7 @@ export const HeroSlider = ({ slides }: { slides: HeroSlide[] }) => {
                   className="absolute inset-0 h-full w-full object-cover"
                   loading={i === 0 ? "eager" : "lazy"}
                   decoding="async"
-                  fetchPriority={i === 0 ? "high" : "auto"}
+                  {...({ fetchpriority: i === 0 ? "high" : "auto" } as Record<string, string>)}
                 />
               )}
               {(slide.headline || slide.subheadline || cta) && (

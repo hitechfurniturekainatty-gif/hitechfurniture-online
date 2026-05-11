@@ -325,7 +325,7 @@ Please share more details.`;
                           // Cover loads eagerly; extra angles wait until the
                           // user swipes or the browser idles.
                           loading={i === 0 ? "eager" : "lazy"}
-                          fetchPriority={i === 0 ? "high" : "low"}
+                          {...({ fetchpriority: i === 0 ? "high" : "low" } as Record<string, string>)}
                           decoding="async"
                           className="h-full w-full object-contain object-center"
                         />
