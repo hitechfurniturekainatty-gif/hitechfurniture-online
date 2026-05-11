@@ -1536,15 +1536,66 @@ const AdminQuotationEditor = () => {
                   >
                     {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
                   </button>
+                  {/* Per-item dispatch / delivery status pill */}
+                  {!it._isNew && (it.delivered_at ? (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      ✓ Delivered
+                    </span>
+                  ) : it.dispatched_at ? (
+                    <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                      In transit
+                    </span>
+                  ) : null)}
                   {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
                     <span className="ml-2 font-mono text-sm font-semibold text-primary">
                       {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
                     </span>
                   )}
                 </div>
-                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  {canEditPrice && !it._isNew && !it.delivered_at && (
+                    <>
+                      {!it.dispatched_at ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-[11px]"
+                          onClick={() => setItemFulfillmentTimestamps(it, { dispatched_at: new Date().toISOString() })}
+                          title="Mark this line as dispatched from warehouse"
+                        >
+                          Dispatch
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-[11px]"
+                          onClick={() => setItemFulfillmentTimestamps(it, { delivered_at: new Date().toISOString() })}
+                          title="Mark this line as delivered to the customer"
+                        >
+                          Deliver
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {canEditPrice && !it._isNew && (it.dispatched_at || it.delivered_at) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-[11px] text-muted-foreground"
+                      onClick={() => setItemFulfillmentTimestamps(it, { dispatched_at: null, delivered_at: null })}
+                      title="Reset dispatch/delivery state"
+                    >
+                      Reset
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
 
               {/* Quick-preview thumbnail strip — lets office staff/admin
