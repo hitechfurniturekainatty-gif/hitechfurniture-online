@@ -349,6 +349,14 @@ const AdminQuotations = () => {
     clearNewQuotationDraft();
     setOpen(false);
     setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead" });
+    if (isCustom) {
+      toast({
+        title: "Custom Project created",
+        description: "Assign the Dimensions team from the editor to move it to Stage 2.",
+      });
+    } else if (isDirect) {
+      toast({ title: "Direct Deal created", description: "Moved to OPS for pricing." });
+    }
     navigate(`/admin/quotations/${data.id}`);
   };
 
