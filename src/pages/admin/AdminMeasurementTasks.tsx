@@ -27,7 +27,7 @@ type Task = {
   customer_address: string | null;
   requirement: string | null;
   status: string;
-  assigned_to: string;
+  assigned_to: string | null;
   created_at: string;
   completed_at: string | null;
   draft_quotation_id: string | null;
@@ -177,9 +177,24 @@ const AdminMeasurementTasks = () => {
   };
 
   const myTasks = tasks.filter((t) => t.assigned_to === user?.id);
-  const otherTasks = tasks.filter((t) => t.assigned_to !== user?.id);
+  const poolTasks = tasks.filter((t) => !t.assigned_to);
+  const otherTasks = tasks.filter((t) => t.assigned_to && t.assigned_to !== user?.id);
   const pending = (list: Task[]) => list.filter((t) => t.status !== "completed");
   const done = (list: Task[]) => list.filter((t) => t.status === "completed");
+
+  const claimTask = async (t: Task) => {
+    if (!user?.id) return;
+    const { error } = await supabase
+      .from("measurement_tasks")
+      .update({ assigned_to: user.id })
+      .eq("id", t.id);
+    if (error) {
+      toast({ title: "Couldn't pick up task", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Task picked up", description: "It's now in your My tasks list." });
+    load();
+  };
 
   const TaskCard = ({ t, mine }: { t: Task; mine: boolean }) => (
     <Card>
@@ -190,8 +205,11 @@ const AdminMeasurementTasks = () => {
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{t.customer_place}</p>
             {t.customer_phone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3" />{t.customer_phone}</p>}
             {t.requirement && <p className="text-sm mt-2 text-foreground/80">{t.requirement}</p>}
-            {!mine && isOfficeStaff && (
+            {!mine && isOfficeStaff && t.assigned_to && (
               <p className="text-xs mt-2 text-muted-foreground">Assigned to: <span className="font-medium text-foreground">{staffName(t.assigned_to)}</span></p>
+            )}
+            {!t.assigned_to && (
+              <p className="text-xs mt-2 text-amber-600 dark:text-amber-400 font-medium">Unassigned — shared pool</p>
             )}
           </div>
           <Badge variant={t.status === "completed" ? "default" : t.status === "in_progress" ? "secondary" : "outline"}>
@@ -203,6 +221,11 @@ const AdminMeasurementTasks = () => {
           {mine && t.status !== "completed" && (
             <Button size="sm" onClick={() => startMeasurement(t)}>
               <Ruler className="mr-1.5 h-3.5 w-3.5" /> {t.draft_quotation_id ? "Continue" : "Start measurement"}
+            </Button>
+          )}
+          {!t.assigned_to && t.status !== "completed" && (isMeasurementStaff || isOfficeStaff) && (
+            <Button size="sm" variant="secondary" onClick={() => claimTask(t)}>
+              Pick up
             </Button>
           )}
           {t.draft_quotation_id && (
@@ -287,6 +310,7 @@ const AdminMeasurementTasks = () => {
         <Tabs defaultValue="mine">
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
             <TabsTrigger value="mine" className="whitespace-nowrap">My tasks ({pending(myTasks).length})</TabsTrigger>
+            <TabsTrigger value="pool" className="whitespace-nowrap">Shared pool ({pending(poolTasks).length})</TabsTrigger>
             {isOfficeStaff && <TabsTrigger value="all" className="whitespace-nowrap">All ({pending(otherTasks).length + pending(myTasks).length})</TabsTrigger>}
             <TabsTrigger value="done" className="whitespace-nowrap">Completed ({done(tasks).length})</TabsTrigger>
           </TabsList>
@@ -294,6 +318,12 @@ const AdminMeasurementTasks = () => {
             <div className="grid gap-3 md:grid-cols-2">
               {pending(myTasks).map((t) => <TaskCard key={t.id} t={t} mine />)}
               {pending(myTasks).length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No pending tasks.</p>}
+            </div>
+          </TabsContent>
+          <TabsContent value="pool" className="mt-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              {pending(poolTasks).map((t) => <TaskCard key={t.id} t={t} mine={false} />)}
+              {pending(poolTasks).length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No unassigned tasks in the shared pool.</p>}
             </div>
           </TabsContent>
           {isOfficeStaff && (
