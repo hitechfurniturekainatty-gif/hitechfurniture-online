@@ -1705,7 +1705,13 @@ export type Database = {
       verify_catalog_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "staff" | "measurement_staff" | "delivery" | "worker"
+      app_role:
+        | "admin"
+        | "staff"
+        | "measurement_staff"
+        | "delivery"
+        | "worker"
+        | "warehouse"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1833,7 +1839,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "measurement_staff", "delivery", "worker"],
+      app_role: [
+        "admin",
+        "staff",
+        "measurement_staff",
+        "delivery",
+        "worker",
+        "warehouse",
+      ],
     },
   },
 } as const
