@@ -1,68 +1,104 @@
-# Interactive Help System
+## Goal
 
-A consistent help layer across the app so a brand-new user (Admin, OPS, Worker, Delivery) can self-onboard without training.
+Add a Bundle / Combo-Set module that lives alongside existing products (catalogs untouched), with automatic inventory deduction from linked items, and fix the two quotation UX issues (page jump on Add Item, and silent background auto-save).
 
-## What you'll see
+---
 
-1. A small `?` help icon next to important input fields. Hover/tap shows a tooltip with a plain-English explanation and a real-world example.
-2. A confirmation hint under primary action buttons explaining what happens next ("This will move the order to Production and notify workshop").
-3. A floating **Help** button (bottom-right) on every admin page that opens a role-specific user manual drawer — written for the logged-in user's role only.
-4. A first-login "Quick Tour" tooltip walkthrough that highlights the 3–5 most important controls on each main page.
+## 1. Data model (new migration)
 
-## Scope of pages covered
+New tables:
 
-- Admin Overview · Quotations list & editor · Measurement Tasks · Workers/Production · Warehouse/Logistics · My Trips · Staff Monitor · Pipeline Monitor
+- `product_bundles` — mirrors `products` shape:
+  - `id`, `bundle_code` (unique), `name`, `description`, `main_category_id`, `sub_category_id`
+  - `main_image_url`, `mrp`, `offer_price`, `cost_price` (admin-only via trigger like products)
+  - `available_colors text[]`, `material`, `dimensions`
+  - `is_featured`, `is_published`, `stock_status` (derived, see trigger)
+  - `floor_display_order`, soft-delete fields, timestamps
+- `bundle_items` — link table:
+  - `bundle_id`, `product_id`, `quantity` (numeric, default 1), `display_order`
+- `bundle_images` — extra gallery images (mirrors `product_images`)
 
-## Technical plan
+Triggers / functions:
 
-### 1. Reusable primitives (`src/components/help/`)
-- `HelpHint.tsx` — small `(?)` icon that wraps shadcn `Tooltip`. Props: `title`, `example?`, `side?`. Used inline next to `<Label>`.
-- `ActionHint.tsx` — muted one-liner under a button explaining the consequence. Props: `children`, `tone?` (`info | warn | success`).
-- `HelpDrawer.tsx` — shadcn `Sheet` opened by the floating button. Renders the manual for the **current role** with collapsible sections, search box, and "Open full guide" link to `/guide`.
-- `HelpFab.tsx` — fixed bottom-right floating button (auto-hides on `/`, `/auth`, `/worker/*` public flows). Reads role from `useAuth`.
-- `QuickTour.tsx` — lightweight coach-mark overlay (no extra deps; pure Tailwind + portal). Stores `seenTours` in `localStorage` so it shows once per page per user.
+- `recompute_bundle_stock(bundle_id)` — sets `product_bundles.stock_status`:
+  - `out_of_stock` if any linked product has `stock_status='out_of_stock'` OR `stock_quantity < required qty`
+  - else `in_stock`
+- AFTER UPDATE on `products.stock_quantity` / `stock_status` → recompute every bundle that contains it
+- AFTER INSERT/UPDATE/DELETE on `bundle_items` → recompute that bundle
+- `consume_bundle_stock(bundle_id, qty, reason)` SECURITY DEFINER:
+  - inserts a `stock_movements` row for each linked product with `change_qty = -(quantity * qty)` → existing `apply_stock_movement` trigger does the deduction and stamps `resulting_stock`
 
-### 2. Content layer (`src/lib/help/`)
-A single typed source of truth so copy is easy to update:
-- `fieldHelp.ts` — `Record<string, { title: string; example?: string }>` keyed by stable field IDs (e.g. `quotation.party_phone`, `quotation.advance_amount`, `task.requirement`).
-- `actionHelp.ts` — keyed by action ID (e.g. `quotation.submit_for_pricing`, `quotation.finalize`, `job.mark_done`, `trip.start`).
-- `roleManuals.ts` — `Record<AppRole, ManualSection[]>` with sections like "Your daily workflow", "Common tasks", "FAQ". One manual each for `admin`, `staff` (OPS), `measurement_staff`, `worker` (production), `delivery`.
-- `tours.ts` — per-route step lists (`{ selector, title, body }[]`).
+Quotation hook (extends existing `quotation_items_check_completion` logic):
 
-### 3. Integration touchpoints
+- Add optional `bundle_id uuid` column on `quotation_items` (nullable, no breaking changes — items can still be free-form or product-linked).
+- When a quotation item with `bundle_id` flips `delivered_at` from null → set, call `consume_bundle_stock(bundle_id, quantity, 'bundle delivery')`.
 
-- Mount `HelpFab` once inside `AdminShell` so it appears on every admin page automatically. Worker portal gets its own simpler `WorkerHelpFab`.
-- Wire `HelpHint` into the high-traffic forms first:
-  - Create Quotation dialog (lead type, party fields, advance, GST, delivery route).
-  - Quotation Editor (per-item routing, fulfillment route, measurement upload, finalize).
-  - Measurement Task form (assigned_to, requirement).
-  - Trip planner (route, driver, stops).
-  - Staff create dialog (role select).
-- Wire `ActionHint` under destructive / state-changing buttons: "Submit for Pricing", "Finalize", "Send to Production", "Mark Dispatched", "Start Trip", "Mark Delivered".
-- Trigger `QuickTour` on first visit per route based on role.
+RLS:
 
-### 4. Role-aware behavior
-`HelpDrawer` reads role from `useAuth()` and renders only that role's manual. Admin sees a role-switcher inside the drawer to preview other roles' manuals (useful for training new hires).
+- `product_bundles` / `bundle_images`: public read where `is_published AND deleted_at IS NULL`; admin all. Staff/warehouse/etc. read same as products.
+- `bundle_items`: public read; admin write. Cost price protected by trigger identical to `protect_cost_price`.
 
-### 5. Persistence
-- Tour seen flags: `localStorage` key `help.tours.<routeKey>.<userId>`.
-- "Don't show tips again" toggle inside the help drawer → `localStorage` key `help.tipsEnabled` (defaults true). When off, `HelpHint` icons are hidden but `ActionHint` lines stay (they're cheap and always useful).
+---
 
-### 6. Styling
-- Uses existing semantic tokens (`muted-foreground`, `primary`, `border`).
-- `HelpHint` icon: `lucide-react` `HelpCircle`, `h-3.5 w-3.5 text-muted-foreground hover:text-primary`.
-- `HelpFab`: rounded-full primary button, 44px tap target, `shadow-product`.
+## 2. Admin UI
 
-### 7. Out of scope (this pass)
-- Translations / i18n (English only for now).
-- Video walkthroughs.
-- Editing manual content from the admin UI (content lives in code; easy to update, no DB).
+- New page **`/admin/bundles`** (`AdminBundles.tsx`) — list + create, mirrors `AdminProducts`. Sidebar entry under Inventory, admin-only.
+- New editor **`/admin/bundles/:id`** (`AdminBundleEditor.tsx`):
+  - Same fields as product editor (image, MRP, offer price, cost, colors, description, category, featured/published).
+  - **"Linked Items" panel**: searchable product picker (reuse `SearchableSelect`), add rows with `qty`, reorder, remove. Shows each item's current stock + computed bundle availability.
+  - Live bundle stock badge (in_stock / out_of_stock derived from linked items).
+- App routes added in `App.tsx` behind `<AdminOnly>`.
 
-## Rollout order
-1. Build primitives + content scaffolding.
-2. Mount `HelpFab` + role manuals (immediate value, zero risk to existing forms).
-3. Add `HelpHint` to Create Quotation + Quotation Editor (highest-traffic forms).
-4. Add `ActionHint` to the 6 workflow-changing buttons.
-5. Add `QuickTour` for Admin Overview, Quotations list, Worker portal, My Trips.
+---
 
-After step 2 the app is already significantly more self-explanatory; later steps are incremental.
+## 3. Catalog integration (non-breaking)
+
+- Public `Catalog.tsx` and `ProductDetail.tsx`: fetch bundles in parallel and merge into the grid under their `main_category_id` (e.g. "Bedroom Sets"). Cards reuse `ProductCard` via a thin adapter so existing product cards are unchanged.
+- `StaffCatalog.tsx`: same merge; prices always visible.
+- Global price-hide toggle (`homepage_settings.hide_public_prices`) is already respected in `ProductCard`; adapter passes the same flag — no change needed there.
+
+---
+
+## 4. Quotation editor: bundle support
+
+- In `AdminQuotationEditor` product picker, add a "Bundles" tab (or a toggle in the existing searchable list) — selecting a bundle creates a `quotation_item` with `bundle_id`, description = bundle name, unit_price = bundle offer_price/mrp.
+- No change to item math — bundle is one line item.
+
+---
+
+## 5. UX fixes (quotation editor)
+
+**A. Zero-jump Add Item**
+
+- Wrap the items list with a stable scroll container; when adding a new item, capture `scrollTop` before insert and restore it after render via `useLayoutEffect`. Prevent the new row's autofocus from calling `scrollIntoView` (the `scrollFocusedIntoView` helper currently centers on focus — switch it off for the editor or pass `block: 'nearest'`).
+- Remove any `key`-change driven remount on add.
+
+**B. Silent background auto-save**
+
+- Add a debounced (800 ms) auto-save in `AdminQuotationEditor`:
+  - Diff current form against last-saved snapshot; if dirty, `upsert` quotation + items in the background.
+  - No toasts, no spinners that block input; tiny "Saved ·  HH:mm" indicator in header.
+  - Cancel in-flight save on new edits (AbortController).
+  - On unmount/route change, flush pending save synchronously.
+
+---
+
+## 6. Technical details
+
+```text
+product_bundles ──< bundle_items >── products
+        │
+        └──< bundle_images
+quotation_items.bundle_id ──► product_bundles
+```
+
+- Stock derivation is pull-based (trigger updates `stock_status`) so existing read paths don't change.
+- Deduction uses existing `stock_movements` pipeline → keeps audit trail intact.
+- No edits to `products`, `product_variants`, or existing category tables — pure additive.
+
+---
+
+## Out of scope
+
+- Per-variant (color) bundle linking — bundle links to product, not variant. Can add later.
+- Partial bundle returns / reversals (uses standard stock movement adjustments).
