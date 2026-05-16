@@ -35,6 +35,73 @@ export type Database = {
         }
         Relationships: []
       }
+      bundle_images: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_images_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "product_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bundle_items: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          display_order: number
+          id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "product_bundles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_complaints: {
         Row: {
           complaint_code: string
@@ -679,6 +746,81 @@ export type Database = {
         }
         Relationships: []
       }
+      product_bundles: {
+        Row: {
+          available_colors: string[] | null
+          bundle_code: string
+          cost_price: number | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          dimensions: string | null
+          floor_display_order: number
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          main_category_id: string
+          main_image_url: string | null
+          material: string | null
+          mrp: number
+          name: string
+          offer_price: number | null
+          stock_status: string
+          sub_category_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          available_colors?: string[] | null
+          bundle_code: string
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          dimensions?: string | null
+          floor_display_order?: number
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          main_category_id: string
+          main_image_url?: string | null
+          material?: string | null
+          mrp?: number
+          name: string
+          offer_price?: number | null
+          stock_status?: string
+          sub_category_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          available_colors?: string[] | null
+          bundle_code?: string
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          dimensions?: string | null
+          floor_display_order?: number
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          main_category_id?: string
+          main_image_url?: string | null
+          material?: string | null
+          mrp?: number
+          name?: string
+          offer_price?: number | null
+          stock_status?: string
+          sub_category_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           created_at: string
@@ -1020,6 +1162,7 @@ export type Database = {
       quotation_items: {
         Row: {
           amount: number
+          bundle_id: string | null
           catalog_image_url: string | null
           catalog_text: string | null
           created_at: string
@@ -1041,6 +1184,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bundle_id?: string | null
           catalog_image_url?: string | null
           catalog_text?: string | null
           created_at?: string
@@ -1062,6 +1206,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bundle_id?: string | null
           catalog_image_url?: string | null
           catalog_text?: string | null
           created_at?: string
@@ -1668,6 +1813,10 @@ export type Database = {
     Functions: {
       backlog_pin_is_set: { Args: never; Returns: boolean }
       catalog_pin_is_set: { Args: never; Returns: boolean }
+      consume_bundle_stock: {
+        Args: { _bundle_id: string; _qty: number; _reason: string }
+        Returns: undefined
+      }
       current_worker_id: { Args: never; Returns: string }
       get_shared_job_work_order: { Args: { p_token: string }; Returns: Json }
       get_shared_quotation: { Args: { p_token: string }; Returns: Json }
@@ -1691,6 +1840,10 @@ export type Database = {
           removed: number
           table_name: string
         }[]
+      }
+      recompute_bundle_stock: {
+        Args: { _bundle_id: string }
+        Returns: undefined
       }
       set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
       set_catalog_pin: { Args: { _pin: string }; Returns: undefined }

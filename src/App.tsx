@@ -23,6 +23,8 @@ const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminBundles = lazy(() => import("./pages/admin/AdminBundles.tsx"));
+const AdminBundleEditor = lazy(() => import("./pages/admin/AdminBundleEditor.tsx"));
 const AdminStaff = lazy(() => import("./pages/admin/AdminStaff.tsx"));
 const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
 const AdminWorkerDetail = lazy(() => import("./pages/admin/AdminWorkerDetail.tsx"));
@@ -54,6 +56,7 @@ const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
 const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
+const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -92,6 +95,7 @@ const App = () => (
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/staff-catalog" element={<StaffCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/guide" element={<UserGuide />} />
             <Route path="/auth" element={<Auth />} />
@@ -99,6 +103,8 @@ const App = () => (
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/categories" element={<AdminOnly><AdminCategories /></AdminOnly>} />
             <Route path="/admin/products" element={<AdminOnly><AdminProducts /></AdminOnly>} />
+            <Route path="/admin/bundles" element={<AdminOnly><AdminBundles /></AdminOnly>} />
+            <Route path="/admin/bundles/:id" element={<AdminOnly><AdminBundleEditor /></AdminOnly>} />
             <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
             <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
             <Route path="/admin/pipeline" element={<AdminOnly><AdminPipelineMonitor /></AdminOnly>} />
