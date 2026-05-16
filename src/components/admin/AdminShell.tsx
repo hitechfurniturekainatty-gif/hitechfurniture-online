@@ -169,6 +169,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     children: filt([
       { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
       { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
+      { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isAdmin },
     ]),
   };
   const logistics: GroupItem = {
