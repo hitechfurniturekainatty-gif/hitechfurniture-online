@@ -56,6 +56,7 @@ const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
 const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
+const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
