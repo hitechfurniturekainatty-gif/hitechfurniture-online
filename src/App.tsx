@@ -23,6 +23,8 @@ const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminBundles = lazy(() => import("./pages/admin/AdminBundles.tsx"));
+const AdminBundleEditor = lazy(() => import("./pages/admin/AdminBundleEditor.tsx"));
 const AdminStaff = lazy(() => import("./pages/admin/AdminStaff.tsx"));
 const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
 const AdminWorkerDetail = lazy(() => import("./pages/admin/AdminWorkerDetail.tsx"));
