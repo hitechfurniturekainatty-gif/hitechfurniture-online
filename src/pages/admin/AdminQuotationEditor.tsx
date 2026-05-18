@@ -1583,6 +1583,38 @@ const AdminQuotationEditor = () => {
                     {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
                   </div>
+                  {/* Quick-add pills — restore the old inline "+ Photo / + Catalog /
+                      + Dimensions / + Site / + Cloth / + Sketch" workflow so
+                      attachments can be added right while entering an item,
+                      without first having to open the Details panel. */}
+                  {(() => {
+                    const quickAdds: { key: string; label: string; filled: boolean }[] = [
+                      { key: "photo", label: "Photo", filled: !!it.item_image_url },
+                      { key: "catalog_text", label: "Catalog #", filled: !!it.catalog_text },
+                      { key: "measurement", label: "Dimensions", filled: !!it.measurement },
+                      { key: "measurement_image_url", label: "Measure pics", filled: !!it.measurement_image_url },
+                      { key: "site_photos", label: "Site pics", filled: !!it.site_photos },
+                      { key: "catalog_image_url", label: "Cloth/Catalog pics", filled: !!it.catalog_image_url },
+                      { key: "sketch_url", label: "Sketch", filled: !!it.sketch_url },
+                    ];
+                    const missing = quickAdds.filter((q) => !q.filled);
+                    if (missing.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-1 pt-0.5" data-enter-skip>
+                        {missing.map((q) => (
+                          <button
+                            key={q.key}
+                            type="button"
+                            onClick={() => setExpandedItemId(it.id)}
+                            className="rounded-full border border-dashed border-primary/40 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary transition hover:bg-primary/10"
+                            title={`Add ${q.label}`}
+                          >
+                            + {q.label}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Input
                   className="h-10 text-right"
