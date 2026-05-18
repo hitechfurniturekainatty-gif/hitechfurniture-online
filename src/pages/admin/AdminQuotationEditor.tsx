@@ -1793,10 +1793,11 @@ const AdminQuotationEditor = () => {
                           Pick from catalog
                         </Button>
                       </div>
-                      <SingleImagePicker
+                      <MultiImagePicker
                         value={it.item_image_url}
                         onChange={(v) => updateItem(it.id, { item_image_url: v })}
                         folder="items"
+                        label="Item photos (multiple allowed)"
                       />
                     </div>
                   </div>
