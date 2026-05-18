@@ -391,7 +391,7 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
         Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(firstUrl(it.item_image_url), imageOptions),
         toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
@@ -644,7 +644,7 @@ export async function generateJobWorkPdf(d: JobWorkPdfData, options: PdfRenderOp
         Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(firstUrl(it.item_image_url), imageOptions),
         toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
