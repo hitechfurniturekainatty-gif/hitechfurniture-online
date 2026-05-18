@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { QuotationItemMediaStack } from "@/components/admin/QuotationItemMediaStack";
@@ -1793,10 +1792,11 @@ const AdminQuotationEditor = () => {
                           Pick from catalog
                         </Button>
                       </div>
-                      <SingleImagePicker
+                      <MultiImagePicker
                         value={it.item_image_url}
                         onChange={(v) => updateItem(it.id, { item_image_url: v })}
                         folder="items"
+                        label="Item photos (multiple allowed)"
                       />
                     </div>
                   </div>
