@@ -247,6 +247,14 @@ const AdminQuotations = () => {
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
       const list = (data ?? []) as Q[];
+      // Sort by most-recent activity (created OR updated) so freshly edited
+      // quotations bubble to the top, matching the user's mental model.
+      const ts = (r: Q) => {
+        const c = r.created_at ? new Date(r.created_at).getTime() : 0;
+        const u = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return Math.max(c, u);
+      };
+      list.sort((a, b) => ts(b) - ts(a));
       setRows(list);
       // Fetch display names for unique created_by + updated_by ids
       const ids = Array.from(new Set([
