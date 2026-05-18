@@ -1583,6 +1583,34 @@ const AdminQuotationEditor = () => {
                     {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
                   </div>
+                  {/* Inline attachment preview — show every uploaded photo/sketch
+                      directly in the compact row with click-to-enlarge, plus
+                      catalog # and dimensions as readable chips. */}
+                  {(it.catalog_text || it.measurement) && (
+                    <div className="flex flex-wrap items-center gap-1 pt-0.5 text-[10px]">
+                      {it.catalog_text && (
+                        <span className="rounded-md border bg-background px-1.5 py-0.5 font-mono text-muted-foreground" title="Catalog code">
+                          #{it.catalog_text}
+                        </span>
+                      )}
+                      {it.measurement && (
+                        <span className="max-w-[20rem] truncate rounded-md border bg-background px-1.5 py-0.5 text-muted-foreground" title={it.measurement}>
+                          📐 {it.measurement}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
+                    <div data-enter-skip className="pt-1">
+                      <AttachmentThumbStrip
+                        itemImageUrl={it.item_image_url}
+                        measurementImageUrl={it.measurement_image_url}
+                        sitePhotos={it.site_photos}
+                        catalogImageUrl={it.catalog_image_url}
+                        sketchUrl={it.sketch_url}
+                      />
+                    </div>
+                  )}
                   {/* Quick-add pills — restore the old inline "+ Photo / + Catalog /
                       + Dimensions / + Site / + Cloth / + Sketch" workflow so
                       attachments can be added right while entering an item,
