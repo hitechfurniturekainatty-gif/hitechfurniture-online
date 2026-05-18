@@ -123,9 +123,9 @@ const SharedQuotationView = () => {
                 </span>
               </div>
               <div className="space-y-3 p-3">
-                {it.item_image_url ? (
-                  <button type="button" onClick={() => setZoom(it.item_image_url!)} className="block w-full overflow-hidden rounded-lg border border-border bg-background">
-                    <img src={it.item_image_url} alt={it.description ?? ""} className="h-auto w-full object-contain" loading="lazy" />
+                {firstUrl(it.item_image_url) ? (
+                  <button type="button" onClick={() => setZoom(firstUrl(it.item_image_url)!)} className="block w-full overflow-hidden rounded-lg border border-border bg-background">
+                    <img src={firstUrl(it.item_image_url)!} alt={it.description ?? ""} className="h-auto w-full object-contain" loading="lazy" />
                   </button>
                 ) : (
                   <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted">

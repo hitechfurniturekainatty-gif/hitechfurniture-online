@@ -30,6 +30,7 @@ import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { Share2 } from "lucide-react";
+import { firstUrl } from "@/lib/firstUrl";
 
 type QItem = {
   id: string;
