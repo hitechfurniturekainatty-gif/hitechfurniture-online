@@ -245,6 +245,22 @@ const AdminQuotationEditor = () => {
   // Invoice-style items table: which row's advanced fields panel is expanded,
   // and whether the quick "Live Preview" dialog is open.
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  // Per-item inline "mini editor" toggles. Each quick-add pill (+ Photo,
+  // + Catalog #, + Dimensions, + Sketch, …) opens ONLY its own small picker
+  // inline below the row — without loading the full Details panel. This is
+  // the requested clean, non-cluttered media-upload flow.
+  const [openFields, setOpenFields] = useState<Record<string, Record<string, boolean>>>({});
+  const isFieldOpen = (itemId: string, key: string) => !!openFields[itemId]?.[key];
+  const toggleField = (itemId: string, key: string) =>
+    setOpenFields((prev) => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] ?? {}), [key]: !prev[itemId]?.[key] },
+    }));
+  const closeField = (itemId: string, key: string) =>
+    setOpenFields((prev) => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] ?? {}), [key]: false },
+    }));
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
