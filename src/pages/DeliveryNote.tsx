@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Phone, MessageCircle, Printer, MapPin, Calendar } from "lucide-react";
 import { COMPANY } from "@/lib/companyInfo";
+import { firstUrl } from "@/lib/firstUrl";
 
 type Item = {
   id: string;
@@ -217,11 +218,11 @@ const DeliveryNote = () => {
                       {firstUrl(it.item_image_url) && (
                         <button
                           type="button"
-                          onClick={() => setZoomImage(it.item_image_url)}
+                          onClick={() => setZoomImage(firstUrl(it.item_image_url))}
                           className="h-20 w-20 shrink-0 overflow-hidden rounded border border-border bg-muted print:h-16 print:w-16"
                         >
                           <img
-                            src={it.item_image_url}
+                            src={firstUrl(it.item_image_url)!}
                             alt={it.description}
                             loading="lazy"
                             className="h-full w-full object-contain p-1"
