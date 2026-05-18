@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo.jpeg";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
+import { firstUrl } from "./firstUrl";
 
 // PDF-safe INR formatters.
 // Helvetica doesn't include the ₹ glyph (renders as a blank box), so we use
@@ -391,7 +392,7 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
         Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(firstUrl(it.item_image_url), imageOptions),
         toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
@@ -644,7 +645,7 @@ export async function generateJobWorkPdf(d: JobWorkPdfData, options: PdfRenderOp
         Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(it.item_image_url, imageOptions),
+        toDataUri(firstUrl(it.item_image_url), imageOptions),
         toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Image as ImageIcon, Ruler, Hash, FileText, Camera } from "lucide-react";
 import { jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
+import { firstUrl } from "@/lib/firstUrl";
 
 type ItemFull = {
   id: string;
@@ -155,13 +156,13 @@ const WorkerJobView = () => {
 
               <div className="space-y-3 p-3">
                 {/* Big main image */}
-                {it.item_image_url ? (
+                {firstUrl(it.item_image_url) ? (
                   <button
                     type="button"
-                    onClick={() => setZoomImage(it.item_image_url!)}
+                    onClick={() => setZoomImage(firstUrl(it.item_image_url)!)}
                     className="block w-full overflow-hidden rounded-lg border border-border bg-background"
                   >
-                    <img src={it.item_image_url} alt={it.description} className="h-auto w-full object-contain" loading="lazy" />
+                    <img src={firstUrl(it.item_image_url)!} alt={it.description} className="h-auto w-full object-contain" loading="lazy" />
                   </button>
                 ) : (
                   <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted">

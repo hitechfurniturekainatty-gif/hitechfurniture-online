@@ -245,6 +245,22 @@ const AdminQuotationEditor = () => {
   // Invoice-style items table: which row's advanced fields panel is expanded,
   // and whether the quick "Live Preview" dialog is open.
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  // Per-item inline "mini editor" toggles. Each quick-add pill (+ Photo,
+  // + Catalog #, + Dimensions, + Sketch, …) opens ONLY its own small picker
+  // inline below the row — without loading the full Details panel. This is
+  // the requested clean, non-cluttered media-upload flow.
+  const [openFields, setOpenFields] = useState<Record<string, Record<string, boolean>>>({});
+  const isFieldOpen = (itemId: string, key: string) => !!openFields[itemId]?.[key];
+  const toggleField = (itemId: string, key: string) =>
+    setOpenFields((prev) => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] ?? {}), [key]: !prev[itemId]?.[key] },
+    }));
+  const closeField = (itemId: string, key: string) =>
+    setOpenFields((prev) => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] ?? {}), [key]: false },
+    }));
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
@@ -1629,17 +1645,132 @@ const AdminQuotationEditor = () => {
                     if (missing.length === 0) return null;
                     return (
                       <div className="flex flex-wrap items-center gap-1 pt-0.5" data-enter-skip>
-                        {missing.map((q) => (
-                          <button
-                            key={q.key}
-                            type="button"
-                            onClick={() => setExpandedItemId(it.id)}
-                            className="rounded-full border border-dashed border-primary/40 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary transition hover:bg-primary/10"
-                            title={`Add ${q.label}`}
-                          >
-                            + {q.label}
-                          </button>
-                        ))}
+                        {missing.map((q) => {
+                          const active = isFieldOpen(it.id, q.key);
+                          return (
+                            <button
+                              key={q.key}
+                              type="button"
+                              onClick={() => toggleField(it.id, q.key)}
+                              className={`rounded-full border border-dashed px-2 py-0.5 text-[10px] font-medium transition ${
+                                active
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                              }`}
+                              title={active ? `Close ${q.label}` : `Add ${q.label}`}
+                            >
+                              {active ? "×" : "+"} {q.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Inline mini-editors — only the specific field clicked opens,
+                      not the full Details panel. Keeps the entry row clean. */}
+                  {(() => {
+                    const open = openFields[it.id] ?? {};
+                    const anyOpen = Object.values(open).some(Boolean);
+                    if (!anyOpen) return null;
+                    return (
+                      <div
+                        className="mt-2 space-y-2 rounded-md border border-dashed border-primary/30 bg-primary/[0.03] p-2"
+                        data-enter-skip
+                      >
+                        {open.photo && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Item photos (multiple allowed)</p>
+                              <button type="button" onClick={() => closeField(it.id, "photo")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <MultiImagePicker
+                              value={it.item_image_url}
+                              onChange={(v) => updateItem(it.id, { item_image_url: v })}
+                              folder="items"
+                            />
+                          </div>
+                        )}
+                        {open.catalog_text && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Catalog code</p>
+                              <button type="button" onClick={() => closeField(it.id, "catalog_text")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <Input
+                              className="h-9 text-sm"
+                              value={it.catalog_text ?? ""}
+                              placeholder="e.g. SOFA-1023"
+                              onChange={(e) => updateItem(it.id, { catalog_text: e.target.value })}
+                              onBlur={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase().trim() || null })}
+                            />
+                          </div>
+                        )}
+                        {open.measurement && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Dimensions / measurement notes</p>
+                              <button type="button" onClick={() => closeField(it.id, "measurement")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <Textarea
+                              className="min-h-[60px] text-sm"
+                              value={it.measurement ?? ""}
+                              placeholder="e.g. 72 W x 36 D x 30 H inches"
+                              onChange={(e) => updateItem(it.id, { measurement: e.target.value || null })}
+                            />
+                          </div>
+                        )}
+                        {open.measurement_image_url && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Measurement photos</p>
+                              <button type="button" onClick={() => closeField(it.id, "measurement_image_url")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <MultiImagePicker
+                              value={it.measurement_image_url}
+                              onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
+                              folder="measurements"
+                            />
+                          </div>
+                        )}
+                        {open.site_photos && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Site photos</p>
+                              <button type="button" onClick={() => closeField(it.id, "site_photos")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <MultiImagePicker
+                              value={it.site_photos}
+                              onChange={(v) => updateItem(it.id, { site_photos: v })}
+                              folder="site"
+                            />
+                          </div>
+                        )}
+                        {open.catalog_image_url && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Cloth / catalog photos</p>
+                              <button type="button" onClick={() => closeField(it.id, "catalog_image_url")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <MultiImagePicker
+                              value={it.catalog_image_url}
+                              onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
+                              folder="cloth"
+                            />
+                          </div>
+                        )}
+                        {open.sketch_url && (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-muted-foreground">Measurement sketch</p>
+                              <button type="button" onClick={() => closeField(it.id, "sketch_url")} className="text-[10px] text-muted-foreground hover:text-foreground">Done</button>
+                            </div>
+                            <SketchField
+                              value={it.sketch_url}
+                              onChange={(v) => updateItem(it.id, { sketch_url: v })}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

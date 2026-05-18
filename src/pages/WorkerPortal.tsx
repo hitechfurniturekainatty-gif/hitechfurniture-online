@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2, Eye } from "lucide-react";
+import { firstUrl } from "@/lib/firstUrl";
 import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
@@ -408,8 +409,8 @@ const WorkerPortal = () => {
                       {job.items.map((it, idx) => (
                         <div key={it.id} className="flex gap-3 rounded-md border border-border/50 bg-muted/30 p-2">
                           <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-background">
-                            {it.item_image_url ? (
-                              <img src={it.item_image_url} alt={it.description} className="h-full w-full object-cover" loading="lazy" />
+                            {firstUrl(it.item_image_url) ? (
+                              <img src={firstUrl(it.item_image_url)!} alt={it.description} className="h-full w-full object-cover" loading="lazy" />
                             ) : (
                               <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             )}
