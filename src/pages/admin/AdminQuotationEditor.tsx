@@ -242,6 +242,10 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
+  // Invoice-style items table: which row's advanced fields panel is expanded,
+  // and whether the quick "Live Preview" dialog is open.
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
   // admin can send the worker-safe file to ANY contact / WhatsApp group.
