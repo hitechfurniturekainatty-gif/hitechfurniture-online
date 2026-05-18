@@ -242,6 +242,10 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
+  // Invoice-style items table: which row's advanced fields panel is expanded,
+  // and whether the quick "Live Preview" dialog is open.
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
   // admin can send the worker-safe file to ANY contact / WhatsApp group.
@@ -1499,14 +1503,147 @@ const AdminQuotationEditor = () => {
             <Button type="button" size="sm" className="flex-1 sm:flex-initial" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-1.5 h-4 w-4" />Add item
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="flex-1 sm:flex-initial"
+              onClick={() => setLivePreviewOpen(true)}
+              title="Live invoice preview"
+            >
+              <FileText className="mr-1.5 h-4 w-4" />Preview
+            </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 px-3 sm:px-6">
+        <CardContent className="space-y-3 px-2 sm:px-6">
           {items.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
+          {/* Invoice-style header (desktop only) — makes the entry feel like a billing table */}
+          {items.length > 0 && (
+            <div className="hidden sm:grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] gap-2 rounded-md bg-muted/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span>#</span>
+              <span>Item / Description</span>
+              <span className="text-right">Qty</span>
+              {showPricing && <span className="text-right">Rate (₹)</span>}
+              {showPricing && <span className="text-right">Amount</span>}
+              {!showPricing && <span />}
+              {!showPricing && <span />}
+              <span className="text-right">Actions</span>
+            </div>
+          )}
           {items.map((it, idx) => (
             <div key={it.id} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+              {/* Compact invoice row — Description / Qty / Rate / Amount inline */}
+              <div className="grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] items-center gap-2 px-2 py-2 sm:px-3">
+                <div className="flex flex-col items-center justify-center gap-1">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{idx + 1}</span>
+                  {it.product_id && <Badge variant="outline" className="px-1 py-0 text-[9px] leading-none">Cat</Badge>}
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <AutoSuggestInput
+                    value={it.description}
+                    onChange={(v) => updateItem(it.id, { description: v })}
+                    onBlur={() => updateItem(it.id, { description: toTitleCase(it.description) })}
+                    placeholder="Item name — type to search catalog"
+                    fetchSuggestions={(query) => {
+                      const qq = query.toLowerCase();
+                      return products
+                        .filter((p) => p.product_name.toLowerCase().includes(qq) || p.product_code.toLowerCase().includes(qq))
+                        .map<Suggestion<Product>>((p) => ({
+                          label: `${p.product_name} (${p.product_code})`,
+                          sub: formatINR(p.offer_price ?? p.mrp ?? 0),
+                          image: p.product_images?.[0]?.image_url ?? null,
+                          data: p,
+                        }));
+                    }}
+                    onPick={(s) => {
+                      const p = s.data as Product;
+                      if (!p) return;
+                      updateItem(it.id, {
+                        description: `${p.product_name} (${p.product_code})`,
+                        item_image_url: p.product_images?.[0]?.image_url ?? it.item_image_url,
+                        catalog_text: (p.product_code ?? it.catalog_text ?? "").toUpperCase(),
+                        unit_price: canEditPrice ? Number(p.offer_price ?? p.mrp ?? it.unit_price) : it.unit_price,
+                        product_id: p.id,
+                      });
+                    }}
+                  />
+                  {/* Status / customization chips */}
+                  <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                    <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
+                      it.fulfillment_route === "custom"
+                        ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    }`}>{it.fulfillment_route === "custom" ? "Custom" : "Ready"}</span>
+                    {it.measurement && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Dim</span>}
+                    {it.sketch_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Sketch</span>}
+                    {it.item_image_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Photo</span>}
+                    {it.site_photos && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Site</span>}
+                    {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
+                    {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
+                  </div>
+                </div>
+                <Input
+                  className="h-10 text-right"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={it.quantity || ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
+                    updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
+                  }}
+                  onFocus={(e) => e.currentTarget.select()}
+                  placeholder="1"
+                />
+                {showPricing ? (
+                  <Input
+                    className="h-10 text-right"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    value={it.unit_price || ""}
+                    onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
+                    disabled={!canEditPrice}
+                    onFocus={(e) => e.currentTarget.select()}
+                    placeholder="0"
+                  />
+                ) : (
+                  <span />
+                )}
+                {showPricing ? (
+                  <div className="flex h-10 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary">
+                    {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
+                      ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
+                      : <span className="font-normal text-muted-foreground">—</span>}
+                  </div>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center justify-end gap-1" data-enter-skip>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={expandedItemId === it.id ? "secondary" : "outline"}
+                    className="h-9 px-2 text-[11px]"
+                    onClick={() => setExpandedItemId((cur) => (cur === it.id ? null : it.id))}
+                    title="More details (photos, measurement, sketch)"
+                  >
+                    {expandedItemId === it.id ? "Close" : "Details"}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)} data-enter-skip>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Expanded details panel — collapsed by default so the entry table stays clean */}
+              {expandedItemId === it.id && (
+              <>
               {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
@@ -1592,9 +1729,6 @@ const AdminQuotationEditor = () => {
                       Reset
                     </Button>
                   )}
-                  <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
                 </div>
               </div>
 
@@ -1614,50 +1748,13 @@ const AdminQuotationEditor = () => {
               )}
 
               <div className="space-y-4 p-3 sm:p-4">
-                {/* SECTION 1: Product / Description */}
+                {/* SECTION 1: Catalog code & item photo (description/qty/rate are in the compact row) */}
                 <section className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Product</h3>
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catalog &amp; Photo</h3>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label className="text-xs font-medium">Description *</Label>
-                  <AutoSuggestInput
-                    value={it.description}
-                    onChange={(v) => updateItem(it.id, { description: v })}
-                    onBlur={() => updateItem(it.id, { description: toTitleCase(it.description) })}
-                    placeholder="Item name & details — type to search catalog"
-                    fetchSuggestions={(query) => {
-                      const qq = query.toLowerCase();
-                      return products
-                        .filter(
-                          (p) =>
-                            p.product_name.toLowerCase().includes(qq) ||
-                            p.product_code.toLowerCase().includes(qq),
-                        )
-                        .map<Suggestion<Product>>((p) => ({
-                          label: `${p.product_name} (${p.product_code})`,
-                          sub: formatINR(p.offer_price ?? p.mrp ?? 0),
-                          image: p.product_images?.[0]?.image_url ?? null,
-                          data: p,
-                        }));
-                    }}
-                    onPick={(s) => {
-                      const p = s.data as Product;
-                      if (!p) return;
-                      updateItem(it.id, {
-                        description: `${p.product_name} (${p.product_code})`,
-                        item_image_url: p.product_images?.[0]?.image_url ?? it.item_image_url,
-                        catalog_text: (p.product_code ?? it.catalog_text ?? "").toUpperCase(),
-                        unit_price: canEditPrice
-                          ? Number(p.offer_price ?? p.mrp ?? it.unit_price)
-                          : it.unit_price,
-                        product_id: p.id,
-                      });
-                    }}
-                  />
-                    </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium">Catalog name / code</Label>
                       <Input
@@ -1741,67 +1838,9 @@ const AdminQuotationEditor = () => {
                     label="Hand-drawn sketch"
                   />
                 </section>
-
-                {/* SECTION 3: Quantity & Pricing */}
-                <section className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {showPricing ? "Quantity & Pricing" : "Quantity"}
-                    </h3>
-                  </div>
-                  <div className={`grid gap-3 ${showPricing ? (canEditPrice ? "grid-cols-3" : "grid-cols-2") : "grid-cols-1 sm:max-w-[160px]"}`}>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Qty</Label>
-                    <Input
-                      className="h-11"
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      step={1}
-                      value={it.quantity || ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
-                        updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
-                      }}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="1"
-                    />
-                  </div>
-                   {showPricing && (
-                   <>
-                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Unit price (₹)</Label>
-                    <Input
-                      className="h-11"
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step="0.01"
-                      value={it.unit_price || ""}
-                      onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
-                      disabled={!canEditPrice}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="0"
-                    />
-                    {!canEditPrice && <p className="text-[10px] text-muted-foreground">Set by office</p>}
-                  </div>
-                  {canEditPrice && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Amount</Label>
-                    <div className="flex h-11 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary">
-                      {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
-                        ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
-                        : <span className="font-normal text-muted-foreground">—</span>}
-                    </div>
-                  </div>
-                  )}
-                  </>
-                  )}
-                  </div>
-                </section>
               </div>
+              </>
+              )}
             </div>
           ))}
 
@@ -1813,6 +1852,76 @@ const AdminQuotationEditor = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Live Preview dialog — quick read-only invoice render for verification while typing */}
+      <Dialog open={livePreviewOpen} onOpenChange={setLivePreviewOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Live preview · {q?.quotation_id}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="font-semibold">{titleCaseTrim(q?.party_name ?? "")}</div>
+              <div className="text-xs text-muted-foreground">
+                {q?.party_place}{q?.party_phone ? ` · ${q.party_phone}` : ""}
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-2 text-left">#</th>
+                    <th className="px-2 py-2 text-left">Description</th>
+                    <th className="px-2 py-2 text-right">Qty</th>
+                    {showPricing && <th className="px-2 py-2 text-right">Rate</th>}
+                    {showPricing && <th className="px-2 py-2 text-right">Amount</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, idx) => {
+                    const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+                    return (
+                      <tr key={it.id} className="border-t align-top">
+                        <td className="px-2 py-2 text-muted-foreground">{idx + 1}</td>
+                        <td className="px-2 py-2">
+                          <div className="font-medium">{it.description || <span className="italic text-muted-foreground">Untitled</span>}</div>
+                          {(it.catalog_text || it.measurement) && (
+                            <div className="text-[11px] text-muted-foreground">
+                              {it.catalog_text}{it.catalog_text && it.measurement ? " · " : ""}{it.measurement}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-right tabular-nums">{it.quantity}</td>
+                        {showPricing && <td className="px-2 py-2 text-right tabular-nums">{formatINR(Number(it.unit_price) || 0)}</td>}
+                        {showPricing && <td className="px-2 py-2 text-right font-mono font-semibold">{formatINR(amt)}</td>}
+                      </tr>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <tr><td colSpan={showPricing ? 5 : 3} className="px-2 py-6 text-center text-muted-foreground">No items yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {showPricing && (
+              <div className="flex justify-end pr-2 text-sm">
+                <div className="space-y-1 text-right">
+                  <div className="text-muted-foreground">Subtotal</div>
+                  <div className="font-mono text-lg font-semibold text-primary">
+                    {formatINR(items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLivePreviewOpen(false)}>Close</Button>
+            <Button onClick={() => { setLivePreviewOpen(false); saveAndPreview(); }} disabled={saving}>
+              Save &amp; open full preview
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Totals */}
       {!po && (

@@ -1,104 +1,58 @@
+# Plan — Invoice-style Quotation Editor
+
 ## Goal
+Replace the current stacked "card per item" entry UI with a structured invoice-style table that mirrors the saved Digital Preview, while preserving every existing feature (custom vs ready-stock, sketches, site photos, attachments, GST, advance, status pipeline, auto-save).
 
-Add a Bundle / Combo-Set module that lives alongside existing products (catalogs untouched), with automatic inventory deduction from linked items, and fix the two quotation UX issues (page jump on Add Item, and silent background auto-save).
-
----
-
-## 1. Data model (new migration)
-
-New tables:
-
-- `product_bundles` — mirrors `products` shape:
-  - `id`, `bundle_code` (unique), `name`, `description`, `main_category_id`, `sub_category_id`
-  - `main_image_url`, `mrp`, `offer_price`, `cost_price` (admin-only via trigger like products)
-  - `available_colors text[]`, `material`, `dimensions`
-  - `is_featured`, `is_published`, `stock_status` (derived, see trigger)
-  - `floor_display_order`, soft-delete fields, timestamps
-- `bundle_items` — link table:
-  - `bundle_id`, `product_id`, `quantity` (numeric, default 1), `display_order`
-- `bundle_images` — extra gallery images (mirrors `product_images`)
-
-Triggers / functions:
-
-- `recompute_bundle_stock(bundle_id)` — sets `product_bundles.stock_status`:
-  - `out_of_stock` if any linked product has `stock_status='out_of_stock'` OR `stock_quantity < required qty`
-  - else `in_stock`
-- AFTER UPDATE on `products.stock_quantity` / `stock_status` → recompute every bundle that contains it
-- AFTER INSERT/UPDATE/DELETE on `bundle_items` → recompute that bundle
-- `consume_bundle_stock(bundle_id, qty, reason)` SECURITY DEFINER:
-  - inserts a `stock_movements` row for each linked product with `change_qty = -(quantity * qty)` → existing `apply_stock_movement` trigger does the deduction and stamps `resulting_stock`
-
-Quotation hook (extends existing `quotation_items_check_completion` logic):
-
-- Add optional `bundle_id uuid` column on `quotation_items` (nullable, no breaking changes — items can still be free-form or product-linked).
-- When a quotation item with `bundle_id` flips `delivered_at` from null → set, call `consume_bundle_stock(bundle_id, quantity, 'bundle delivery')`.
-
-RLS:
-
-- `product_bundles` / `bundle_images`: public read where `is_published AND deleted_at IS NULL`; admin all. Staff/warehouse/etc. read same as products.
-- `bundle_items`: public read; admin write. Cost price protected by trigger identical to `protect_cost_price`.
-
----
-
-## 2. Admin UI
-
-- New page **`/admin/bundles`** (`AdminBundles.tsx`) — list + create, mirrors `AdminProducts`. Sidebar entry under Inventory, admin-only.
-- New editor **`/admin/bundles/:id`** (`AdminBundleEditor.tsx`):
-  - Same fields as product editor (image, MRP, offer price, cost, colors, description, category, featured/published).
-  - **"Linked Items" panel**: searchable product picker (reuse `SearchableSelect`), add rows with `qty`, reorder, remove. Shows each item's current stock + computed bundle availability.
-  - Live bundle stock badge (in_stock / out_of_stock derived from linked items).
-- App routes added in `App.tsx` behind `<AdminOnly>`.
-
----
-
-## 3. Catalog integration (non-breaking)
-
-- Public `Catalog.tsx` and `ProductDetail.tsx`: fetch bundles in parallel and merge into the grid under their `main_category_id` (e.g. "Bedroom Sets"). Cards reuse `ProductCard` via a thin adapter so existing product cards are unchanged.
-- `StaffCatalog.tsx`: same merge; prices always visible.
-- Global price-hide toggle (`homepage_settings.hide_public_prices`) is already respected in `ProductCard`; adapter passes the same flag — no change needed there.
-
----
-
-## 4. Quotation editor: bundle support
-
-- In `AdminQuotationEditor` product picker, add a "Bundles" tab (or a toggle in the existing searchable list) — selecting a bundle creates a `quotation_item` with `bundle_id`, description = bundle name, unit_price = bundle offer_price/mrp.
-- No change to item math — bundle is one line item.
-
----
-
-## 5. UX fixes (quotation editor)
-
-**A. Zero-jump Add Item**
-
-- Wrap the items list with a stable scroll container; when adding a new item, capture `scrollTop` before insert and restore it after render via `useLayoutEffect`. Prevent the new row's autofocus from calling `scrollIntoView` (the `scrollFocusedIntoView` helper currently centers on focus — switch it off for the editor or pass `block: 'nearest'`).
-- Remove any `key`-change driven remount on add.
-
-**B. Silent background auto-save**
-
-- Add a debounced (800 ms) auto-save in `AdminQuotationEditor`:
-  - Diff current form against last-saved snapshot; if dirty, `upsert` quotation + items in the background.
-  - No toasts, no spinners that block input; tiny "Saved ·  HH:mm" indicator in header.
-  - Cancel in-flight save on new edits (AbortController).
-  - On unmount/route change, flush pending save synchronously.
-
----
-
-## 6. Technical details
-
-```text
-product_bundles ──< bundle_items >── products
-        │
-        └──< bundle_images
-quotation_items.bundle_id ──► product_bundles
-```
-
-- Stock derivation is pull-based (trigger updates `stock_status`) so existing read paths don't change.
-- Deduction uses existing `stock_movements` pipeline → keeps audit trail intact.
-- No edits to `products`, `product_variants`, or existing category tables — pure additive.
-
----
+## Scope
+- File: `src/pages/admin/AdminQuotationEditor.tsx` (items section only — header/footer kept as-is).
+- New component: `src/components/admin/QuotationItemsTable.tsx` for the invoice grid.
 
 ## Out of scope
+- Header form (party, dates, delivery) — untouched.
+- Totals/GST/advance footer — untouched.
+- Database, RLS, pricing math — untouched.
 
-- Per-variant (color) bundle linking — bundle links to product, not variant. Can add later.
-- Partial bundle returns / reversals (uses standard stock movement adjustments).
+## New layout
+
+```text
+┌─ # ─┬─ Item / Description ──────┬─ Qty ─┬─ Rate ─┬─ Amount ─┬─ ⋯ ─┐
+│  1  │ Sofa – 3 seater [img]     │   2   │ 18,000 │  36,000  │  ⋯  │
+│     │ ↳ Measurement · Sketch    │       │        │          │     │
+├─────┼───────────────────────────┼───────┼────────┼──────────┼─────┤
+│  2  │ + Add item                │       │        │          │     │
+└─────┴───────────────────────────┴───────┴────────┴──────────┴─────┘
+```
+
+- Each row is one `<tr>` with inline-editable cells (description, qty, rate). Amount auto-computes.
+- Row-action menu (`⋯`) opens a side sheet with the advanced fields that don't fit a grid: item image, measurement, measurement image, catalog text/image, sketch, site photos, fulfillment route, dispatched/delivered toggles. Existing components reused as-is — no rewrites.
+- Sub-row chips show which advanced fields are filled (e.g. "Sketch · 2 photos") so nothing is hidden.
+- Mobile (<640px): table collapses to a compact 2-column card per row (description full width, qty × rate inline) but keeps the same DOM order so Enter-nav still works.
+
+## Enter-key navigation
+- Wrap the items table in a single container with `onKeyDown={handleEnterAsNext}`.
+- Cells get `data-enter-skip` only for the row-menu button.
+- Sequence per row: Description → Qty → Rate → next row's Description. After the last row's Rate, Enter focuses the "+ Add item" button, which on Enter creates a new row and focuses its Description.
+- `handleEnterAsNext` already handles textareas correctly; description is kept as a single-line `<input>` in the grid, with a "details" textarea in the side sheet.
+
+## Preview button
+- Add a sticky "Preview" pill (top-right of the items section) that opens the existing `QuotationPdfPreviewSheet` (already imported) in a dialog. No new PDF code.
+- Button is visible at all times on desktop; on mobile it floats above the bottom action bar.
+
+## Migration approach
+1. Build `QuotationItemsTable` as a drop-in replacement that consumes the same `items` state + `updateItem/addItem/removeItem/moveItem` handlers already in the editor.
+2. Swap the current items section's JSX for `<QuotationItemsTable …/>`. No state shape changes.
+3. Move the per-item advanced fields into a new `<QuotationItemDetailsSheet>` opened from the row menu (reuses the existing field components).
+4. Verify auto-save, realtime sync, and PDF preview still work.
+
+## Acceptance checklist
+- [ ] Items render as a structured invoice grid that visually mirrors the saved preview.
+- [ ] Enter moves Description → Qty → Rate → next row, then to "+ Add item".
+- [ ] Preview button opens the live PDF preview in a popup.
+- [ ] All existing per-item data (image, measurement, sketch, site photos, route, dispatch/deliver) remains editable via the row's details sheet.
+- [ ] Silent auto-save, scroll-jump prevention, and realtime co-editing untouched.
+- [ ] No DB changes.
+
+## Risk
+Medium — editor is 2,300 lines and tightly coupled. Mitigation: keep state/handlers identical, isolate UI changes into two new components, ship behind no flag but verify on a real quotation before announcing.
+
+Reply "go" to proceed, or tell me what to adjust (e.g. keep description as a textarea, change the row-menu UX, skip the mobile collapse).
