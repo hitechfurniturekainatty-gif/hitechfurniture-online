@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Image as ImageIcon, Ruler, Hash, FileText, Camera } from "lucide-react";
 import { jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
+import { firstUrl } from "@/lib/firstUrl";
 
 type ItemFull = {
   id: string;

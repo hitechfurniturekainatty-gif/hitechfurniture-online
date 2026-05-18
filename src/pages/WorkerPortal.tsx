@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2, Eye } from "lucide-react";
+import { firstUrl } from "@/lib/firstUrl";
 import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
