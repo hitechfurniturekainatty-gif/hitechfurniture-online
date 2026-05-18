@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Hash, Ruler, FileText, Camera, Image as ImageIcon, Phone, MapPin, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { firstUrl } from "@/lib/firstUrl";
 
 type Item = {
   id: string;

@@ -214,7 +214,7 @@ const DeliveryNote = () => {
                           {idx + 1}
                         </span>
                       </div>
-                      {it.item_image_url && (
+                      {firstUrl(it.item_image_url) && (
                         <button
                           type="button"
                           onClick={() => setZoomImage(it.item_image_url)}
