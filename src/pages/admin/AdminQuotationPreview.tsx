@@ -593,11 +593,11 @@ const AdminQuotationPreview = () => {
                   </div>
                   {(it.item_image_url || it.measurement_image_url || it.catalog_image_url || it.sketch_url || it.site_photos) && (
                     <div className="mt-2 grid grid-cols-3 gap-2">
-                      {it.item_image_url && (
-                        <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
-                          <img src={it.item_image_url} alt="Item" loading="lazy" className="h-full w-full object-contain" />
-                        </div>
-                      )}
+                       {it.item_image_url && (
+                         <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
+                           <img src={firstUrl(it.item_image_url) ?? ""} alt="Item" loading="lazy" className="h-full w-full object-contain" />
+                         </div>
+                       )}
                       {it.measurement_image_url && (
                         <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
                           <img src={it.measurement_image_url} alt="Measurement" loading="lazy" className="h-full w-full object-contain" />
@@ -662,7 +662,7 @@ const AdminQuotationPreview = () => {
                       <td className="px-3 py-3">
                         {it.item_image_url ? (
                           <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                            <img src={it.item_image_url} alt="" loading="lazy" className="h-full w-full object-contain" />
+                            <img src={firstUrl(it.item_image_url) ?? ""} alt="" loading="lazy" className="h-full w-full object-contain" />
                           </div>
                         ) : (
                           <div className="h-16 w-16 rounded border border-dashed border-slate-200 bg-slate-50" />
