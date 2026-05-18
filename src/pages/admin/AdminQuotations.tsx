@@ -279,6 +279,42 @@ const AdminQuotations = () => {
   };
   useEffect(() => { load(); }, []);
 
+  // ---- Scroll restoration --------------------------------------------------
+  // Persist the list's vertical scroll position between visits so opening
+  // the 26th quotation and returning lands the user exactly where they were.
+  const SCROLL_KEY = "adminQuotationsScrollY";
+  // Save on scroll (throttled via rAF).
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch { /* ignore */ }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, []);
+  // Restore once rows are present.
+  const restoredScrollRef = (typeof window !== "undefined") ? (window as any) : {};
+  useEffect(() => {
+    if (loading || rows.length === 0) return;
+    if ((restoredScrollRef as any).__qListScrollRestored) return;
+    const raw = sessionStorage.getItem(SCROLL_KEY);
+    const y = raw ? Number(raw) : 0;
+    if (y > 0) {
+      // Wait one frame so the list is painted before scrolling.
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    }
+    (restoredScrollRef as any).__qListScrollRestored = true;
+    // Reset the guard when the user leaves the page so a future return restores again.
+    return () => { (restoredScrollRef as any).__qListScrollRestored = false; };
+  }, [loading, rows.length]);
+
   // Lazy-load measurement staff the first time the user picks "Custom Project"
   // (or opens the dialog with that already chosen).
   useEffect(() => {
