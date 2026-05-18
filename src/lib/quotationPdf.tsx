@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo.jpeg";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
+import { firstUrl } from "./firstUrl";
 
 // PDF-safe INR formatters.
 // Helvetica doesn't include the ₹ glyph (renders as a blank box), so we use
