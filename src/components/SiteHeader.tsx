@@ -5,15 +5,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 
 export const SiteHeader = () => {
   const { user, isStaff } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const settings = useHomepageSettings();
+  // Default to visible until settings load to avoid a flash of "missing" link.
+  const catalogVisible = settings?.show_public_catalog !== false;
 
   const nav = [
     { to: "/", label: "Home" },
-    { to: "/catalog", label: "Catalog" },
+    ...(catalogVisible || isStaff ? [{ to: "/catalog", label: "Catalog" }] : []),
   ];
 
   return (
