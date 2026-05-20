@@ -62,6 +62,7 @@ type QItem = {
   amount: number;
   display_order: number;
   product_id: string | null;
+  bundle_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
   dispatched_at?: string | null;
   delivered_at?: string | null;
@@ -118,6 +119,16 @@ type Product = {
 };
 type MainCat = { id: string; name: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
+type Bundle = {
+  id: string;
+  bundle_code: string;
+  name: string;
+  mrp: number;
+  offer_price: number | null;
+  main_image_url: string | null;
+  stock_status: string;
+  items_count?: number;
+};
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Simplified 4-status lifecycle. Any legacy values still in the DB are
@@ -235,6 +246,9 @@ const AdminQuotationEditor = () => {
   // both set → models grid. A search overrides the drill-down and shows results flat.
   const [pickerMainId, setPickerMainId] = useState<string | null>(null);
   const [pickerSubId, setPickerSubId] = useState<string | null>(null);
+  // Catalog picker can browse Products or Bundles
+  const [pickerTab, setPickerTab] = useState<"products" | "bundles">("products");
+  const [bundles, setBundles] = useState<Bundle[]>([]);
 
   const [jobOpen, setJobOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -383,6 +397,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
+      bundle_id: null,
       fulfillment_route: defaultRoute,
       _isNew: true,
       _dirty: true,
@@ -485,7 +500,7 @@ const AdminQuotationEditor = () => {
   };
 
   const loadProducts = async () => {
-    const [{ data: pr }, { data: mc }, { data: sc }] = await Promise.all([
+    const [{ data: pr }, { data: mc }, { data: sc }, bRes, biRes] = await Promise.all([
       supabase
         .from("products")
         .select("id, product_name, product_code, mrp, offer_price, main_category_id, sub_category_id, product_images(image_url)")
@@ -503,10 +518,23 @@ const AdminQuotationEditor = () => {
         .select("id, main_category_id, name, image_url")
         .is("deleted_at", null)
         .order("display_order"),
+      (supabase as any)
+        .from("product_bundles")
+        .select("id, bundle_code, name, mrp, offer_price, main_image_url, stock_status")
+        .eq("is_published", true)
+        .is("deleted_at", null)
+        .order("name", { ascending: true })
+        .limit(500),
+      (supabase as any).from("bundle_items").select("bundle_id"),
     ]);
     setProducts((pr ?? []) as Product[]);
     setMainCats((mc ?? []) as MainCat[]);
     setSubCats((sc ?? []) as SubCat[]);
+    const counts = new Map<string, number>();
+    ((biRes?.data ?? []) as { bundle_id: string }[]).forEach((r) => {
+      counts.set(r.bundle_id, (counts.get(r.bundle_id) ?? 0) + 1);
+    });
+    setBundles(((bRes?.data ?? []) as Bundle[]).map((b) => ({ ...b, items_count: counts.get(b.id) ?? 0 })));
   };
 
   const openProductPicker = async () => {
@@ -516,6 +544,7 @@ const AdminQuotationEditor = () => {
     setPickerSubId(null);
     setProductSearch("");
     setPickerTargetItemId(null);
+    setPickerTab("products");
     setProductPickerOpen(true);
   };
 
@@ -528,6 +557,7 @@ const AdminQuotationEditor = () => {
     setPickerSubId(null);
     setProductSearch("");
     setPickerTargetItemId(itemId);
+    setPickerTab("products");
     setProductPickerOpen(true);
   };
 
@@ -563,6 +593,7 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
+      bundle_id: null,
       fulfillment_route:
         (q?.lead_type === "custom_project" || q?.lead_type === "consultation")
           ? "custom"
@@ -577,6 +608,52 @@ const AdminQuotationEditor = () => {
     });
     setProductPickerOpen(false);
     toast({ title: "Item added" });
+  };
+
+  const addFromBundle = (b: Bundle) => {
+    const price = Number(b.offer_price ?? b.mrp ?? 0);
+    if (pickerTargetItemId) {
+      const patch: Partial<QItem> = {
+        description: b.name,
+        item_image_url: b.main_image_url ?? null,
+        catalog_text: b.bundle_code ?? null,
+        product_id: null,
+        bundle_id: b.id,
+      };
+      if (canEditPrice) patch.unit_price = price;
+      updateItem(pickerTargetItemId, patch);
+      setPickerTargetItemId(null);
+      setProductPickerOpen(false);
+      toast({ title: "Bundle added to item" });
+      return;
+    }
+    const next: QItem = {
+      id: `tmp-${crypto.randomUUID()}`,
+      description: b.name,
+      item_image_url: b.main_image_url ?? null,
+      measurement: null,
+      measurement_image_url: null,
+      catalog_text: b.bundle_code ?? null,
+      catalog_image_url: null,
+      sketch_url: null,
+      site_photos: null,
+      quantity: 1,
+      unit_price: price,
+      amount: price,
+      display_order: items.length,
+      product_id: null,
+      bundle_id: b.id,
+      fulfillment_route: "ready_stock",
+      _isNew: true,
+      _dirty: true,
+    };
+    setItems((prev) => {
+      const updated = [...prev, next];
+      itemsRef.current = updated;
+      return updated;
+    });
+    setProductPickerOpen(false);
+    toast({ title: "Bundle added" });
   };
 
   // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
@@ -599,6 +676,7 @@ const AdminQuotationEditor = () => {
       it.unit_price,
       it.display_order,
       it.product_id,
+      it.bundle_id,
       it.fulfillment_route,
       it.dispatched_at ?? null,
       it.delivered_at ?? null,
@@ -670,6 +748,7 @@ const AdminQuotationEditor = () => {
         it.sketch_url ||
         it.site_photos ||
         it.product_id ||
+        it.bundle_id ||
         (Number(it.quantity) || 0) > 0 ||
         (Number(it.unit_price) || 0) > 0;
       if (!hasAnyContent) continue;
@@ -694,6 +773,7 @@ const AdminQuotationEditor = () => {
           amount: (Number(it.quantity) || 0) * (canEditPrice ? Number(it.unit_price) || 0 : 0),
           display_order: it.display_order,
           product_id: it.product_id,
+          bundle_id: it.bundle_id,
           fulfillment_route: it.fulfillment_route ?? "ready_stock",
           dispatched_at: it.dispatched_at ?? null,
           delivered_at: it.delivered_at ?? null,
@@ -1539,6 +1619,7 @@ const AdminQuotationEditor = () => {
                 <div className="flex flex-col items-center justify-center gap-1">
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="px-1 py-0 text-[9px] leading-none">Cat</Badge>}
+                  {it.bundle_id && <Badge className="px-1 py-0 text-[9px] leading-none bg-violet-600 hover:bg-violet-600">Bundle</Badge>}
                 </div>
                 <div className="min-w-0 space-y-1">
                   <AutoSuggestInput
@@ -2143,7 +2224,7 @@ const AdminQuotationEditor = () => {
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="flex items-center gap-2">
-              {(pickerMainId || pickerSubId) && !productSearch && (
+              {pickerTab === "products" && (pickerMainId || pickerSubId) && !productSearch && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -2157,7 +2238,9 @@ const AdminQuotationEditor = () => {
                 </Button>
               )}
               <span>
-                {productSearch
+                {pickerTab === "bundles"
+                  ? "Pick a bundle"
+                  : productSearch
                   ? "Search results"
                   : pickerSubId
                     ? subCats.find((s) => s.id === pickerSubId)?.name ?? "Models"
@@ -2171,18 +2254,83 @@ const AdminQuotationEditor = () => {
             className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
+            {/* Products / Bundles segmented selector */}
+            <div className="mb-3 inline-flex shrink-0 self-start rounded-md border bg-muted p-0.5">
+              <button
+                type="button"
+                onClick={() => { setPickerTab("products"); setPickerMainId(null); setPickerSubId(null); }}
+                className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${pickerTab === "products" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Products ({products.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPickerTab("bundles"); setPickerMainId(null); setPickerSubId(null); }}
+                className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${pickerTab === "bundles" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Bundles ({bundles.length})
+              </button>
+            </div>
             <div className="relative mb-3 shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search by name or code (or browse below)…"
+                placeholder={pickerTab === "bundles" ? "Search bundles by name or code…" : "Search by name or code (or browse below)…"}
                 className="pl-9"
               />
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* SEARCH MODE — flat results across catalog */}
-              {productSearch ? (
+              {/* BUNDLES TAB — flat grid */}
+              {pickerTab === "bundles" ? (
+                (() => {
+                  const list = bundles.filter((b) =>
+                    !productSearch ||
+                    `${b.name} ${b.bundle_code}`.toLowerCase().includes(productSearch.toLowerCase()),
+                  );
+                  if (list.length === 0) {
+                    return (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        No bundles {productSearch ? "match your search." : "yet."}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {list.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => addFromBundle(b)}
+                          className="flex items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:border-primary hover:bg-muted"
+                        >
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded bg-muted">
+                            {b.main_image_url ? (
+                              <img src={b.main_image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-muted-foreground">
+                                <Package className="h-5 w-5" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-sm font-medium">{b.name}</p>
+                              <Badge className="bg-violet-600 hover:bg-violet-600 px-1 py-0 text-[9px] leading-none">Bundle</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {b.bundle_code} · {b.items_count ?? 0} item{(b.items_count ?? 0) === 1 ? "" : "s"}
+                              {b.stock_status === "out_of_stock" ? " · low stock" : ""}
+                            </p>
+                          </div>
+                          <span className="font-mono text-sm">{formatINR(b.offer_price ?? b.mrp)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()
+              ) : /* SEARCH MODE — flat results across catalog */
+              productSearch ? (
                 <div className="space-y-2">
                   {products
                     .filter((p) =>

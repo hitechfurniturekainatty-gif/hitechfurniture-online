@@ -10,7 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ArrowLeft, Loader2, Plus, Save, Trash2, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Plus, Save, Trash2, Package, Search, Minus, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 type BundleRow = {
@@ -41,13 +43,18 @@ type LinkedItem = {
   product_code?: string;
   stock_quantity?: number;
   stock_status?: string;
+  main_image_url?: string | null;
 };
 type ProductOption = {
   id: string;
   product_name: string;
   product_code: string;
+  product_code_lower?: string;
   stock_quantity: number;
   stock_status: string;
+  main_category_id?: string;
+  main_image_url?: string | null;
+  mrp?: number;
 };
 
 /**
@@ -67,6 +74,12 @@ const AdminBundleEditor = () => {
   const [saving, setSaving] = useState(false);
   const [pickerProductId, setPickerProductId] = useState("");
   const [pickerQty, setPickerQty] = useState("1");
+  // Catalog browser dialog
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogMainId, setCatalogMainId] = useState<string>("");
+  const [picked, setPicked] = useState<Record<string, number>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -75,24 +88,38 @@ const AdminBundleEditor = () => {
       (supabase as any).from("product_bundles").select("*").eq("id", id).maybeSingle(),
       (supabase as any).from("bundle_items").select("*").eq("bundle_id", id).order("display_order"),
       supabase.from("products")
-        .select("id, product_name, product_code, stock_quantity, stock_status")
+        .select("id, product_name, product_code, stock_quantity, stock_status, main_category_id, mrp")
         .eq("is_published", true).is("deleted_at", null)
         .order("product_name").limit(500),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
     ]);
     setB(b1.data as BundleRow | null);
-    setProducts((b3.data ?? []) as ProductOption[]);
+    // Pull main image (first product_image) for each product in a follow-up call
+    const prodList = (b3.data ?? []) as ProductOption[];
+    let imgMap = new Map<string, string>();
+    if (prodList.length) {
+      const { data: imgs } = await supabase
+        .from("product_images")
+        .select("product_id, image_url, display_order")
+        .in("product_id", prodList.map((p) => p.id))
+        .order("display_order");
+      ((imgs ?? []) as any[]).forEach((img) => {
+        if (!imgMap.has(img.product_id)) imgMap.set(img.product_id, img.image_url);
+      });
+    }
+    setProducts(prodList.map((p) => ({ ...p, main_image_url: imgMap.get(p.id) ?? null })));
     setMainCats((b4.data ?? []) as any);
     setSubCats((b5.data ?? []) as any);
     // Join product info into items
-    const lookup = new Map<string, ProductOption>((b3.data ?? []).map((p: any) => [p.id, p]));
+    const lookup = new Map<string, ProductOption>(prodList.map((p) => [p.id, { ...p, main_image_url: imgMap.get(p.id) ?? null }]));
     setItems(((b2.data ?? []) as LinkedItem[]).map((it) => ({
       ...it,
       product_name: lookup.get(it.product_id)?.product_name,
       product_code: lookup.get(it.product_id)?.product_code,
       stock_quantity: lookup.get(it.product_id)?.stock_quantity,
       stock_status: lookup.get(it.product_id)?.stock_status,
+      main_image_url: lookup.get(it.product_id)?.main_image_url ?? null,
     })));
     setLoading(false);
   };
@@ -117,18 +144,48 @@ const AdminBundleEditor = () => {
     toast({ title: "Bundle saved" });
   };
 
-  const addLinked = async () => {
-    if (!pickerProductId || !id) return;
-    const qty = Math.max(1, Number(pickerQty) || 1);
-    if (items.some((it) => it.product_id === pickerProductId)) {
-      toast({ title: "Already added", description: "Update the quantity instead.", variant: "destructive" });
+  const openCatalogPicker = () => {
+    setCatalogSearch("");
+    setCatalogMainId("");
+    setPicked({});
+    setCatalogOpen(true);
+  };
+
+  const togglePick = (productId: string, checked: boolean) => {
+    setPicked((prev) => {
+      const next = { ...prev };
+      if (checked) next[productId] = next[productId] ?? 1;
+      else delete next[productId];
+      return next;
+    });
+  };
+
+  const setPickQty = (productId: string, qty: number) => {
+    setPicked((prev) => ({ ...prev, [productId]: Math.max(1, qty || 1) }));
+  };
+
+  const confirmAddSelected = async () => {
+    if (!id) return;
+    const entries = Object.entries(picked).filter(([pid]) => !items.some((it) => it.product_id === pid));
+    if (entries.length === 0) {
+      toast({ title: "Nothing new to add" });
       return;
     }
-    const { error } = await (supabase as any).from("bundle_items").insert({
-      bundle_id: id, product_id: pickerProductId, quantity: qty, display_order: items.length,
-    });
-    if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
-    setPickerProductId(""); setPickerQty("1");
+    setBulkSaving(true);
+    const rows = entries.map(([pid, qty], i) => ({
+      bundle_id: id,
+      product_id: pid,
+      quantity: qty,
+      display_order: items.length + i,
+    }));
+    const { error } = await (supabase as any).from("bundle_items").insert(rows);
+    setBulkSaving(false);
+    if (error) {
+      toast({ title: "Add failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Added ${entries.length} item(s)` });
+    setCatalogOpen(false);
     load();
   };
 
@@ -140,6 +197,17 @@ const AdminBundleEditor = () => {
 
   const removeLinked = async (rowId: string) => {
     await (supabase as any).from("bundle_items").delete().eq("id", rowId);
+    load();
+  };
+
+  const moveLinked = async (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= items.length) return;
+    const a = items[idx], b = items[j];
+    await Promise.all([
+      (supabase as any).from("bundle_items").update({ display_order: j }).eq("id", a.id),
+      (supabase as any).from("bundle_items").update({ display_order: idx }).eq("id", b.id),
+    ]);
     load();
   };
 
@@ -276,56 +344,149 @@ const AdminBundleEditor = () => {
             <p className="text-xs text-muted-foreground">
               Add catalog products with quantities. When this bundle is delivered, these items' stock will be deducted automatically.
             </p>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <SearchableSelect
-                  value={pickerProductId}
-                  onChange={setPickerProductId}
-                  options={products
-                    .filter((p) => !items.some((it) => it.product_id === p.id))
-                    .map((p) => ({ value: p.id, label: p.product_name, sub: `${p.product_code} · ${p.stock_quantity} in stock` }))}
-                  placeholder="Pick a product…"
-                />
-              </div>
-              <Input
-                type="number" min={1} className="w-20"
-                value={pickerQty} onChange={(e) => setPickerQty(e.target.value)}
-              />
-              <Button onClick={addLinked} disabled={!pickerProductId}><Plus className="h-4 w-4" /></Button>
-            </div>
 
-            <div className="space-y-2">
-              {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                  No items linked yet.
-                </div>
-              ) : items.map((it) => {
-                const oos = (it.stock_status === "out_of_stock") || ((it.stock_quantity ?? 0) < it.quantity);
-                return (
-                  <div key={it.id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{it.product_name ?? it.product_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {it.product_code} · {it.stock_quantity ?? 0} in stock
-                      </p>
+            <Button type="button" variant="default" className="w-full" onClick={openCatalogPicker}>
+              <Plus className="mr-1.5 h-4 w-4" /> Add items from catalog
+            </Button>
+
+            {items.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+                No items linked yet. Click <span className="font-semibold">"Add items from catalog"</span> above to start.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.map((it, idx) => {
+                  const oos = (it.stock_status === "out_of_stock") || ((it.stock_quantity ?? 0) < it.quantity);
+                  return (
+                    <div key={it.id} className="flex items-center gap-3 rounded-lg border bg-background p-2">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded bg-muted">
+                        {it.main_image_url ? (
+                          <img src={it.main_image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <Package className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{it.product_name ?? it.product_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {it.product_code} · <span className={oos ? "text-destructive font-medium" : ""}>{it.stock_quantity ?? 0} in stock</span>
+                        </p>
+                        {oos && <Badge variant="destructive" className="mt-1 text-[10px]">Low stock</Badge>}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={idx === 0} onClick={() => moveLinked(idx, -1)}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={idx === items.length - 1} onClick={() => moveLinked(idx, 1)}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <div className="flex items-center rounded-md border">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-r-none" onClick={() => updateQty(it.id, it.quantity - 1)}><Minus className="h-3.5 w-3.5" /></Button>
+                        <Input
+                          type="number" min={1}
+                          className="h-8 w-12 rounded-none border-x text-center [&::-webkit-inner-spin-button]:appearance-none"
+                          value={it.quantity}
+                          onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value) || 1))}
+                        />
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-l-none" onClick={() => updateQty(it.id, it.quantity + 1)}><Plus className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => removeLinked(it.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-                    {oos && <Badge variant="destructive">Low</Badge>}
-                    <Input
-                      type="number" min={1} className="w-16"
-                      value={it.quantity}
-                      onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value) || 1))}
-                    />
-                    <Button size="icon" variant="ghost" onClick={() => removeLinked(it.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Catalog browser dialog */}
+      <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[85vh] sm:max-w-3xl sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle>Add items from catalog</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-1 flex-col gap-3 overflow-hidden px-4 py-3 sm:px-6">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search by name or code…" className="pl-9" />
+              </div>
+              <select
+                value={catalogMainId}
+                onChange={(e) => setCatalogMainId(e.target.value)}
+                className="rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">All categories</option>
+                {mainCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {(() => {
+                const q = catalogSearch.toLowerCase();
+                const list = products.filter((p) => {
+                  if (items.some((it) => it.product_id === p.id)) return false;
+                  if (catalogMainId && p.main_category_id !== catalogMainId) return false;
+                  if (!q) return true;
+                  return p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q);
+                });
+                if (list.length === 0) {
+                  return <p className="py-10 text-center text-sm text-muted-foreground">No products match.</p>;
+                }
+                return (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {list.map((p) => {
+                      const isPicked = picked[p.id] !== undefined;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`flex items-center gap-2 rounded-md border p-2 transition-colors ${isPicked ? "border-primary bg-primary/5" : "bg-card"}`}
+                        >
+                          <Checkbox
+                            checked={isPicked}
+                            onCheckedChange={(v) => togglePick(p.id, !!v)}
+                          />
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+                            {p.main_image_url ? (
+                              <img src={p.main_image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-muted-foreground"><Package className="h-4 w-4" /></div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{p.product_name}</p>
+                            <p className="text-xs text-muted-foreground">{p.product_code} · {p.stock_quantity} in stock</p>
+                          </div>
+                          {isPicked && (
+                            <div className="flex items-center rounded-md border">
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-r-none" onClick={() => setPickQty(p.id, (picked[p.id] ?? 1) - 1)}><Minus className="h-3 w-3" /></Button>
+                              <Input
+                                type="number" min={1}
+                                className="h-7 w-10 rounded-none border-x text-center text-xs"
+                                value={picked[p.id] ?? 1}
+                                onChange={(e) => setPickQty(p.id, Number(e.target.value) || 1)}
+                              />
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-l-none" onClick={() => setPickQty(p.id, (picked[p.id] ?? 1) + 1)}><Plus className="h-3 w-3" /></Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-4 py-3 sm:flex-row sm:px-6">
+            <Button variant="outline" onClick={() => setCatalogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={confirmAddSelected} disabled={Object.keys(picked).length === 0 || bulkSaving} className="w-full sm:w-auto">
+              {bulkSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+              Add {Object.keys(picked).length || ""} selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
