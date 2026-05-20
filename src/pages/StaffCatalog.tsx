@@ -353,6 +353,8 @@ const StaffCatalog = () => {
           floor_display_order: p.floor_display_order ?? 0,
           cover: locationCoverOf(p),
           stock: residualStock,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          is_bundle: !!(p as any).__isBundle,
         });
       }
     }
@@ -467,6 +469,9 @@ const StaffCatalog = () => {
         const order = (i + 1) * 10;
         if (x.kind === "variant_stock") {
           return supabase.from("product_variant_stock").update({ floor_display_order: order }).eq("id", x.refId);
+        }
+        if (x.is_bundle) {
+          return (supabase as any).from("product_bundles").update({ floor_display_order: order }).eq("id", x.refId);
         }
         return supabase.from("products").update({ floor_display_order: order }).eq("id", x.refId);
       });
