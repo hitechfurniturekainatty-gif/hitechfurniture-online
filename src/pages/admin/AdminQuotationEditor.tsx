@@ -544,6 +544,7 @@ const AdminQuotationEditor = () => {
     setPickerSubId(null);
     setProductSearch("");
     setPickerTargetItemId(null);
+    setPickerTab("products");
     setProductPickerOpen(true);
   };
 
@@ -556,6 +557,7 @@ const AdminQuotationEditor = () => {
     setPickerSubId(null);
     setProductSearch("");
     setPickerTargetItemId(itemId);
+    setPickerTab("products");
     setProductPickerOpen(true);
   };
 
