@@ -49,6 +49,7 @@ const DEFAULT_SETTINGS: Omit<HomepageSettings, "id"> = {
   hero_caption_eyebrow: "",
   hero_caption_title: "",
   hide_public_prices: false,
+  show_public_catalog: true,
 };
 
 const AdminHomePage = () => {
@@ -428,6 +429,16 @@ const AdminHomePage = () => {
                   />
                   <Label htmlFor="hide-public-prices" className="text-sm font-medium">
                     Hide ALL prices in public catalog (master switch)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 rounded-md border border-emerald-300/60 bg-emerald-50 px-3 py-1.5 dark:bg-emerald-950/30">
+                  <Switch
+                    id="show-public-catalog"
+                    checked={settings.show_public_catalog}
+                    onCheckedChange={(v) => setSettings({ ...settings, show_public_catalog: v })}
+                  />
+                  <Label htmlFor="show-public-catalog" className="text-sm font-medium">
+                    Show main catalog to public visitors
                   </Label>
                 </div>
               </div>
