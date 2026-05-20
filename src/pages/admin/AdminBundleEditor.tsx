@@ -597,6 +597,12 @@ const AdminBundleEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LocationsDialog
+        open={locDialogOpen}
+        onOpenChange={setLocDialogOpen}
+        locations={locations as any}
+        onChanged={() => load(false)}
+      />
     </AdminShell>
   );
 };
