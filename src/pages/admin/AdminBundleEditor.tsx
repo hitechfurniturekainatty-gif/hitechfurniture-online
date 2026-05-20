@@ -10,7 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ArrowLeft, Loader2, Plus, Save, Trash2, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Plus, Save, Trash2, Package, Search, Minus, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 type BundleRow = {
@@ -46,8 +48,12 @@ type ProductOption = {
   id: string;
   product_name: string;
   product_code: string;
+  product_code_lower?: string;
   stock_quantity: number;
   stock_status: string;
+  main_category_id?: string;
+  main_image_url?: string | null;
+  mrp?: number;
 };
 
 /**
@@ -67,6 +73,12 @@ const AdminBundleEditor = () => {
   const [saving, setSaving] = useState(false);
   const [pickerProductId, setPickerProductId] = useState("");
   const [pickerQty, setPickerQty] = useState("1");
+  // Catalog browser dialog
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogMainId, setCatalogMainId] = useState<string>("");
+  const [picked, setPicked] = useState<Record<string, number>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -75,24 +87,38 @@ const AdminBundleEditor = () => {
       (supabase as any).from("product_bundles").select("*").eq("id", id).maybeSingle(),
       (supabase as any).from("bundle_items").select("*").eq("bundle_id", id).order("display_order"),
       supabase.from("products")
-        .select("id, product_name, product_code, stock_quantity, stock_status")
+        .select("id, product_name, product_code, stock_quantity, stock_status, main_category_id, mrp")
         .eq("is_published", true).is("deleted_at", null)
         .order("product_name").limit(500),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
     ]);
     setB(b1.data as BundleRow | null);
-    setProducts((b3.data ?? []) as ProductOption[]);
+    // Pull main image (first product_image) for each product in a follow-up call
+    const prodList = (b3.data ?? []) as ProductOption[];
+    let imgMap = new Map<string, string>();
+    if (prodList.length) {
+      const { data: imgs } = await supabase
+        .from("product_images")
+        .select("product_id, image_url, display_order")
+        .in("product_id", prodList.map((p) => p.id))
+        .order("display_order");
+      ((imgs ?? []) as any[]).forEach((img) => {
+        if (!imgMap.has(img.product_id)) imgMap.set(img.product_id, img.image_url);
+      });
+    }
+    setProducts(prodList.map((p) => ({ ...p, main_image_url: imgMap.get(p.id) ?? null })));
     setMainCats((b4.data ?? []) as any);
     setSubCats((b5.data ?? []) as any);
     // Join product info into items
-    const lookup = new Map<string, ProductOption>((b3.data ?? []).map((p: any) => [p.id, p]));
+    const lookup = new Map<string, ProductOption>(prodList.map((p) => [p.id, { ...p, main_image_url: imgMap.get(p.id) ?? null }]));
     setItems(((b2.data ?? []) as LinkedItem[]).map((it) => ({
       ...it,
       product_name: lookup.get(it.product_id)?.product_name,
       product_code: lookup.get(it.product_id)?.product_code,
       stock_quantity: lookup.get(it.product_id)?.stock_quantity,
       stock_status: lookup.get(it.product_id)?.stock_status,
+      main_image_url: lookup.get(it.product_id)?.main_image_url ?? null,
     })));
     setLoading(false);
   };
@@ -117,18 +143,48 @@ const AdminBundleEditor = () => {
     toast({ title: "Bundle saved" });
   };
 
-  const addLinked = async () => {
-    if (!pickerProductId || !id) return;
-    const qty = Math.max(1, Number(pickerQty) || 1);
-    if (items.some((it) => it.product_id === pickerProductId)) {
-      toast({ title: "Already added", description: "Update the quantity instead.", variant: "destructive" });
+  const openCatalogPicker = () => {
+    setCatalogSearch("");
+    setCatalogMainId("");
+    setPicked({});
+    setCatalogOpen(true);
+  };
+
+  const togglePick = (productId: string, checked: boolean) => {
+    setPicked((prev) => {
+      const next = { ...prev };
+      if (checked) next[productId] = next[productId] ?? 1;
+      else delete next[productId];
+      return next;
+    });
+  };
+
+  const setPickQty = (productId: string, qty: number) => {
+    setPicked((prev) => ({ ...prev, [productId]: Math.max(1, qty || 1) }));
+  };
+
+  const confirmAddSelected = async () => {
+    if (!id) return;
+    const entries = Object.entries(picked).filter(([pid]) => !items.some((it) => it.product_id === pid));
+    if (entries.length === 0) {
+      toast({ title: "Nothing new to add" });
       return;
     }
-    const { error } = await (supabase as any).from("bundle_items").insert({
-      bundle_id: id, product_id: pickerProductId, quantity: qty, display_order: items.length,
-    });
-    if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
-    setPickerProductId(""); setPickerQty("1");
+    setBulkSaving(true);
+    const rows = entries.map(([pid, qty], i) => ({
+      bundle_id: id,
+      product_id: pid,
+      quantity: qty,
+      display_order: items.length + i,
+    }));
+    const { error } = await (supabase as any).from("bundle_items").insert(rows);
+    setBulkSaving(false);
+    if (error) {
+      toast({ title: "Add failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Added ${entries.length} item(s)` });
+    setCatalogOpen(false);
     load();
   };
 
@@ -140,6 +196,17 @@ const AdminBundleEditor = () => {
 
   const removeLinked = async (rowId: string) => {
     await (supabase as any).from("bundle_items").delete().eq("id", rowId);
+    load();
+  };
+
+  const moveLinked = async (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= items.length) return;
+    const a = items[idx], b = items[j];
+    await Promise.all([
+      (supabase as any).from("bundle_items").update({ display_order: j }).eq("id", a.id),
+      (supabase as any).from("bundle_items").update({ display_order: idx }).eq("id", b.id),
+    ]);
     load();
   };
 
