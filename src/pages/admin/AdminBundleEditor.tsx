@@ -272,6 +272,31 @@ const AdminBundleEditor = () => {
     const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === val);
     setB(b ? { ...b, location_id: first?.id ?? null } : b);
   };
+  const [newSection, setNewSection] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+  const addInlineSection = async () => {
+    const name = newSection.trim();
+    if (!b || !name || !formBuilding || !formFloor) {
+      return toast({ title: "Pick Building & Floor first", variant: "destructive" });
+    }
+    setAddingSection(true);
+    const { data, error } = await supabase
+      .from("product_locations")
+      .insert({
+        building: formBuilding,
+        floor: formFloor,
+        section: name,
+        display_order: (locations[locations.length - 1]?.display_order ?? 0) + 10,
+      })
+      .select("*")
+      .single();
+    setAddingSection(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    setNewSection("");
+    setLocations((prev) => [...prev, data as Location]);
+    setB({ ...b, location_id: (data as Location).id });
+    toast({ title: "Section added" });
+  };
 
   if (loading || !b) {
     return <AdminShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div></AdminShell>;
@@ -291,6 +316,67 @@ const AdminBundleEditor = () => {
               Save
             </Button>
           </div>
+        </div>
+
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-display text-lg">Bundle location</h2>
+              <p className="text-xs text-muted-foreground">Building / Floor / Section for this bundle set.</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setLocDialogOpen(true)}>
+              Manage locations
+            </Button>
+          </div>
+          {locations.filter((l) => l.is_active).length === 0 && (
+            <p className="rounded-md border border-dashed bg-muted/40 p-3 text-sm text-muted-foreground">
+              No locations yet. Click Manage locations to add Building / Floor / Section.
+            </p>
+          )}
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <Label>Building</Label>
+              <SearchableSelect
+                value={formBuilding || "__none"}
+                onChange={(v) => v === "__none" ? setB({ ...b, location_id: null }) : pickBuilding(v)}
+                options={[{ value: "__none", label: "— Not assigned —" }, ...buildingOptions.map((bd) => ({ value: bd, label: bd }))]}
+                placeholder="Choose building…"
+              />
+            </div>
+            <div>
+              <Label>Floor</Label>
+              <SearchableSelect
+                value={formFloor || ""}
+                onChange={(v) => v && pickFloor(v)}
+                options={floorOptions.map((f) => ({ value: f, label: f }))}
+                placeholder={formBuilding ? "Choose floor…" : "Pick a building first"}
+                disabled={!formBuilding}
+              />
+            </div>
+            <div>
+              <Label>Section</Label>
+              <SearchableSelect
+                value={b.location_id ?? ""}
+                onChange={(v) => setB({ ...b, location_id: v || null })}
+                options={sectionOptions.map((s) => ({ value: s.id, label: s.section ?? `(no section · ${s.floor})` }))}
+                placeholder={formFloor ? "Choose section…" : "Pick a floor first"}
+                disabled={!formFloor}
+              />
+            </div>
+          </div>
+          {formBuilding && formFloor && (
+            <div className="flex gap-2">
+              <Input
+                value={newSection}
+                onChange={(e) => setNewSection(e.target.value)}
+                placeholder="+ Add new section (e.g. Part A)"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInlineSection(); } }}
+              />
+              <Button type="button" variant="outline" onClick={addInlineSection} disabled={addingSection || !newSection.trim()}>
+                {addingSection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
