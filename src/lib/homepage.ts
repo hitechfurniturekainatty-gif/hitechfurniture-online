@@ -34,6 +34,10 @@ export type HomepageSettings = {
    *  public catalog and product detail pages. Staff catalog (PIN-protected)
    *  always shows prices. */
   hide_public_prices: boolean;
+  /** When false, the public catalog is hidden from visitors (link removed
+   *  from the header and the /catalog route redirects home). Staff/admins
+   *  always retain access. Defaults to true. */
+  show_public_catalog: boolean;
 };
 
 export type HeroSlide = {
