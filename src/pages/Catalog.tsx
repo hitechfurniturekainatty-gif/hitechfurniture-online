@@ -27,6 +27,7 @@ type Product = ProductCardData & {
   offer_price: number | null;
   material?: string | null;
   dimensions?: string | null;
+  __isBundle?: boolean;
 };
 
 // First page size — keeps the initial payload small on 3G/4G so cards
@@ -76,11 +77,33 @@ const Catalog = () => {
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
-    ]).then(([mc, sc, pr]) => {
+      (supabase as any)
+        .from("product_bundles")
+        .select("id, main_category_id, sub_category_id, bundle_code, name, mrp, offer_price, available_colors, stock_status, material, dimensions, main_image_url")
+        .eq("is_published", true)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
+    ]).then(([mc, sc, pr, bn]) => {
       if (cancelled) return;
       setMainCats(mc.data ?? []);
       setSubCats(sc.data ?? []);
-      setProducts((pr.data ?? []) as Product[]);
+      const bundles: Product[] = ((bn.data ?? []) as any[]).map((b) => ({
+        id: b.id,
+        main_category_id: b.main_category_id,
+        sub_category_id: b.sub_category_id,
+        product_name: b.name,
+        product_code: b.bundle_code,
+        mrp: Number(b.mrp ?? 0),
+        offer_price: b.offer_price != null ? Number(b.offer_price) : null,
+        available_colors: b.available_colors ?? [],
+        stock_quantity: b.stock_status === "out_of_stock" ? 0 : 1,
+        material: b.material,
+        dimensions: b.dimensions,
+        product_images: b.main_image_url ? [{ image_url: b.main_image_url, display_order: 0 }] : [],
+        product_variants: [],
+        __isBundle: true,
+      }));
+      setProducts([...((pr.data ?? []) as Product[]), ...bundles]);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -571,7 +594,12 @@ const Catalog = () => {
           <>
             <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
               {visibleProducts.map((p) => (
-                <ProductCard key={p.id} product={p} hidePrice={hidePrices} />
+                <ProductCard
+                  key={(p.__isBundle ? "b-" : "p-") + p.id}
+                  product={p}
+                  hidePrice={hidePrices}
+                  linkPrefix={p.__isBundle ? "bundle" : "product"}
+                />
               ))}
             </div>
             {hasMore && (
