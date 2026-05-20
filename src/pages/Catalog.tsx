@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { toTitleCase } from "@/lib/textCase";
 import { toast } from "@/hooks/use-toast";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
+import { useAuth } from "@/hooks/useAuth";
 
 type MainCat = { id: string; name: string; slug: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; image_url: string | null };
@@ -36,6 +37,9 @@ const Catalog = () => {
   const [params, setParams] = useSearchParams();
   const homeSettings = useHomepageSettings();
   const hidePrices = !!homeSettings?.hide_public_prices;
+  const { isStaff } = useAuth();
+  // Admin can hide the entire public catalog. Staff (signed in) still see it.
+  const catalogHidden = homeSettings?.show_public_catalog === false && !isStaff;
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -215,6 +219,7 @@ const Catalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {catalogHidden && <Navigate to="/" replace />}
       <Seo
         title={
           activeCat

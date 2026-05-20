@@ -449,6 +449,7 @@ export type Database = {
           show_google_review: boolean
           show_hero_text: boolean
           show_hero_window: boolean
+          show_public_catalog: boolean
           singleton: boolean
           updated_at: string
           whatsapp_default_message: string
@@ -481,6 +482,7 @@ export type Database = {
           show_google_review?: boolean
           show_hero_text?: boolean
           show_hero_window?: boolean
+          show_public_catalog?: boolean
           singleton?: boolean
           updated_at?: string
           whatsapp_default_message?: string
@@ -513,6 +515,7 @@ export type Database = {
           show_google_review?: boolean
           show_hero_text?: boolean
           show_hero_window?: boolean
+          show_public_catalog?: boolean
           singleton?: boolean
           updated_at?: string
           whatsapp_default_message?: string
