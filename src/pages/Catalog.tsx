@@ -219,6 +219,7 @@ const Catalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {catalogHidden && <Navigate to="/" replace />}
       <Seo
         title={
           activeCat
