@@ -746,6 +746,7 @@ const AdminQuotationEditor = () => {
         it.sketch_url ||
         it.site_photos ||
         it.product_id ||
+        it.bundle_id ||
         (Number(it.quantity) || 0) > 0 ||
         (Number(it.unit_price) || 0) > 0;
       if (!hasAnyContent) continue;
