@@ -223,7 +223,6 @@ const AdminBundleEditor = () => {
     [next[idx], next[j]] = [next[j], next[idx]];
     setItems(next.map((it, i) => ({ ...it, display_order: i })));
     const a = items[idx], b2 = items[j];
-    const { error } = await (supabase as any).rpc ? null : null;
     const [r1, r2] = await Promise.all([
       (supabase as any).from("bundle_items").update({ display_order: j }).eq("id", a.id),
       (supabase as any).from("bundle_items").update({ display_order: idx }).eq("id", b2.id),
