@@ -353,16 +353,64 @@ const AdminBundleEditor = () => {
             </div>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={b.is_published} onCheckedChange={(v) => setB({ ...b, is_published: v })} />
+                <Switch
+                  checked={b.is_published}
+                  onCheckedChange={(v) => setB({ ...b, is_published: v, is_featured: v ? b.is_featured : false })}
+                />
                 Published (visible on catalog)
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={b.is_featured} onCheckedChange={(v) => setB({ ...b, is_featured: v })} />
+                <Switch
+                  checked={b.is_featured}
+                  disabled={!b.is_published}
+                  onCheckedChange={(v) => setB({ ...b, is_featured: v })}
+                />
                 Featured
               </label>
               <Badge variant={b.stock_status === "out_of_stock" ? "destructive" : "outline"}>
                 {b.stock_status === "out_of_stock" ? "Out of stock (auto)" : "In stock (auto)"}
               </Badge>
+            </div>
+
+            {/* Showroom location: Building / Floor / Section */}
+            <div className="grid grid-cols-3 gap-2 border-t pt-3">
+              <div>
+                <Label>Building</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={formBuilding}
+                  onChange={(e) => pickBuilding(e.target.value)}
+                >
+                  <option value="">—</option>
+                  {buildingOptions.map((bd) => <option key={bd} value={bd}>{bd}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Floor</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={formFloor}
+                  onChange={(e) => pickFloor(e.target.value)}
+                  disabled={!formBuilding}
+                >
+                  <option value="">—</option>
+                  {floorOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Section</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={b.location_id ?? ""}
+                  onChange={(e) => setB({ ...b, location_id: e.target.value || null })}
+                  disabled={!formFloor}
+                >
+                  <option value="">—</option>
+                  {sectionOptions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.section ?? "(no section)"}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
