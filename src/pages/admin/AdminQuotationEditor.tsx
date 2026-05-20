@@ -500,7 +500,7 @@ const AdminQuotationEditor = () => {
   };
 
   const loadProducts = async () => {
-    const [{ data: pr }, { data: mc }, { data: sc }] = await Promise.all([
+    const [{ data: pr }, { data: mc }, { data: sc }, bRes, biRes] = await Promise.all([
       supabase
         .from("products")
         .select("id, product_name, product_code, mrp, offer_price, main_category_id, sub_category_id, product_images(image_url)")
@@ -518,10 +518,23 @@ const AdminQuotationEditor = () => {
         .select("id, main_category_id, name, image_url")
         .is("deleted_at", null)
         .order("display_order"),
+      (supabase as any)
+        .from("product_bundles")
+        .select("id, bundle_code, name, mrp, offer_price, main_image_url, stock_status")
+        .eq("is_published", true)
+        .is("deleted_at", null)
+        .order("name", { ascending: true })
+        .limit(500),
+      (supabase as any).from("bundle_items").select("bundle_id"),
     ]);
     setProducts((pr ?? []) as Product[]);
     setMainCats((mc ?? []) as MainCat[]);
     setSubCats((sc ?? []) as SubCat[]);
+    const counts = new Map<string, number>();
+    ((biRes?.data ?? []) as { bundle_id: string }[]).forEach((r) => {
+      counts.set(r.bundle_id, (counts.get(r.bundle_id) ?? 0) + 1);
+    });
+    setBundles(((bRes?.data ?? []) as Bundle[]).map((b) => ({ ...b, items_count: counts.get(b.id) ?? 0 })));
   };
 
   const openProductPicker = async () => {
@@ -593,6 +606,52 @@ const AdminQuotationEditor = () => {
     });
     setProductPickerOpen(false);
     toast({ title: "Item added" });
+  };
+
+  const addFromBundle = (b: Bundle) => {
+    const price = Number(b.offer_price ?? b.mrp ?? 0);
+    if (pickerTargetItemId) {
+      const patch: Partial<QItem> = {
+        description: b.name,
+        item_image_url: b.main_image_url ?? null,
+        catalog_text: b.bundle_code ?? null,
+        product_id: null,
+        bundle_id: b.id,
+      };
+      if (canEditPrice) patch.unit_price = price;
+      updateItem(pickerTargetItemId, patch);
+      setPickerTargetItemId(null);
+      setProductPickerOpen(false);
+      toast({ title: "Bundle added to item" });
+      return;
+    }
+    const next: QItem = {
+      id: `tmp-${crypto.randomUUID()}`,
+      description: b.name,
+      item_image_url: b.main_image_url ?? null,
+      measurement: null,
+      measurement_image_url: null,
+      catalog_text: b.bundle_code ?? null,
+      catalog_image_url: null,
+      sketch_url: null,
+      site_photos: null,
+      quantity: 1,
+      unit_price: price,
+      amount: price,
+      display_order: items.length,
+      product_id: null,
+      bundle_id: b.id,
+      fulfillment_route: "ready_stock",
+      _isNew: true,
+      _dirty: true,
+    };
+    setItems((prev) => {
+      const updated = [...prev, next];
+      itemsRef.current = updated;
+      return updated;
+    });
+    setProductPickerOpen(false);
+    toast({ title: "Bundle added" });
   };
 
   // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
