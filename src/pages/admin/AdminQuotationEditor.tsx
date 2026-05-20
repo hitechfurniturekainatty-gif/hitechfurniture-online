@@ -2238,7 +2238,9 @@ const AdminQuotationEditor = () => {
                 </Button>
               )}
               <span>
-                {productSearch
+                {pickerTab === "bundles"
+                  ? "Pick a bundle"
+                  : productSearch
                   ? "Search results"
                   : pickerSubId
                     ? subCats.find((s) => s.id === pickerSubId)?.name ?? "Models"
