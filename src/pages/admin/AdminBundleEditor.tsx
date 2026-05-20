@@ -43,6 +43,7 @@ type LinkedItem = {
   product_code?: string;
   stock_quantity?: number;
   stock_status?: string;
+  main_image_url?: string | null;
 };
 type ProductOption = {
   id: string;
