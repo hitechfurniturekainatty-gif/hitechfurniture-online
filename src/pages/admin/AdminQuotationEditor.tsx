@@ -2224,7 +2224,7 @@ const AdminQuotationEditor = () => {
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="flex items-center gap-2">
-              {(pickerMainId || pickerSubId) && !productSearch && (
+              {pickerTab === "products" && (pickerMainId || pickerSubId) && !productSearch && (
                 <Button
                   size="sm"
                   variant="ghost"
