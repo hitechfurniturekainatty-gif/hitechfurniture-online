@@ -2252,18 +2252,83 @@ const AdminQuotationEditor = () => {
             className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
+            {/* Products / Bundles segmented selector */}
+            <div className="mb-3 inline-flex shrink-0 self-start rounded-md border bg-muted p-0.5">
+              <button
+                type="button"
+                onClick={() => { setPickerTab("products"); setPickerMainId(null); setPickerSubId(null); }}
+                className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${pickerTab === "products" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Products ({products.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPickerTab("bundles"); setPickerMainId(null); setPickerSubId(null); }}
+                className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${pickerTab === "bundles" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
+              >
+                Bundles ({bundles.length})
+              </button>
+            </div>
             <div className="relative mb-3 shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search by name or code (or browse below)…"
+                placeholder={pickerTab === "bundles" ? "Search bundles by name or code…" : "Search by name or code (or browse below)…"}
                 className="pl-9"
               />
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* SEARCH MODE — flat results across catalog */}
-              {productSearch ? (
+              {/* BUNDLES TAB — flat grid */}
+              {pickerTab === "bundles" ? (
+                (() => {
+                  const list = bundles.filter((b) =>
+                    !productSearch ||
+                    `${b.name} ${b.bundle_code}`.toLowerCase().includes(productSearch.toLowerCase()),
+                  );
+                  if (list.length === 0) {
+                    return (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        No bundles {productSearch ? "match your search." : "yet."}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {list.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => addFromBundle(b)}
+                          className="flex items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:border-primary hover:bg-muted"
+                        >
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded bg-muted">
+                            {b.main_image_url ? (
+                              <img src={b.main_image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-muted-foreground">
+                                <Package className="h-5 w-5" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-sm font-medium">{b.name}</p>
+                              <Badge className="bg-violet-600 hover:bg-violet-600 px-1 py-0 text-[9px] leading-none">Bundle</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {b.bundle_code} · {b.items_count ?? 0} item{(b.items_count ?? 0) === 1 ? "" : "s"}
+                              {b.stock_status === "out_of_stock" ? " · low stock" : ""}
+                            </p>
+                          </div>
+                          <span className="font-mono text-sm">{formatINR(b.offer_price ?? b.mrp)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()
+              ) : /* SEARCH MODE — flat results across catalog */
+              productSearch ? (
                 <div className="space-y-2">
                   {products
                     .filter((p) =>
