@@ -230,6 +230,31 @@ const AdminBundleEditor = () => {
     [subCats, b?.main_category_id],
   );
 
+  // Building / Floor / Section derived from selected location (same pattern as products).
+  const selectedLocation = locations.find((l) => l.id === (b?.location_id ?? "")) || null;
+  const formBuilding = selectedLocation?.building ?? "";
+  const formFloor = selectedLocation?.floor ?? "";
+  const buildingOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
+    [locations],
+  );
+  const floorOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
+    [locations, formBuilding],
+  );
+  const sectionOptions = useMemo(
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+    [locations, formBuilding, formFloor],
+  );
+  const pickBuilding = (val: string) => {
+    const first = locations.find((l) => l.is_active && l.building === val);
+    setB(b ? { ...b, location_id: first?.id ?? null } : b);
+  };
+  const pickFloor = (val: string) => {
+    const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === val);
+    setB(b ? { ...b, location_id: first?.id ?? null } : b);
+  };
+
   if (loading || !b) {
     return <AdminShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div></AdminShell>;
   }
