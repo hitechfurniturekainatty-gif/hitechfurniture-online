@@ -1617,6 +1617,7 @@ const AdminQuotationEditor = () => {
                 <div className="flex flex-col items-center justify-center gap-1">
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="px-1 py-0 text-[9px] leading-none">Cat</Badge>}
+                  {it.bundle_id && <Badge className="px-1 py-0 text-[9px] leading-none bg-violet-600 hover:bg-violet-600">Bundle</Badge>}
                 </div>
                 <div className="min-w-0 space-y-1">
                   <AutoSuggestInput
