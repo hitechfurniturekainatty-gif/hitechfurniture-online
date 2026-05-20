@@ -27,7 +27,7 @@ export type ProductCardData = {
   product_variants?: ProductVariantData[];
 };
 
-const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCardData; hidePrice?: boolean }) => {
+const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }: { product: ProductCardData; hidePrice?: boolean; linkPrefix?: "product" | "bundle" }) => {
   const variants = useMemo(
     () =>
       (product.product_variants ?? [])
@@ -78,7 +78,7 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
         ? `*Price:* ${formatINR(product.offer_price!)}  ( *MRP:* ${formatINR(product.mrp)} )`
         : `*MRP:* ${formatINR(product.mrp)}`
       : "";
-    const productUrl = `${window.location.origin}/product/${product.id}`;
+    const productUrl = `${window.location.origin}/${linkPrefix}/${product.id}`;
     const imgUrl = activeVariant?.image_url || baseCover || "";
     const msg = [
       "*New Catalog Inquiry*",
@@ -100,7 +100,7 @@ const ProductCardInner = ({ product, hidePrice = false }: { product: ProductCard
   };
 
   return (
-    <Link to={`/product/${product.id}`} className="product-card group block">
+    <Link to={`/${linkPrefix}/${product.id}`} className="product-card group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
         {cover ? (
           <img

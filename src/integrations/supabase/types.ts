@@ -764,6 +764,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_published: boolean
+          location_id: string | null
           main_category_id: string
           main_image_url: string | null
           material: string | null
@@ -788,6 +789,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          location_id?: string | null
           main_category_id: string
           main_image_url?: string | null
           material?: string | null
@@ -812,6 +814,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          location_id?: string | null
           main_category_id?: string
           main_image_url?: string | null
           material?: string | null

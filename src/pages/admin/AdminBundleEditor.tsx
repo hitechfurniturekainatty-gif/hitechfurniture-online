@@ -32,7 +32,9 @@ type BundleRow = {
   is_featured: boolean;
   is_published: boolean;
   stock_status: string;
+  location_id: string | null;
 };
+type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean; display_order: number };
 type LinkedItem = {
   id: string;
   product_id: string;
@@ -70,6 +72,7 @@ const AdminBundleEditor = () => {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [mainCats, setMainCats] = useState<{ id: string; name: string }[]>([]);
   const [subCats, setSubCats] = useState<{ id: string; main_category_id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pickerProductId, setPickerProductId] = useState("");
@@ -84,7 +87,7 @@ const AdminBundleEditor = () => {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [b1, b2, b3, b4, b5] = await Promise.all([
+    const [b1, b2, b3, b4, b5, b6] = await Promise.all([
       (supabase as any).from("product_bundles").select("*").eq("id", id).maybeSingle(),
       (supabase as any).from("bundle_items").select("*").eq("bundle_id", id).order("display_order"),
       supabase.from("products")
@@ -93,8 +96,10 @@ const AdminBundleEditor = () => {
         .order("product_name").limit(500),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
+      supabase.from("product_locations").select("*").order("display_order"),
     ]);
     setB(b1.data as BundleRow | null);
+    setLocations((b6.data ?? []) as Location[]);
     // Pull main image (first product_image) for each product in a follow-up call
     const prodList = (b3.data ?? []) as ProductOption[];
     let imgMap = new Map<string, string>();
@@ -135,6 +140,7 @@ const AdminBundleEditor = () => {
       cost_price: b.cost_price, available_colors: b.available_colors ?? [],
       material: b.material, dimensions: b.dimensions,
       is_featured: b.is_featured, is_published: b.is_published,
+      location_id: b.location_id || null,
     }).eq("id", id);
     setSaving(false);
     if (error) {
@@ -223,6 +229,31 @@ const AdminBundleEditor = () => {
     () => subCats.filter((s) => s.main_category_id === b?.main_category_id).map((s) => ({ value: s.id, label: s.name })),
     [subCats, b?.main_category_id],
   );
+
+  // Building / Floor / Section derived from selected location (same pattern as products).
+  const selectedLocation = locations.find((l) => l.id === (b?.location_id ?? "")) || null;
+  const formBuilding = selectedLocation?.building ?? "";
+  const formFloor = selectedLocation?.floor ?? "";
+  const buildingOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
+    [locations],
+  );
+  const floorOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
+    [locations, formBuilding],
+  );
+  const sectionOptions = useMemo(
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+    [locations, formBuilding, formFloor],
+  );
+  const pickBuilding = (val: string) => {
+    const first = locations.find((l) => l.is_active && l.building === val);
+    setB(b ? { ...b, location_id: first?.id ?? null } : b);
+  };
+  const pickFloor = (val: string) => {
+    const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === val);
+    setB(b ? { ...b, location_id: first?.id ?? null } : b);
+  };
 
   if (loading || !b) {
     return <AdminShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div></AdminShell>;
@@ -322,16 +353,64 @@ const AdminBundleEditor = () => {
             </div>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={b.is_published} onCheckedChange={(v) => setB({ ...b, is_published: v })} />
+                <Switch
+                  checked={b.is_published}
+                  onCheckedChange={(v) => setB({ ...b, is_published: v, is_featured: v ? b.is_featured : false })}
+                />
                 Published (visible on catalog)
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={b.is_featured} onCheckedChange={(v) => setB({ ...b, is_featured: v })} />
+                <Switch
+                  checked={b.is_featured}
+                  disabled={!b.is_published}
+                  onCheckedChange={(v) => setB({ ...b, is_featured: v })}
+                />
                 Featured
               </label>
               <Badge variant={b.stock_status === "out_of_stock" ? "destructive" : "outline"}>
                 {b.stock_status === "out_of_stock" ? "Out of stock (auto)" : "In stock (auto)"}
               </Badge>
+            </div>
+
+            {/* Showroom location: Building / Floor / Section */}
+            <div className="grid grid-cols-3 gap-2 border-t pt-3">
+              <div>
+                <Label>Building</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={formBuilding}
+                  onChange={(e) => pickBuilding(e.target.value)}
+                >
+                  <option value="">—</option>
+                  {buildingOptions.map((bd) => <option key={bd} value={bd}>{bd}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Floor</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={formFloor}
+                  onChange={(e) => pickFloor(e.target.value)}
+                  disabled={!formBuilding}
+                >
+                  <option value="">—</option>
+                  {floorOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Section</Label>
+                <select
+                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
+                  value={b.location_id ?? ""}
+                  onChange={(e) => setB({ ...b, location_id: e.target.value || null })}
+                  disabled={!formFloor}
+                >
+                  <option value="">—</option>
+                  {sectionOptions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.section ?? "(no section)"}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
