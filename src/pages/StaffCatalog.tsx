@@ -108,6 +108,7 @@ type FloorEntry = {
   floor_display_order: number;
   cover: string | null;
   stock: number;
+  is_bundle?: boolean;
 };
 
 const SS_KEY = "staff_catalog_unlocked";
@@ -169,10 +170,37 @@ const StaffCatalog = () => {
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
+      (supabase as any)
+        .from("product_bundles")
+        .select("id, bundle_code, name, description, mrp, offer_price, material, dimensions, available_colors, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, main_image_url")
+        .eq("is_published", true)
+        .is("deleted_at", null),
     ])
-      .then(([loc, pr, mc, sc]) => {
+      .then(([loc, pr, mc, sc, bn]) => {
         setLocations((loc.data ?? []) as Location[]);
-        setProducts((pr.data ?? []) as Product[]);
+        const bundleAsProducts: Product[] = ((bn.data ?? []) as any[]).map((b) => ({
+          id: b.id,
+          product_name: b.name,
+          product_code: b.bundle_code,
+          description: b.description,
+          mrp: Number(b.mrp ?? 0),
+          offer_price: b.offer_price != null ? Number(b.offer_price) : null,
+          material: b.material,
+          dimensions: b.dimensions,
+          available_colors: b.available_colors ?? [],
+          stock_quantity: b.stock_status === "out_of_stock" ? 0 : 1,
+          stock_status: b.stock_status === "out_of_stock" ? "out_of_stock" : "in_stock",
+          location_id: b.location_id,
+          floor_display_order: b.floor_display_order ?? 0,
+          main_category_id: b.main_category_id,
+          sub_category_id: b.sub_category_id,
+          product_images: b.main_image_url ? [{ image_url: b.main_image_url, display_order: 0 }] : [],
+          product_variants: [],
+          // Mark so we can branch on reorder / render
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          __isBundle: true as any,
+        }) as unknown as Product);
+        setProducts([...((pr.data ?? []) as Product[]), ...bundleAsProducts]);
         setMainCats((mc.data ?? []) as MainCat[]);
         setSubCats((sc.data ?? []) as SubCat[]);
       })
