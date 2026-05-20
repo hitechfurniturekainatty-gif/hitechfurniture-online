@@ -476,59 +476,6 @@ const AdminBundleEditor = () => {
               </Badge>
             </div>
 
-            {/* Showroom location: Building / Floor / Section */}
-            <div className="space-y-2 border-t pt-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">Showroom location</Label>
-                <Button type="button" size="sm" variant="outline" onClick={() => setLocDialogOpen(true)}>
-                  Manage locations
-                </Button>
-              </div>
-              {locations.filter((l) => l.is_active).length === 0 && (
-                <p className="rounded-md border border-dashed bg-muted/40 p-2 text-xs text-muted-foreground">
-                  No locations yet. Click "Manage locations" to add Building / Floor / Section.
-                </p>
-              )}
-              <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label>Building</Label>
-                <select
-                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
-                  value={formBuilding}
-                  onChange={(e) => pickBuilding(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {buildingOptions.map((bd) => <option key={bd} value={bd}>{bd}</option>)}
-                </select>
-              </div>
-              <div>
-                <Label>Floor</Label>
-                <select
-                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
-                  value={formFloor}
-                  onChange={(e) => pickFloor(e.target.value)}
-                  disabled={!formBuilding}
-                >
-                  <option value="">—</option>
-                  {floorOptions.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-              <div>
-                <Label>Section</Label>
-                <select
-                  className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm"
-                  value={b.location_id ?? ""}
-                  onChange={(e) => setB({ ...b, location_id: e.target.value || null })}
-                  disabled={!formFloor}
-                >
-                  <option value="">—</option>
-                  {sectionOptions.map((s) => (
-                    <option key={s.id} value={s.id}>{s.section ?? "(no section)"}</option>
-                  ))}
-                </select>
-              </div>
-              </div>
-            </div>
           </div>
 
           {/* Linked items */}
