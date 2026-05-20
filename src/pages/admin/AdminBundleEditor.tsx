@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, Plus, Save, Trash2, Package, Search, Minus, ChevronUp, ChevronDown } from "lucide-react";
@@ -83,6 +84,7 @@ const AdminBundleEditor = () => {
   const [catalogMainId, setCatalogMainId] = useState<string>("");
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
 
   const load = async (showSpinner = true) => {
     if (!id) return;
@@ -389,7 +391,19 @@ const AdminBundleEditor = () => {
             </div>
 
             {/* Showroom location: Building / Floor / Section */}
-            <div className="grid grid-cols-3 gap-2 border-t pt-3">
+            <div className="space-y-2 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Showroom location</Label>
+                <Button type="button" size="sm" variant="outline" onClick={() => setLocDialogOpen(true)}>
+                  Manage locations
+                </Button>
+              </div>
+              {locations.filter((l) => l.is_active).length === 0 && (
+                <p className="rounded-md border border-dashed bg-muted/40 p-2 text-xs text-muted-foreground">
+                  No locations yet. Click "Manage locations" to add Building / Floor / Section.
+                </p>
+              )}
+              <div className="grid grid-cols-3 gap-2">
               <div>
                 <Label>Building</Label>
                 <select
@@ -426,6 +440,7 @@ const AdminBundleEditor = () => {
                     <option key={s.id} value={s.id}>{s.section ?? "(no section)"}</option>
                   ))}
                 </select>
+              </div>
               </div>
             </div>
           </div>
