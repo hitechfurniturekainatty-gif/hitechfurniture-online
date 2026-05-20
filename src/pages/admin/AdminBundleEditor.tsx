@@ -84,9 +84,9 @@ const AdminBundleEditor = () => {
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [bulkSaving, setBulkSaving] = useState(false);
 
-  const load = async () => {
+  const load = async (showSpinner = true) => {
     if (!id) return;
-    setLoading(true);
+    if (showSpinner) setLoading(true);
     const [b1, b2, b3, b4, b5, b6] = await Promise.all([
       (supabase as any).from("product_bundles").select("*").eq("id", id).maybeSingle(),
       (supabase as any).from("bundle_items").select("*").eq("bundle_id", id).order("display_order"),
@@ -126,7 +126,7 @@ const AdminBundleEditor = () => {
       stock_status: lookup.get(it.product_id)?.stock_status,
       main_image_url: lookup.get(it.product_id)?.main_image_url ?? null,
     })));
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
   useEffect(() => { load(); }, [id]);
 
@@ -192,29 +192,45 @@ const AdminBundleEditor = () => {
     }
     toast({ title: `Added ${entries.length} item(s)` });
     setCatalogOpen(false);
-    load();
+    load(false);
   };
 
   const updateQty = async (rowId: string, qty: number) => {
     if (qty < 1) return;
-    await (supabase as any).from("bundle_items").update({ quantity: qty }).eq("id", rowId);
-    load();
+    // Optimistic — avoids the full editor remount that caused the screen to jump.
+    setItems((prev) => prev.map((it) => (it.id === rowId ? { ...it, quantity: qty } : it)));
+    const { error } = await (supabase as any).from("bundle_items").update({ quantity: qty }).eq("id", rowId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      load(false);
+    }
   };
 
   const removeLinked = async (rowId: string) => {
-    await (supabase as any).from("bundle_items").delete().eq("id", rowId);
-    load();
+    const prev = items;
+    setItems((p) => p.filter((it) => it.id !== rowId));
+    const { error } = await (supabase as any).from("bundle_items").delete().eq("id", rowId);
+    if (error) {
+      toast({ title: "Remove failed", description: error.message, variant: "destructive" });
+      setItems(prev);
+    }
   };
 
   const moveLinked = async (idx: number, dir: -1 | 1) => {
     const j = idx + dir;
     if (j < 0 || j >= items.length) return;
-    const a = items[idx], b = items[j];
-    await Promise.all([
+    const next = items.slice();
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setItems(next.map((it, i) => ({ ...it, display_order: i })));
+    const a = items[idx], b2 = items[j];
+    const [r1, r2] = await Promise.all([
       (supabase as any).from("bundle_items").update({ display_order: j }).eq("id", a.id),
-      (supabase as any).from("bundle_items").update({ display_order: idx }).eq("id", b.id),
+      (supabase as any).from("bundle_items").update({ display_order: idx }).eq("id", b2.id),
     ]);
-    load();
+    if (r1.error || r2.error) {
+      toast({ title: "Reorder failed", variant: "destructive" });
+      load(false);
+    }
   };
 
   const removeBundle = async () => {
