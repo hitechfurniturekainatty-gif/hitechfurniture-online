@@ -397,6 +397,7 @@ const AdminQuotationEditor = () => {
       amount: 0,
       display_order: items.length,
       product_id: null,
+      bundle_id: null,
       fulfillment_route: defaultRoute,
       _isNew: true,
       _dirty: true,
@@ -577,6 +578,7 @@ const AdminQuotationEditor = () => {
       amount: Number(p.offer_price ?? p.mrp ?? 0),
       display_order: items.length,
       product_id: p.id,
+      bundle_id: null,
       fulfillment_route:
         (q?.lead_type === "custom_project" || q?.lead_type === "consultation")
           ? "custom"
