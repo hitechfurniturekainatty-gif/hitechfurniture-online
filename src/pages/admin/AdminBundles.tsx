@@ -19,7 +19,9 @@ type Bundle = {
   stock_status: string;
   is_published: boolean;
   main_category_id: string;
+  location_id: string | null;
 };
+type Location = { id: string; building: string; floor: string; section: string | null };
 
 /**
  * Admin list page for product bundles (combos / sets).
@@ -29,18 +31,23 @@ type Bundle = {
 const AdminBundles = () => {
   const navigate = useNavigate();
   const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+    const [{ data, error }, locRes] = await Promise.all([
+      (supabase as any)
       .from("product_bundles")
-      .select("id, bundle_code, name, main_image_url, mrp, offer_price, stock_status, is_published, main_category_id")
+      .select("id, bundle_code, name, main_image_url, mrp, offer_price, stock_status, is_published, main_category_id, location_id")
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }),
+      supabase.from("product_locations").select("id, building, floor, section"),
+    ]);
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     setBundles((data ?? []) as Bundle[]);
+    setLocations((locRes.data ?? []) as Location[]);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -72,6 +79,7 @@ const AdminBundles = () => {
       b.name.toLowerCase().includes(search.toLowerCase()) ||
       b.bundle_code.toLowerCase().includes(search.toLowerCase()),
   );
+  const locationMap = new Map(locations.map((l) => [l.id, l]));
 
   return (
     <AdminShell>
@@ -120,6 +128,12 @@ const AdminBundles = () => {
                     {!b.is_published && <Badge variant="secondary">Draft</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">{b.bundle_code}</p>
+                  {b.location_id && locationMap.get(b.location_id) && (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {locationMap.get(b.location_id)!.building} · {locationMap.get(b.location_id)!.floor}
+                      {locationMap.get(b.location_id)!.section ? ` · ${locationMap.get(b.location_id)!.section}` : ""}
+                    </p>
+                  )}
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-sm font-semibold">{formatINR(b.offer_price ?? b.mrp)}</span>
                     {b.offer_price && b.offer_price < b.mrp && (
