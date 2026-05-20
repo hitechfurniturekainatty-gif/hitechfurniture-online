@@ -62,6 +62,7 @@ type QItem = {
   amount: number;
   display_order: number;
   product_id: string | null;
+  bundle_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
   dispatched_at?: string | null;
   delivered_at?: string | null;
@@ -118,6 +119,16 @@ type Product = {
 };
 type MainCat = { id: string; name: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null };
+type Bundle = {
+  id: string;
+  bundle_code: string;
+  name: string;
+  mrp: number;
+  offer_price: number | null;
+  main_image_url: string | null;
+  stock_status: string;
+  items_count?: number;
+};
 
 const GST_OPTIONS = [0, 5, 9, 12, 18, 28];
 // Simplified 4-status lifecycle. Any legacy values still in the DB are
@@ -235,6 +246,9 @@ const AdminQuotationEditor = () => {
   // both set → models grid. A search overrides the drill-down and shows results flat.
   const [pickerMainId, setPickerMainId] = useState<string | null>(null);
   const [pickerSubId, setPickerSubId] = useState<string | null>(null);
+  // Catalog picker can browse Products or Bundles
+  const [pickerTab, setPickerTab] = useState<"products" | "bundles">("products");
+  const [bundles, setBundles] = useState<Bundle[]>([]);
 
   const [jobOpen, setJobOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
