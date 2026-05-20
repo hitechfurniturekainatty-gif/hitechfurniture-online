@@ -344,56 +344,149 @@ const AdminBundleEditor = () => {
             <p className="text-xs text-muted-foreground">
               Add catalog products with quantities. When this bundle is delivered, these items' stock will be deducted automatically.
             </p>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <SearchableSelect
-                  value={pickerProductId}
-                  onChange={setPickerProductId}
-                  options={products
-                    .filter((p) => !items.some((it) => it.product_id === p.id))
-                    .map((p) => ({ value: p.id, label: p.product_name, sub: `${p.product_code} · ${p.stock_quantity} in stock` }))}
-                  placeholder="Pick a product…"
-                />
-              </div>
-              <Input
-                type="number" min={1} className="w-20"
-                value={pickerQty} onChange={(e) => setPickerQty(e.target.value)}
-              />
-              <Button onClick={addLinked} disabled={!pickerProductId}><Plus className="h-4 w-4" /></Button>
-            </div>
 
-            <div className="space-y-2">
-              {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                  No items linked yet.
-                </div>
-              ) : items.map((it) => {
-                const oos = (it.stock_status === "out_of_stock") || ((it.stock_quantity ?? 0) < it.quantity);
-                return (
-                  <div key={it.id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{it.product_name ?? it.product_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {it.product_code} · {it.stock_quantity ?? 0} in stock
-                      </p>
+            <Button type="button" variant="default" className="w-full" onClick={openCatalogPicker}>
+              <Plus className="mr-1.5 h-4 w-4" /> Add items from catalog
+            </Button>
+
+            {items.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+                No items linked yet. Click <span className="font-semibold">"Add items from catalog"</span> above to start.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {items.map((it, idx) => {
+                  const oos = (it.stock_status === "out_of_stock") || ((it.stock_quantity ?? 0) < it.quantity);
+                  return (
+                    <div key={it.id} className="flex items-center gap-3 rounded-lg border bg-background p-2">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded bg-muted">
+                        {it.main_image_url ? (
+                          <img src={it.main_image_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <Package className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{it.product_name ?? it.product_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {it.product_code} · <span className={oos ? "text-destructive font-medium" : ""}>{it.stock_quantity ?? 0} in stock</span>
+                        </p>
+                        {oos && <Badge variant="destructive" className="mt-1 text-[10px]">Low stock</Badge>}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={idx === 0} onClick={() => moveLinked(idx, -1)}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={idx === items.length - 1} onClick={() => moveLinked(idx, 1)}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <div className="flex items-center rounded-md border">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-r-none" onClick={() => updateQty(it.id, it.quantity - 1)}><Minus className="h-3.5 w-3.5" /></Button>
+                        <Input
+                          type="number" min={1}
+                          className="h-8 w-12 rounded-none border-x text-center [&::-webkit-inner-spin-button]:appearance-none"
+                          value={it.quantity}
+                          onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value) || 1))}
+                        />
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-l-none" onClick={() => updateQty(it.id, it.quantity + 1)}><Plus className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => removeLinked(it.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-                    {oos && <Badge variant="destructive">Low</Badge>}
-                    <Input
-                      type="number" min={1} className="w-16"
-                      value={it.quantity}
-                      onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value) || 1))}
-                    />
-                    <Button size="icon" variant="ghost" onClick={() => removeLinked(it.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Catalog browser dialog */}
+      <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+        <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[85vh] sm:max-w-3xl sm:rounded-lg">
+          <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle>Add items from catalog</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-1 flex-col gap-3 overflow-hidden px-4 py-3 sm:px-6">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search by name or code…" className="pl-9" />
+              </div>
+              <select
+                value={catalogMainId}
+                onChange={(e) => setCatalogMainId(e.target.value)}
+                className="rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">All categories</option>
+                {mainCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {(() => {
+                const q = catalogSearch.toLowerCase();
+                const list = products.filter((p) => {
+                  if (items.some((it) => it.product_id === p.id)) return false;
+                  if (catalogMainId && p.main_category_id !== catalogMainId) return false;
+                  if (!q) return true;
+                  return p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q);
+                });
+                if (list.length === 0) {
+                  return <p className="py-10 text-center text-sm text-muted-foreground">No products match.</p>;
+                }
+                return (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {list.map((p) => {
+                      const isPicked = picked[p.id] !== undefined;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`flex items-center gap-2 rounded-md border p-2 transition-colors ${isPicked ? "border-primary bg-primary/5" : "bg-card"}`}
+                        >
+                          <Checkbox
+                            checked={isPicked}
+                            onCheckedChange={(v) => togglePick(p.id, !!v)}
+                          />
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+                            {p.main_image_url ? (
+                              <img src={p.main_image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-muted-foreground"><Package className="h-4 w-4" /></div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{p.product_name}</p>
+                            <p className="text-xs text-muted-foreground">{p.product_code} · {p.stock_quantity} in stock</p>
+                          </div>
+                          {isPicked && (
+                            <div className="flex items-center rounded-md border">
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-r-none" onClick={() => setPickQty(p.id, (picked[p.id] ?? 1) - 1)}><Minus className="h-3 w-3" /></Button>
+                              <Input
+                                type="number" min={1}
+                                className="h-7 w-10 rounded-none border-x text-center text-xs"
+                                value={picked[p.id] ?? 1}
+                                onChange={(e) => setPickQty(p.id, Number(e.target.value) || 1)}
+                              />
+                              <Button size="icon" variant="ghost" className="h-7 w-7 rounded-l-none" onClick={() => setPickQty(p.id, (picked[p.id] ?? 1) + 1)}><Plus className="h-3 w-3" /></Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+          <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-4 py-3 sm:flex-row sm:px-6">
+            <Button variant="outline" onClick={() => setCatalogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={confirmAddSelected} disabled={Object.keys(picked).length === 0 || bulkSaving} className="w-full sm:w-auto">
+              {bulkSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+              Add {Object.keys(picked).length || ""} selected
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
