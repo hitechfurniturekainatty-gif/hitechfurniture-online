@@ -35,7 +35,7 @@ type Quotation = {
   updated_at: string | null;
 };
 
-const SharedQuotationView = () => {
+const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } = {}) => {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<{ quotation: Quotation; items: Item[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -186,7 +186,7 @@ const SharedQuotationView = () => {
                   </div>
                 )}
 
-                {(it.unit_price != null || it.total_price != null) && (
+                {!hideAmounts && (it.unit_price != null || it.total_price != null) && (
                   <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1.5 text-sm">
                     <span className="text-muted-foreground">Price</span>
                     <span className="font-semibold">
@@ -200,7 +200,7 @@ const SharedQuotationView = () => {
           );
         })}
 
-        {(q.total_amount != null || q.advance_amount != null) && (
+        {!hideAmounts && (q.total_amount != null || q.advance_amount != null) && (
           <div className="rounded-xl border border-border bg-card p-3 text-sm shadow-sm">
             {q.total_amount != null && (
               <div className="flex items-center justify-between">

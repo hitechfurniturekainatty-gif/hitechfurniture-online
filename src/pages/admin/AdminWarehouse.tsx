@@ -20,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { shareLiveLink } from "@/lib/shareLink";
+import { MessageCircle } from "lucide-react";
 
 const vehicleDisplay = (kind?: string | null, number?: string | null) => {
   if (kind === "outside") return `Outside${number ? ` · ${number}` : ""}`;
@@ -174,10 +176,6 @@ const AdminWarehouse = () => {
   const confirmDispatch = async () => {
     if (!dispatchGroup?.q) return;
     const isOutside = vehicleChoice === "outside";
-    if (isOutside && !outsideNumber.trim()) {
-      toast({ title: "Vehicle number required", variant: "destructive" });
-      return;
-    }
     const chosen = !isOutside ? vehicles.find((v) => v.id === vehicleChoice) : null;
     setSaving(true);
     const ids = dispatchGroup.items.filter((i) => !i.dispatched_at).map((i) => i.id);
@@ -188,7 +186,7 @@ const AdminWarehouse = () => {
       .update({
         dispatch_vehicle: isOutside ? "outside" : "own",
         dispatch_vehicle_id: isOutside ? null : chosen?.id ?? null,
-        dispatch_vehicle_number: isOutside ? outsideNumber.trim() : (chosen?.vehicle_number ?? null),
+        dispatch_vehicle_number: isOutside ? (outsideNumber.trim() || null) : (chosen?.vehicle_number ?? null),
         dispatch_driver_id: isOutside ? null : (chosen?.driver_user_id ?? null),
         dispatch_driver_name: isOutside ? (outsideDriver.trim() || null) : null,
         dispatch_driver_phone: isOutside ? (outsidePhone.trim() || null) : null,
@@ -213,7 +211,7 @@ const AdminWarehouse = () => {
     setSaving(false);
     setDispatchOpen(false);
     toast({
-      title: `Dispatched via ${isOutside ? `Outside · ${outsideNumber}` : (chosen?.vehicle_number ?? "vehicle")}`,
+      title: `Dispatched via ${isOutside ? `Outside${outsideNumber ? ` · ${outsideNumber}` : ""}` : (chosen?.vehicle_number ?? "vehicle")}`,
     });
     load();
   };
@@ -285,14 +283,30 @@ const AdminWarehouse = () => {
 
         {action === "deliver" && group.q?.dispatch_vehicle && (
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
-            <span className="font-semibold">Vehicle: </span>
-            {vehicleDisplay(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}
-            {group.q.dispatch_driver_name && (
-              <span> · Driver: {group.q.dispatch_driver_name}</span>
-            )}
-            {group.q.dispatch_driver_phone && (
-              <span> · {group.q.dispatch_driver_phone}</span>
-            )}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span><span className="font-semibold">Vehicle: </span>{vehicleDisplay(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}</span>
+              {group.q.dispatch_driver_name && <span>· Driver: {group.q.dispatch_driver_name}</span>}
+              {group.q.dispatch_driver_phone && <span>· {group.q.dispatch_driver_phone}</span>}
+              {(isOfficeStaff || isWarehouse) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-7"
+                  onClick={() =>
+                    shareLiveLink({
+                      kind: "quotation",
+                      rowId: group.q!.id,
+                      message: `Delivery note — ${group.q!.party_name} (${group.q!.party_place})`,
+                      phone: group.q!.dispatch_driver_phone || null,
+                      openWhatsApp: true,
+                      path: "/s/d",
+                    } as any)
+                  }
+                >
+                  <MessageCircle className="mr-1 h-3.5 w-3.5" /> Send delivery note
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -397,15 +411,15 @@ const AdminWarehouse = () => {
             {vehicleChoice === "outside" && (
               <div className="space-y-2">
                 <div>
-                  <Label htmlFor="vnum">Vehicle number *</Label>
+                  <Label htmlFor="vnum">Vehicle number <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vnum" value={outsideNumber} onChange={(e) => setOutsideNumber(e.target.value)} placeholder="e.g. KL 12 AB 1234" />
                 </div>
                 <div>
-                  <Label htmlFor="vdrv">Driver name</Label>
+                  <Label htmlFor="vdrv">Driver name <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vdrv" value={outsideDriver} onChange={(e) => setOutsideDriver(e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="vphn">Driver phone</Label>
+                  <Label htmlFor="vphn">Driver phone <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vphn" value={outsidePhone} onChange={(e) => setOutsidePhone(e.target.value)} inputMode="tel" />
                 </div>
               </div>
