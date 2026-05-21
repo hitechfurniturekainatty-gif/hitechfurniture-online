@@ -1038,6 +1038,7 @@ const AdminQuotations = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Top-level Quotation vs Purchase Order tabs */}
