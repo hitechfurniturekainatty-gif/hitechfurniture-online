@@ -21,6 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+const vehicleLabel = (kind?: string | null, number?: string | null) => {
+  if (kind === "vehicle_1") return "Vehicle 1";
+  if (kind === "vehicle_2") return "Vehicle 2";
+  if (kind === "outside") return `Outside${number ? ` (${number})` : ""}`;
+  return "—";
+};
+
 // Quotation-grouped workspace for warehouse / dispatch / delivery staff.
 // Only Ready-Stock items are shown (Custom items live in Production).
 // Each quotation card shows the balance the driver must collect.
