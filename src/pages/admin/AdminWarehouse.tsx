@@ -111,6 +111,19 @@ const AdminWarehouse = () => {
     load();
   };
 
+  // Dispatch every still-pending ready-stock item on a quotation in one tap.
+  const markGroupDispatched = async (items: Row[]) => {
+    const ids = items.filter((i) => !i.dispatched_at).map((i) => i.id);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from("quotation_items")
+      .update({ dispatched_at: new Date().toISOString() })
+      .in("id", ids);
+    if (error) return toast({ title: "Dispatch failed", description: error.message, variant: "destructive" });
+    toast({ title: `Dispatched ${ids.length} item${ids.length > 1 ? "s" : ""}` });
+    load();
+  };
+
   const markDelivered = async (row: Row) => {
     const { error } = await supabase
       .from("quotation_items")
@@ -145,9 +158,21 @@ const AdminWarehouse = () => {
           <span className="text-xs text-muted-foreground">
             {group.q?.party_name} · {group.q?.party_place}
           </span>
-          <Button asChild size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs">
+          <div className="ml-auto flex items-center gap-1.5">
+            {action === "dispatch" && canDispatch && group.items.length > 1 && (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7"
+                onClick={() => markGroupDispatched(group.items)}
+              >
+                <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch all
+              </Button>
+            )}
+            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
             <Link to={`/admin/quotations/${group.q?.id}/preview`}>Open</Link>
           </Button>
+          </div>
         </div>
 
         <ul className="divide-y divide-border rounded-md border border-border">
