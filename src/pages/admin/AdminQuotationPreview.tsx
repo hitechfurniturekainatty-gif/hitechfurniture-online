@@ -662,7 +662,7 @@ const AdminQuotationPreview = () => {
                       </div>
                     )}
 
-                    {hasAnyPrice && (
+                    {hasAnyPrice && canSeePrices && (
                       <div className="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1.5 text-sm">
                         <span className="text-slate-600">Price</span>
                         <span className="font-mono tabular-nums">
