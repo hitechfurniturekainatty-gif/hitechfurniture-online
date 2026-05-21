@@ -96,7 +96,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     const groups: Record<string, string[]> = {
       operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services"],
       inventory: ["/admin/categories", "/admin/products"],
-      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes"],
+      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
       team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
     };
     setOpenGroups((prev) => {
