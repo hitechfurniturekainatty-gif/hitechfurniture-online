@@ -480,6 +480,27 @@ const AdminBundleEditor = () => {
               </Badge>
             </div>
 
+            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+              <p className="text-sm font-medium">Item-price visibility</p>
+              <p className="text-xs text-muted-foreground">
+                Control whether each linked item's MRP & sales price show on the bundle detail page.
+              </p>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Show item prices in <b>Main Catalog</b> (customers)</span>
+                <Switch
+                  checked={b.show_item_prices_public ?? true}
+                  onCheckedChange={(v) => setB({ ...b, show_item_prices_public: v })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Show item prices in <b>Staff Catalog</b></span>
+                <Switch
+                  checked={b.show_item_prices_staff ?? true}
+                  onCheckedChange={(v) => setB({ ...b, show_item_prices_staff: v })}
+                />
+              </label>
+            </div>
+
           </div>
 
           {/* Linked items */}
