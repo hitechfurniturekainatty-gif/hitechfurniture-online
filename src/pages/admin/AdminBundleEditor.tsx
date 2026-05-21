@@ -34,6 +34,8 @@ type BundleRow = {
   is_published: boolean;
   stock_status: string;
   location_id: string | null;
+  show_item_prices_public: boolean;
+  show_item_prices_staff: boolean;
 };
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean; display_order: number };
 type LinkedItem = {
