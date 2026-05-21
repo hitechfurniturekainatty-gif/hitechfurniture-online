@@ -686,8 +686,8 @@ const AdminQuotationPreview = () => {
                   <th className="px-3 py-2 text-left">Description</th>
                   <th className="px-3 py-2 text-left">Measurement</th>
                   <th className="w-20 px-3 py-2 text-right">Qty</th>
-                  {hasAnyPrice && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
-                  {hasAnyPrice && <th className="w-32 px-3 py-2 text-right">Amount (INR)</th>}
+                  {hasAnyPrice && canSeePrices && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
+                  {hasAnyPrice && canSeePrices && <th className="w-32 px-3 py-2 text-right">Amount (INR)</th>}
                 </tr>
               </thead>
               <tbody>
@@ -725,13 +725,13 @@ const AdminQuotationPreview = () => {
                       </td>
                       <td className="px-3 py-3 text-slate-700">{it.measurement || "—"}</td>
                       <td className="px-3 py-3 text-right font-medium tabular-nums">{it.quantity}</td>
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums">{formatINRNumber(it.unit_price)}</td>}
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold">{formatINRNumber(amt)}</td>}
+                      {hasAnyPrice && canSeePrices && <td className="px-3 py-3 text-right font-mono tabular-nums">{formatINRNumber(it.unit_price)}</td>}
+                      {hasAnyPrice && canSeePrices && <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold">{formatINRNumber(amt)}</td>}
                     </tr>
                   );
                 })}
                 {items.length === 0 && (
-                  <tr><td colSpan={hasAnyPrice ? 7 : 5} className="px-3 py-8 text-center text-slate-500">No items added.</td></tr>
+                  <tr><td colSpan={hasAnyPrice && canSeePrices ? 7 : 5} className="px-3 py-8 text-center text-slate-500">No items added.</td></tr>
                 )}
               </tbody>
             </table>
