@@ -1902,6 +1902,10 @@ export type Database = {
         Returns: string
       }
       next_service_id: { Args: never; Returns: string }
+      override_advance_quotation: {
+        Args: { _quotation_id: string; _target_stage: number }
+        Returns: undefined
+      }
       purge_old_trash: {
         Args: never
         Returns: {
@@ -1913,6 +1917,7 @@ export type Database = {
         Args: { _bundle_id: string }
         Returns: undefined
       }
+      reject_quotation: { Args: { _quotation_id: string }; Returns: undefined }
       set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
       set_catalog_pin: { Args: { _pin: string }; Returns: undefined }
       set_quotation_stage: {
