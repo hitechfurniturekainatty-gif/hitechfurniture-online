@@ -107,7 +107,10 @@ const extractDocxText = async (file: File) => {
 };
 const extractPdfText = async (file: File) => {
   const pdfjs = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string)).default;
+  const workerUrl = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).href;
   (pdfjs as any).GlobalWorkerOptions.workerSrc = workerUrl;
   const doc = await (pdfjs as any).getDocument({ data: await file.arrayBuffer() }).promise;
   let out = "";
