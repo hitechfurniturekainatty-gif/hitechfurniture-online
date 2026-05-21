@@ -779,7 +779,7 @@ const AdminQuotationPreview = () => {
             </div>
           </section>
         )}
-        {!canSeePrices && !po && showAdvance && (
+        {!canSeePrices && !po && (
           <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
             <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
               <div className="flex justify-between border-b border-slate-100 px-4 py-2">
