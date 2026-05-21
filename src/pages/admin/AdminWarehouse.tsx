@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, PackageCheck, HardHat, Truck, CheckCircle2, RefreshCw } from "lucide-react";
+import { Loader2, PackageCheck, Truck, CheckCircle2, RefreshCw, IndianRupee } from "lucide-react";
+import { formatINR } from "@/lib/brand";
 
-// Hybrid order workspace for warehouse / dispatch staff.
-// Splits every line item across three buckets so picking, production
-// pressure, and in-transit deliveries are all visible at a glance.
+// Quotation-grouped workspace for warehouse / dispatch / delivery staff.
+// Only Ready-Stock items are shown (Custom items live in Production).
+// Each quotation card shows the balance the driver must collect.
 type Row = {
   id: string;
   description: string;
@@ -28,6 +29,7 @@ type Row = {
     party_place: string;
     status: string;
     advance_amount: number;
+    total: number;
     pipeline_stage?: number | null;
   } | null;
 };
@@ -45,7 +47,7 @@ const AdminWarehouse = () => {
     const { data, error } = await supabase
       .from("quotation_items")
       .select(
-        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, pipeline_stage, deleted_at)"
+        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, total, pipeline_stage, deleted_at)"
       )
       .is("delivered_at", null)
       .order("created_at", { ascending: false })
