@@ -328,6 +328,39 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_vehicles: {
+        Row: {
+          created_at: string
+          display_order: number
+          driver_user_id: string | null
+          id: string
+          is_active: boolean
+          label: string | null
+          updated_at: string
+          vehicle_number: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          driver_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          updated_at?: string
+          vehicle_number: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          driver_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          updated_at?: string
+          vehicle_number?: string
+        }
+        Relationships: []
+      }
       homepage_hero_slides: {
         Row: {
           created_at: string
@@ -1291,10 +1324,13 @@ export type Database = {
           delivery_place: string | null
           delivery_route_id: string | null
           discount_amount: number
+          dispatch_driver_id: string | null
           dispatch_driver_name: string | null
           dispatch_driver_phone: string | null
           dispatch_vehicle: string | null
+          dispatch_vehicle_id: string | null
           dispatch_vehicle_number: string | null
+          dispatched_at: string | null
           document_type: string
           expected_delivery_date: string | null
           gst_amount: number
@@ -1334,10 +1370,13 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          dispatch_driver_id?: string | null
           dispatch_driver_name?: string | null
           dispatch_driver_phone?: string | null
           dispatch_vehicle?: string | null
+          dispatch_vehicle_id?: string | null
           dispatch_vehicle_number?: string | null
+          dispatched_at?: string | null
           document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
@@ -1377,10 +1416,13 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          dispatch_driver_id?: string | null
           dispatch_driver_name?: string | null
           dispatch_driver_phone?: string | null
           dispatch_vehicle?: string | null
+          dispatch_vehicle_id?: string | null
           dispatch_vehicle_number?: string | null
+          dispatched_at?: string | null
           document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
@@ -1417,6 +1459,13 @@ export type Database = {
             columns: ["delivery_route_id"]
             isOneToOne: false
             referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_dispatch_vehicle_id_fkey"
+            columns: ["dispatch_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_vehicles"
             referencedColumns: ["id"]
           },
           {
