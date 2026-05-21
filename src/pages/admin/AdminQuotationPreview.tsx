@@ -102,6 +102,7 @@ const AdminQuotationPreview = () => {
   const [jobNotes, setJobNotes] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [generatingJob, setGeneratingJob] = useState(false);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
   // admin can send the worker-safe file to ANY contact / WhatsApp group.
