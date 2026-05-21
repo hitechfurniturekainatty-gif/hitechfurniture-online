@@ -411,15 +411,15 @@ const AdminWarehouse = () => {
             {vehicleChoice === "outside" && (
               <div className="space-y-2">
                 <div>
-                  <Label htmlFor="vnum">Vehicle number *</Label>
+                  <Label htmlFor="vnum">Vehicle number <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vnum" value={outsideNumber} onChange={(e) => setOutsideNumber(e.target.value)} placeholder="e.g. KL 12 AB 1234" />
                 </div>
                 <div>
-                  <Label htmlFor="vdrv">Driver name</Label>
+                  <Label htmlFor="vdrv">Driver name <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vdrv" value={outsideDriver} onChange={(e) => setOutsideDriver(e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="vphn">Driver phone</Label>
+                  <Label htmlFor="vphn">Driver phone <span className="text-muted-foreground">(optional)</span></Label>
                   <Input id="vphn" value={outsidePhone} onChange={(e) => setOutsidePhone(e.target.value)} inputMode="tel" />
                 </div>
               </div>
