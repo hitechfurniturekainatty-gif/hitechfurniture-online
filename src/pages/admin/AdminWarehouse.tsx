@@ -76,16 +76,30 @@ const AdminWarehouse = () => {
   }, [canAccess]);
 
   const buckets = useMemo(() => {
-    const ready: Row[] = [];
-    const production: Row[] = [];
-    const inTransit: Row[] = [];
-    for (const r of rows) {
-      if (r.dispatched_at) inTransit.push(r);
-      else if (r.fulfillment_route === "custom") production.push(r);
-      else ready.push(r);
-    }
-    return { ready, production, inTransit };
+    // Warehouse + Delivery should only ever see Ready-Stock items.
+    // Custom items remain hidden in Production until that team moves them.
+    const readyItems = rows.filter((r) => r.fulfillment_route === "ready_stock");
+    const ready: Row[] = readyItems.filter((r) => !r.dispatched_at);
+    const inTransit: Row[] = readyItems.filter((r) => !!r.dispatched_at);
+    return { ready, inTransit };
   }, [rows]);
+
+  // Group a flat list of items by their parent quotation so each card
+  // represents one full order (per the "view in quotations wise" rule).
+  const groupByQuotation = (list: Row[]) => {
+    const map = new Map<string, { q: Row["quotations"]; items: Row[] }>();
+    for (const r of list) {
+      if (!r.quotations) continue;
+      const key = r.quotations.id;
+      const bucket = map.get(key) ?? { q: r.quotations, items: [] };
+      bucket.items.push(r);
+      map.set(key, bucket);
+    }
+    return Array.from(map.values());
+  };
+
+  const balanceFor = (q: Row["quotations"]) =>
+    Math.max(Number(q?.total ?? 0) - Number(q?.advance_amount ?? 0), 0);
 
   const markDispatched = async (row: Row) => {
     const { error } = await supabase
@@ -115,51 +129,72 @@ const AdminWarehouse = () => {
     );
   }
 
-  const renderRow = (r: Row, action: "dispatch" | "deliver" | null) => (
-    <Card key={r.id}>
-      <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-semibold">{r.quotations?.quotation_id}</span>
-            <Badge variant="outline" className="text-[10px]">{r.quotations?.status}</Badge>
-            <Badge
-              variant="outline"
-              className={`text-[10px] ${
-                r.fulfillment_route === "custom"
-                  ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              }`}
-            >
-              {r.fulfillment_route === "custom" ? "Custom" : "Ready Stock"}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {r.quotations?.party_name} · {r.quotations?.party_place}
-            </span>
-          </div>
-          <p className="mt-1 text-sm">
-            {r.description} <span className="text-muted-foreground">× {r.quantity}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {action === "dispatch" && (
-            <Button size="sm" variant="outline" onClick={() => markDispatched(r)}>
-              <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch
-            </Button>
-          )}
-          {action === "deliver" && (
-            <Button size="sm" variant="outline" onClick={() => markDelivered(r)}>
-              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Deliver
-            </Button>
-          )}
-          <Button asChild size="sm" variant="ghost">
-            {/* Warehouse + delivery land on the read-only preview, which hides
-                unit prices / line totals and exposes only Advance + Balance. */}
-            <Link to={`/admin/quotations/${r.quotations?.id}/preview`}>Open</Link>
+  // Warehouse can dispatch. Delivery can mark delivered. Office can do both.
+  const canDispatch = isOfficeStaff || isWarehouse;
+  const canDeliver = isOfficeStaff || isDelivery;
+
+  const renderGroup = (
+    group: { q: Row["quotations"]; items: Row[] },
+    action: "dispatch" | "deliver" | null,
+  ) => (
+    <Card key={group.q!.id}>
+      <CardContent className="flex flex-col gap-3 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-xs font-semibold">{group.q?.quotation_id}</span>
+          <Badge variant="outline" className="text-[10px]">{group.q?.status}</Badge>
+          <span className="text-xs text-muted-foreground">
+            {group.q?.party_name} · {group.q?.party_place}
+          </span>
+          <Button asChild size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs">
+            <Link to={`/admin/quotations/${group.q?.id}/preview`}>Open</Link>
           </Button>
+        </div>
+
+        <ul className="divide-y divide-border rounded-md border border-border">
+          {group.items.map((it) => (
+            <li key={it.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <span className="min-w-0 truncate">{it.description}</span>
+              <span className="shrink-0 text-muted-foreground">× {it.quantity}</span>
+              {action === "dispatch" && canDispatch && (
+                <Button size="sm" variant="outline" className="h-7" onClick={() => markDispatched(it)}>
+                  <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch
+                </Button>
+              )}
+              {action === "deliver" && canDeliver && (
+                <Button size="sm" variant="outline" className="h-7" onClick={() => markDelivered(it)}>
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Deliver
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        {/* Driver / warehouse balance display — no item prices, only advance + balance. */}
+        <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+              Balance to Collect
+            </p>
+            <p className="font-display text-lg font-bold text-emerald-800 dark:text-emerald-200">
+              {formatINR(balanceFor(group.q))}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Advance received {formatINR(Number(group.q?.advance_amount ?? 0))}
+            </p>
+          </div>
+          <IndianRupee className="h-5 w-5 text-emerald-600/70 dark:text-emerald-400/70" />
         </div>
       </CardContent>
     </Card>
   );
+
+  const readyGroups = groupByQuotation(buckets.ready);
+  const transitGroups = groupByQuotation(buckets.inTransit);
+
+  // Delivery role lands on "In Transit" (their actual queue).
+  const defaultTab = isDelivery && !isOfficeStaff && !isWarehouse ? "transit" : "ready";
+  // Delivery-only users shouldn't even see the Ready (pick) queue.
+  const showReadyTab = isOfficeStaff || isWarehouse;
 
   return (
     <AdminShell>
@@ -178,37 +213,31 @@ const AdminWarehouse = () => {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <Tabs defaultValue="ready">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="ready">
-              <PackageCheck className="mr-1.5 h-4 w-4" /> Ready ({buckets.ready.length})
-            </TabsTrigger>
-            <TabsTrigger value="production">
-              <HardHat className="mr-1.5 h-4 w-4" /> Pending Production ({buckets.production.length})
-            </TabsTrigger>
+        <Tabs defaultValue={defaultTab}>
+          <TabsList className={`grid w-full ${showReadyTab ? "grid-cols-2" : "grid-cols-1"}`}>
+            {showReadyTab && (
+              <TabsTrigger value="ready">
+                <PackageCheck className="mr-1.5 h-4 w-4" /> Ready ({readyGroups.length})
+              </TabsTrigger>
+            )}
             <TabsTrigger value="transit">
-              <Truck className="mr-1.5 h-4 w-4" /> In Transit ({buckets.inTransit.length})
+              <Truck className="mr-1.5 h-4 w-4" /> In Transit ({transitGroups.length})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="ready" className="mt-4 space-y-2">
-            {buckets.ready.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Nothing waiting to be picked.</p>
-            ) : (
-              buckets.ready.map((r) => renderRow(r, "dispatch"))
-            )}
-          </TabsContent>
-          <TabsContent value="production" className="mt-4 space-y-2">
-            {buckets.production.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No custom items in production queue.</p>
-            ) : (
-              buckets.production.map((r) => renderRow(r, null))
-            )}
-          </TabsContent>
+          {showReadyTab && (
+            <TabsContent value="ready" className="mt-4 space-y-2">
+              {readyGroups.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Nothing waiting to be picked.</p>
+              ) : (
+                readyGroups.map((g) => renderGroup(g, "dispatch"))
+              )}
+            </TabsContent>
+          )}
           <TabsContent value="transit" className="mt-4 space-y-2">
-            {buckets.inTransit.length === 0 ? (
+            {transitGroups.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Nothing dispatched yet.</p>
             ) : (
-              buckets.inTransit.map((r) => renderRow(r, "deliver"))
+              transitGroups.map((g) => renderGroup(g, "deliver"))
             )}
           </TabsContent>
         </Tabs>
