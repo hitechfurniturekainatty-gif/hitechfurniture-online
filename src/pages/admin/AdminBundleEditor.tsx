@@ -34,6 +34,8 @@ type BundleRow = {
   is_published: boolean;
   stock_status: string;
   location_id: string | null;
+  show_item_prices_public: boolean;
+  show_item_prices_staff: boolean;
 };
 type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean; display_order: number };
 type LinkedItem = {
@@ -143,6 +145,8 @@ const AdminBundleEditor = () => {
       material: b.material, dimensions: b.dimensions,
       is_featured: b.is_featured, is_published: b.is_published,
       location_id: b.location_id || null,
+      show_item_prices_public: b.show_item_prices_public,
+      show_item_prices_staff: b.show_item_prices_staff,
     }).eq("id", id);
     setSaving(false);
     if (error) {
@@ -474,6 +478,27 @@ const AdminBundleEditor = () => {
               <Badge variant={b.stock_status === "out_of_stock" ? "destructive" : "outline"}>
                 {b.stock_status === "out_of_stock" ? "Out of stock (auto)" : "In stock (auto)"}
               </Badge>
+            </div>
+
+            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+              <p className="text-sm font-medium">Item-price visibility</p>
+              <p className="text-xs text-muted-foreground">
+                Control whether each linked item's MRP & sales price show on the bundle detail page.
+              </p>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Show item prices in <b>Main Catalog</b> (customers)</span>
+                <Switch
+                  checked={b.show_item_prices_public ?? true}
+                  onCheckedChange={(v) => setB({ ...b, show_item_prices_public: v })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span>Show item prices in <b>Staff Catalog</b></span>
+                <Switch
+                  checked={b.show_item_prices_staff ?? true}
+                  onCheckedChange={(v) => setB({ ...b, show_item_prices_staff: v })}
+                />
+              </label>
             </div>
 
           </div>

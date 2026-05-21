@@ -804,6 +804,8 @@ export type Database = {
           mrp: number
           name: string
           offer_price: number | null
+          show_item_prices_public: boolean
+          show_item_prices_staff: boolean
           stock_status: string
           sub_category_id: string | null
           updated_at: string
@@ -829,6 +831,8 @@ export type Database = {
           mrp?: number
           name: string
           offer_price?: number | null
+          show_item_prices_public?: boolean
+          show_item_prices_staff?: boolean
           stock_status?: string
           sub_category_id?: string | null
           updated_at?: string
@@ -854,6 +858,8 @@ export type Database = {
           mrp?: number
           name?: string
           offer_price?: number | null
+          show_item_prices_public?: boolean
+          show_item_prices_staff?: boolean
           stock_status?: string
           sub_category_id?: string | null
           updated_at?: string
