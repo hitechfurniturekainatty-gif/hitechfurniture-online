@@ -96,6 +96,7 @@ type Quotation = {
   source_task_id?: string | null;
   submitted_for_pricing_at?: string | null;
   lead_type?: string | null;
+  is_direct_order?: boolean | null;
 };
 
 const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
