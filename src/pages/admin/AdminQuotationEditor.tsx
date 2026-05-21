@@ -46,6 +46,7 @@ import { notesWindow } from "@/components/admin/notesWindowStore";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
+import { STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
 
 type QItem = {
   id: string;
