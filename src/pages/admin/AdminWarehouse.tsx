@@ -202,7 +202,7 @@ const AdminWarehouse = () => {
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Warehouse</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Hybrid order tracking — Ready Stock is picked here, Custom items wait on Production.
+            Quotation-wise picking. Only ready-stock items are shown. Custom items stay in Production.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load}>
