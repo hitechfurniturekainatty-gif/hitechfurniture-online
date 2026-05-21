@@ -28,6 +28,7 @@ type Row = {
     party_place: string;
     status: string;
     advance_amount: number;
+    pipeline_stage?: number | null;
   } | null;
 };
 
@@ -44,7 +45,7 @@ const AdminWarehouse = () => {
     const { data, error } = await supabase
       .from("quotation_items")
       .select(
-        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, deleted_at)"
+        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, pipeline_stage, deleted_at)"
       )
       .is("delivered_at", null)
       .order("created_at", { ascending: false })
@@ -57,8 +58,12 @@ const AdminWarehouse = () => {
     const filtered = ((data ?? []) as any[]).filter((r) => {
       const q = r.quotations;
       if (!q || q.deleted_at) return false;
-      // Only show items on quotations that are at least finalized OR have advance.
-      return q.status !== "drafted" || Number(q.advance_amount) > 0;
+      // Show anything that has moved past the Client Hub stage — finalized,
+      // advance-paid, OR explicitly bumped into Production/Warehouse/Logistics
+      // by the pipeline auto-advance triggers.
+      if (Number(q.advance_amount) > 0) return true;
+      if ((q.pipeline_stage ?? 1) >= 3) return true;
+      return q.status !== "drafted";
     }) as Row[];
     setRows(filtered);
     setLoading(false);
@@ -145,7 +150,9 @@ const AdminWarehouse = () => {
             </Button>
           )}
           <Button asChild size="sm" variant="ghost">
-            <Link to={`/admin/quotations/${r.quotations?.id}`}>Open</Link>
+            {/* Warehouse + delivery land on the read-only preview, which hides
+                unit prices / line totals and exposes only Advance + Balance. */}
+            <Link to={`/admin/quotations/${r.quotations?.id}/preview`}>Open</Link>
           </Button>
         </div>
       </CardContent>

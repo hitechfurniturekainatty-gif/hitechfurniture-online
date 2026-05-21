@@ -85,8 +85,12 @@ const AdminQuotationPreview = () => {
   const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff, isWarehouse, isDelivery } = useAuth();
   const canShare = isOfficeStaff;
+  // Pricing is restricted to admin + office staff. Warehouse, delivery, workers,
+  // and measurement staff never see unit prices or line totals — they only see
+  // an Advance / Balance summary so they can confirm collection at delivery.
+  const canSeePrices = isOfficeStaff;
   // Measurement-only staff who already submitted the draft for pricing
   // can view this quotation but cannot edit it any more.
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
@@ -658,7 +662,7 @@ const AdminQuotationPreview = () => {
                       </div>
                     )}
 
-                    {hasAnyPrice && (
+                    {hasAnyPrice && canSeePrices && (
                       <div className="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1.5 text-sm">
                         <span className="text-slate-600">Price</span>
                         <span className="font-mono tabular-nums">
@@ -682,8 +686,8 @@ const AdminQuotationPreview = () => {
                   <th className="px-3 py-2 text-left">Description</th>
                   <th className="px-3 py-2 text-left">Measurement</th>
                   <th className="w-20 px-3 py-2 text-right">Qty</th>
-                  {hasAnyPrice && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
-                  {hasAnyPrice && <th className="w-32 px-3 py-2 text-right">Amount (INR)</th>}
+                  {hasAnyPrice && canSeePrices && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
+                  {hasAnyPrice && canSeePrices && <th className="w-32 px-3 py-2 text-right">Amount (INR)</th>}
                 </tr>
               </thead>
               <tbody>
@@ -721,21 +725,23 @@ const AdminQuotationPreview = () => {
                       </td>
                       <td className="px-3 py-3 text-slate-700">{it.measurement || "—"}</td>
                       <td className="px-3 py-3 text-right font-medium tabular-nums">{it.quantity}</td>
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums">{formatINRNumber(it.unit_price)}</td>}
-                      {hasAnyPrice && <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold">{formatINRNumber(amt)}</td>}
+                      {hasAnyPrice && canSeePrices && <td className="px-3 py-3 text-right font-mono tabular-nums">{formatINRNumber(it.unit_price)}</td>}
+                      {hasAnyPrice && canSeePrices && <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold">{formatINRNumber(amt)}</td>}
                     </tr>
                   );
                 })}
                 {items.length === 0 && (
-                  <tr><td colSpan={hasAnyPrice ? 7 : 5} className="px-3 py-8 text-center text-slate-500">No items added.</td></tr>
+                  <tr><td colSpan={hasAnyPrice && canSeePrices ? 7 : 5} className="px-3 py-8 text-center text-slate-500">No items added.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* Totals */}
-        {hasAnyPrice && !po && (
+        {/* Totals — full breakdown for admin/office only.
+            Warehouse + delivery get just Advance / Balance so they can confirm
+            collection without seeing item-level pricing or margins. */}
+        {hasAnyPrice && !po && canSeePrices && (
           <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
             <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
               <div className="flex justify-between px-4 py-2">
@@ -770,6 +776,20 @@ const AdminQuotationPreview = () => {
                   </div>
                 </>
               )}
+            </div>
+          </section>
+        )}
+        {!canSeePrices && !po && showAdvance && (
+          <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
+            <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
+              <div className="flex justify-between border-b border-slate-100 px-4 py-2">
+                <span className="text-slate-600">Advance Received</span>
+                <span className="font-mono tabular-nums">{formatINRNumber(advance)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-50 px-4 py-3 text-base font-semibold">
+                <span>Balance to Collect</span>
+                <span className="font-mono tabular-nums">{formatINR(balance)}</span>
+              </div>
             </div>
           </section>
         )}
