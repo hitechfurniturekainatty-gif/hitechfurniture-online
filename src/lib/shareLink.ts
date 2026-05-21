@@ -15,7 +15,7 @@ export type ShareKind = "quotation" | "job";
 const PATH = { quotation: "/s/q", job: "/s/j" } as const;
 
 /** Ensure a row has a `share_token` and return the public URL for it. */
-export async function ensureShareUrl(kind: ShareKind, rowId: string): Promise<string | null> {
+export async function ensureShareUrl(kind: ShareKind, rowId: string, pathOverride?: string): Promise<string | null> {
   const table = kind === "quotation" ? "quotations" : "job_work_orders";
   // Read-or-mint: token already has a default value via the DB, so SELECT is enough.
   const { data, error } = await supabase
@@ -31,7 +31,7 @@ export async function ensureShareUrl(kind: ShareKind, rowId: string): Promise<st
     });
     return null;
   }
-  return `${window.location.origin}${PATH[kind]}/${data.share_token}`;
+  return `${window.location.origin}${pathOverride ?? PATH[kind]}/${data.share_token}`;
 }
 
 /** Copy the live share URL to the clipboard and offer a WhatsApp shortcut. */
@@ -44,8 +44,10 @@ export async function shareLiveLink(opts: {
   phone?: string | null;
   /** When true, immediately open WhatsApp instead of just copying. */
   openWhatsApp?: boolean;
+  /** Override the public path (e.g. "/s/d" for amount-free delivery note). */
+  path?: string;
 }) {
-  const url = await ensureShareUrl(opts.kind, opts.rowId);
+  const url = await ensureShareUrl(opts.kind, opts.rowId, opts.path);
   if (!url) return;
 
   const fullMessage = `${opts.message}\n${url}`;
