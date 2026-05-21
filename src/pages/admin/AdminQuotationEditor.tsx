@@ -1615,8 +1615,9 @@ const AdminQuotationEditor = () => {
           {items.map((it, idx) => (
             <div key={it.id} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
               {/* Compact invoice row — Description / Qty / Rate / Amount inline */}
-              <div className="grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] items-center gap-2 px-2 py-2 sm:px-3">
-                <div className="flex flex-col items-center justify-center gap-1">
+              <div className="flex flex-col gap-2 px-2 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] sm:items-center sm:px-3">
+                <div className="flex items-start gap-2 sm:contents">
+                <div className="flex shrink-0 flex-row items-center gap-1 sm:flex-col sm:justify-center">
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="px-1 py-0 text-[9px] leading-none">Cat</Badge>}
                   {it.bundle_id && <Badge className="px-1 py-0 text-[9px] leading-none bg-violet-600 hover:bg-violet-600">Bundle</Badge>}
@@ -1675,8 +1676,76 @@ const AdminQuotationEditor = () => {
                     />
                   </div>
                 </div>
+                </div>
+
+                {/* Mobile-only: Qty / Rate / Amount in one labelled row */}
+                <div className="grid grid-cols-3 gap-2 sm:hidden">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Qty</span>
+                    <Input
+                      className="h-10 text-right"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={it.quantity || ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const n = raw === "" ? 0 : Math.max(1, Math.floor(Number(raw)));
+                        updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
+                      }}
+                      onFocus={(e) => e.currentTarget.select()}
+                      placeholder="1"
+                    />
+                  </label>
+                  {showPricing ? (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Rate</span>
+                      <Input
+                        className="h-10 text-right"
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        value={it.unit_price || ""}
+                        onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
+                        disabled={!canEditPrice}
+                        onFocus={(e) => e.currentTarget.select()}
+                        placeholder="0"
+                      />
+                    </label>
+                  ) : <span />}
+                  {showPricing ? (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Amount</span>
+                      <div className="flex h-10 items-center justify-end rounded-md border bg-primary/5 px-2 font-mono text-sm font-semibold text-primary">
+                        {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
+                          ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
+                          : <span className="font-normal text-muted-foreground">—</span>}
+                      </div>
+                    </label>
+                  ) : <span />}
+                </div>
+
+                {/* Mobile-only actions row */}
+                <div className="flex items-center justify-end gap-1 sm:hidden" data-enter-skip>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={expandedItemId === it.id ? "secondary" : "outline"}
+                    className="h-9 px-3 text-[11px]"
+                    onClick={() => setExpandedItemId((cur) => (cur === it.id ? null : it.id))}
+                  >
+                    {expandedItemId === it.id ? "Close" : "Details"}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => removeItem(it)} data-enter-skip>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+
+                {/* Desktop-only cells */}
                 <Input
-                  className="h-10 text-right"
+                  className="hidden h-10 text-right sm:block"
                   type="number"
                   inputMode="numeric"
                   min={1}
@@ -1692,7 +1761,7 @@ const AdminQuotationEditor = () => {
                 />
                 {showPricing ? (
                   <Input
-                    className="h-10 text-right"
+                    className="hidden h-10 text-right sm:block"
                     type="number"
                     inputMode="decimal"
                     min={0}
@@ -1704,18 +1773,18 @@ const AdminQuotationEditor = () => {
                     placeholder="0"
                   />
                 ) : (
-                  <span />
+                  <span className="hidden sm:block" />
                 )}
                 {showPricing ? (
-                  <div className="flex h-10 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary">
+                  <div className="hidden h-10 items-center justify-end rounded-md border bg-primary/5 px-3 font-mono text-sm font-semibold text-primary sm:flex">
                     {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0
                       ? formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))
                       : <span className="font-normal text-muted-foreground">—</span>}
                   </div>
                 ) : (
-                  <span />
+                  <span className="hidden sm:block" />
                 )}
-                <div className="flex items-center justify-end gap-1" data-enter-skip>
+                <div className="hidden items-center justify-end gap-1 sm:flex" data-enter-skip>
                   <Button
                     type="button"
                     size="sm"
