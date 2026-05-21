@@ -2334,19 +2334,6 @@ const AdminQuotationEditor = () => {
             <AttachedNotesButton quotationId={q.id} className="h-11 w-full" />
           </div>
         )}
-        {/* Admin: change status from the mobile sticky bar without scrolling. */}
-        {isAdmin && (
-          <div className="mb-2">
-            <Select value={normalizeStatus(q.status)} onValueChange={(v) => setStatus(v)}>
-              <SelectTrigger className="h-11 w-full"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>Status: {statusLabel(s)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
         {/* Row 2 (bottom): primary Save action sits closest to thumb. */}
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
