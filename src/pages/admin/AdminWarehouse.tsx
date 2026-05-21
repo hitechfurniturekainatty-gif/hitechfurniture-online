@@ -20,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { shareLiveLink } from "@/lib/shareLink";
+import { MessageCircle } from "lucide-react";
 
 const vehicleDisplay = (kind?: string | null, number?: string | null) => {
   if (kind === "outside") return `Outside${number ? ` · ${number}` : ""}`;
@@ -174,10 +176,6 @@ const AdminWarehouse = () => {
   const confirmDispatch = async () => {
     if (!dispatchGroup?.q) return;
     const isOutside = vehicleChoice === "outside";
-    if (isOutside && !outsideNumber.trim()) {
-      toast({ title: "Vehicle number required", variant: "destructive" });
-      return;
-    }
     const chosen = !isOutside ? vehicles.find((v) => v.id === vehicleChoice) : null;
     setSaving(true);
     const ids = dispatchGroup.items.filter((i) => !i.dispatched_at).map((i) => i.id);
@@ -188,7 +186,7 @@ const AdminWarehouse = () => {
       .update({
         dispatch_vehicle: isOutside ? "outside" : "own",
         dispatch_vehicle_id: isOutside ? null : chosen?.id ?? null,
-        dispatch_vehicle_number: isOutside ? outsideNumber.trim() : (chosen?.vehicle_number ?? null),
+        dispatch_vehicle_number: isOutside ? (outsideNumber.trim() || null) : (chosen?.vehicle_number ?? null),
         dispatch_driver_id: isOutside ? null : (chosen?.driver_user_id ?? null),
         dispatch_driver_name: isOutside ? (outsideDriver.trim() || null) : null,
         dispatch_driver_phone: isOutside ? (outsidePhone.trim() || null) : null,
@@ -213,7 +211,7 @@ const AdminWarehouse = () => {
     setSaving(false);
     setDispatchOpen(false);
     toast({
-      title: `Dispatched via ${isOutside ? `Outside · ${outsideNumber}` : (chosen?.vehicle_number ?? "vehicle")}`,
+      title: `Dispatched via ${isOutside ? `Outside${outsideNumber ? ` · ${outsideNumber}` : ""}` : (chosen?.vehicle_number ?? "vehicle")}`,
     });
     load();
   };
