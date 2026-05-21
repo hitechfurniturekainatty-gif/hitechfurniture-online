@@ -836,6 +836,16 @@ const AdminQuotations = () => {
               : "Customer quotations and worker / supplier POs in one place."}
           </p>
         </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {!isPO(docTab) && (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => navigate("/admin/quotations/bulk")}
+            >
+              <FileText className="mr-2 h-4 w-4" /> Bulk create
+            </Button>
+          )}
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto">
@@ -1028,6 +1038,7 @@ const AdminQuotations = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Top-level Quotation vs Purchase Order tabs */}
