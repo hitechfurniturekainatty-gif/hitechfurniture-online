@@ -110,17 +110,18 @@ const parseRows = (matrix: string[][]): Row[] => {
       const desc = iDesc >= 0 ? String(r[iDesc] ?? "").trim() : String(r[1] ?? r[0] ?? "").trim();
       if (!desc) return null;
       const rt = (iType >= 0 ? String(r[iType] ?? "").toLowerCase() : "");
-      return {
+      const row: Row = {
         id: uid(),
         description: desc,
         quantity: Math.max(Number(iQty >= 0 ? r[iQty] : 1) || 1, 1),
         measurement: iMeas >= 0 ? String(r[iMeas] ?? "").trim() : "",
         unit_price: Number(String(iPrice >= 0 ? r[iPrice] : 0).replace(/[^\d.]/g, "")) || 0,
-        fulfillment_route: rt.includes("custom") ? ("custom" as const) : ("ready_stock" as const),
+        fulfillment_route: rt.includes("custom") ? "custom" : "ready_stock",
         image_hint: iImg >= 0 ? String(r[iImg] ?? "").trim() || null : null,
         image_file: null,
         image_preview: null,
-      } satisfies Row;
+      };
+      return row;
     })
     .filter((x): x is Row => !!x);
 };
@@ -151,8 +152,8 @@ const extractDocxText = async (file: File): Promise<string> => {
 const extractPdfText = async (file: File): Promise<string> => {
   // pdfjs-dist is already in deps
   const pdfjs = await import("pdfjs-dist");
-  // @ts-expect-error worker import via vite ?url
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  // Vite-resolved worker URL
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string)).default;
   (pdfjs as any).GlobalWorkerOptions.workerSrc = workerUrl;
   const buf = await file.arrayBuffer();
   const doc = await (pdfjs as any).getDocument({ data: buf }).promise;
