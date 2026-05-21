@@ -10,6 +10,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, PackageCheck, Truck, CheckCircle2, RefreshCw, IndianRupee } from "lucide-react";
 import { formatINR } from "@/lib/brand";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+const vehicleLabel = (kind?: string | null, number?: string | null) => {
+  if (kind === "vehicle_1") return "Vehicle 1";
+  if (kind === "vehicle_2") return "Vehicle 2";
+  if (kind === "outside") return `Outside${number ? ` (${number})` : ""}`;
+  return "—";
+};
 
 // Quotation-grouped workspace for warehouse / dispatch / delivery staff.
 // Only Ready-Stock items are shown (Custom items live in Production).
@@ -31,6 +48,10 @@ type Row = {
     advance_amount: number;
     total: number;
     pipeline_stage?: number | null;
+    dispatch_vehicle?: string | null;
+    dispatch_vehicle_number?: string | null;
+    dispatch_driver_name?: string | null;
+    dispatch_driver_phone?: string | null;
   } | null;
 };
 
@@ -39,6 +60,14 @@ const AdminWarehouse = () => {
   const canAccess = isOfficeStaff || isWarehouse || isDelivery;
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
+  // Dispatch-assignment dialog state
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchGroup, setDispatchGroup] = useState<{ q: Row["quotations"]; items: Row[] } | null>(null);
+  const [vehicleChoice, setVehicleChoice] = useState<"vehicle_1" | "vehicle_2" | "outside">("vehicle_1");
+  const [outsideNumber, setOutsideNumber] = useState("");
+  const [outsideDriver, setOutsideDriver] = useState("");
+  const [outsidePhone, setOutsidePhone] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -47,7 +76,7 @@ const AdminWarehouse = () => {
     const { data, error } = await supabase
       .from("quotation_items")
       .select(
-        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, total, pipeline_stage, deleted_at)"
+        "id, description, quantity, fulfillment_route, dispatched_at, delivered_at, quotation_id, quotations!inner(id, quotation_id, party_name, party_place, status, advance_amount, total, pipeline_stage, deleted_at, dispatch_vehicle, dispatch_vehicle_number, dispatch_driver_name, dispatch_driver_phone)"
       )
       .is("delivered_at", null)
       .order("created_at", { ascending: false })
@@ -112,15 +141,52 @@ const AdminWarehouse = () => {
   };
 
   // Dispatch every still-pending ready-stock item on a quotation in one tap.
-  const markGroupDispatched = async (items: Row[]) => {
-    const ids = items.filter((i) => !i.dispatched_at).map((i) => i.id);
-    if (!ids.length) return;
-    const { error } = await supabase
-      .from("quotation_items")
-      .update({ dispatched_at: new Date().toISOString() })
-      .in("id", ids);
-    if (error) return toast({ title: "Dispatch failed", description: error.message, variant: "destructive" });
-    toast({ title: `Dispatched ${ids.length} item${ids.length > 1 ? "s" : ""}` });
+  const openDispatchDialog = (group: { q: Row["quotations"]; items: Row[] }) => {
+    setDispatchGroup(group);
+    setVehicleChoice((group.q?.dispatch_vehicle as any) || "vehicle_1");
+    setOutsideNumber(group.q?.dispatch_vehicle_number || "");
+    setOutsideDriver(group.q?.dispatch_driver_name || "");
+    setOutsidePhone(group.q?.dispatch_driver_phone || "");
+    setDispatchOpen(true);
+  };
+
+  const confirmDispatch = async () => {
+    if (!dispatchGroup?.q) return;
+    if (vehicleChoice === "outside" && !outsideNumber.trim()) {
+      toast({ title: "Vehicle number required", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const ids = dispatchGroup.items.filter((i) => !i.dispatched_at).map((i) => i.id);
+    // 1) Save vehicle assignment on the quotation (must happen BEFORE stage advance,
+    // because the dispatch trigger will bump pipeline_stage out of warehouse range).
+    const { error: qErr } = await supabase
+      .from("quotations")
+      .update({
+        dispatch_vehicle: vehicleChoice,
+        dispatch_vehicle_number: vehicleChoice === "outside" ? outsideNumber.trim() : null,
+        dispatch_driver_name: vehicleChoice === "outside" ? (outsideDriver.trim() || null) : null,
+        dispatch_driver_phone: vehicleChoice === "outside" ? (outsidePhone.trim() || null) : null,
+      })
+      .eq("id", dispatchGroup.q.id);
+    if (qErr) {
+      setSaving(false);
+      return toast({ title: "Couldn't save vehicle", description: qErr.message, variant: "destructive" });
+    }
+    // 2) Mark items dispatched (this triggers the move to Logistics stage)
+    if (ids.length) {
+      const { error } = await supabase
+        .from("quotation_items")
+        .update({ dispatched_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) {
+        setSaving(false);
+        return toast({ title: "Dispatch failed", description: error.message, variant: "destructive" });
+      }
+    }
+    setSaving(false);
+    setDispatchOpen(false);
+    toast({ title: `Dispatched via ${vehicleLabel(vehicleChoice, outsideNumber)}` });
     load();
   };
 
@@ -159,14 +225,14 @@ const AdminWarehouse = () => {
             {group.q?.party_name} · {group.q?.party_place}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
-            {action === "dispatch" && canDispatch && group.items.length > 1 && (
+            {action === "dispatch" && canDispatch && (
               <Button
                 size="sm"
                 variant="default"
                 className="h-7"
-                onClick={() => markGroupDispatched(group.items)}
+                onClick={() => openDispatchDialog(group)}
               >
-                <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch all
+                <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch
               </Button>
             )}
             <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
@@ -180,11 +246,6 @@ const AdminWarehouse = () => {
             <li key={it.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
               <span className="min-w-0 truncate">{it.description}</span>
               <span className="shrink-0 text-muted-foreground">× {it.quantity}</span>
-              {action === "dispatch" && canDispatch && (
-                <Button size="sm" variant="outline" className="h-7" onClick={() => markDispatched(it)}>
-                  <Truck className="mr-1 h-3.5 w-3.5" /> Dispatch
-                </Button>
-              )}
               {action === "deliver" && canDeliver && (
                 <Button size="sm" variant="outline" className="h-7" onClick={() => markDelivered(it)}>
                   <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Deliver
@@ -193,6 +254,19 @@ const AdminWarehouse = () => {
             </li>
           ))}
         </ul>
+
+        {action === "deliver" && group.q?.dispatch_vehicle && (
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+            <span className="font-semibold">Vehicle: </span>
+            {vehicleLabel(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}
+            {group.q.dispatch_driver_name && (
+              <span> · Driver: {group.q.dispatch_driver_name}</span>
+            )}
+            {group.q.dispatch_driver_phone && (
+              <span> · {group.q.dispatch_driver_phone}</span>
+            )}
+          </div>
+        )}
 
         {/* Driver / warehouse balance display — no item prices, only advance + balance. */}
         <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
@@ -267,6 +341,53 @@ const AdminWarehouse = () => {
           </TabsContent>
         </Tabs>
       )}
+
+      <Dialog open={dispatchOpen} onOpenChange={setDispatchOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign vehicle & dispatch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <RadioGroup value={vehicleChoice} onValueChange={(v) => setVehicleChoice(v as any)}>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="vehicle_1" id="v1" />
+                <Label htmlFor="v1">Vehicle 1 (own)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="vehicle_2" id="v2" />
+                <Label htmlFor="v2">Vehicle 2 (own)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="outside" id="vo" />
+                <Label htmlFor="vo">Outside vehicle</Label>
+              </div>
+            </RadioGroup>
+            {vehicleChoice === "outside" && (
+              <div className="space-y-2">
+                <div>
+                  <Label htmlFor="vnum">Vehicle number *</Label>
+                  <Input id="vnum" value={outsideNumber} onChange={(e) => setOutsideNumber(e.target.value)} placeholder="e.g. KL 12 AB 1234" />
+                </div>
+                <div>
+                  <Label htmlFor="vdrv">Driver name</Label>
+                  <Input id="vdrv" value={outsideDriver} onChange={(e) => setOutsideDriver(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="vphn">Driver phone</Label>
+                  <Input id="vphn" value={outsidePhone} onChange={(e) => setOutsidePhone(e.target.value)} inputMode="tel" />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDispatchOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={confirmDispatch} disabled={saving}>
+              {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Truck className="mr-1.5 h-4 w-4" />}
+              Dispatch
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
