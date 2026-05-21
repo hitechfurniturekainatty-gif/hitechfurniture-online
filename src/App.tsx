@@ -23,8 +23,10 @@ const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminProductBulkCreate = lazy(() => import("./pages/admin/AdminProductBulkCreate.tsx"));
 const AdminBundles = lazy(() => import("./pages/admin/AdminBundles.tsx"));
 const AdminBundleEditor = lazy(() => import("./pages/admin/AdminBundleEditor.tsx"));
+const AdminBundleBulkCreate = lazy(() => import("./pages/admin/AdminBundleBulkCreate.tsx"));
 const AdminStaff = lazy(() => import("./pages/admin/AdminStaff.tsx"));
 const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
 const AdminWorkerDetail = lazy(() => import("./pages/admin/AdminWorkerDetail.tsx"));
@@ -105,7 +107,9 @@ const App = () => (
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/categories" element={<AdminOnly><AdminCategories /></AdminOnly>} />
             <Route path="/admin/products" element={<AdminOnly><AdminProducts /></AdminOnly>} />
+            <Route path="/admin/products/bulk" element={<AdminOnly><AdminProductBulkCreate /></AdminOnly>} />
             <Route path="/admin/bundles" element={<AdminOnly><AdminBundles /></AdminOnly>} />
+            <Route path="/admin/bundles/bulk" element={<AdminOnly><AdminBundleBulkCreate /></AdminOnly>} />
             <Route path="/admin/bundles/:id" element={<AdminOnly><AdminBundleEditor /></AdminOnly>} />
             <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
             <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
