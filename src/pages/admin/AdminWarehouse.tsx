@@ -21,11 +21,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const vehicleLabel = (kind?: string | null, number?: string | null) => {
-  if (kind === "vehicle_1") return "Vehicle 1";
-  if (kind === "vehicle_2") return "Vehicle 2";
-  if (kind === "outside") return `Outside${number ? ` (${number})` : ""}`;
+const vehicleDisplay = (kind?: string | null, number?: string | null) => {
+  if (kind === "outside") return `Outside${number ? ` · ${number}` : ""}`;
+  if (number) return number;
   return "—";
+};
+
+type Vehicle = {
+  id: string;
+  vehicle_number: string;
+  label: string | null;
+  driver_user_id: string | null;
+  is_active: boolean;
 };
 
 // Quotation-grouped workspace for warehouse / dispatch / delivery staff.
@@ -63,7 +70,9 @@ const AdminWarehouse = () => {
   // Dispatch-assignment dialog state
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchGroup, setDispatchGroup] = useState<{ q: Row["quotations"]; items: Row[] } | null>(null);
-  const [vehicleChoice, setVehicleChoice] = useState<"vehicle_1" | "vehicle_2" | "outside">("vehicle_1");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  // Either a vehicle row id, or the literal "outside"
+  const [vehicleChoice, setVehicleChoice] = useState<string>("");
   const [outsideNumber, setOutsideNumber] = useState("");
   const [outsideDriver, setOutsideDriver] = useState("");
   const [outsidePhone, setOutsidePhone] = useState("");
@@ -102,6 +111,17 @@ const AdminWarehouse = () => {
 
   useEffect(() => {
     if (canAccess) load();
+  }, [canAccess]);
+
+  // Load the master vehicle list for the dispatch dialog
+  useEffect(() => {
+    if (!canAccess) return;
+    supabase
+      .from("delivery_vehicles")
+      .select("id, vehicle_number, label, driver_user_id, is_active")
+      .eq("is_active", true)
+      .order("display_order")
+      .then(({ data }) => setVehicles((data ?? []) as Vehicle[]));
   }, [canAccess]);
 
   const buckets = useMemo(() => {
@@ -143,7 +163,8 @@ const AdminWarehouse = () => {
   // Dispatch every still-pending ready-stock item on a quotation in one tap.
   const openDispatchDialog = (group: { q: Row["quotations"]; items: Row[] }) => {
     setDispatchGroup(group);
-    setVehicleChoice((group.q?.dispatch_vehicle as any) || "vehicle_1");
+    const preset = (group.q as any)?.dispatch_vehicle_id as string | undefined;
+    setVehicleChoice(preset || (vehicles[0]?.id ?? "outside"));
     setOutsideNumber(group.q?.dispatch_vehicle_number || "");
     setOutsideDriver(group.q?.dispatch_driver_name || "");
     setOutsidePhone(group.q?.dispatch_driver_phone || "");
@@ -152,10 +173,12 @@ const AdminWarehouse = () => {
 
   const confirmDispatch = async () => {
     if (!dispatchGroup?.q) return;
-    if (vehicleChoice === "outside" && !outsideNumber.trim()) {
+    const isOutside = vehicleChoice === "outside";
+    if (isOutside && !outsideNumber.trim()) {
       toast({ title: "Vehicle number required", variant: "destructive" });
       return;
     }
+    const chosen = !isOutside ? vehicles.find((v) => v.id === vehicleChoice) : null;
     setSaving(true);
     const ids = dispatchGroup.items.filter((i) => !i.dispatched_at).map((i) => i.id);
     // 1) Save vehicle assignment on the quotation (must happen BEFORE stage advance,
@@ -163,10 +186,13 @@ const AdminWarehouse = () => {
     const { error: qErr } = await supabase
       .from("quotations")
       .update({
-        dispatch_vehicle: vehicleChoice,
-        dispatch_vehicle_number: vehicleChoice === "outside" ? outsideNumber.trim() : null,
-        dispatch_driver_name: vehicleChoice === "outside" ? (outsideDriver.trim() || null) : null,
-        dispatch_driver_phone: vehicleChoice === "outside" ? (outsidePhone.trim() || null) : null,
+        dispatch_vehicle: isOutside ? "outside" : "own",
+        dispatch_vehicle_id: isOutside ? null : chosen?.id ?? null,
+        dispatch_vehicle_number: isOutside ? outsideNumber.trim() : (chosen?.vehicle_number ?? null),
+        dispatch_driver_id: isOutside ? null : (chosen?.driver_user_id ?? null),
+        dispatch_driver_name: isOutside ? (outsideDriver.trim() || null) : null,
+        dispatch_driver_phone: isOutside ? (outsidePhone.trim() || null) : null,
+        dispatched_at: new Date().toISOString(),
       })
       .eq("id", dispatchGroup.q.id);
     if (qErr) {
@@ -186,7 +212,9 @@ const AdminWarehouse = () => {
     }
     setSaving(false);
     setDispatchOpen(false);
-    toast({ title: `Dispatched via ${vehicleLabel(vehicleChoice, outsideNumber)}` });
+    toast({
+      title: `Dispatched via ${isOutside ? `Outside · ${outsideNumber}` : (chosen?.vehicle_number ?? "vehicle")}`,
+    });
     load();
   };
 
@@ -258,7 +286,7 @@ const AdminWarehouse = () => {
         {action === "deliver" && group.q?.dispatch_vehicle && (
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
             <span className="font-semibold">Vehicle: </span>
-            {vehicleLabel(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}
+            {vehicleDisplay(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}
             {group.q.dispatch_driver_name && (
               <span> · Driver: {group.q.dispatch_driver_name}</span>
             )}
@@ -348,15 +376,19 @@ const AdminWarehouse = () => {
             <DialogTitle>Assign vehicle & dispatch</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <RadioGroup value={vehicleChoice} onValueChange={(v) => setVehicleChoice(v as any)}>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="vehicle_1" id="v1" />
-                <Label htmlFor="v1">Vehicle 1 (own)</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="vehicle_2" id="v2" />
-                <Label htmlFor="v2">Vehicle 2 (own)</Label>
-              </div>
+            <RadioGroup value={vehicleChoice} onValueChange={(v) => setVehicleChoice(v)}>
+              {vehicles.map((v) => (
+                <div key={v.id} className="flex items-center gap-2">
+                  <RadioGroupItem value={v.id} id={`v-${v.id}`} />
+                  <Label htmlFor={`v-${v.id}`}>
+                    <span className="font-mono">{v.vehicle_number}</span>
+                    {v.label ? <span className="ml-2 text-xs text-muted-foreground">({v.label})</span> : null}
+                    {!v.driver_user_id && (
+                      <span className="ml-2 text-[10px] text-amber-600">no driver linked</span>
+                    )}
+                  </Label>
+                </div>
+              ))}
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="outside" id="vo" />
                 <Label htmlFor="vo">Outside vehicle</Label>
@@ -378,6 +410,10 @@ const AdminWarehouse = () => {
                 </div>
               </div>
             )}
+            <p className="text-[11px] text-muted-foreground">
+              Admin can link drivers to vehicles under <Link to="/admin/vehicles" className="underline">Vehicles</Link>.
+              Outside vehicle dispatches stay visible to all delivery users.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDispatchOpen(false)} disabled={saving}>Cancel</Button>
