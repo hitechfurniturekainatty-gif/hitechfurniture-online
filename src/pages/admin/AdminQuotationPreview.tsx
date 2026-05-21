@@ -1008,6 +1008,28 @@ const AdminQuotationPreview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {zoomImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-2"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoom"
+            className="max-h-full max-w-full object-contain"
+            style={{ touchAction: "pinch-zoom" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute right-3 top-3"
+            onClick={() => setZoomImage(null)}
+          >
+            Close
+          </Button>
+        </div>
+      )}
     </AdminShell>
   );
 };
