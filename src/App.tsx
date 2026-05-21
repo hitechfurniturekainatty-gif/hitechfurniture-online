@@ -33,6 +33,7 @@ const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations.tsx"));
 const AdminQuotationEditor = lazy(() => import("./pages/admin/AdminQuotationEditor.tsx"));
 const AdminQuotationPreview = lazy(() => import("./pages/admin/AdminQuotationPreview.tsx"));
 const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes.tsx"));
+const AdminVehicles = lazy(() => import("./pages/admin/AdminVehicles.tsx"));
 const AdminLogistics = lazy(() => import("./pages/admin/AdminLogistics.tsx"));
 const AdminWarehouse = lazy(() => import("./pages/admin/AdminWarehouse.tsx"));
 const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
