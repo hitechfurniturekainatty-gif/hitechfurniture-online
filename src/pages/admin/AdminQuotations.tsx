@@ -91,8 +91,16 @@ const stageFilterLabel = (k: StageFilterKey) => {
 };
 
 const AdminQuotations = () => {
-  const { user, isAdmin, isOfficeStaff } = useAuth();
+  const { user, isAdmin, isOfficeStaff, isWarehouse, isDelivery, isMeasurementStaff } = useAuth();
   const navigate = useNavigate();
+  // Strict gating: Warehouse & Delivery must NEVER see the all-quotations list.
+  // Redirect them to their own dashboard immediately.
+  useEffect(() => {
+    if (!isOfficeStaff && !isAdmin && !isMeasurementStaff) {
+      if (isWarehouse) navigate("/admin/warehouse", { replace: true });
+      else if (isDelivery) navigate("/admin/my-trips", { replace: true });
+    }
+  }, [isOfficeStaff, isAdmin, isMeasurementStaff, isWarehouse, isDelivery, navigate]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState<Q[]>([]);
   const [jobAgg, setJobAgg] = useState<Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }>>({});
