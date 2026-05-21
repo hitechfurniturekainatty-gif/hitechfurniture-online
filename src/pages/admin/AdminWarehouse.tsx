@@ -145,7 +145,9 @@ const AdminWarehouse = () => {
             </Button>
           )}
           <Button asChild size="sm" variant="ghost">
-            <Link to={`/admin/quotations/${r.quotations?.id}`}>Open</Link>
+            {/* Warehouse + delivery land on the read-only preview, which hides
+                unit prices / line totals and exposes only Advance + Balance. */}
+            <Link to={`/admin/quotations/${r.quotations?.id}/preview`}>Open</Link>
           </Button>
         </div>
       </CardContent>
