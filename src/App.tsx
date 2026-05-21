@@ -133,6 +133,7 @@ const App = () => (
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
             <Route path="/s/q/:token" element={<SharedQuotationView />} />
+            <Route path="/s/d/:token" element={<SharedQuotationView hideAmounts />} />
             <Route path="/s/j/:token" element={<SharedJobView />} />
             <Route path="/delivery-note/:id" element={<DeliveryNote />} />
             <Route path="*" element={<NotFound />} />
