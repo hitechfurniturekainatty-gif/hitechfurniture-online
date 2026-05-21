@@ -738,8 +738,10 @@ const AdminQuotationPreview = () => {
           </div>
         </section>
 
-        {/* Totals */}
-        {hasAnyPrice && !po && (
+        {/* Totals — full breakdown for admin/office only.
+            Warehouse + delivery get just Advance / Balance so they can confirm
+            collection without seeing item-level pricing or margins. */}
+        {hasAnyPrice && !po && canSeePrices && (
           <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
             <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
               <div className="flex justify-between px-4 py-2">
@@ -774,6 +776,20 @@ const AdminQuotationPreview = () => {
                   </div>
                 </>
               )}
+            </div>
+          </section>
+        )}
+        {!canSeePrices && !po && showAdvance && (
+          <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
+            <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
+              <div className="flex justify-between border-b border-slate-100 px-4 py-2">
+                <span className="text-slate-600">Advance Received</span>
+                <span className="font-mono tabular-nums">{formatINRNumber(advance)}</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-50 px-4 py-3 text-base font-semibold">
+                <span>Balance to Collect</span>
+                <span className="font-mono tabular-nums">{formatINR(balance)}</span>
+              </div>
             </div>
           </section>
         )}
