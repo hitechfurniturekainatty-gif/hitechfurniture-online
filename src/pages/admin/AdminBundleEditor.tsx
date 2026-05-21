@@ -145,6 +145,8 @@ const AdminBundleEditor = () => {
       material: b.material, dimensions: b.dimensions,
       is_featured: b.is_featured, is_published: b.is_published,
       location_id: b.location_id || null,
+      show_item_prices_public: b.show_item_prices_public,
+      show_item_prices_staff: b.show_item_prices_staff,
     }).eq("id", id);
     setSaving(false);
     if (error) {
