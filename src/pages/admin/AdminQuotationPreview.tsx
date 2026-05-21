@@ -21,7 +21,8 @@ import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
-  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat, Image as ImageIcon,
+  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
+  Image as ImageIcon, Hash, Ruler, FileText, Camera,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
