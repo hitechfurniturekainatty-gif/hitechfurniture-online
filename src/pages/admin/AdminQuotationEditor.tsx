@@ -205,7 +205,17 @@ export const statusLabel = (s: string) => {
 const AdminQuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isAdmin, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isAdmin, isOfficeStaff, isMeasurementStaff, isWarehouse, isDelivery } = useAuth();
+
+  // Warehouse and delivery staff are read-only — bounce them to the
+  // price-free preview so they can never add, edit, or open the editor.
+  useEffect(() => {
+    if (!user) return;
+    if ((isWarehouse || isDelivery) && !isOfficeStaff && !isAdmin) {
+      if (id) navigate(`/admin/quotations/${id}/preview`, { replace: true });
+      else navigate(isWarehouse ? "/admin/warehouse" : "/admin/my-trips", { replace: true });
+    }
+  }, [user, isWarehouse, isDelivery, isOfficeStaff, isAdmin, id, navigate]);
 
   const [q, setQ] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QItem[]>([]);
