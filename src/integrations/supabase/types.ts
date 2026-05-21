@@ -1291,6 +1291,10 @@ export type Database = {
           delivery_place: string | null
           delivery_route_id: string | null
           discount_amount: number
+          dispatch_driver_name: string | null
+          dispatch_driver_phone: string | null
+          dispatch_vehicle: string | null
+          dispatch_vehicle_number: string | null
           document_type: string
           expected_delivery_date: string | null
           gst_amount: number
@@ -1330,6 +1334,10 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          dispatch_driver_name?: string | null
+          dispatch_driver_phone?: string | null
+          dispatch_vehicle?: string | null
+          dispatch_vehicle_number?: string | null
           document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
@@ -1369,6 +1377,10 @@ export type Database = {
           delivery_place?: string | null
           delivery_route_id?: string | null
           discount_amount?: number
+          dispatch_driver_name?: string | null
+          dispatch_driver_phone?: string | null
+          dispatch_vehicle?: string | null
+          dispatch_vehicle_number?: string | null
           document_type?: string
           expected_delivery_date?: string | null
           gst_amount?: number
