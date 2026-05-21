@@ -283,14 +283,30 @@ const AdminWarehouse = () => {
 
         {action === "deliver" && group.q?.dispatch_vehicle && (
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
-            <span className="font-semibold">Vehicle: </span>
-            {vehicleDisplay(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}
-            {group.q.dispatch_driver_name && (
-              <span> · Driver: {group.q.dispatch_driver_name}</span>
-            )}
-            {group.q.dispatch_driver_phone && (
-              <span> · {group.q.dispatch_driver_phone}</span>
-            )}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span><span className="font-semibold">Vehicle: </span>{vehicleDisplay(group.q.dispatch_vehicle, group.q.dispatch_vehicle_number)}</span>
+              {group.q.dispatch_driver_name && <span>· Driver: {group.q.dispatch_driver_name}</span>}
+              {group.q.dispatch_driver_phone && <span>· {group.q.dispatch_driver_phone}</span>}
+              {(isOfficeStaff || isWarehouse) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-7"
+                  onClick={() =>
+                    shareLiveLink({
+                      kind: "quotation",
+                      rowId: group.q!.id,
+                      message: `Delivery note — ${group.q!.party_name} (${group.q!.party_place})`,
+                      phone: group.q!.dispatch_driver_phone || null,
+                      openWhatsApp: true,
+                      path: "/s/d",
+                    } as any)
+                  }
+                >
+                  <MessageCircle className="mr-1 h-3.5 w-3.5" /> Send delivery note
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
