@@ -21,7 +21,8 @@ import { formatINR, formatINRNumber } from "@/lib/brand";
 import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
-  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat, Image as ImageIcon,
+  Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
+  Image as ImageIcon, Hash, Ruler, FileText, Camera,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
@@ -101,6 +102,7 @@ const AdminQuotationPreview = () => {
   const [jobNotes, setJobNotes] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [generatingJob, setGeneratingJob] = useState(false);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   // "saved" = pick a registered worker (existing flow).
   // "direct" = skip worker selection and trigger native share sheet so the
   // admin can send the worker-safe file to ANY contact / WhatsApp group.
@@ -578,64 +580,94 @@ const AdminQuotationPreview = () => {
           <div className="space-y-3 sm:hidden">
             {items.map((it, idx) => {
               const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+              const hero = firstUrl(it.item_image_url);
+              const sitePics = (it.site_photos ?? "")
+                .split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
               return (
-                <div key={it.id} className="rounded-md border border-slate-200 bg-white p-3">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 text-xs font-medium text-slate-500">#{idx + 1}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-900">{it.description}</p>
-                      {it.measurement && (
-                        <p className="mt-0.5 text-xs text-slate-600">Measurement: {it.measurement}</p>
-                      )}
-                      {it.catalog_text && (
-                        <p className="text-xs text-slate-600">Ref: {it.catalog_text}</p>
-                      )}
-                    </div>
+                <article key={it.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-base font-semibold leading-tight text-slate-900">
+                      <span className="text-slate-500">#{idx + 1}</span> {it.description}
+                    </p>
+                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
+                      <Hash className="-mt-0.5 mr-0.5 inline h-3 w-3" />{it.quantity}
+                    </span>
                   </div>
-                  {(it.item_image_url || it.measurement_image_url || it.catalog_image_url || it.sketch_url || it.site_photos) && (
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                       {it.item_image_url && (
-                         <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
-                           <img src={firstUrl(it.item_image_url) ?? ""} alt="Item" loading="lazy" className="h-full w-full object-contain" />
-                         </div>
-                       )}
-                      {it.measurement_image_url && (
-                        <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
-                          <img src={it.measurement_image_url} alt="Measurement" loading="lazy" className="h-full w-full object-contain" />
+                  <div className="space-y-3 p-3">
+                    {hero ? (
+                      <button type="button" onClick={() => setZoomImage(hero)} className="block w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <img src={hero} alt={it.description} loading="lazy" className="h-auto w-full object-contain" />
+                      </button>
+                    ) : (
+                      <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
+                        <ImageIcon className="h-8 w-8 text-slate-400" />
+                      </div>
+                    )}
+
+                    {(it.measurement || it.measurement_image_url) && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-950">
+                        <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
+                          <Ruler className="h-3 w-3" /> Measurement
+                        </p>
+                        {it.measurement && (
+                          <p className="whitespace-pre-line text-base font-medium leading-snug">{it.measurement}</p>
+                        )}
+                        {it.measurement_image_url && (
+                          <button type="button" onClick={() => setZoomImage(it.measurement_image_url!)} className="mt-2 block w-full overflow-hidden rounded border border-amber-200 bg-white">
+                            <img src={it.measurement_image_url} alt="Measurement" loading="lazy" className="h-auto w-full object-contain" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {it.sketch_url && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-2">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Sketch</p>
+                        <button type="button" onClick={() => setZoomImage(it.sketch_url!)} className="block w-full overflow-hidden rounded border border-slate-200 bg-white">
+                          <img src={it.sketch_url} alt="Sketch" loading="lazy" className="h-auto w-full object-contain" />
+                        </button>
+                      </div>
+                    )}
+
+                    {(it.catalog_text || it.catalog_image_url) && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                        <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <FileText className="h-3 w-3" /> Catalog reference
+                        </p>
+                        {it.catalog_text && <p className="whitespace-pre-line text-sm text-slate-700">{it.catalog_text}</p>}
+                        {it.catalog_image_url && (
+                          <button type="button" onClick={() => setZoomImage(it.catalog_image_url!)} className="mt-2 block w-full overflow-hidden rounded border border-slate-200 bg-white">
+                            <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-auto w-full object-contain" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {sitePics.length > 0 && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-2">
+                        <p className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <Camera className="h-3 w-3" /> Site photos ({sitePics.length})
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {sitePics.map((u, k) => (
+                            <button key={k} type="button" onClick={() => setZoomImage(u)} className="aspect-square overflow-hidden rounded border border-slate-200 bg-white">
+                              <img src={u} alt={`Site ${k + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                            </button>
+                          ))}
                         </div>
-                      )}
-                      {it.catalog_image_url && (
-                        <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
-                          <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-full w-full object-contain" />
-                        </div>
-                      )}
-                      {it.sketch_url && (
-                        <div className="aspect-square overflow-hidden rounded border border-slate-200 bg-white">
-                          <img src={it.sketch_url} alt="Sketch" loading="lazy" className="h-full w-full object-contain" />
-                        </div>
-                      )}
-                      {(it.site_photos ?? "")
-                        .split(/\r?\n/)
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .slice(0, 3)
-                        .map((u, k) => (
-                          <div key={`site-${k}`} className="aspect-square overflow-hidden rounded border border-slate-200 bg-slate-50">
-                            <img src={u} alt={`Site ${k + 1}`} loading="lazy" className="h-full w-full object-contain" />
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm">
-                    <span className="text-slate-600">Qty: <span className="font-medium text-slate-900 tabular-nums">{it.quantity}</span></span>
+                      </div>
+                    )}
+
                     {hasAnyPrice && (
-                      <>
-                        <span className="text-slate-600">Price: <span className="font-mono tabular-nums text-slate-900">{formatINRNumber(it.unit_price)}</span></span>
-                        <span className="font-mono tabular-nums font-semibold text-slate-900">{formatINRNumber(amt)}</span>
-                      </>
+                      <div className="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1.5 text-sm">
+                        <span className="text-slate-600">Price</span>
+                        <span className="font-mono tabular-nums">
+                          {formatINRNumber(it.unit_price)} <span className="ml-2 font-semibold text-slate-900">= {formatINRNumber(amt)}</span>
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -976,6 +1008,28 @@ const AdminQuotationPreview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {zoomImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-2"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoom"
+            className="max-h-full max-w-full object-contain"
+            style={{ touchAction: "pinch-zoom" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute right-3 top-3"
+            onClick={() => setZoomImage(null)}
+          >
+            Close
+          </Button>
+        </div>
+      )}
     </AdminShell>
   );
 };
