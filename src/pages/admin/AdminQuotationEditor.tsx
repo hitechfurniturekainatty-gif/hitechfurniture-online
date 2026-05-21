@@ -1450,9 +1450,75 @@ const AdminQuotationEditor = () => {
           {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
-              <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive" onClick={() => setStatus("rejected")}>Reject</Button>
             </div>
           )}
+          {/* Admin/Office reject + override controls — visible in early stages only.
+              Reject = manual cancel from Client Hub / Dimensions / OPS.
+              Override = push to Production or Warehouse without an advance. */}
+          {canEditPrice && (() => {
+            const stage = Number((q as any).pipeline_stage ?? 1);
+            const status = normalizeStatus(q.status);
+            const canReject = status !== "rejected" && status !== "delivered" && stage <= 3;
+            const canOverride = stage <= 3 && status !== "rejected" && Number(q.advance_amount ?? 0) === 0;
+            const allReady = items.length > 0 && items.every((it) => (it.fulfillment_route ?? "ready_stock") !== "custom");
+            const overrideStage = allReady ? 5 : 4;
+            const overrideLabel = allReady ? "Push → Warehouse" : "Push → Production";
+            return (
+              <div className="hidden flex-wrap gap-1 sm:flex">
+                {canOverride && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={async () => {
+                      const ok = window.confirm(`Push this quotation to ${allReady ? "Warehouse" : "Production"} without an advance?`);
+                      if (!ok) return;
+                      const { error } = await supabase.rpc("override_advance_quotation", {
+                        _quotation_id: q.id,
+                        _target_stage: overrideStage,
+                      });
+                      if (error) {
+                        toast({ title: "Override failed", description: error.message, variant: "destructive" });
+                        return;
+                      }
+                      toast({ title: overrideLabel.replace("Push → ", "Sent to ") });
+                      // Refresh status from DB
+                      const { data: fresh } = await supabase
+                        .from("quotations").select("status, pipeline_stage")
+                        .eq("id", q.id).maybeSingle();
+                      if (fresh) {
+                        setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
+                      }
+                      setStatusHistoryKey((k) => k + 1);
+                    }}
+                  >
+                    {overrideLabel}
+                  </Button>
+                )}
+                {canReject && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-destructive hover:text-destructive"
+                    onClick={async () => {
+                      const ok = window.confirm("Reject this quotation? This cancels the order.");
+                      if (!ok) return;
+                      const { error } = await supabase.rpc("reject_quotation", { _quotation_id: q.id });
+                      if (error) {
+                        toast({ title: "Reject failed", description: error.message, variant: "destructive" });
+                        return;
+                      }
+                      setQ((prev) => prev ? { ...prev, status: "rejected" } : prev);
+                      setStatusHistoryKey((k) => k + 1);
+                      toast({ title: "Marked Rejected" });
+                    }}
+                  >
+                    Reject
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
         </div>
         {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
         <div className="hidden flex-wrap gap-2 sm:flex">
