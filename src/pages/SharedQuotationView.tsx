@@ -40,28 +40,45 @@ const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } 
   const [data, setData] = useState<{ quotation: Quotation; items: Item[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expired, setExpired] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
     void (async () => {
       setLoading(true);
-      const { data: payload, error: rpcErr } = await supabase.rpc("get_shared_quotation", {
+      const rpcName = hideAmounts ? "get_shared_delivery_note" : "get_shared_quotation";
+      const { data: payload, error: rpcErr } = await supabase.rpc(rpcName as any, {
         p_token: token,
       });
       if (rpcErr || !payload) {
         setError(rpcErr?.message ?? "This link is invalid or has been revoked.");
+      } else if ((payload as any)?.expired) {
+        setExpired(true);
       } else {
         setData(payload as any);
       }
       setLoading(false);
     })();
-  }, [token]);
+  }, [token, hideAmounts]);
 
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (expired) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center p-6 text-center">
+        <div>
+          <p className="text-lg font-semibold">Link expired</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This delivery note link is only valid for 24 hours after dispatch. Please request a fresh link from the office.
+          </p>
+        </div>
       </div>
     );
   }
