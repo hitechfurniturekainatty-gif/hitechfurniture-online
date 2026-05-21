@@ -1431,70 +1431,83 @@ const AdminQuotationEditor = () => {
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
               {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
-            <Badge variant={statusBadgeVariant(q.status)} className="mt-1 sm:hidden">{statusLabel(q.status)}</Badge>
+            {/* Mobile pipeline stage chip */}
+            {(() => {
+              const stage = (Number((q as any).pipeline_stage ?? 1) as PipelineStage);
+              const def = STAGE_DEFS[stage] ?? STAGE_DEFS[1];
+              const status = normalizeStatus(q.status);
+              const sub = status === "rejected"
+                ? "Rejected"
+                : stage === 1
+                  ? (q.is_direct_order ? "Direct" : q.source_task_id ? "Consultations" : items.some((i) => (i.fulfillment_route ?? "ready_stock") === "custom") ? "Custom Products" : "Leads")
+                  : null;
+              return (
+                <Badge variant="outline" className={`mt-1 sm:hidden ${status === "rejected" ? "border-destructive/40 bg-destructive/10 text-destructive" : stageToneClasses(def.tone)}`}>
+                  {status === "rejected" ? "Rejected" : def.label}{sub && status !== "rejected" ? ` · ${sub}` : ""}
+                </Badge>
+              );
+            })()}
           </div>
-          <Badge variant={statusBadgeVariant(q.status)} className="hidden shrink-0 sm:inline-flex">{statusLabel(q.status)}</Badge>
-          {/* Admin can change status at any time — quick switcher next to the badge.
-              Non-admin staff still get the contextual buttons (only when finalized). */}
-          {isAdmin && (
-            <div className="hidden items-center gap-1 sm:flex">
-              <Select value={normalizeStatus(q.status)} onValueChange={(v) => setStatus(v)}>
-                <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Desktop pipeline stage chip — replaces old Drafted/Finalized status bar */}
+          {(() => {
+            const stage = (Number((q as any).pipeline_stage ?? 1) as PipelineStage);
+            const def = STAGE_DEFS[stage] ?? STAGE_DEFS[1];
+            const status = normalizeStatus(q.status);
+            const sub = status === "rejected"
+              ? null
+              : stage === 1
+                ? (q.is_direct_order ? "Direct" : q.source_task_id ? "Consultations" : items.some((i) => (i.fulfillment_route ?? "ready_stock") === "custom") ? "Custom Products" : "Leads")
+                : null;
+            return (
+              <Badge variant="outline" className={`hidden shrink-0 sm:inline-flex ${status === "rejected" ? "border-destructive/40 bg-destructive/10 text-destructive" : stageToneClasses(def.tone)}`}>
+                {status === "rejected" ? "Rejected" : def.label}{sub ? ` · ${sub}` : ""}
+              </Badge>
+            );
+          })()}
           {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
             </div>
           )}
-          {/* Admin/Office reject + override controls — visible in early stages only.
-              Reject = manual cancel from Client Hub / Dimensions / OPS.
-              Override = push to Production or Warehouse without an advance. */}
+          {/* Admin/Office bypass routing + reject — visible in early stages (Client Hub / Dimensions / OPS). */}
           {canEditPrice && (() => {
             const stage = Number((q as any).pipeline_stage ?? 1);
             const status = normalizeStatus(q.status);
             const canReject = status !== "rejected" && status !== "delivered" && stage <= 3;
-            const canOverride = stage <= 3 && status !== "rejected" && Number(q.advance_amount ?? 0) === 0;
-            const allReady = items.length > 0 && items.every((it) => (it.fulfillment_route ?? "ready_stock") !== "custom");
-            const overrideStage = allReady ? 5 : 4;
-            const overrideLabel = allReady ? "Push → Warehouse" : "Push → Production";
+            const canBypass = stage <= 3 && status !== "rejected";
+            const pushTo = async (target: 4 | 5 | 6, label: string) => {
+              const ok = window.confirm(`Push this quotation directly to ${label}?`);
+              if (!ok) return;
+              const { error } = await supabase.rpc("override_advance_quotation", {
+                _quotation_id: q.id,
+                _target_stage: target,
+              });
+              if (error) {
+                toast({ title: "Override failed", description: error.message, variant: "destructive" });
+                return;
+              }
+              toast({ title: `Sent to ${label}` });
+              const { data: fresh } = await supabase
+                .from("quotations").select("status, pipeline_stage")
+                .eq("id", q.id).maybeSingle();
+              if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
+              setStatusHistoryKey((k) => k + 1);
+            };
             return (
               <div className="hidden flex-wrap gap-1 sm:flex">
-                {canOverride && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    onClick={async () => {
-                      const ok = window.confirm(`Push this quotation to ${allReady ? "Warehouse" : "Production"} without an advance?`);
-                      if (!ok) return;
-                      const { error } = await supabase.rpc("override_advance_quotation", {
-                        _quotation_id: q.id,
-                        _target_stage: overrideStage,
-                      });
-                      if (error) {
-                        toast({ title: "Override failed", description: error.message, variant: "destructive" });
-                        return;
-                      }
-                      toast({ title: overrideLabel.replace("Push → ", "Sent to ") });
-                      // Refresh status from DB
-                      const { data: fresh } = await supabase
-                        .from("quotations").select("status, pipeline_stage")
-                        .eq("id", q.id).maybeSingle();
-                      if (fresh) {
-                        setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
-                      }
-                      setStatusHistoryKey((k) => k + 1);
-                    }}
-                  >
-                    {overrideLabel}
-                  </Button>
+                {canBypass && (
+                  <Select onValueChange={(v) => {
+                    if (v === "production") pushTo(4, "Production");
+                    else if (v === "warehouse") pushTo(5, "Warehouse");
+                    else if (v === "logistics") pushTo(6, "Logistics");
+                  }}>
+                    <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Push to…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production">→ Production</SelectItem>
+                      <SelectItem value="warehouse">→ Warehouse</SelectItem>
+                      <SelectItem value="logistics">→ Logistics</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
                 {canReject && (
                   <Button
