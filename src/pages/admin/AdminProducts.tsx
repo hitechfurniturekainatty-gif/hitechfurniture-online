@@ -13,7 +13,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
@@ -464,6 +465,9 @@ const AdminProducts = () => {
           </Button>
           <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
             <KeyRound className="h-4 w-4" /> Catalog PIN
+          </Button>
+          <Button asChild variant="outline" className="gap-1.5">
+            <Link to="/admin/products/bulk"><Upload className="h-4 w-4" /> Bulk create</Link>
           </Button>
           <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="mr-1 h-4 w-4" /> Add product</Button>
         </div>
