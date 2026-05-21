@@ -150,10 +150,13 @@ const extractDocxText = async (file: File): Promise<string> => {
 };
 
 const extractPdfText = async (file: File): Promise<string> => {
-  // pdfjs-dist is already in deps
+  // pdfjs-dist is already in deps. Use new URL() so Vite resolves the worker
+  // asset reliably (dynamic `?url` imports get stripped under some configs).
   const pdfjs = await import("pdfjs-dist");
-  // Vite-resolved worker URL
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string)).default;
+  const workerUrl = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).href;
   (pdfjs as any).GlobalWorkerOptions.workerSrc = workerUrl;
   const buf = await file.arrayBuffer();
   const doc = await (pdfjs as any).getDocument({ data: buf }).promise;
