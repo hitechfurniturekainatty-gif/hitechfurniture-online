@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package2, Loader2 } from "lucide-react";
+import { Plus, Search, Package2, Loader2, Upload } from "lucide-react";
 import { formatINR } from "@/lib/brand";
 import { toast } from "@/hooks/use-toast";
 
@@ -91,7 +91,12 @@ const AdminBundles = () => {
               Combine individual catalog items into a single sellable set. Stock auto-syncs from linked items.
             </p>
           </div>
-          <Button onClick={createNew}><Plus className="mr-1 h-4 w-4" /> New bundle</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="gap-1.5">
+              <Link to="/admin/bundles/bulk"><Upload className="h-4 w-4" /> Bulk create</Link>
+            </Button>
+            <Button onClick={createNew}><Plus className="mr-1 h-4 w-4" /> New bundle</Button>
+          </div>
         </div>
 
         <div className="relative max-w-sm">
