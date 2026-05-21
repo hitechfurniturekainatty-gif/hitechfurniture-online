@@ -85,8 +85,12 @@ const AdminQuotationPreview = () => {
   const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isOfficeStaff, isMeasurementStaff } = useAuth();
+  const { user, isOfficeStaff, isMeasurementStaff, isWarehouse, isDelivery } = useAuth();
   const canShare = isOfficeStaff;
+  // Pricing is restricted to admin + office staff. Warehouse, delivery, workers,
+  // and measurement staff never see unit prices or line totals — they only see
+  // an Advance / Balance summary so they can confirm collection at delivery.
+  const canSeePrices = isOfficeStaff;
   // Measurement-only staff who already submitted the draft for pricing
   // can view this quotation but cannot edit it any more.
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
