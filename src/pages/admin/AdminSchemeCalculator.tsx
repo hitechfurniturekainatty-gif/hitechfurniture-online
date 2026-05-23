@@ -545,7 +545,7 @@ const AdminSchemeCalculator = () => {
                   {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
                 </span>
               </div>
-              <MonthProgress period={activeScheme.period} />
+              <MonthProgress period={activeScheme.period} cycleStart={activeScheme.config?.cycleStart} />
               {report.rep.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Add items to see eligibility.</p>
               ) : (
