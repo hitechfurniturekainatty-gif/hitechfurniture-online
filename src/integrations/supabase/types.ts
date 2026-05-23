@@ -1692,6 +1692,59 @@ export type Database = {
         }
         Relationships: []
       }
+      scheme_vendor_months: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fy_year: number
+          id: string
+          month: number
+          notes: string | null
+          party_id: string
+          purchase_rows: Json
+          purchases_text: string | null
+          scheme_config: Json
+          scheme_kind: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fy_year: number
+          id?: string
+          month: number
+          notes?: string | null
+          party_id: string
+          purchase_rows?: Json
+          purchases_text?: string | null
+          scheme_config?: Json
+          scheme_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fy_year?: number
+          id?: string
+          month?: number
+          notes?: string | null
+          party_id?: string
+          purchase_rows?: Json
+          purchases_text?: string | null
+          scheme_config?: Json
+          scheme_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_vendor_months_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "scheme_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           change_qty: number
