@@ -731,24 +731,17 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
               </div>
             </div>
 
-            <div className="rounded-lg border bg-background p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <Label className="text-xs">Paste invoice text → AI extracts rows into a new invoice</Label>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
-                    {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract as new invoice
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={addEmptyInvoice}>
-                    <Plus className="h-4 w-4" /> Add blank invoice
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between rounded-lg border bg-background p-3">
+              <div className="text-xs text-muted-foreground">
+                Each invoice is parsed from a 4-column paste: <span className="font-medium text-foreground">Item · Qty · Unit Price · Total Cost</span>. MRP stays blank for you to fill.
               </div>
-              <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
-                placeholder={"Paste one invoice — item, qty, price, total. E.g.\nComfobond 75x60x6   10   1250   12500\nComfobond 72x60x6   10   1180   11800"} />
+              <Button size="sm" onClick={openAddInvoice}>
+                <Plus className="h-4 w-4" /> Add Invoice
+              </Button>
             </div>
 
             {invoices.length === 0 && (
-              <p className="text-xs text-muted-foreground">No invoices yet. Paste one above, or add a blank invoice and key in rows manually.</p>
+              <p className="text-xs text-muted-foreground">No invoices yet. Click <strong>+ Add Invoice</strong> to paste or upload one.</p>
             )}
 
             <div className="space-y-3">
@@ -759,10 +752,18 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
                   invoice={inv}
                   onChange={(patch) => updateInvoice(inv.id, patch)}
                   onRemove={() => removeInvoice(inv.id)}
+                  onEdit={() => openEditInvoice(inv)}
                 />
               ))}
             </div>
           </section>
+
+          <InvoiceDialog
+            open={dialogOpen}
+            invoice={dialogInvoice}
+            onClose={() => { setDialogOpen(false); setDialogInvoice(null); }}
+            onSave={saveDialogInvoice}
+          />
 
           <section className="rounded-xl border bg-background/50 p-4">
             <h4 className="mb-3 text-sm font-semibold">③ Live performance</h4>
