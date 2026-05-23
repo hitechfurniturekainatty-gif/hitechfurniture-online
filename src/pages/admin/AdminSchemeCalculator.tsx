@@ -366,9 +366,13 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
       });
       const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
       const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
-      let free = 0;
+      // Pick highest reached slab, then multiply (every Nth qty earns the slab's free qty).
+      // e.g. slab 5→1: 14 qty = floor(14/5)*1 = 2 free; next milestone at 15 qty for +1 free.
       let matchedSlab: any = null;
-      for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
+      for (const s of slabs) if (groupQty >= Number(s.minQty)) matchedSlab = s;
+      const perUnit = matchedSlab ? Number(matchedSlab.free) || 0 : 0;
+      const perQty = matchedSlab ? Math.max(1, Number(matchedSlab.minQty) || 1) : 0;
+      const free = matchedSlab ? Math.floor(groupQty / perQty) * perUnit : 0;
       totalFree += free;
       // Common reward = union of unique free products across rows (or first row's freebie).
       const freebies = Array.from(new Set(activeRows.map((r) => r.freeProduct).filter(Boolean)));
@@ -379,9 +383,10 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
         qty: groupQty,
         free,
         note: matchedSlab
-          ? `Bundle total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free ${freeProd}`
+          ? `Bundle total ${groupQty} qty [${matchedNames}] → every ${matchedSlab.minQty} → ${matchedSlab.free} free ${freeProd} (×${Math.floor(groupQty / perQty)} = ${free})`
           : `Bundle total ${groupQty} qty [${matchedNames}] — below first slab`,
       });
+      // Next milestone: either an unreached bigger slab, or the next multiple of the current slab.
       const nextSlab = slabs.find((s: any) => groupQty < Number(s.minQty));
       if (nextSlab) {
         const gap = Number(nextSlab.minQty) - groupQty;
@@ -392,6 +397,17 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
           gap,
           reward: `${nextSlab.free} free ${freeProd}`,
           note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] to unlock`,
+        });
+      } else if (matchedSlab) {
+        const nextMilestone = (Math.floor(groupQty / perQty) + 1) * perQty;
+        const gap = nextMilestone - groupQty;
+        targets.push({
+          item: `${g.name || "Group"} → ${freeProd}`,
+          have: groupQty,
+          need: nextMilestone,
+          gap,
+          reward: `+${perUnit} free ${freeProd}`,
+          note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] for next +${perUnit} free`,
         });
       }
     }
