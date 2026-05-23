@@ -118,6 +118,7 @@ const AdminProducts = () => {
   });
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [stockItemView, setStockItemView] = useState<"grid" | "list">("grid");
+  const [stockFilter, setStockFilter] = useState<"all" | "with_stock" | "without_stock">("all");
   useEffect(() => {
     try { localStorage.setItem("admin_products_view", viewMode); } catch {}
   }, [viewMode]);
