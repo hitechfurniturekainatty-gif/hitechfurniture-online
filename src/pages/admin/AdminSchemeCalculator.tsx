@@ -661,40 +661,48 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
             <SchemeConfigEditor scheme={{ kind: vm.scheme_kind, config: vm.scheme_config }} onChange={(c) => onChange({ scheme_config: c })} />
           </section>
 
-          <section className="rounded-xl border-2 border-dashed bg-background/50 p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-sm font-semibold">② Paste this month's purchase data</h4>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
-                  {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract
-                </Button>
-                {vm.purchase_rows.length > 0 && (
-                  <Button size="sm" variant="ghost" onClick={() => onChange({ purchase_rows: [], purchases_text: "" })}>Clear</Button>
-                )}
+          <section className="rounded-xl border-2 border-dashed bg-background/50 p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold">② Invoices for {monthLabel}</h4>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <Stat label="Invoices" value={String(invoices.length)} />
+                <Stat label="Month Cost" value={`₹${fmt(totalAmount)}`} />
+                <Stat label="Month MRP" value={`₹${fmt(totalMrpValue)}`} />
+                <Stat label="Avg Discount" value={`${monthAvgDiscount.toFixed(2)}%`} tone={monthAvgDiscount > 0 ? "success" : undefined} />
               </div>
             </div>
-            <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
-              placeholder={"Paste cumulative purchase lines — e.g.\nComfobond 75x60x6   10   12500\nComfobond 72x60x6   10   11800"} />
-            {vm.purchase_rows.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{vm.purchase_rows.length} rows captured · view</summary>
-                <div className="mt-2 max-h-56 overflow-auto rounded border bg-background">
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-16">Qty</TableHead><TableHead className="w-24">Amount</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {vm.purchase_rows.map((r) => (
-                        <TableRow key={r.id}>
-                          <TableCell className="text-sm">{r.item}</TableCell>
-                          <TableCell>{r.qty}</TableCell>
-                          <TableCell>₹{fmt(r.amountWithTax)}</TableCell>
-                          <TableCell><Button size="icon" variant="ghost" onClick={() => onChange({ purchase_rows: vm.purchase_rows.filter((x) => x.id !== r.id) })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+
+            <div className="rounded-lg border bg-background p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <Label className="text-xs">Paste invoice text → AI extracts rows into a new invoice</Label>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
+                    {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract as new invoice
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={addEmptyInvoice}>
+                    <Plus className="h-4 w-4" /> Add blank invoice
+                  </Button>
                 </div>
-              </details>
+              </div>
+              <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
+                placeholder={"Paste one invoice — item, qty, price, total. E.g.\nComfobond 75x60x6   10   1250   12500\nComfobond 72x60x6   10   1180   11800"} />
+            </div>
+
+            {invoices.length === 0 && (
+              <p className="text-xs text-muted-foreground">No invoices yet. Paste one above, or add a blank invoice and key in rows manually.</p>
             )}
+
+            <div className="space-y-3">
+              {invoices.map((inv, idx) => (
+                <InvoiceCard
+                  key={inv.id}
+                  index={idx}
+                  invoice={inv}
+                  onChange={(patch) => updateInvoice(inv.id, patch)}
+                  onRemove={() => removeInvoice(inv.id)}
+                />
+              ))}
+            </div>
           </section>
 
           <section className="rounded-xl border bg-background/50 p-4">
