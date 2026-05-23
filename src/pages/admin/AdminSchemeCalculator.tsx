@@ -249,6 +249,31 @@ const AdminSchemeCalculator = () => {
   const [mode, setMode] = useState<TimelineMode>("monthly");
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
+  const [customFys, setCustomFys] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("scheme_custom_fys") || "[]"); } catch { return []; }
+  });
+
+  const fyOptions = useMemo(() => {
+    const base = new Set<number>([currentFy() - 2, currentFy() - 1, currentFy(), currentFy() + 1]);
+    customFys.forEach((y) => base.add(y));
+    base.add(fy);
+    return Array.from(base).sort((a, b) => b - a);
+  }, [customFys, fy]);
+
+  const addCustomFy = () => {
+    const input = window.prompt("Enter the starting year of the Financial Year (e.g. 2024 for FY 2024–25):");
+    if (!input) return;
+    const y = parseInt(input.trim(), 10);
+    if (!Number.isFinite(y) || y < 2000 || y > 2100) {
+      toast({ title: "Invalid year", description: "Enter a 4-digit year between 2000 and 2100.", variant: "destructive" });
+      return;
+    }
+    const next = Array.from(new Set([...customFys, y])).sort((a, b) => b - a);
+    setCustomFys(next);
+    localStorage.setItem("scheme_custom_fys", JSON.stringify(next));
+    setFy(y);
+    toast({ title: "Financial year added", description: `FY ${y}–${String(y + 1).slice(-2)} is now selected.` });
+  };
 
   useEffect(() => {
     (async () => {
