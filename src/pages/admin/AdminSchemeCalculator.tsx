@@ -1696,36 +1696,54 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
     const groups: any[] = config.groups || [];
     const updateG = (i: number, patch: any) => { const arr = groups.slice(); arr[i] = { ...arr[i], ...patch }; set({ groups: arr }); };
     const removeG = (i: number) => set({ groups: groups.filter((_, j) => j !== i) });
-    const addG = () => set({ groups: [...groups, { name: `Group ${groups.length + 1}`, patterns: "", slabs: [{ minQty: 20, free: 3 }], freeProduct: "" }] });
+    const addG = () => set({ groups: [...groups, { name: `Group ${groups.length + 1}`, slabs: [{ minQty: 10, free: 2 }], rows: [{ pattern: "", freeProduct: "" }] }] });
     return (
       <div className="space-y-4">
         <Label className="text-xs">
-          Product groups — combine multiple variants (sizes/colours) into one bucket. Total qty across matches triggers free items of the chosen product.
+          Product groups — bundle multiple variants (sizes/colours) under one slab. Quantities across all rows in a group are summed, then the slab unlocks the free product.
         </Label>
         {groups.map((g, gi) => {
           const slabs: any[] = g.slabs || [];
           const updateS = (si: number, patch: any) => { const arr = slabs.slice(); arr[si] = { ...arr[si], ...patch }; updateG(gi, { slabs: arr }); };
+          const legacyRows = !Array.isArray(g.rows)
+            ? String(g.patterns || "").split(/[,\n]/).map((s: string) => s.trim()).filter(Boolean)
+                .map((p: string) => ({ pattern: p, freeProduct: g.freeProduct || "" }))
+            : null;
+          const rows: { pattern: string; freeProduct: string }[] = Array.isArray(g.rows)
+            ? g.rows
+            : (legacyRows && legacyRows.length ? legacyRows : [{ pattern: "", freeProduct: "" }]);
+          const writeRows = (next: any[]) => updateG(gi, { rows: next, patterns: undefined, freeProduct: undefined });
+          const updateR = (ri: number, patch: any) => { const arr = rows.slice(); arr[ri] = { ...arr[ri], ...patch }; writeRows(arr); };
+          const removeR = (ri: number) => writeRows(rows.filter((_, j) => j !== ri));
+          const addR = () => writeRows([...rows, { pattern: "", freeProduct: "" }]);
           return (
-            <div key={gi} className="rounded border p-3 space-y-2 bg-background/40">
-              <div className="grid gap-2 md:grid-cols-[1fr_2fr_2fr_40px]">
+            <div key={gi} className="rounded border p-3 space-y-3 bg-background/40">
+              <div className="grid gap-2 md:grid-cols-[1fr_40px] items-end">
                 <div><Label className="text-xs">Group name</Label>
                   <Input value={g.name || ""} onChange={(e) => updateG(gi, { name: e.target.value })} placeholder="e.g. Comfobond" /></div>
-                <div><Label className="text-xs">Match patterns (comma-separated)</Label>
-                  <Input value={g.patterns || ""} onChange={(e) => updateG(gi, { patterns: e.target.value })} placeholder="comfobond, comfo-bond" /></div>
-                <div><Label className="text-xs">Free product (given as freebie)</Label>
-                  <Input value={g.freeProduct || ""} onChange={(e) => updateG(gi, { freeProduct: e.target.value })} placeholder="Comfobond 75x60x6" /></div>
-                <div className="flex items-end"><Button size="icon" variant="ghost" onClick={() => removeG(gi)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                <Button size="icon" variant="ghost" onClick={() => removeG(gi)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Slabs — total qty in group → free qty</Label>
+                <Label className="text-xs">Slab — bundle total qty → free qty</Label>
                 {slabs.map((s, si) => (
                   <div key={si} className="grid grid-cols-[1fr_1fr_40px] gap-2">
-                    <Input type="number" value={s.minQty} onChange={(e) => updateS(si, { minQty: Number(e.target.value) || 0 })} placeholder="Min qty" />
-                    <Input type="number" value={s.free} onChange={(e) => updateS(si, { free: Number(e.target.value) || 0 })} placeholder="Free" />
+                    <Input type="number" value={s.minQty} onChange={(e) => updateS(si, { minQty: Number(e.target.value) || 0 })} placeholder="Buy qty (e.g. 10)" />
+                    <Input type="number" value={s.free} onChange={(e) => updateS(si, { free: Number(e.target.value) || 0 })} placeholder="Free qty (e.g. 2)" />
                     <Button size="icon" variant="ghost" onClick={() => updateG(gi, { slabs: slabs.filter((_, j) => j !== si) })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </div>
                 ))}
                 <Button size="sm" variant="ghost" onClick={() => updateG(gi, { slabs: [...slabs, { minQty: 0, free: 0 }] })}><Plus className="h-4 w-4" /> Add slab</Button>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Bundle rows — invoice items whose quantities sum into this group</Label>
+                {rows.map((r, ri) => (
+                  <div key={ri} className="grid grid-cols-[2fr_2fr_40px] gap-2">
+                    <Input value={r.pattern || ""} onChange={(e) => updateR(ri, { pattern: e.target.value })} placeholder="Match pattern (e.g. 75x72)" />
+                    <Input value={r.freeProduct || ""} onChange={(e) => updateR(ri, { freeProduct: e.target.value })} placeholder="Free product reward" />
+                    <Button size="icon" variant="ghost" onClick={() => removeR(ri)} disabled={rows.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" onClick={addR}><Plus className="h-4 w-4" /> Add product row</Button>
               </div>
             </div>
           );
