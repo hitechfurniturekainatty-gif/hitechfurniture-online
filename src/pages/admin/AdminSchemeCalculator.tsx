@@ -617,7 +617,14 @@ const AdminSchemeCalculator = () => {
             ) : (
               <div className="space-y-4">
                 <LivePerformancePanel fy={fy} months={months} mode={mode} />
-                <AggregatedView mode={mode} fy={fy} months={months} />
+                <AggregatedView
+                  mode={mode}
+                  fy={fy}
+                  months={months}
+                  savedSchemes={savedSchemes}
+                  onChangeMonth={(month, patch) => updateMonth(month, patch)}
+                  onSaveMonth={(m) => persistMonth(m)}
+                />
               </div>
             )}
           </TabsContent>
@@ -1059,7 +1066,14 @@ function LivePerformancePanel({ fy, months, mode }: { fy: number; months: Vendor
   );
 }
 
-function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; months: VendorMonth[] }) {
+function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, onSaveMonth }: {
+  mode: TimelineMode;
+  fy: number;
+  months: VendorMonth[];
+  savedSchemes: SchemeRow[];
+  onChangeMonth: (month: number, patch: Partial<VendorMonth>) => void;
+  onSaveMonth: (m: VendorMonth) => void;
+}) {
   const buckets = useMemo(() => {
     if (mode === "yearly") return [{ label: `FY ${fy}–${String(fy + 1).slice(-2)}`, months }];
     if (mode === "quarterly") {
@@ -1157,6 +1171,37 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
             </div>
           );
         })}
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 pt-2">
+          <h3 className="font-display text-base">Monthly breakdown</h3>
+          <span className="text-xs text-muted-foreground">· Live performance per month within the selected {mode === "yearly" ? "year" : mode === "quarterly" ? "quarter" : "half-year"}</span>
+        </div>
+        {buckets.map((b) => (
+          <div key={`mb-${b.label}`} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{b.label}</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            {b.months.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center text-xs text-muted-foreground">
+                No months in this bucket.
+              </div>
+            ) : (
+              b.months.map((m) => (
+                <MonthBlock
+                  key={`${b.label}-${m.month}`}
+                  vm={m}
+                  fy={fy}
+                  savedSchemes={savedSchemes}
+                  onChange={(patch) => onChangeMonth(m.month, patch)}
+                  onSave={() => onSaveMonth(m)}
+                />
+              ))
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
