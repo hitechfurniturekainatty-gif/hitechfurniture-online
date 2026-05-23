@@ -617,7 +617,14 @@ const AdminSchemeCalculator = () => {
             ) : (
               <div className="space-y-4">
                 <LivePerformancePanel fy={fy} months={months} mode={mode} />
-                <AggregatedView mode={mode} fy={fy} months={months} />
+                <AggregatedView
+                  mode={mode}
+                  fy={fy}
+                  months={months}
+                  savedSchemes={savedSchemes}
+                  onChangeMonth={(month, patch) => updateMonth(month, patch)}
+                  onSaveMonth={(m) => persistMonth(m)}
+                />
               </div>
             )}
           </TabsContent>
