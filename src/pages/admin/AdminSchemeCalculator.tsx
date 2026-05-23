@@ -916,6 +916,9 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 }
 
 function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; months: VendorMonth[] }) {
+  // placeholder anchor
+  // (LivePerformancePanel defined below)
+  void 0;
   const buckets = useMemo(() => {
     if (mode === "yearly") return [{ label: `FY ${fy}–${String(fy + 1).slice(-2)}`, months }];
     if (mode === "quarterly") {
