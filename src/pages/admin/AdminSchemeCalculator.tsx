@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2, FileText, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SchemePartyNotesButton } from "@/components/admin/SchemePartyNotesButton";
@@ -20,6 +20,14 @@ type Row = {
   price: number;
   amountWithTax: number;
   mrp: number;
+};
+
+type Invoice = {
+  id: string;
+  label: string;
+  invoice_no?: string;
+  date?: string;
+  rows: Row[];
 };
 
 type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
@@ -225,6 +233,7 @@ type VendorMonth = {
   scheme_config: any;
   purchases_text: string | null;
   purchase_rows: Row[];
+  invoices: Invoice[];
 };
 
 const FY_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
