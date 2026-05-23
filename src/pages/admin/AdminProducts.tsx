@@ -579,8 +579,8 @@ const AdminProducts = () => {
 
       {viewMode === "stock" ? (
         <Card>
-          <CardContent className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3 sm:px-5">
+          <CardContent className="p-2 sm:p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-2 py-3 sm:px-5">
               <div>
                 <p className="font-display text-base sm:text-lg">Closing Stock by Category</p>
                 <p className="text-xs text-muted-foreground">Valuation uses cost price (fallback: offer / MRP).</p>
@@ -599,6 +599,17 @@ const AdminProducts = () => {
                   <Button type="button" size="sm" variant={stockItemView === "list" ? "default" : "ghost"} onClick={() => setStockItemView("list")} className="h-7 gap-1 px-2 text-xs"><ListIcon className="h-3 w-3" /></Button>
                 </div>
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-b px-2 py-2 sm:px-5 sm:py-2">
+              <Button type="button" size="sm" variant={stockFilter === "all" ? "default" : "ghost"} onClick={() => setStockFilter("all")} className="h-7 text-xs">
+                All
+              </Button>
+              <Button type="button" size="sm" variant={stockFilter === "with_stock" ? "default" : "ghost"} onClick={() => setStockFilter("with_stock")} className="h-7 text-xs">
+                With stock
+              </Button>
+              <Button type="button" size="sm" variant={stockFilter === "without_stock" ? "default" : "ghost"} onClick={() => setStockFilter("without_stock")} className="h-7 text-xs">
+                Without stock or total items
+              </Button>
             </div>
             {stockByCategory.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground">No stock data yet.</div>
