@@ -135,8 +135,8 @@ const App = () => (
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
-            {/* Direct Receivables access (no PIN gate) for Operations tab */}
-            <Route path="/admin/receivables" element={<AdminReceivables />} />
+            {/* Receivables is part of the Backlog area and requires the PIN */}
+            <Route path="/admin/receivables" element={<AdminBacklog />} />
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
             <Route path="/worker/job/:jobId" element={<WorkerJobView />} />
