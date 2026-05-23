@@ -716,7 +716,10 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   };
 
   const report = useMemo(
-    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
+    () => computeFreeReport(
+      { kind: vm.scheme_kind, config: vm.scheme_config },
+      aggregateRowsByItem(flatRows),
+    ),
     [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]
   );
 
@@ -728,14 +731,14 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const targets = (report as any).targets || [];
 
   const completion = useMemo(() => {
-    if (!vm.purchase_rows.length) return 0;
+    if (!flatRows.length) return 0;
     if (!targets.length) return freeUnits > 0 ? 100 : 50;
     const best = targets.reduce((acc: number, t: any) => {
       const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
       return Math.max(acc, pct);
     }, 0);
     return Math.min(100, best);
-  }, [vm.purchase_rows, targets, freeUnits]);
+  }, [flatRows, targets, freeUnits]);
 
   const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
 
@@ -837,7 +840,7 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
           <section className="rounded-xl border bg-background/50 p-4">
             <h4 className="mb-3 text-sm font-semibold">③ Live performance</h4>
-            {vm.purchase_rows.length === 0 ? (
+            {flatRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">Paste purchase data above to see achievements and targets.</p>
             ) : (
               <div className="grid gap-4 lg:grid-cols-2">
