@@ -543,6 +543,16 @@ const AdminProducts = () => {
           >
             <LayoutGrid className="h-3.5 w-3.5" /> Grid
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "stock" ? "default" : "ghost"}
+            onClick={() => setViewMode("stock")}
+            className="h-8 gap-1.5 px-2"
+            title="Closing stock by category"
+          >
+            <Package className="h-3.5 w-3.5" /> Stock
+          </Button>
         </div>
       </div>
 
