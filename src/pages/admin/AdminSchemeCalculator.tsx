@@ -80,40 +80,69 @@ function parseInvoiceText(text: string): Row[] {
 
   const SKIP_RE = /^(s\.?\s*no|sr\.?\s*no|sl\.?|item|description|particular|product|total|sub[-\s]?total|grand[-\s]?total|gst|igst|cgst|sgst|tax|amount|invoice|date|vendor|party|qty|quantity|rate|price|mrp|unit|hsn|sac)\b/i;
   const numClean = (s: string) => Number(String(s).replace(/[₹$,\s]/g, ""));
+  const isNumTok = (s: string) => {
+    const c = String(s).replace(/[₹$,\s]/g, "");
+    if (!c) return false;
+    return /^-?\d+(\.\d+)?$/.test(c);
+  };
 
   for (const raw of lines) {
     let parts: string[] = [];
     if (raw.includes("\t")) parts = raw.split(/\t+/);
     else if (raw.includes("|")) parts = raw.split(/\|+/);
     else if (raw.split(",").length >= 4 && /,\s*\d/.test(raw)) parts = raw.split(",");
+    else if (/\s{2,}/.test(raw)) parts = raw.split(/\s{2,}/);
     parts = parts.map((s) => s.trim()).filter(Boolean);
 
     let item = "";
     let qty = NaN, price = NaN, total = NaN;
 
-    if (parts.length >= 4) {
-      const last3 = parts.slice(-3).map(numClean);
-      if (last3.every((n) => Number.isFinite(n))) {
-        item = parts.slice(0, parts.length - 3).join(" ").trim();
-        [qty, price, total] = last3;
+    // Strategy: total = LAST numeric column (exact amount), even if extra
+    // columns like Discount/Tax/HSN sit between qty/price and total.
+    if (parts.length >= 2) {
+      // find last numeric token index
+      let totalIdx = -1;
+      for (let i = parts.length - 1; i >= 0; i--) {
+        if (isNumTok(parts[i])) { totalIdx = i; break; }
+      }
+      if (totalIdx > 0) {
+        total = numClean(parts[totalIdx]);
+        // find first numeric token from left → qty
+        let qtyIdx = -1;
+        for (let i = 0; i < totalIdx; i++) {
+          if (isNumTok(parts[i])) { qtyIdx = i; break; }
+        }
+        if (qtyIdx > 0) {
+          item = parts.slice(0, qtyIdx).join(" ").trim();
+          qty = numClean(parts[qtyIdx]);
+          // next numeric token after qty (before total) → unit price
+          for (let i = qtyIdx + 1; i < totalIdx; i++) {
+            if (isNumTok(parts[i])) { price = numClean(parts[i]); break; }
+          }
+        }
       }
     }
 
     if (!item || !Number.isFinite(total)) {
-      // Fallback: split by whitespace, pull trailing 3 numeric tokens
+      // Fallback: whitespace split — total = last numeric, qty = first numeric
       const toks = raw.split(/\s+/);
-      const nums: number[] = [];
-      let cut = toks.length;
-      for (let i = toks.length - 1; i >= 0 && nums.length < 3; i--) {
-        const n = numClean(toks[i]);
-        if (Number.isFinite(n) && toks[i].replace(/[₹$,]/g, "") !== "") {
-          nums.unshift(n);
-          cut = i;
-        } else break;
+      let totalIdx = -1;
+      for (let i = toks.length - 1; i >= 0; i--) {
+        if (isNumTok(toks[i])) { totalIdx = i; break; }
       }
-      if (nums.length === 3) {
-        item = toks.slice(0, cut).join(" ").trim();
-        [qty, price, total] = nums;
+      if (totalIdx > 0) {
+        let qtyIdx = -1;
+        for (let i = 0; i < totalIdx; i++) {
+          if (isNumTok(toks[i])) { qtyIdx = i; break; }
+        }
+        if (qtyIdx > 0) {
+          item = toks.slice(0, qtyIdx).join(" ").trim();
+          qty = numClean(toks[qtyIdx]);
+          total = numClean(toks[totalIdx]);
+          for (let i = qtyIdx + 1; i < totalIdx; i++) {
+            if (isNumTok(toks[i])) { price = numClean(toks[i]); break; }
+          }
+        }
       }
     }
 
