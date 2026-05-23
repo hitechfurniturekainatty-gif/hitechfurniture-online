@@ -21,7 +21,7 @@ type Row = {
   mrp: number;
 };
 
-type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback";
+type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
 type Period = "monthly" | "quarterly" | "yearly";
 
 type Party = {
@@ -64,6 +64,7 @@ const SCHEME_LABEL: Record<SchemeKind, string> = {
   bogo: "Buy X Get Y",
   percent: "% Discount on total",
   cashback: "Cashback on target",
+  custom: "Custom (per-product free qty)",
 };
 
 const defaultConfig = (kind: SchemeKind): any => {
@@ -74,6 +75,7 @@ const defaultConfig = (kind: SchemeKind): any => {
     case "bogo": return { buyQty: 2, getQty: 1 };
     case "percent": return { percent: 5 };
     case "cashback": return { minAmount: 50000, cashback: 2000 };
+    case "custom": return { rules: [{ product: "", buyQty: 10, freeQty: 1 }] };
   }
 };
 
