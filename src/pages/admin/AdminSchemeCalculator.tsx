@@ -188,8 +188,9 @@ const AdminSchemeCalculator = () => {
   };
 
   return (
-    <AdminShell title="Scheme Calculator">
+    <AdminShell>
       <div className="space-y-6">
+        <h1 className="font-display text-2xl">Scheme Calculator</h1>
         {/* Header controls */}
         <div className="rounded-lg border bg-card p-4 space-y-4">
           <Tabs value={scheme} onValueChange={(v) => setScheme(v as SchemeKind)}>
