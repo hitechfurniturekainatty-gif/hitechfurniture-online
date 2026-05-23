@@ -75,7 +75,7 @@ const defaultConfig = (kind: SchemeKind): any => {
     case "bogo": return { buyQty: 2, getQty: 1 };
     case "percent": return { percent: 5 };
     case "cashback": return { minAmount: 50000, cashback: 2000 };
-    case "custom": return { rules: [{ product: "", buyQty: 10, freeQty: 1 }] };
+    case "custom": return { groups: [{ name: "Group 1", patterns: "", slabs: [{ minQty: 20, free: 3 }], freeProduct: "" }] };
   }
 };
 
@@ -136,20 +136,35 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
     };
   }
   if (kind === "custom") {
-    const rules: any[] = config?.rules || [];
-    const rep = live.map((r) => {
-      const name = (r.item || "").toLowerCase();
-      const match = rules.find((u) => {
-        const p = String(u.product || "").trim().toLowerCase();
-        return p && name.includes(p);
+    const groups: any[] = config?.groups || [];
+    const rep: any[] = [];
+    let totalFree = 0;
+    for (const g of groups) {
+      const patterns: string[] = String(g.patterns || "")
+        .split(/[,\n]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (!patterns.length) continue;
+      const matchedRows = live.filter((r) => {
+        const n = (r.item || "").toLowerCase();
+        return patterns.some((p) => n.includes(p));
       });
-      if (!match) return { item: r.item, qty: r.qty, free: 0, note: "No matching custom rule" };
-      const buy = Math.max(1, Number(match.buyQty) || 1);
-      const get = Math.max(0, Number(match.freeQty) || 0);
-      const free = Math.floor(r.qty / buy) * get;
-      return { item: r.item, qty: r.qty, free, note: `Buy ${buy} → ${get} free (matches "${match.product}")` };
-    });
-    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+      const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+      const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
+      let free = 0;
+      let matchedSlab: any = null;
+      for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
+      totalFree += free;
+      const freeProd = String(g.freeProduct || "").trim() || (matchedRows[0]?.item ?? "—");
+      const matchedNames = matchedRows.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items matched";
+      rep.push({
+        item: `${g.name || "Group"} → ${freeProd}`,
+        qty: groupQty,
+        free,
+        note: matchedSlab
+          ? `Total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
+          : `Total ${groupQty} qty [${matchedNames}] — below first slab`,
+      });
+    }
+    return { rep, summary: `Total free items: ${totalFree}` };
   }
   return { rep: [], summary: "" };
   void totalMrp;
@@ -548,23 +563,44 @@ function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; 
     </div>
   );
   if (kind === "custom") {
-    const rules: any[] = config.rules || [];
-    const update = (i: number, patch: any) => { const arr = rules.slice(); arr[i] = { ...arr[i], ...patch }; set({ rules: arr }); };
+    const groups: any[] = config.groups || [];
+    const updateG = (i: number, patch: any) => { const arr = groups.slice(); arr[i] = { ...arr[i], ...patch }; set({ groups: arr }); };
+    const removeG = (i: number) => set({ groups: groups.filter((_, j) => j !== i) });
+    const addG = () => set({ groups: [...groups, { name: `Group ${groups.length + 1}`, patterns: "", slabs: [{ minQty: 20, free: 3 }], freeProduct: "" }] });
     return (
-      <div className="space-y-2">
-        <Label className="text-xs">Per-product rules — matched against item name (case-insensitive substring)</Label>
-        <div className="grid grid-cols-[1fr_90px_90px_40px] gap-2 text-xs text-muted-foreground">
-          <div>Product (name contains)</div><div>Buy qty</div><div>Free qty</div><div></div>
-        </div>
-        {rules.map((u, i) => (
-          <div key={i} className="grid grid-cols-[1fr_90px_90px_40px] gap-2">
-            <Input value={u.product} onChange={(e) => update(i, { product: e.target.value })} placeholder="e.g. Sofa" />
-            <Input type="number" value={u.buyQty} onChange={(e) => update(i, { buyQty: Number(e.target.value) || 1 })} />
-            <Input type="number" value={u.freeQty} onChange={(e) => update(i, { freeQty: Number(e.target.value) || 0 })} />
-            <Button size="icon" variant="ghost" onClick={() => set({ rules: rules.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-          </div>
-        ))}
-        <Button size="sm" variant="outline" onClick={() => set({ rules: [...rules, { product: "", buyQty: 10, freeQty: 1 }] })}><Plus className="h-4 w-4" /> Add product rule</Button>
+      <div className="space-y-4">
+        <Label className="text-xs">
+          Product groups — combine multiple variants (sizes/colours) into one bucket. Total qty across matches triggers free items of the chosen product.
+        </Label>
+        {groups.map((g, gi) => {
+          const slabs: any[] = g.slabs || [];
+          const updateS = (si: number, patch: any) => { const arr = slabs.slice(); arr[si] = { ...arr[si], ...patch }; updateG(gi, { slabs: arr }); };
+          return (
+            <div key={gi} className="rounded border p-3 space-y-2 bg-background/40">
+              <div className="grid gap-2 md:grid-cols-[1fr_2fr_2fr_40px]">
+                <div><Label className="text-xs">Group name</Label>
+                  <Input value={g.name || ""} onChange={(e) => updateG(gi, { name: e.target.value })} placeholder="e.g. Comfobond" /></div>
+                <div><Label className="text-xs">Match patterns (comma-separated)</Label>
+                  <Input value={g.patterns || ""} onChange={(e) => updateG(gi, { patterns: e.target.value })} placeholder="comfobond, comfo-bond" /></div>
+                <div><Label className="text-xs">Free product (given as freebie)</Label>
+                  <Input value={g.freeProduct || ""} onChange={(e) => updateG(gi, { freeProduct: e.target.value })} placeholder="Comfobond 75x60x6" /></div>
+                <div className="flex items-end"><Button size="icon" variant="ghost" onClick={() => removeG(gi)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Slabs — total qty in group → free qty</Label>
+                {slabs.map((s, si) => (
+                  <div key={si} className="grid grid-cols-[1fr_1fr_40px] gap-2">
+                    <Input type="number" value={s.minQty} onChange={(e) => updateS(si, { minQty: Number(e.target.value) || 0 })} placeholder="Min qty" />
+                    <Input type="number" value={s.free} onChange={(e) => updateS(si, { free: Number(e.target.value) || 0 })} placeholder="Free" />
+                    <Button size="icon" variant="ghost" onClick={() => updateG(gi, { slabs: slabs.filter((_, j) => j !== si) })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => updateG(gi, { slabs: [...slabs, { minQty: 0, free: 0 }] })}><Plus className="h-4 w-4" /> Add slab</Button>
+              </div>
+            </div>
+          );
+        })}
+        <Button size="sm" variant="outline" onClick={addG}><Plus className="h-4 w-4" /> Add group</Button>
       </div>
     );
   }
