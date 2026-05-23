@@ -531,29 +531,79 @@ const AdminSchemeCalculator = () => {
                   {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
                 </span>
               </div>
+              <MonthProgress period={activeScheme.period} />
               {report.rep.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Add items to see eligibility.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="w-24">Qty</TableHead>
-                      <TableHead className="w-28">Free</TableHead>
-                      <TableHead>Rule</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.rep.map((f, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{f.item}</TableCell>
-                        <TableCell>{f.qty}</TableCell>
-                        <TableCell className="font-semibold text-primary">{f.free}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{f.note}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {/* Achieved */}
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">✓ Achieved Schemes</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0)} free unlocked
+                      </span>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="w-16">Qty</TableHead>
+                          <TableHead className="w-16">Free</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.rep.map((f: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-sm">
+                              <div>{f.item}</div>
+                              <div className="text-xs text-muted-foreground">{f.note}</div>
+                            </TableCell>
+                            <TableCell>{f.qty}</TableCell>
+                            <TableCell className="font-semibold text-emerald-600">{f.free}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Targets */}
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">⏳ Target Reminders</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {(report as any).targets?.length || 0} pending
+                      </span>
+                    </div>
+                    {!(report as any).targets || (report as any).targets.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">All available slabs are unlocked. Nothing more to chase.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead className="w-20">Have / Need</TableHead>
+                            <TableHead className="w-20">Buy more</TableHead>
+                            <TableHead className="w-24">Reward</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(report as any).targets.map((t: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-sm">
+                                <div>{t.item}</div>
+                                {t.note && <div className="text-xs text-muted-foreground">{t.note}</div>}
+                              </TableCell>
+                              <TableCell className="text-sm">{t.have} / {t.need}</TableCell>
+                              <TableCell className="font-semibold text-amber-600">{t.gap}</TableCell>
+                              <TableCell className="text-sm">{t.reward}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </div>
               )}
               <div className="mt-3 rounded bg-muted/50 p-3 text-sm">{report.summary}</div>
             </section>
