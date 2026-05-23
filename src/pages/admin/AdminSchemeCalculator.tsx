@@ -64,6 +64,75 @@ const newRow = (): Row => ({
   mrp: 0,
 });
 
+/**
+ * Strict 4-column parser:
+ *   [Item Name] [Qty] [Unit Price] [Total Cost incl. tax]
+ *
+ * Accepts tab/pipe/comma/multi-space delimiters. Item name may contain
+ * spaces — we take the LAST 3 numeric tokens as qty/price/total and treat
+ * everything before that as the item name. Header rows and totals/GST/tax
+ * summary lines are skipped.
+ */
+function parseInvoiceText(text: string): Row[] {
+  const out: Row[] = [];
+  if (!text) return out;
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  const SKIP_RE = /^(s\.?\s*no|sr\.?\s*no|sl\.?|item|description|particular|product|total|sub[-\s]?total|grand[-\s]?total|gst|igst|cgst|sgst|tax|amount|invoice|date|vendor|party|qty|quantity|rate|price|mrp|unit|hsn|sac)\b/i;
+  const numClean = (s: string) => Number(String(s).replace(/[₹$,\s]/g, ""));
+
+  for (const raw of lines) {
+    let parts: string[] = [];
+    if (raw.includes("\t")) parts = raw.split(/\t+/);
+    else if (raw.includes("|")) parts = raw.split(/\|+/);
+    else if (raw.split(",").length >= 4 && /,\s*\d/.test(raw)) parts = raw.split(",");
+    parts = parts.map((s) => s.trim()).filter(Boolean);
+
+    let item = "";
+    let qty = NaN, price = NaN, total = NaN;
+
+    if (parts.length >= 4) {
+      const last3 = parts.slice(-3).map(numClean);
+      if (last3.every((n) => Number.isFinite(n))) {
+        item = parts.slice(0, parts.length - 3).join(" ").trim();
+        [qty, price, total] = last3;
+      }
+    }
+
+    if (!item || !Number.isFinite(total)) {
+      // Fallback: split by whitespace, pull trailing 3 numeric tokens
+      const toks = raw.split(/\s+/);
+      const nums: number[] = [];
+      let cut = toks.length;
+      for (let i = toks.length - 1; i >= 0 && nums.length < 3; i--) {
+        const n = numClean(toks[i]);
+        if (Number.isFinite(n) && toks[i].replace(/[₹$,]/g, "") !== "") {
+          nums.unshift(n);
+          cut = i;
+        } else break;
+      }
+      if (nums.length === 3) {
+        item = toks.slice(0, cut).join(" ").trim();
+        [qty, price, total] = nums;
+      }
+    }
+
+    if (!item || !Number.isFinite(qty) || !Number.isFinite(total)) continue;
+    if (SKIP_RE.test(item)) continue;
+    if (qty <= 0 && total <= 0) continue;
+
+    out.push({
+      id: crypto.randomUUID(),
+      item,
+      qty: qty || 1,
+      price: Number.isFinite(price) ? price : (qty > 0 ? total / qty : 0),
+      amountWithTax: total,
+      mrp: 0,
+    });
+  }
+  return out;
+}
+
 const fmt = (n: number) =>
   Number.isFinite(n) ? n.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0";
 
