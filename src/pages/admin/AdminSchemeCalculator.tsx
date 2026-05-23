@@ -306,8 +306,27 @@ const AdminSchemeCalculator = () => {
 
           {/* ========== CALCULATOR ========== */}
           <TabsContent value="calc" className="space-y-6 pt-4">
+            {/* Invoice-style frame wrapping the whole calculator */}
+            <div className="rounded-xl border-2 border-foreground/20 bg-card shadow-md overflow-hidden">
+              {/* Invoice header */}
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-foreground/20 bg-muted/40 px-4 py-3">
+                <div>
+                  <h2 className="font-display text-xl leading-tight">Scheme Worksheet</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {activeScheme.name} · {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period}
+                  </p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <div>Date: {new Date().toLocaleDateString("en-IN")}</div>
+                  <div>Party: <span className="font-medium text-foreground">{partyLabel || "—"}</span></div>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-5">
+
             {/* Scheme picker + editor */}
-            <div className="rounded-lg border bg-card p-4 space-y-4">
+            <section className="rounded-lg border bg-background/40 p-4 space-y-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scheme</div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div>
                   <Label className="text-xs">Saved scheme</Label>
@@ -356,10 +375,11 @@ const AdminSchemeCalculator = () => {
                   <Save className="h-4 w-4" /> Save scheme
                 </Button>
               </div>
-            </div>
+            </section>
 
             {/* Party picker */}
-            <div className="rounded-lg border bg-card p-4 space-y-2">
+            <section className="rounded-lg border bg-background/40 p-4 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill To / Party</div>
               <Label className="text-xs">Party / Client</Label>
               <Input value={partyLabel || partyQuery} placeholder="Search party (name / phone / place)…"
                 onChange={(e) => { setPartyQuery(e.target.value); setPartyLabel(""); setPartyId(null); }} />
@@ -376,10 +396,10 @@ const AdminSchemeCalculator = () => {
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Auto-fill */}
-            <div className="rounded-lg border bg-card p-4 space-y-3">
+            <section className="rounded-lg border bg-background/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-medium">Auto-fill (paste / upload)</h2>
                 <div className="flex gap-2">
@@ -393,10 +413,10 @@ const AdminSchemeCalculator = () => {
               </div>
               <Textarea rows={3} placeholder="Paste lines like:  Sofa 3-seater  2  12500"
                 value={autofill} onChange={(e) => setAutofill(e.target.value)} />
-            </div>
+            </section>
 
             {/* Grid */}
-            <div className="rounded-lg border bg-card">
+            <section className="rounded-lg border bg-background/40">
               <div className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <h2 className="font-medium">Items</h2>
                 <div className="flex gap-2">
@@ -444,10 +464,10 @@ const AdminSchemeCalculator = () => {
                 <div>Total Amount: <span className="font-semibold">₹{fmt(totals.totalAmount)}</span></div>
                 <div>Total MRP: <span className="font-semibold">₹{fmt(totals.totalMrp)}</span></div>
               </div>
-            </div>
+            </section>
 
             {/* Notes / attachments — floating window like quotation notes */}
-            <div className="rounded-lg border bg-card p-4 space-y-2">
+            <section className="rounded-lg border bg-background/40 p-4 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="font-medium">Notes & attachments</h2>
@@ -459,12 +479,12 @@ const AdminSchemeCalculator = () => {
                 </div>
                 <SchemePartyNotesButton partyId={partyId} />
               </div>
-            </div>
+            </section>
 
             {/* Report */}
-            <div className="rounded-lg border bg-card p-4">
+            <section className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="font-medium">Scheme Report</h2>
+                <h2 className="font-display text-lg">Scheme Report</h2>
                 <span className="text-xs text-muted-foreground">
                   {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
                 </span>
@@ -494,6 +514,13 @@ const AdminSchemeCalculator = () => {
                 </Table>
               )}
               <div className="mt-3 rounded bg-muted/50 p-3 text-sm">{report.summary}</div>
+            </section>
+
+              </div>
+              {/* Invoice footer */}
+              <div className="border-t-2 border-foreground/20 bg-muted/40 px-4 py-2 text-center text-[11px] text-muted-foreground">
+                Scheme Worksheet · Internal use only · Generated by Scheme Calculator
+              </div>
             </div>
           </TabsContent>
 
