@@ -921,9 +921,11 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
   }, [mode, fy, months]);
 
   const chartData = months.map((m) => {
-    const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-    const qty = m.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const amount = m.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+    const flat = (m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows);
+    const agg = aggregateRowsByItem(flat);
+    const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, agg);
+    const qty = flat.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const amount = flat.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
     const free = rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
     const gap = ((rep as any).targets || []).reduce((s: number, t: any) => s + (Number(t.gap) || 0), 0);
     return { name: MONTH_NAME[m.month], qty, amount: Math.round(amount), free, gap };
@@ -951,16 +953,24 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {buckets.map((b) => {
-          const totalQty = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.qty) || 0), 0), 0);
-          const totalAmount = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.amountWithTax) || 0), 0), 0);
-          const freeUnits = b.months.reduce((s, m) => {
-            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-            return s + rep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
-          }, 0);
-          const targetCount = b.months.reduce((s, m) => {
-            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-            return s + (((rep as any).targets || []).length);
-          }, 0);
+          const allRows: Row[] = b.months.flatMap((m) =>
+            m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows,
+          );
+          const totalQty = allRows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
+          const totalAmount = allRows.reduce((a, r) => a + (Number(r.amountWithTax) || 0), 0);
+          // Bucket-level group comparison: aggregate the whole period and
+          // run the comparison engine against the first month's scheme rules
+          // (vendor schemes are typically uniform across the FY).
+          const schemeMonth = b.months.find((m) => m.scheme_config) || b.months[0];
+          const bucketRep = schemeMonth
+            ? computeFreeReport(
+                { kind: schemeMonth.scheme_kind, config: schemeMonth.scheme_config },
+                aggregateRowsByItem(allRows),
+              )
+            : { rep: [], targets: [], summary: "" } as any;
+          const freeUnits = bucketRep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
+          const targets = ((bucketRep as any).targets || []) as any[];
+          const targetCount = targets.length;
           return (
             <div key={b.label} className="rounded-2xl border bg-card p-4 shadow-sm">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
@@ -976,6 +986,22 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
                   <div className="text-[10px] text-muted-foreground">pending targets</div>
                 </div>
               </div>
+              {(bucketRep.rep.length > 0 || targets.length > 0) && (
+                <div className="mt-3 space-y-2">
+                  {bucketRep.rep.slice(0, 3).map((r: any, i: number) => (
+                    <div key={`a-${i}`} className="flex justify-between gap-2 rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px]">
+                      <span className="truncate">{r.item}</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">{r.qty} → {r.free} free</span>
+                    </div>
+                  ))}
+                  {targets.slice(0, 3).map((t: any, i: number) => (
+                    <div key={`t-${i}`} className="flex justify-between gap-2 rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-[11px]">
+                      <span className="truncate">{t.item}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">+{t.gap} → {t.reward}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
