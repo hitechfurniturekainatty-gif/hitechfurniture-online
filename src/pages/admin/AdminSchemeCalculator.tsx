@@ -162,6 +162,47 @@ function parseInvoiceText(text: string): Row[] {
   return out;
 }
 
+/**
+ * Aggregate purchase rows by item name (case-insensitive). Sums qty &
+ * amountWithTax; computes a weighted unit price and qty-weighted MRP.
+ * This is the core of the "cumulative monthly quantity" comparison so
+ * Product Group rules (Buy N → Get free) actually match across invoices.
+ */
+function aggregateRowsByItem(rows: Row[]): Row[] {
+  const map = new Map<string, Row & { _mrpWeighted: number; _mrpQty: number }>();
+  for (const r of rows) {
+    const name = String(r.item || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const qty = Number(r.qty) || 0;
+    const amt = Number(r.amountWithTax) || 0;
+    const mrp = Number(r.mrp) || 0;
+    const existing = map.get(key);
+    if (existing) {
+      existing.qty += qty;
+      existing.amountWithTax += amt;
+      existing._mrpWeighted += mrp * qty;
+      existing._mrpQty += qty;
+    } else {
+      map.set(key, {
+        id: r.id,
+        item: name,
+        qty,
+        price: 0,
+        amountWithTax: amt,
+        mrp,
+        _mrpWeighted: mrp * qty,
+        _mrpQty: qty,
+      });
+    }
+  }
+  return Array.from(map.values()).map((r) => {
+    const price = r.qty > 0 ? r.amountWithTax / r.qty : 0;
+    const mrp = r._mrpQty > 0 ? r._mrpWeighted / r._mrpQty : r.mrp;
+    return { id: r.id, item: r.item, qty: r.qty, price, amountWithTax: r.amountWithTax, mrp };
+  });
+}
+
 const fmt = (n: number) =>
   Number.isFinite(n) ? n.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0";
 
@@ -471,8 +512,12 @@ const AdminSchemeCalculator = () => {
   const ytd = useMemo(() => {
     let totalAmount = 0, totalQty = 0, freeUnits = 0, completedSlabs = 0, totalSlabs = 0;
     months.forEach((m) => {
-      const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-      m.purchase_rows.forEach((r) => {
+      const flat = m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+      const rep = computeFreeReport(
+        { kind: m.scheme_kind, config: m.scheme_config },
+        aggregateRowsByItem(flat),
+      );
+      flat.forEach((r) => {
         totalAmount += Number(r.amountWithTax) || 0;
         totalQty += Number(r.qty) || 0;
       });
@@ -675,7 +720,10 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   };
 
   const report = useMemo(
-    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
+    () => computeFreeReport(
+      { kind: vm.scheme_kind, config: vm.scheme_config },
+      aggregateRowsByItem(flatRows),
+    ),
     [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]
   );
 
@@ -687,14 +735,14 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const targets = (report as any).targets || [];
 
   const completion = useMemo(() => {
-    if (!vm.purchase_rows.length) return 0;
+    if (!flatRows.length) return 0;
     if (!targets.length) return freeUnits > 0 ? 100 : 50;
     const best = targets.reduce((acc: number, t: any) => {
       const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
       return Math.max(acc, pct);
     }, 0);
     return Math.min(100, best);
-  }, [vm.purchase_rows, targets, freeUnits]);
+  }, [flatRows, targets, freeUnits]);
 
   const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
 
@@ -796,7 +844,7 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
           <section className="rounded-xl border bg-background/50 p-4">
             <h4 className="mb-3 text-sm font-semibold">③ Live performance</h4>
-            {vm.purchase_rows.length === 0 ? (
+            {flatRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">Paste purchase data above to see achievements and targets.</p>
             ) : (
               <div className="grid gap-4 lg:grid-cols-2">
@@ -877,9 +925,11 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
   }, [mode, fy, months]);
 
   const chartData = months.map((m) => {
-    const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-    const qty = m.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const amount = m.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+    const flat = (m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows);
+    const agg = aggregateRowsByItem(flat);
+    const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, agg);
+    const qty = flat.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const amount = flat.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
     const free = rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
     const gap = ((rep as any).targets || []).reduce((s: number, t: any) => s + (Number(t.gap) || 0), 0);
     return { name: MONTH_NAME[m.month], qty, amount: Math.round(amount), free, gap };
@@ -907,16 +957,24 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {buckets.map((b) => {
-          const totalQty = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.qty) || 0), 0), 0);
-          const totalAmount = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.amountWithTax) || 0), 0), 0);
-          const freeUnits = b.months.reduce((s, m) => {
-            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-            return s + rep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
-          }, 0);
-          const targetCount = b.months.reduce((s, m) => {
-            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-            return s + (((rep as any).targets || []).length);
-          }, 0);
+          const allRows: Row[] = b.months.flatMap((m) =>
+            m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows,
+          );
+          const totalQty = allRows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
+          const totalAmount = allRows.reduce((a, r) => a + (Number(r.amountWithTax) || 0), 0);
+          // Bucket-level group comparison: aggregate the whole period and
+          // run the comparison engine against the first month's scheme rules
+          // (vendor schemes are typically uniform across the FY).
+          const schemeMonth = b.months.find((m) => m.scheme_config) || b.months[0];
+          const bucketRep = schemeMonth
+            ? computeFreeReport(
+                { kind: schemeMonth.scheme_kind, config: schemeMonth.scheme_config },
+                aggregateRowsByItem(allRows),
+              )
+            : { rep: [], targets: [], summary: "" } as any;
+          const freeUnits = bucketRep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
+          const targets = ((bucketRep as any).targets || []) as any[];
+          const targetCount = targets.length;
           return (
             <div key={b.label} className="rounded-2xl border bg-card p-4 shadow-sm">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
@@ -932,6 +990,22 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
                   <div className="text-[10px] text-muted-foreground">pending targets</div>
                 </div>
               </div>
+              {(bucketRep.rep.length > 0 || targets.length > 0) && (
+                <div className="mt-3 space-y-2">
+                  {bucketRep.rep.slice(0, 3).map((r: any, i: number) => (
+                    <div key={`a-${i}`} className="flex justify-between gap-2 rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px]">
+                      <span className="truncate">{r.item}</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400">{r.qty} → {r.free} free</span>
+                    </div>
+                  ))}
+                  {targets.slice(0, 3).map((t: any, i: number) => (
+                    <div key={`t-${i}`} className="flex justify-between gap-2 rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-[11px]">
+                      <span className="truncate">{t.item}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">+{t.gap} → {t.reward}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
