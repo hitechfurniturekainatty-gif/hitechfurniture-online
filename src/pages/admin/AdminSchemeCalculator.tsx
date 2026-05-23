@@ -406,6 +406,20 @@ const AdminSchemeCalculator = () => {
                 </div>
               </div>
 
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <Label className="text-xs">Cycle start date</Label>
+                  <Input
+                    type="date"
+                    value={activeScheme.config?.cycleStart || ""}
+                    onChange={(e) => setActiveScheme((s) => ({ ...s, config: { ...s.config, cycleStart: e.target.value } }))}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Defaults to start of current {activeScheme.period === "monthly" ? "month" : activeScheme.period === "quarterly" ? "quarter" : "year"}.
+                  </p>
+                </div>
+              </div>
+
               <SchemeConfigEditor scheme={activeScheme} onChange={(config) => setActiveScheme((s) => ({ ...s, config }))} />
 
               <div className="flex flex-wrap items-end gap-2">
