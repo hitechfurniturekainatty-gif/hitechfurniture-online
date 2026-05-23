@@ -633,6 +633,42 @@ const AdminSchemeCalculator = () => {
 
 /* -------------------- Scheme config editor -------------------- */
 
+function MonthProgress({ period }: { period: Period }) {
+  const now = new Date();
+  let start: Date, end: Date, label: string;
+  if (period === "monthly") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    label = start.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  } else if (period === "quarterly") {
+    const q = Math.floor(now.getMonth() / 3);
+    start = new Date(now.getFullYear(), q * 3, 1);
+    end = new Date(now.getFullYear(), q * 3 + 3, 0);
+    label = `Q${q + 1} ${now.getFullYear()}`;
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31);
+    label = String(now.getFullYear());
+  }
+  const total = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+  const elapsed = Math.max(0, Math.min(total, Math.round((now.getTime() - start.getTime()) / 86400000) + 1));
+  const remaining = Math.max(0, total - elapsed);
+  const pct = Math.round((elapsed / total) * 100);
+  return (
+    <div className="mb-3 rounded-md border bg-background p-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium">{label} · {period}</span>
+        <span className="text-muted-foreground">
+          Day {elapsed} of {total} · <span className="font-semibold text-foreground">{remaining} days left</span>
+        </span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; config: any }; onChange: (c: any) => void }) {
   const { kind, config } = scheme;
   const set = (patch: any) => onChange({ ...config, ...patch });
