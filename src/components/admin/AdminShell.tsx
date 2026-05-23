@@ -94,7 +94,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const path = location.pathname;
     const groups: Record<string, string[]> = {
-      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services"],
+      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services", "/admin/scheme-calculator"],
       inventory: ["/admin/categories", "/admin/products"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
       team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
@@ -162,6 +162,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/pipeline", label: "Workflow Pipeline", icon: GitBranch, show: isAdmin },
       { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff || isWorker },
       { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
+      { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Activity, show: isOfficeStaff },
     ]),
   };
   const inventory: GroupItem = {
