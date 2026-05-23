@@ -1573,6 +1573,87 @@ export type Database = {
           },
         ]
       }
+      scheme_parties: {
+        Row: {
+          address: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          gst_number: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          place: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          gst_number?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          place?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          gst_number?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          place?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scheme_rules: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          notes: string | null
+          period: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          notes?: string | null
+          period?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          notes?: string | null
+          period?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           change_qty: number
