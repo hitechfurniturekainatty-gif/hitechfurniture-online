@@ -740,7 +740,7 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
   const completion = useMemo(() => {
     if (!flatRows.length) return 0;
-    if (!targets.length) return freeUnits > 0 ? 100 : 50;
+    if (!targets.length) return freeUnits > 0 ? 100 : 0;
     const best = targets.reduce((acc: number, t: any) => {
       const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
       return Math.max(acc, pct);
@@ -880,7 +880,11 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
                     <h5 className="text-sm font-semibold">Target reminders</h5>
                   </div>
                   {targets.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">All available slabs unlocked. Nothing more to chase this month.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {freeUnits > 0
+                        ? "All available slabs unlocked. Nothing more to chase this month."
+                        : "No pending target found yet — check that this month has a scheme target matching the invoice item names."}
+                    </p>
                   ) : (
                     <ul className="space-y-3">
                       {targets.slice(0, 4).map((t: any, i: number) => {
@@ -961,6 +965,7 @@ function LivePerformancePanel({ fy, months, mode }: { fy: number; months: Vendor
   const avgDiscount = totalMrp > 0 ? ((totalMrp - totalAmount) / totalMrp) * 100 : 0;
   const freeUnits = report.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
   const targets = report.targets || [];
+  const performancePct = Math.min(100, freeUnits > 0 ? 100 : (targets[0] ? Math.round(((targets[0].have || 0) / Math.max(1, targets[0].need || 1)) * 100) : 0));
 
   const modeLabel =
     mode === "yearly" ? `FY ${fy}–${String(fy + 1).slice(-2)}`
@@ -993,7 +998,7 @@ function LivePerformancePanel({ fy, months, mode }: { fy: number; months: Vendor
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4">
             <div className="mb-3 flex items-start gap-3">
-              <ProgressRing pct={Math.min(100, freeUnits > 0 ? 100 : (targets[0] ? Math.round(((targets[0].have || 0) / Math.max(1, targets[0].need || 1)) * 100) : 0))} size={72} color="hsl(142 71% 45%)" />
+              <ProgressRing pct={performancePct} size={72} color="hsl(142 71% 45%)" />
               <div>
                 <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
@@ -1023,7 +1028,11 @@ function LivePerformancePanel({ fy, months, mode }: { fy: number; months: Vendor
               <h5 className="text-sm font-semibold">Target Reminders</h5>
             </div>
             {targets.length === 0 ? (
-              <p className="text-xs text-muted-foreground">All available slabs unlocked — nothing pending in this period.</p>
+              <p className="text-xs text-muted-foreground">
+                {freeUnits > 0
+                  ? "All available slabs unlocked — nothing pending in this period."
+                  : "No pending target found yet — check that this period has a scheme target matching the invoice item names."}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {targets.slice(0, 5).map((t: any, i: number) => {
