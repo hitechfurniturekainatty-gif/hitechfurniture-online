@@ -308,7 +308,15 @@ const AdminSchemeCalculator = () => {
       const rows = ((data as any) || []) as VendorMonth[];
       const full: VendorMonth[] = FY_MONTHS.map((m) => {
         const existing = rows.find((r) => r.month === m);
-        return existing || {
+        if (existing) {
+          const invs: Invoice[] = Array.isArray((existing as any).invoices) && (existing as any).invoices.length
+            ? (existing as any).invoices
+            : (existing.purchase_rows && existing.purchase_rows.length
+                ? [{ id: crypto.randomUUID(), label: "Invoice 1", rows: existing.purchase_rows }]
+                : []);
+          return { ...existing, invoices: invs };
+        }
+        return {
           party_id: vendorId,
           fy_year: fy,
           month: m,
@@ -316,6 +324,7 @@ const AdminSchemeCalculator = () => {
           scheme_config: defaultConfig("company"),
           purchases_text: "",
           purchase_rows: [],
+          invoices: [],
         };
       });
       setMonths(full);
