@@ -389,6 +389,34 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
   void totalMrp;
 }
 
+/**
+ * Achievement % for a scheme on the given rows, driven strictly by the
+ * configured product group rules. 100 = all available slabs unlocked.
+ * Otherwise the highest in-progress slab's have/need ratio.
+ */
+function computeAchievementPct(
+  scheme: { kind: SchemeKind; config: any },
+  rows: Row[],
+): number {
+  const live = rows.filter((r) => r.item && (Number(r.qty) || 0) > 0);
+  if (!live.length) return 0;
+  const r = computeFreeReport(scheme, rows) as any;
+  const targets = (r.targets || []) as any[];
+  const freeUnits = (r.rep || []).reduce(
+    (s: number, x: any) => s + (Number(x.free) || 0),
+    0,
+  );
+  if (targets.length === 0) return freeUnits > 0 ? 100 : 0;
+  // Average progress across each pending target (group-rule driven).
+  const pcts = targets.map((t: any) =>
+    Number(t.need) > 0
+      ? Math.min(100, (Number(t.have) / Number(t.need)) * 100)
+      : 0,
+  );
+  const avg = pcts.reduce((s, p) => s + p, 0) / pcts.length;
+  return Math.round(avg);
+}
+
 /* ============== Vendor Dashboard (Calculator) ============== */
 
 type TimelineMode = "monthly" | "quarterly" | "halfyearly" | "yearly";
