@@ -1698,6 +1698,7 @@ export type Database = {
           created_by: string | null
           fy_year: number
           id: string
+          invoices: Json
           month: number
           notes: string | null
           party_id: string
@@ -1712,6 +1713,7 @@ export type Database = {
           created_by?: string | null
           fy_year: number
           id?: string
+          invoices?: Json
           month: number
           notes?: string | null
           party_id: string
@@ -1726,6 +1728,7 @@ export type Database = {
           created_by?: string | null
           fy_year?: number
           id?: string
+          invoices?: Json
           month?: number
           notes?: string | null
           party_id?: string

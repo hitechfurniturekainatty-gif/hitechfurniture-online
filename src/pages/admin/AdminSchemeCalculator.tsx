@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2, FileText, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SchemePartyNotesButton } from "@/components/admin/SchemePartyNotesButton";
@@ -20,6 +20,14 @@ type Row = {
   price: number;
   amountWithTax: number;
   mrp: number;
+};
+
+type Invoice = {
+  id: string;
+  label: string;
+  invoice_no?: string;
+  date?: string;
+  rows: Row[];
 };
 
 type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
@@ -225,6 +233,7 @@ type VendorMonth = {
   scheme_config: any;
   purchases_text: string | null;
   purchase_rows: Row[];
+  invoices: Invoice[];
 };
 
 const FY_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
@@ -299,7 +308,15 @@ const AdminSchemeCalculator = () => {
       const rows = ((data as any) || []) as VendorMonth[];
       const full: VendorMonth[] = FY_MONTHS.map((m) => {
         const existing = rows.find((r) => r.month === m);
-        return existing || {
+        if (existing) {
+          const invs: Invoice[] = Array.isArray((existing as any).invoices) && (existing as any).invoices.length
+            ? (existing as any).invoices
+            : (existing.purchase_rows && existing.purchase_rows.length
+                ? [{ id: crypto.randomUUID(), label: "Invoice 1", rows: existing.purchase_rows }]
+                : []);
+          return { ...existing, invoices: invs };
+        }
+        return {
           party_id: vendorId,
           fy_year: fy,
           month: m,
@@ -307,6 +324,7 @@ const AdminSchemeCalculator = () => {
           scheme_config: defaultConfig("company"),
           purchases_text: "",
           purchase_rows: [],
+          invoices: [],
         };
       });
       setMonths(full);
@@ -328,6 +346,9 @@ const AdminSchemeCalculator = () => {
   };
 
   const persistMonth = async (m: VendorMonth) => {
+    const flatRows: Row[] = (m.invoices && m.invoices.length)
+      ? m.invoices.flatMap((inv) => inv.rows)
+      : m.purchase_rows;
     const payload = {
       party_id: m.party_id,
       fy_year: m.fy_year,
@@ -335,7 +356,8 @@ const AdminSchemeCalculator = () => {
       scheme_kind: m.scheme_kind,
       scheme_config: m.scheme_config,
       purchases_text: m.purchases_text,
-      purchase_rows: m.purchase_rows as any,
+      purchase_rows: flatRows as any,
+      invoices: m.invoices as any,
     };
     const { data, error } = await supabase
       .from("scheme_vendor_months" as any)
@@ -527,13 +549,30 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
   useEffect(() => { if (isCurrent) setOpen(true); }, [isCurrent]);
 
+  const invoices: Invoice[] = vm.invoices && vm.invoices.length
+    ? vm.invoices
+    : (vm.purchase_rows.length ? [{ id: "legacy", label: "Invoice 1", rows: vm.purchase_rows }] : []);
+  const flatRows: Row[] = invoices.flatMap((inv) => inv.rows);
+
+  const setInvoices = (next: Invoice[]) => {
+    const flat = next.flatMap((inv) => inv.rows);
+    onChange({ invoices: next, purchase_rows: flat });
+  };
+  const updateInvoice = (id: string, patch: Partial<Invoice>) => {
+    setInvoices(invoices.map((inv) => (inv.id === id ? { ...inv, ...patch } : inv)));
+  };
+  const removeInvoice = (id: string) => setInvoices(invoices.filter((inv) => inv.id !== id));
+  const addEmptyInvoice = () => setInvoices([...invoices, { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: [] }]);
+
   const report = useMemo(
-    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, vm.purchase_rows),
-    [vm.scheme_kind, vm.scheme_config, vm.purchase_rows]
+    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
+    [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]
   );
 
-  const totalQty = vm.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-  const totalAmount = vm.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalQty = flatRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const totalAmount = flatRows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrpValue = flatRows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const monthAvgDiscount = totalMrpValue > 0 ? ((totalMrpValue - totalAmount) / totalMrpValue) * 100 : 0;
   const freeUnits = report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0);
   const targets = (report as any).targets || [];
 
@@ -562,8 +601,9 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
         const price = Number(it.unit_price) || 0;
         return { id: crypto.randomUUID(), item: [it.description, it.measurement].filter(Boolean).join(" — "), qty, price, amountWithTax: price * qty, mrp: price };
       });
-      onChange({ purchase_rows: [...vm.purchase_rows, ...parsed], purchases_text: paste });
-      toast({ title: `Added ${parsed.length} rows to ${monthLabel}` });
+      const newInv: Invoice = { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: parsed };
+      setInvoices([...invoices, newInv]);
+      toast({ title: `Added ${parsed.length} rows as ${newInv.label}` });
       setPaste("");
     } catch (e: any) {
       toast({ title: "Extract failed", description: e?.message || String(e), variant: "destructive" });
@@ -621,40 +661,48 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
             <SchemeConfigEditor scheme={{ kind: vm.scheme_kind, config: vm.scheme_config }} onChange={(c) => onChange({ scheme_config: c })} />
           </section>
 
-          <section className="rounded-xl border-2 border-dashed bg-background/50 p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-sm font-semibold">② Paste this month's purchase data</h4>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
-                  {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract
-                </Button>
-                {vm.purchase_rows.length > 0 && (
-                  <Button size="sm" variant="ghost" onClick={() => onChange({ purchase_rows: [], purchases_text: "" })}>Clear</Button>
-                )}
+          <section className="rounded-xl border-2 border-dashed bg-background/50 p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold">② Invoices for {monthLabel}</h4>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <Stat label="Invoices" value={String(invoices.length)} />
+                <Stat label="Month Cost" value={`₹${fmt(totalAmount)}`} />
+                <Stat label="Month MRP" value={`₹${fmt(totalMrpValue)}`} />
+                <Stat label="Avg Discount" value={`${monthAvgDiscount.toFixed(2)}%`} tone={monthAvgDiscount > 0 ? "success" : undefined} />
               </div>
             </div>
-            <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
-              placeholder={"Paste cumulative purchase lines — e.g.\nComfobond 75x60x6   10   12500\nComfobond 72x60x6   10   11800"} />
-            {vm.purchase_rows.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{vm.purchase_rows.length} rows captured · view</summary>
-                <div className="mt-2 max-h-56 overflow-auto rounded border bg-background">
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-16">Qty</TableHead><TableHead className="w-24">Amount</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {vm.purchase_rows.map((r) => (
-                        <TableRow key={r.id}>
-                          <TableCell className="text-sm">{r.item}</TableCell>
-                          <TableCell>{r.qty}</TableCell>
-                          <TableCell>₹{fmt(r.amountWithTax)}</TableCell>
-                          <TableCell><Button size="icon" variant="ghost" onClick={() => onChange({ purchase_rows: vm.purchase_rows.filter((x) => x.id !== r.id) })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+
+            <div className="rounded-lg border bg-background p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <Label className="text-xs">Paste invoice text → AI extracts rows into a new invoice</Label>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
+                    {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract as new invoice
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={addEmptyInvoice}>
+                    <Plus className="h-4 w-4" /> Add blank invoice
+                  </Button>
                 </div>
-              </details>
+              </div>
+              <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
+                placeholder={"Paste one invoice — item, qty, price, total. E.g.\nComfobond 75x60x6   10   1250   12500\nComfobond 72x60x6   10   1180   11800"} />
+            </div>
+
+            {invoices.length === 0 && (
+              <p className="text-xs text-muted-foreground">No invoices yet. Paste one above, or add a blank invoice and key in rows manually.</p>
             )}
+
+            <div className="space-y-3">
+              {invoices.map((inv, idx) => (
+                <InvoiceCard
+                  key={inv.id}
+                  index={idx}
+                  invoice={inv}
+                  onChange={(patch) => updateInvoice(inv.id, patch)}
+                  onRemove={() => removeInvoice(inv.id)}
+                />
+              ))}
+            </div>
           </section>
 
           <section className="rounded-xl border bg-background/50 p-4">
@@ -805,6 +853,138 @@ function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; 
 
 
 function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; config: any }; onChange: (c: any) => void }) {
+  return SchemeConfigEditorImpl({ scheme, onChange });
+}
+
+function InvoiceCard({ index, invoice, onChange, onRemove }: {
+  index: number;
+  invoice: Invoice;
+  onChange: (patch: Partial<Invoice>) => void;
+  onRemove: () => void;
+}) {
+  const rows = invoice.rows;
+  const totalCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrp = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const avgDiscount = totalMrp > 0 ? ((totalMrp - totalCost) / totalMrp) * 100 : 0;
+
+  const updateRow = (id: string, patch: Partial<Row>) => {
+    const next = rows.map((r) => {
+      if (r.id !== id) return r;
+      const merged = { ...r, ...patch };
+      if (patch.qty !== undefined || patch.price !== undefined) {
+        const q = Number(merged.qty) || 0;
+        const p = Number(merged.price) || 0;
+        if (patch.amountWithTax === undefined) merged.amountWithTax = q * p;
+      }
+      return merged;
+    });
+    onChange({ rows: next });
+  };
+  const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
+  const addRow = () => onChange({ rows: [...rows, { id: crypto.randomUUID(), item: "", qty: 1, price: 0, amountWithTax: 0, mrp: 0 }] });
+
+  return (
+    <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 px-4 py-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Receipt className="h-4 w-4" />
+        </div>
+        <Input
+          value={invoice.label}
+          onChange={(e) => onChange({ label: e.target.value })}
+          className="h-8 max-w-[200px] text-sm font-medium"
+          placeholder={`Invoice ${index + 1}`}
+        />
+        <Input
+          value={invoice.invoice_no || ""}
+          onChange={(e) => onChange({ invoice_no: e.target.value })}
+          className="h-8 max-w-[160px] text-xs"
+          placeholder="Invoice no."
+        />
+        <Input
+          type="date"
+          value={invoice.date || ""}
+          onChange={(e) => onChange({ date: e.target.value })}
+          className="h-8 max-w-[150px] text-xs"
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={addRow}><Plus className="h-3.5 w-3.5" /> Row</Button>
+          <Button size="icon" variant="ghost" onClick={onRemove} title="Remove invoice">
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/20">
+              <TableHead className="min-w-[200px]">Item Name</TableHead>
+              <TableHead className="w-20">Qty</TableHead>
+              <TableHead className="w-28">Purchase Price / Unit</TableHead>
+              <TableHead className="w-32">Total Cost (incl. tax)</TableHead>
+              <TableHead className="w-28">MRP / Unit</TableHead>
+              <TableHead className="w-28 text-right">Discount %</TableHead>
+              <TableHead className="w-10"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-xs text-muted-foreground">
+                  No rows — paste invoice text above or click “Row” to add manually.
+                </TableCell>
+              </TableRow>
+            )}
+            {rows.map((r) => {
+              const mrpValue = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
+              const discountPct = mrpValue > 0
+                ? ((mrpValue - (Number(r.amountWithTax) || 0)) / mrpValue) * 100
+                : 0;
+              const positive = discountPct > 0;
+              return (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <Input value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-8" placeholder="Item name" />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" min={0} value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} className="h-8" />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" min={0} value={r.price} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) || 0 })} className="h-8" />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" min={0} value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} className="h-8" />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" min={0} value={r.mrp} onChange={(e) => updateRow(r.id, { mrp: Number(e.target.value) || 0 })} className="h-8" placeholder="MRP" />
+                  </TableCell>
+                  <TableCell className={`text-right text-sm font-semibold ${r.mrp > 0 ? (positive ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400") : "text-muted-foreground"}`}>
+                    {r.mrp > 0 ? `${discountPct.toFixed(2)}%` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-t bg-muted/20 px-4 py-2 text-xs sm:grid-cols-4">
+        <Stat label="Rows" value={String(rows.length)} />
+        <Stat label="Invoice Cost" value={`₹${fmt(totalCost)}`} />
+        <Stat label="Invoice MRP" value={`₹${fmt(totalMrp)}`} />
+        <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
+      </div>
+    </div>
+  );
+}
+
+function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKind; config: any }; onChange: (c: any) => void }) {
   const { kind, config } = scheme;
   const set = (patch: any) => onChange({ ...config, ...patch });
 
