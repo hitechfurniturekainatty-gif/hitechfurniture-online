@@ -740,7 +740,7 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
   const completion = useMemo(() => {
     if (!flatRows.length) return 0;
-    if (!targets.length) return freeUnits > 0 ? 100 : 50;
+    if (!targets.length) return freeUnits > 0 ? 100 : 0;
     const best = targets.reduce((acc: number, t: any) => {
       const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
       return Math.max(acc, pct);
@@ -880,7 +880,11 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
                     <h5 className="text-sm font-semibold">Target reminders</h5>
                   </div>
                   {targets.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">All available slabs unlocked. Nothing more to chase this month.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {freeUnits > 0
+                        ? "All available slabs unlocked. Nothing more to chase this month."
+                        : "No pending target found yet — check that this month has a scheme target matching the invoice item names."}
+                    </p>
                   ) : (
                     <ul className="space-y-3">
                       {targets.slice(0, 4).map((t: any, i: number) => {
