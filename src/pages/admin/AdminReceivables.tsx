@@ -9,9 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Phone, MessageCircle, Trash2, ShieldAlert, Loader2, Sparkles, Save, Download, Lock } from "lucide-react";
+import { Phone, MessageCircle, Trash2, ShieldAlert, Loader2, Sparkles, Save, Download, Lock, Copy, StickyNote, CheckCircle2, RotateCcw, FileText } from "lucide-react";
 import { lockBacklog } from "@/components/admin/BacklogGate";
 import { useNavigate } from "react-router-dom";
+import { BANK_DETAILS, COMPANY } from "@/lib/companyInfo";
+import ReceivableCallLogWindow from "@/components/admin/ReceivableCallLogWindow";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import jsPDF from "jspdf";
+
+const GPAY_NUMBER = "9895134482";
+const GPAY_NAME = "Abdul Raheem";
 
 /**
  * Receivables — confidential admin-only ledger. Persisted in DB.
@@ -43,6 +50,7 @@ type ServerRow = {
   raw_text: string | null;
   batch: number;
   created_at: string;
+  closed_at?: string | null;
 };
 
 const BILL_RE = /\b(\d{2}[A-Za-z]{2}\d{1,6})\b/;
@@ -150,14 +158,23 @@ export default function AdminReceivables() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingRows, setLoadingRows] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"open" | "closed">("open");
+  const [noteFor, setNoteFor] = useState<ServerRow | null>(null);
 
-  const total = useMemo(() => rows.reduce((s, r) => s + Number(r.pending_amount ?? 0), 0), [rows]);
+  const visibleRows = useMemo(
+    () => rows.filter((r) => (tab === "open" ? !r.closed_at : !!r.closed_at)),
+    [rows, tab],
+  );
+  const total = useMemo(
+    () => visibleRows.reduce((s, r) => s + Number(r.pending_amount ?? 0), 0),
+    [visibleRows],
+  );
 
   const load = async () => {
     setLoadingRows(true);
     const { data, error } = await supabase
       .from("receivables")
-      .select("id, bill_no, customer_name, place, phone, pending_amount, raw_text, batch, created_at")
+      .select("id, bill_no, customer_name, place, phone, pending_amount, raw_text, batch, created_at, closed_at")
       .order("created_at", { ascending: false })
       .limit(2000);
     if (error) {
@@ -255,9 +272,54 @@ export default function AdminReceivables() {
     toast({ title: "Receivables cleared" });
   };
 
+  const closeRow = async (id: string) => {
+    const { error } = await supabase.from("receivables").update({ closed_at: new Date().toISOString() }).eq("id", id);
+    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    setRows((r) => r.map((x) => (x.id === id ? { ...x, closed_at: new Date().toISOString() } : x)));
+    setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+    toast({ title: "Moved to Closed" });
+  };
+
+  const reopenRow = async (id: string) => {
+    const { error } = await supabase.from("receivables").update({ closed_at: null }).eq("id", id);
+    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+    setRows((r) => r.map((x) => (x.id === id ? { ...x, closed_at: null } : x)));
+    toast({ title: "Reopened" });
+  };
+
+  const formatCopyLine = (r: ServerRow) => {
+    // Format: BILL CUSTOMER PHONE AMOUNT  (customer_name already contains name + place)
+    const parts = [
+      r.bill_no || "",
+      [r.customer_name, r.place].filter(Boolean).join(" "),
+      r.phone || "",
+      String(Math.round(Number(r.pending_amount ?? 0))),
+    ].filter(Boolean);
+    return parts.join(" ").replace(/\s{2,}/g, " ").trim();
+  };
+
+  const copyOne = async (r: ServerRow) => {
+    try {
+      await navigator.clipboard.writeText(formatCopyLine(r));
+      toast({ title: "Copied", description: formatCopyLine(r) });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  const copyAll = async () => {
+    const text = visibleRows.map(formatCopyLine).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: `Copied ${visibleRows.length} row(s)` });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
   const exportCSV = () => {
     const header = ["Bill No", "Customer", "Place", "Phone", "Pending Amount", "Created At"].join(",");
-    const body = rows
+    const body = visibleRows
       .map((r) =>
         [
           csvEscape(r.bill_no ?? ""),
@@ -273,23 +335,87 @@ export default function AdminReceivables() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `receivables-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `receivables-${tab}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 32;
+    let y = margin;
+    doc.setFontSize(14);
+    doc.text(`Receivables — ${tab === "open" ? "Pending" : "Closed"}`, margin, y);
+    y += 16;
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}    Records: ${visibleRows.length}    Total: ₹${total.toFixed(0)}`, margin, y);
+    y += 18;
+    doc.setFontSize(9);
+    const cols = [
+      { h: "#", w: 24 },
+      { h: "Bill No", w: 80 },
+      { h: "Customer", w: 200 },
+      { h: "Phone", w: 80 },
+      { h: "Amount", w: 70 },
+    ];
+    let x = margin;
+    cols.forEach((c) => { doc.text(c.h, x, y); x += c.w; });
+    y += 12;
+    doc.setLineWidth(0.5);
+    doc.line(margin, y - 8, margin + cols.reduce((s, c) => s + c.w, 0), y - 8);
+    visibleRows.forEach((r, i) => {
+      if (y > 800) { doc.addPage(); y = margin; }
+      x = margin;
+      const vals = [
+        String(i + 1),
+        r.bill_no ?? "",
+        [r.customer_name, r.place].filter(Boolean).join(" "),
+        r.phone ?? "",
+        `₹${Number(r.pending_amount ?? 0).toFixed(0)}`,
+      ];
+      vals.forEach((v, idx) => {
+        const txt = doc.splitTextToSize(v, cols[idx].w - 4)[0] ?? "";
+        doc.text(txt, x, y);
+        x += cols[idx].w;
+      });
+      y += 14;
+    });
+    doc.save(`receivables-${tab}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
   const callPhone = (p: string) => { if (p) window.location.href = `tel:+91${p}`; };
   const wa = (p: string, amt: number) => {
     if (!p) return;
-    const msg = `Greetings from HitecH Furniture! Hope you are having a wonderful day. We are reaching out regarding a pending balance of ${fmtAmount(amt)} on your account. We kindly request you to arrange this payment at your earliest convenience. Thank you for your continued support! Have a great day ahead.`;
+    const msg = [
+      `Greetings from ${COMPANY.name}!`,
+      ``,
+      `Hope you are having a wonderful day. This is a friendly reminder regarding a pending balance of ${fmtAmount(amt)} on your account.`,
+      ``,
+      `For your convenience, you can settle the amount using either of the options below:`,
+      ``,
+      `🏦 Bank Transfer (NEFT/IMPS)`,
+      `Bank: ${BANK_DETAILS.bankName}`,
+      `A/c Name: ${BANK_DETAILS.accountName}`,
+      `A/c No: ${BANK_DETAILS.accountNumber}`,
+      `IFSC: ${BANK_DETAILS.ifsc}`,
+      `Branch: ${BANK_DETAILS.branch}`,
+      ``,
+      `📱 Google Pay / UPI`,
+      `${GPAY_NUMBER} (${GPAY_NAME})`,
+      ``,
+      `Kindly share the payment screenshot once done. Thank you for your continued support!`,
+    ].join("\n");
     openWhatsAppApp(`91${p}`, msg);
   };
 
-  const allSelected = rows.length > 0 && selected.size === rows.length;
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id));
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(visibleRows.map((r) => r.id)));
 
+  const openCount = rows.filter((r) => !r.closed_at).length;
+  const closedCount = rows.length - openCount;
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
