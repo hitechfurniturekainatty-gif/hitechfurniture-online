@@ -399,14 +399,19 @@ const AdminSchemeCalculator = () => {
                 </div>
                 <div>
                   <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Financial Year</Label>
-                  <Select value={String(fy)} onValueChange={(v) => setFy(Number(v))}>
-                    <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[currentFy() - 1, currentFy(), currentFy() + 1].map((y) => (
-                        <SelectItem key={y} value={String(y)}>FY {y}–{String(y + 1).slice(-2)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select value={String(fy)} onValueChange={(v) => setFy(Number(v))}>
+                      <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {fyOptions.map((y) => (
+                          <SelectItem key={y} value={String(y)}>FY {y}–{String(y + 1).slice(-2)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" size="sm" onClick={addCustomFy} className="h-9 gap-1">
+                      <Plus className="h-4 w-4" /> Add FY
+                    </Button>
+                  </div>
                 </div>
                 <div className="ml-auto">
                   <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Timeline</Label>
