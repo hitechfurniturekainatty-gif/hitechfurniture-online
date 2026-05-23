@@ -1197,9 +1197,18 @@ function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, onSaveM
           const freeUnits = bucketRep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
           const targets = ((bucketRep as any).targets || []) as any[];
           const targetCount = targets.length;
+          const bucketPct = schemeMonth
+            ? computeAchievementPct(
+                { kind: schemeMonth.scheme_kind, config: schemeMonth.scheme_config },
+                aggregateRowsByItem(allRows),
+              )
+            : 0;
           return (
             <div key={b.label} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
+                <div className={`text-sm font-bold tabular-nums ${bucketPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : bucketPct > 0 ? "text-primary" : "text-muted-foreground"}`}>{bucketPct}%</div>
+              </div>
               <div className="mt-2 text-2xl font-bold">₹{fmt(totalAmount)}</div>
               <div className="text-xs text-muted-foreground">{totalQty} units purchased</div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
