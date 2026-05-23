@@ -118,6 +118,7 @@ const AdminProducts = () => {
   });
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [stockItemView, setStockItemView] = useState<"grid" | "list">("grid");
+  const [stockFilter, setStockFilter] = useState<"all" | "with_stock" | "without_stock">("all");
   useEffect(() => {
     try { localStorage.setItem("admin_products_view", viewMode); } catch {}
   }, [viewMode]);
@@ -194,8 +195,11 @@ const AdminProducts = () => {
       g.amount += unit * (Number(p.stock_quantity) || 0);
       groups.set(key, g);
     }
-    return Array.from(groups.values()).sort((a, b) => b.amount - a.amount);
-  }, [products, mainCats]);
+    let list = Array.from(groups.values());
+    if (stockFilter === "with_stock") list = list.filter((g) => g.qty > 1);
+    if (stockFilter === "without_stock") list = list.filter((g) => g.qty <= 1);
+    return list.sort((a, b) => b.amount - a.amount);
+  }, [products, mainCats, stockFilter]);
   const stockTotals = useMemo(
     () => stockByCategory.reduce(
       (a, g) => ({ qty: a.qty + g.qty, amount: a.amount + g.amount }),
@@ -575,8 +579,8 @@ const AdminProducts = () => {
 
       {viewMode === "stock" ? (
         <Card>
-          <CardContent className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3 sm:px-5">
+          <CardContent className="p-2 sm:p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-2 py-3 sm:px-5">
               <div>
                 <p className="font-display text-base sm:text-lg">Closing Stock by Category</p>
                 <p className="text-xs text-muted-foreground">Valuation uses cost price (fallback: offer / MRP).</p>
@@ -595,6 +599,17 @@ const AdminProducts = () => {
                   <Button type="button" size="sm" variant={stockItemView === "list" ? "default" : "ghost"} onClick={() => setStockItemView("list")} className="h-7 gap-1 px-2 text-xs"><ListIcon className="h-3 w-3" /></Button>
                 </div>
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-b px-2 py-2 sm:px-5 sm:py-2">
+              <Button type="button" size="sm" variant={stockFilter === "all" ? "default" : "ghost"} onClick={() => setStockFilter("all")} className="h-7 text-xs">
+                All
+              </Button>
+              <Button type="button" size="sm" variant={stockFilter === "with_stock" ? "default" : "ghost"} onClick={() => setStockFilter("with_stock")} className="h-7 text-xs">
+                With stock
+              </Button>
+              <Button type="button" size="sm" variant={stockFilter === "without_stock" ? "default" : "ghost"} onClick={() => setStockFilter("without_stock")} className="h-7 text-xs">
+                Without stock or total items
+              </Button>
             </div>
             {stockByCategory.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground">No stock data yet.</div>
