@@ -572,8 +572,9 @@ const AdminSchemeCalculator = () => {
       .upsert(payload, { onConflict: "party_id,fy_year,month" })
       .select()
       .single();
-    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
-    updateMonth(m.month, { id: (data as any).id });
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); throw error; }
+    const newId = (data as any).id;
+    if (newId && newId !== m.id) updateMonth(m.month, { id: newId });
     toast({ title: `Saved ${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}` });
   };
 
