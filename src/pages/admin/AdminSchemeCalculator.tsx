@@ -389,6 +389,34 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
   void totalMrp;
 }
 
+/**
+ * Achievement % for a scheme on the given rows, driven strictly by the
+ * configured product group rules. 100 = all available slabs unlocked.
+ * Otherwise the highest in-progress slab's have/need ratio.
+ */
+function computeAchievementPct(
+  scheme: { kind: SchemeKind; config: any },
+  rows: Row[],
+): number {
+  const live = rows.filter((r) => r.item && (Number(r.qty) || 0) > 0);
+  if (!live.length) return 0;
+  const r = computeFreeReport(scheme, rows) as any;
+  const targets = (r.targets || []) as any[];
+  const freeUnits = (r.rep || []).reduce(
+    (s: number, x: any) => s + (Number(x.free) || 0),
+    0,
+  );
+  if (targets.length === 0) return freeUnits > 0 ? 100 : 0;
+  // Average progress across each pending target (group-rule driven).
+  const pcts = targets.map((t: any) =>
+    Number(t.need) > 0
+      ? Math.min(100, (Number(t.have) / Number(t.need)) * 100)
+      : 0,
+  );
+  const avg = pcts.reduce((s, p) => s + p, 0) / pcts.length;
+  return Math.round(avg);
+}
+
 /* ============== Vendor Dashboard (Calculator) ============== */
 
 type TimelineMode = "monthly" | "quarterly" | "halfyearly" | "yearly";
@@ -538,9 +566,11 @@ const AdminSchemeCalculator = () => {
   };
 
   const ytd = useMemo(() => {
-    let totalAmount = 0, totalQty = 0, freeUnits = 0, completedSlabs = 0, totalSlabs = 0;
+    let totalAmount = 0, totalQty = 0, freeUnits = 0;
+    const pcts: number[] = [];
     months.forEach((m) => {
       const flat = m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+      if (!flat.length) return;
       const rep = computeFreeReport(
         { kind: m.scheme_kind, config: m.scheme_config },
         aggregateRowsByItem(flat),
@@ -550,11 +580,13 @@ const AdminSchemeCalculator = () => {
         totalQty += Number(r.qty) || 0;
       });
       freeUnits += rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
-      const targets = (rep as any).targets || [];
-      totalSlabs += rep.rep.length + targets.length;
-      completedSlabs += rep.rep.filter((x: any) => x.free > 0).length;
+      pcts.push(computeAchievementPct(
+        { kind: m.scheme_kind, config: m.scheme_config },
+        aggregateRowsByItem(flat),
+      ));
     });
-    return { totalAmount, totalQty, freeUnits, completionPct: totalSlabs ? Math.round((completedSlabs / totalSlabs) * 100) : 0 };
+    const completionPct = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : 0;
+    return { totalAmount, totalQty, freeUnits, completionPct };
   }, [months]);
 
   return (
@@ -630,7 +662,6 @@ const AdminSchemeCalculator = () => {
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : mode === "monthly" ? (
               <div className="space-y-4">
-                <LivePerformancePanel fy={fy} months={months} mode={mode} />
                 {months.map((m) => (
                   <MonthBlock
                     key={m.month}
@@ -644,7 +675,6 @@ const AdminSchemeCalculator = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <LivePerformancePanel fy={fy} months={months} mode={mode} />
                 <AggregatedView
                   mode={mode}
                   fy={fy}
@@ -774,14 +804,11 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const targets = (report as any).targets || [];
 
   const completion = useMemo(() => {
-    if (!flatRows.length) return 0;
-    if (!targets.length) return freeUnits > 0 ? 100 : 0;
-    const best = targets.reduce((acc: number, t: any) => {
-      const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
-      return Math.max(acc, pct);
-    }, 0);
-    return Math.min(100, best);
-  }, [flatRows, targets, freeUnits]);
+    return computeAchievementPct(
+      { kind: vm.scheme_kind, config: vm.scheme_config },
+      aggregateRowsByItem(flatRows),
+    );
+  }, [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]);
 
   const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
 
@@ -808,7 +835,12 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
             {targets.length > 0 && <> · <span className="font-medium text-amber-600 dark:text-amber-400">{targets.length} pending</span></>}
           </div>
         </div>
-        <div className="hidden sm:block"><ProgressRing pct={completion} size={48} stroke={5} /></div>
+        <div className="flex items-center gap-2">
+          <div className={`text-lg font-bold tabular-nums ${completion >= 100 ? "text-emerald-600 dark:text-emerald-400" : completion > 0 ? "text-primary" : "text-muted-foreground"}`}>
+            {completion}%
+          </div>
+          <div className="hidden sm:block"><ProgressRing pct={completion} size={48} stroke={5} /></div>
+        </div>
         {open ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
       </button>
 
@@ -1165,9 +1197,18 @@ function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, onSaveM
           const freeUnits = bucketRep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
           const targets = ((bucketRep as any).targets || []) as any[];
           const targetCount = targets.length;
+          const bucketPct = schemeMonth
+            ? computeAchievementPct(
+                { kind: schemeMonth.scheme_kind, config: schemeMonth.scheme_config },
+                aggregateRowsByItem(allRows),
+              )
+            : 0;
           return (
             <div key={b.label} className="rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
+                <div className={`text-sm font-bold tabular-nums ${bucketPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : bucketPct > 0 ? "text-primary" : "text-muted-foreground"}`}>{bucketPct}%</div>
+              </div>
               <div className="mt-2 text-2xl font-bold">₹{fmt(totalAmount)}</div>
               <div className="text-xs text-muted-foreground">{totalQty} units purchased</div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
