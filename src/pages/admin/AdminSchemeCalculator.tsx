@@ -7,9 +7,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Upload, Paperclip, X, Save, Pencil } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload, Save, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { SchemePartyNotesButton } from "@/components/admin/SchemePartyNotesButton";
 
 type Row = {
   id: string;
@@ -156,12 +157,9 @@ const AdminSchemeCalculator = () => {
   const [partyQuery, setPartyQuery] = useState("");
 
   const [rows, setRows] = useState<Row[]>(() => Array.from({ length: 5 }, newRow));
-  const [notes, setNotes] = useState("");
-  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [autofill, setAutofill] = useState("");
   const [parsing, setParsing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const attachRef = useRef<HTMLInputElement>(null);
 
   const totals = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
@@ -241,8 +239,6 @@ const AdminSchemeCalculator = () => {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
     }
   };
-
-  const onAttach = (file: File) => setAttachments((a) => [...a, { name: file.name, url: URL.createObjectURL(file) }]);
 
   /* ----- Apply / Save scheme ----- */
   const applySavedScheme = (id: string) => {
@@ -417,27 +413,19 @@ const AdminSchemeCalculator = () => {
               </div>
             </div>
 
-            {/* Notes / attachments */}
-            <div className="rounded-lg border bg-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-medium">Notes</h2>
+            {/* Notes / attachments — floating window like quotation notes */}
+            <div className="rounded-lg border bg-card p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <input ref={attachRef} type="file" className="hidden" accept=".pdf,.doc,.docx,image/*"
-                    onChange={(e) => e.target.files?.[0] && onAttach(e.target.files[0])} />
-                  <Button size="sm" variant="outline" onClick={() => attachRef.current?.click()}><Paperclip className="h-4 w-4" /> Attach</Button>
+                  <h2 className="font-medium">Notes & attachments</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {partyLabel
+                      ? `Saved against: ${partyLabel}`
+                      : "Pick a party above to attach photos / PDFs of handwritten scheme pages."}
+                  </p>
                 </div>
+                <SchemePartyNotesButton partyId={partyId} />
               </div>
-              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Specific window behavior, terms, etc." />
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {attachments.map((a, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 rounded border bg-muted px-2 py-1 text-xs">
-                      <a href={a.url} target="_blank" rel="noreferrer" className="underline">{a.name}</a>
-                      <button onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Report */}
