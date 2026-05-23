@@ -602,6 +602,7 @@ const AdminSchemeCalculator = () => {
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : mode === "monthly" ? (
               <div className="space-y-4">
+                <LivePerformancePanel fy={fy} months={months} mode={mode} />
                 {months.map((m) => (
                   <MonthBlock
                     key={m.month}
@@ -614,7 +615,10 @@ const AdminSchemeCalculator = () => {
                 ))}
               </div>
             ) : (
-              <AggregatedView mode={mode} fy={fy} months={months} />
+              <div className="space-y-4">
+                <LivePerformancePanel fy={fy} months={months} mode={mode} />
+                <AggregatedView mode={mode} fy={fy} months={months} />
+              </div>
             )}
           </TabsContent>
 
@@ -904,6 +908,141 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
           <div className="flex items-center justify-end gap-2">
             <SchemePartyNotesButton partyId={vm.party_id} />
             <Button onClick={onSave}><Save className="h-4 w-4" /> Save {MONTH_NAME[vm.month]}</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LivePerformancePanel({ fy, months, mode }: { fy: number; months: VendorMonth[]; mode: TimelineMode }) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentFyYear = (now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1);
+
+  const filteredMonths = useMemo(() => {
+    if (mode === "yearly") return months;
+    if (mode === "quarterly") {
+      const sets = [[4,5,6],[7,8,9],[10,11,12],[1,2,3]];
+      const q = sets.find((s) => s.includes(currentMonth)) || sets[0];
+      return months.filter((m) => q.includes(m.month));
+    }
+    if (mode === "halfyearly") {
+      const h1 = [4,5,6,7,8,9];
+      const set = h1.includes(currentMonth) ? h1 : [10,11,12,1,2,3];
+      return months.filter((m) => set.includes(m.month));
+    }
+    return months; // monthly view: aggregate everything entered so far in the FY
+  }, [months, mode, currentMonth]);
+
+  const allRows: Row[] = useMemo(
+    () => filteredMonths.flatMap((m) =>
+      m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows
+    ),
+    [filteredMonths],
+  );
+
+  const schemeMonth =
+    filteredMonths.find((m) => m.month === currentMonth && fyCalendarYear(fy, m.month) === currentFyYear)
+    || filteredMonths.find((m) => m.scheme_config)
+    || filteredMonths[0];
+
+  const report = useMemo(() => {
+    if (!schemeMonth) return { rep: [] as any[], targets: [] as any[], summary: "" };
+    return computeFreeReport(
+      { kind: schemeMonth.scheme_kind, config: schemeMonth.scheme_config },
+      aggregateRowsByItem(allRows),
+    ) as any;
+  }, [schemeMonth, allRows]);
+
+  const totalQty = allRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const totalAmount = allRows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrp = allRows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const avgDiscount = totalMrp > 0 ? ((totalMrp - totalAmount) / totalMrp) * 100 : 0;
+  const freeUnits = report.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
+  const targets = report.targets || [];
+
+  const modeLabel =
+    mode === "yearly" ? `FY ${fy}–${String(fy + 1).slice(-2)}`
+    : mode === "quarterly" ? "this quarter"
+    : mode === "halfyearly" ? "this half-year"
+    : "all entered months";
+
+  return (
+    <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-background p-5 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-display text-lg">Live Performance Dashboard</h3>
+          <p className="text-xs text-muted-foreground">
+            Aggregated across {modeLabel} · {allRows.length} line items from {filteredMonths.reduce((s, m) => s + ((m.invoices?.length) || 0), 0)} invoices
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          <Stat label="Total Qty" value={fmt(totalQty)} />
+          <Stat label="Total Cost" value={`₹${fmt(totalAmount)}`} />
+          <Stat label="Total MRP" value={`₹${fmt(totalMrp)}`} />
+          <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
+        </div>
+      </div>
+
+      {allRows.length === 0 ? (
+        <div className="rounded-xl border-2 border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+          Add invoices in any month below to start tracking achievements and pending targets here.
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <ProgressRing pct={Math.min(100, freeUnits > 0 ? 100 : (targets[0] ? Math.round(((targets[0].have || 0) / Math.max(1, targets[0].need || 1)) * 100) : 0))} size={72} color="hsl(142 71% 45%)" />
+              <div>
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <h5 className="text-sm font-semibold">Achieved (cumulative)</h5>
+                </div>
+                <div className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{freeUnits}</div>
+                <div className="text-[11px] text-muted-foreground">free units unlocked</div>
+              </div>
+            </div>
+            {report.rep.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No matched products yet — set up a product group in any month's scheme config.</p>
+            ) : (
+              <ul className="space-y-1 text-xs">
+                {report.rep.slice(0, 6).map((r: any, i: number) => (
+                  <li key={i} className="flex justify-between gap-2 border-t border-emerald-500/10 py-1">
+                    <span className="truncate">{r.item}</span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">{r.qty} → {r.free} free</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4">
+            <div className="mb-3 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              <h5 className="text-sm font-semibold">Target Reminders</h5>
+            </div>
+            {targets.length === 0 ? (
+              <p className="text-xs text-muted-foreground">All available slabs unlocked — nothing pending in this period.</p>
+            ) : (
+              <ul className="space-y-3">
+                {targets.slice(0, 5).map((t: any, i: number) => {
+                  const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
+                  return (
+                    <li key={i}>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="truncate text-xs font-medium">{t.item}</div>
+                        <div className="text-[11px] text-amber-700 dark:text-amber-400">Buy {t.gap} more → {t.reward}</div>
+                      </div>
+                      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-amber-500/10">
+                        <div className="h-full bg-amber-500 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
+                      </div>
+                      <div className="mt-1 text-[10px] text-muted-foreground">{t.have} / {t.need}</div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
       )}
