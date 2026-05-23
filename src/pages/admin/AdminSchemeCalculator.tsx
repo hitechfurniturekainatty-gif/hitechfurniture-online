@@ -86,43 +86,63 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
   const live = rows.filter((r) => r.item && r.qty > 0);
   const { kind, config } = scheme;
 
+  // achieved: what's already unlocked. targets: what's left to unlock next slab.
+  type Achieved = { item: string; qty: number; free: number; note: string };
+  type Target = { item: string; have: number; need: number; gap: number; reward: string; note?: string };
+
   if (kind === "company") {
     const per = Math.max(1, Number(config?.everyQty) || 10);
-    const rep = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / per), note: `1 free per ${per} qty` }));
-    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const rep: Achieved[] = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / per), note: `1 free per ${per} qty` }));
+    const targets: Target[] = live.map((r) => {
+      const nextThreshold = (Math.floor(r.qty / per) + 1) * per;
+      const gap = nextThreshold - r.qty;
+      return { item: r.item, have: r.qty, need: nextThreshold, gap, reward: `+1 free`, note: `Buy ${gap} more for next free unit` };
+    });
+    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
   }
   if (kind === "own") {
     const target = (totalAmount * (Number(config?.targetMargin) || 0)) / 100;
     const totalMargin = rows.reduce((s, r) => s + Math.max(0, (Number(r.mrp) || 0) * (Number(r.qty) || 0) - (Number(r.amountWithTax) || 0)), 0);
     const budget = Math.max(0, totalMargin - target);
-    const rep = live.map((r) => {
+    const rep: Achieved[] = live.map((r) => {
       const unit = Number(r.price) || 0;
       const free = unit > 0 ? Math.floor(budget / unit / Math.max(1, live.length)) : 0;
       return { item: r.item, qty: r.qty, free, note: `Within ${config?.targetMargin || 0}% target margin` };
     });
-    return { rep, summary: `Free-item budget: ₹${fmt(budget)}` };
+    return { rep, targets: [], summary: `Free-item budget: ₹${fmt(budget)}` };
   }
   if (kind === "slab") {
     const slabs = (config?.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
-    const rep = live.map((r) => {
+    const rep: Achieved[] = live.map((r) => {
       let free = 0;
       for (const s of slabs) if (r.qty >= Number(s.minQty)) free = Number(s.free);
       const matched = slabs.find((s: any) => r.qty >= Number(s.minQty) && r.qty < (slabs[slabs.indexOf(s) + 1]?.minQty ?? Infinity));
       return { item: r.item, qty: r.qty, free, note: matched ? `Slab ≥ ${matched.minQty} → ${matched.free}` : "Below first slab" };
     });
-    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const targets: Target[] = live.map((r) => {
+      const next = slabs.find((s: any) => r.qty < Number(s.minQty));
+      if (!next) return { item: r.item, have: r.qty, need: r.qty, gap: 0, reward: "Top slab reached", note: "All slabs unlocked" };
+      return { item: r.item, have: r.qty, need: Number(next.minQty), gap: Number(next.minQty) - r.qty, reward: `${next.free} free`, note: `Buy ${Number(next.minQty) - r.qty} more to unlock` };
+    }).filter((t) => t.gap > 0);
+    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
   }
   if (kind === "bogo") {
     const buy = Math.max(1, Number(config?.buyQty) || 1);
     const get = Math.max(0, Number(config?.getQty) || 0);
-    const rep = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / buy) * get, note: `Buy ${buy} Get ${get}` }));
-    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const rep: Achieved[] = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / buy) * get, note: `Buy ${buy} Get ${get}` }));
+    const targets: Target[] = live.map((r) => {
+      const nextThreshold = (Math.floor(r.qty / buy) + 1) * buy;
+      const gap = nextThreshold - r.qty;
+      return { item: r.item, have: r.qty, need: nextThreshold, gap, reward: `+${get} free`, note: `Buy ${gap} more for next freebie` };
+    });
+    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
   }
   if (kind === "percent") {
     const pct = Number(config?.percent) || 0;
     const disc = (totalAmount * pct) / 100;
     return {
       rep: [{ item: "All items", qty: totalQty, free: 0, note: `${pct}% off → ₹${fmt(disc)} discount` }],
+      targets: [],
       summary: `Discount: ₹${fmt(disc)} · Payable: ₹${fmt(totalAmount - disc)}`,
     };
   }
@@ -130,14 +150,24 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
     const min = Number(config?.minAmount) || 0;
     const cb = Number(config?.cashback) || 0;
     const earned = totalAmount >= min ? cb : 0;
+    const targets: Target[] = earned > 0 ? [] : [{
+      item: "Total purchase",
+      have: Math.round(totalAmount),
+      need: min,
+      gap: Math.max(0, min - totalAmount),
+      reward: `₹${fmt(cb)} cashback`,
+      note: `Spend ₹${fmt(min - totalAmount)} more`,
+    }];
     return {
       rep: [{ item: "All items", qty: totalQty, free: 0, note: earned > 0 ? `Earned ₹${fmt(cb)} (≥ ₹${fmt(min)})` : `Need ₹${fmt(min - totalAmount)} more for cashback` }],
+      targets,
       summary: `Cashback: ₹${fmt(earned)}`,
     };
   }
   if (kind === "custom") {
     const groups: any[] = config?.groups || [];
-    const rep: any[] = [];
+    const rep: Achieved[] = [];
+    const targets: Target[] = [];
     let totalFree = 0;
     for (const g of groups) {
       const patterns: string[] = String(g.patterns || "")
@@ -163,10 +193,22 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
           ? `Total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
           : `Total ${groupQty} qty [${matchedNames}] — below first slab`,
       });
+      const nextSlab = slabs.find((s: any) => groupQty < Number(s.minQty));
+      if (nextSlab) {
+        const gap = Number(nextSlab.minQty) - groupQty;
+        targets.push({
+          item: `${g.name || "Group"} → ${freeProd}`,
+          have: groupQty,
+          need: Number(nextSlab.minQty),
+          gap,
+          reward: `${nextSlab.free} free`,
+          note: `Buy ${gap} more ${g.name || "units"} to unlock`,
+        });
+      }
     }
-    return { rep, summary: `Total free items: ${totalFree}` };
+    return { rep, targets, summary: `Total free items: ${totalFree}` };
   }
-  return { rep: [], summary: "" };
+  return { rep: [], targets: [], summary: "" };
   void totalMrp;
 }
 
@@ -489,29 +531,79 @@ const AdminSchemeCalculator = () => {
                   {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
                 </span>
               </div>
+              <MonthProgress period={activeScheme.period} />
               {report.rep.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Add items to see eligibility.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="w-24">Qty</TableHead>
-                      <TableHead className="w-28">Free</TableHead>
-                      <TableHead>Rule</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.rep.map((f, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{f.item}</TableCell>
-                        <TableCell>{f.qty}</TableCell>
-                        <TableCell className="font-semibold text-primary">{f.free}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{f.note}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {/* Achieved */}
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">✓ Achieved Schemes</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0)} free unlocked
+                      </span>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="w-16">Qty</TableHead>
+                          <TableHead className="w-16">Free</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.rep.map((f: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-sm">
+                              <div>{f.item}</div>
+                              <div className="text-xs text-muted-foreground">{f.note}</div>
+                            </TableCell>
+                            <TableCell>{f.qty}</TableCell>
+                            <TableCell className="font-semibold text-emerald-600">{f.free}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Targets */}
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">⏳ Target Reminders</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {(report as any).targets?.length || 0} pending
+                      </span>
+                    </div>
+                    {!(report as any).targets || (report as any).targets.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">All available slabs are unlocked. Nothing more to chase.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead className="w-20">Have / Need</TableHead>
+                            <TableHead className="w-20">Buy more</TableHead>
+                            <TableHead className="w-24">Reward</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(report as any).targets.map((t: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-sm">
+                                <div>{t.item}</div>
+                                {t.note && <div className="text-xs text-muted-foreground">{t.note}</div>}
+                              </TableCell>
+                              <TableCell className="text-sm">{t.have} / {t.need}</TableCell>
+                              <TableCell className="font-semibold text-amber-600">{t.gap}</TableCell>
+                              <TableCell className="text-sm">{t.reward}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </div>
               )}
               <div className="mt-3 rounded bg-muted/50 p-3 text-sm">{report.summary}</div>
             </section>
@@ -540,6 +632,42 @@ const AdminSchemeCalculator = () => {
 };
 
 /* -------------------- Scheme config editor -------------------- */
+
+function MonthProgress({ period }: { period: Period }) {
+  const now = new Date();
+  let start: Date, end: Date, label: string;
+  if (period === "monthly") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    label = start.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  } else if (period === "quarterly") {
+    const q = Math.floor(now.getMonth() / 3);
+    start = new Date(now.getFullYear(), q * 3, 1);
+    end = new Date(now.getFullYear(), q * 3 + 3, 0);
+    label = `Q${q + 1} ${now.getFullYear()}`;
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31);
+    label = String(now.getFullYear());
+  }
+  const total = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+  const elapsed = Math.max(0, Math.min(total, Math.round((now.getTime() - start.getTime()) / 86400000) + 1));
+  const remaining = Math.max(0, total - elapsed);
+  const pct = Math.round((elapsed / total) * 100);
+  return (
+    <div className="mb-3 rounded-md border bg-background p-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium">{label} · {period}</span>
+        <span className="text-muted-foreground">
+          Day {elapsed} of {total} · <span className="font-semibold text-foreground">{remaining} days left</span>
+        </span>
+      </div>
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
 
 function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; config: any }; onChange: (c: any) => void }) {
   const { kind, config } = scheme;
