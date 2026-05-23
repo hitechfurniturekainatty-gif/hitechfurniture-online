@@ -195,8 +195,11 @@ const AdminProducts = () => {
       g.amount += unit * (Number(p.stock_quantity) || 0);
       groups.set(key, g);
     }
-    return Array.from(groups.values()).sort((a, b) => b.amount - a.amount);
-  }, [products, mainCats]);
+    let list = Array.from(groups.values());
+    if (stockFilter === "with_stock") list = list.filter((g) => g.qty > 1);
+    if (stockFilter === "without_stock") list = list.filter((g) => g.qty <= 1);
+    return list.sort((a, b) => b.amount - a.amount);
+  }, [products, mainCats, stockFilter]);
   const stockTotals = useMemo(
     () => stockByCategory.reduce(
       (a, g) => ({ qty: a.qty + g.qty, amount: a.amount + g.amount }),
