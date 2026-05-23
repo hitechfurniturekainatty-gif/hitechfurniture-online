@@ -742,6 +742,22 @@ const AdminSchemeCalculator = () => {
                     ))}
                   </div>
                 </div>
+                {vendor && (
+                  <div>
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">&nbsp;</Label>
+                    <div>
+                      <DownloadShareMenu
+                        label="Share"
+                        triggerSize="sm"
+                        busy={exporting}
+                        onPdf={() => exportPdf(false)}
+                        onJpg={() => exportJpg(true)}
+                        pdfTooltip="PDF — download full report"
+                        jpgTooltip="JPG — share via WhatsApp / others"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -753,7 +769,11 @@ const AdminSchemeCalculator = () => {
             ) : loading ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : mode === "monthly" ? (
-              <div className="space-y-4">
+              <div ref={reportRef} className="space-y-4 bg-background p-2">
+                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
+                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
+                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · Monthly</div>
+                </div>
                 {months.map((m) => (
                   <MonthBlock
                     key={m.month}
@@ -766,7 +786,11 @@ const AdminSchemeCalculator = () => {
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div ref={reportRef} className="space-y-4 bg-background p-2">
+                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
+                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
+                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · {mode}</div>
+                </div>
                 <AggregatedView
                   mode={mode}
                   fy={fy}
