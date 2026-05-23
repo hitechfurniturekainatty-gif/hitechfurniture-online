@@ -549,6 +549,21 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
   useEffect(() => { if (isCurrent) setOpen(true); }, [isCurrent]);
 
+  const invoices: Invoice[] = vm.invoices && vm.invoices.length
+    ? vm.invoices
+    : (vm.purchase_rows.length ? [{ id: "legacy", label: "Invoice 1", rows: vm.purchase_rows }] : []);
+  const flatRows: Row[] = invoices.flatMap((inv) => inv.rows);
+
+  const setInvoices = (next: Invoice[]) => {
+    const flat = next.flatMap((inv) => inv.rows);
+    onChange({ invoices: next, purchase_rows: flat });
+  };
+  const updateInvoice = (id: string, patch: Partial<Invoice>) => {
+    setInvoices(invoices.map((inv) => (inv.id === id ? { ...inv, ...patch } : inv)));
+  };
+  const removeInvoice = (id: string) => setInvoices(invoices.filter((inv) => inv.id !== id));
+  const addEmptyInvoice = () => setInvoices([...invoices, { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: [] }]);
+
   const report = useMemo(
     () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
     [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]
