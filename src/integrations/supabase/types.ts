@@ -1615,6 +1615,44 @@ export type Database = {
         }
         Relationships: []
       }
+      scheme_party_notes: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          file_type: string
+          file_url: string
+          id: string
+          party_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_type?: string
+          file_url: string
+          id?: string
+          party_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          party_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_party_notes_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "scheme_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheme_rules: {
         Row: {
           config: Json
