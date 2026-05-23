@@ -806,15 +806,27 @@ const AdminSchemeCalculator = () => {
                 {vendor && (
                   <div>
                     <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">&nbsp;</Label>
-                    <div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={exportCsv}
+                        disabled={exporting}
+                        className="gap-1"
+                      >
+                        <FileText className="h-4 w-4" /> CSV
+                      </Button>
                       <DownloadShareMenu
                         label="Share"
                         triggerSize="sm"
                         busy={exporting}
                         onPdf={() => exportPdf(false)}
-                        onJpg={() => exportJpg(true)}
+                        onJpg={() => exportJpg(false)}
+                        onShareLink={() => exportJpg(true)}
                         pdfTooltip="PDF — download full report"
-                        jpgTooltip="JPG — share via WhatsApp / others"
+                        jpgTooltip="JPG — download image"
+                        linkTooltip="Share — open WhatsApp / share sheet with JPG"
                       />
                     </div>
                   </div>
