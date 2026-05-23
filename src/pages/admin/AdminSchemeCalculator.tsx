@@ -620,6 +620,67 @@ const AdminSchemeCalculator = () => {
       toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
     } finally { setExporting(false); }
   };
+
+  const exportCsv = async () => {
+    if (!vendor) { toast({ title: "Pick a vendor first" }); return; }
+    setExporting(true);
+    try {
+      const esc = (v: any) => {
+        const s = v == null ? "" : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines: string[] = [];
+      lines.push(`Vendor,${esc(vendor.name)}${vendor.place ? ` — ${vendor.place}` : ""}`);
+      lines.push(`FY,${fy}-${String(fy + 1).slice(-2)}`);
+      lines.push(`Timeline,${mode}`);
+      lines.push("");
+
+      // Monthly summary
+      lines.push(["Month", "Year", "Scheme", "Total Qty", "Total Amount", "Free Units", "Achievement %"].join(","));
+      let tQty = 0, tAmt = 0, tFree = 0;
+      months.forEach((m) => {
+        const flat = m.invoices?.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+        const agg = aggregateRowsByItem(flat);
+        const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, agg) as any;
+        const free = (rep.rep || []).reduce((s: number, x: any) => s + (x.free || 0), 0);
+        const qty = flat.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+        const amt = flat.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+        const pct = computeAchievementPct({ kind: m.scheme_kind, config: m.scheme_config }, agg);
+        tQty += qty; tAmt += amt; tFree += free;
+        lines.push([
+          MONTH_NAME[m.month],
+          fyCalendarYear(fy, m.month),
+          m.scheme_kind,
+          qty,
+          amt.toFixed(2),
+          free,
+          `${pct}%`,
+        ].map(esc).join(","));
+      });
+      lines.push(["TOTAL", "", "", tQty, tAmt.toFixed(2), tFree, ""].map(esc).join(","));
+      lines.push("");
+
+      // Itemized rows
+      lines.push(["Month", "Invoice", "Invoice No", "Date", "Item", "Qty", "Price", "Amount (incl tax)", "MRP"].join(","));
+      months.forEach((m) => {
+        const mLabel = `${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}`;
+        const invs = m.invoices?.length ? m.invoices : (m.purchase_rows.length ? [{ id: "", label: "Invoice", rows: m.purchase_rows } as Invoice] : []);
+        invs.forEach((inv) => {
+          inv.rows.forEach((r) => {
+            lines.push([
+              mLabel, inv.label || "", inv.invoice_no || "", inv.date || "",
+              r.item, r.qty, r.price, r.amountWithTax, r.mrp,
+            ].map(esc).join(","));
+          });
+        });
+      });
+
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      downloadBlob(blob, `${baseFileName()}.csv`);
+    } catch (e: any) {
+      toast({ title: "CSV export failed", description: e?.message ?? String(e), variant: "destructive" });
+    } finally { setExporting(false); }
+  };
   const filteredParties = useMemo(() => {
     const q = vendorQuery.trim().toLowerCase();
     if (!q) return parties.slice(0, 30);
