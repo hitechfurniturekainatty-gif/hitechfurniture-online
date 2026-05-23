@@ -135,6 +135,22 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
       summary: `Cashback: ₹${fmt(earned)}`,
     };
   }
+  if (kind === "custom") {
+    const rules: any[] = config?.rules || [];
+    const rep = live.map((r) => {
+      const name = (r.item || "").toLowerCase();
+      const match = rules.find((u) => {
+        const p = String(u.product || "").trim().toLowerCase();
+        return p && name.includes(p);
+      });
+      if (!match) return { item: r.item, qty: r.qty, free: 0, note: "No matching custom rule" };
+      const buy = Math.max(1, Number(match.buyQty) || 1);
+      const get = Math.max(0, Number(match.freeQty) || 0);
+      const free = Math.floor(r.qty / buy) * get;
+      return { item: r.item, qty: r.qty, free, note: `Buy ${buy} → ${get} free (matches "${match.product}")` };
+    });
+    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+  }
   return { rep: [], summary: "" };
   void totalMrp;
 }
