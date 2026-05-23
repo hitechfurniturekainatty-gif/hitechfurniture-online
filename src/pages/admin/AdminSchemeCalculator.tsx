@@ -601,8 +601,9 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
         const price = Number(it.unit_price) || 0;
         return { id: crypto.randomUUID(), item: [it.description, it.measurement].filter(Boolean).join(" — "), qty, price, amountWithTax: price * qty, mrp: price };
       });
-      onChange({ purchase_rows: [...vm.purchase_rows, ...parsed], purchases_text: paste });
-      toast({ title: `Added ${parsed.length} rows to ${monthLabel}` });
+      const newInv: Invoice = { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: parsed };
+      setInvoices([...invoices, newInv]);
+      toast({ title: `Added ${parsed.length} rows as ${newInv.label}` });
       setPaste("");
     } catch (e: any) {
       toast({ title: "Extract failed", description: e?.message || String(e), variant: "destructive" });
