@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2, FileText, Receipt, Sparkles } from "lucide-react";
+import { Loader2, Plus, Trash2, Upload, Save, Pencil, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, CheckCircle2, FileText, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -1088,7 +1088,6 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
   const [date, setDate] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [paste, setPaste] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
 
   useEffect(() => {
     if (!invoice) return;
@@ -1113,31 +1112,6 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
   };
 
   const parseLocal = (mode: "append" | "replace") => append(parseInvoiceText(paste), mode);
-
-  const parseAi = async (mode: "append" | "replace") => {
-    if (!paste.trim()) return;
-    setAiBusy(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("bulk-extract-items", { body: { text: paste, kind: "quotation" } });
-      if (error) throw error;
-      const items: any[] = data?.items || [];
-      const parsed: Row[] = items.map((it) => {
-        const qty = Number(it.quantity) || 1;
-        const price = Number(it.unit_price) || 0;
-        return {
-          id: crypto.randomUUID(),
-          item: [it.description, it.measurement].filter(Boolean).join(" — "),
-          qty,
-          price,
-          amountWithTax: price * qty,
-          mrp: 0,
-        };
-      });
-      append(parsed, mode);
-    } catch (e: any) {
-      toast({ title: "AI extract failed", description: e?.message || String(e), variant: "destructive" });
-    } finally { setAiBusy(false); }
-  };
 
   const onFile = async (file: File | null) => {
     if (!file) return;
@@ -1207,9 +1181,6 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
             </Button>
             <Button size="sm" variant="outline" onClick={() => parseLocal("replace")} disabled={!paste.trim()}>
               Parse & replace
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => parseAi("append")} disabled={!paste.trim() || aiBusy}>
-              {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} AI extract (append)
             </Button>
           </div>
         </div>
