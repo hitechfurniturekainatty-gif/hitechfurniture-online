@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SchemePartyNotesButton } from "@/components/admin/SchemePartyNotesButton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { downloadBlob } from "@/lib/downloadBlob";
+import { shareFilesNative } from "@/lib/nativeShare";
 
 type Row = {
   id: string;
