@@ -406,6 +406,20 @@ const AdminSchemeCalculator = () => {
                 </div>
               </div>
 
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <Label className="text-xs">Cycle start date</Label>
+                  <Input
+                    type="date"
+                    value={activeScheme.config?.cycleStart || ""}
+                    onChange={(e) => setActiveScheme((s) => ({ ...s, config: { ...s.config, cycleStart: e.target.value } }))}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Defaults to start of current {activeScheme.period === "monthly" ? "month" : activeScheme.period === "quarterly" ? "quarter" : "year"}.
+                  </p>
+                </div>
+              </div>
+
               <SchemeConfigEditor scheme={activeScheme} onChange={(config) => setActiveScheme((s) => ({ ...s, config }))} />
 
               <div className="flex flex-wrap items-end gap-2">
@@ -531,7 +545,7 @@ const AdminSchemeCalculator = () => {
                   {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
                 </span>
               </div>
-              <MonthProgress period={activeScheme.period} />
+              <MonthProgress period={activeScheme.period} cycleStart={activeScheme.config?.cycleStart} />
               {report.rep.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Add items to see eligibility.</p>
               ) : (
@@ -633,10 +647,18 @@ const AdminSchemeCalculator = () => {
 
 /* -------------------- Scheme config editor -------------------- */
 
-function MonthProgress({ period }: { period: Period }) {
+function MonthProgress({ period, cycleStart }: { period: Period; cycleStart?: string }) {
   const now = new Date();
   let start: Date, end: Date, label: string;
-  if (period === "monthly") {
+  if (cycleStart) {
+    start = new Date(cycleStart + "T00:00:00");
+    end = new Date(start);
+    if (period === "monthly") end.setMonth(end.getMonth() + 1);
+    else if (period === "quarterly") end.setMonth(end.getMonth() + 3);
+    else end.setFullYear(end.getFullYear() + 1);
+    end.setDate(end.getDate() - 1);
+    label = `${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
+  } else if (period === "monthly") {
     start = new Date(now.getFullYear(), now.getMonth(), 1);
     end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     label = start.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
