@@ -547,6 +547,27 @@ function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; 
       <div><Label className="text-xs">Cashback ₹</Label><Input type="number" value={config.cashback} onChange={(e) => set({ cashback: Number(e.target.value) || 0 })} className="w-32" /></div>
     </div>
   );
+  if (kind === "custom") {
+    const rules: any[] = config.rules || [];
+    const update = (i: number, patch: any) => { const arr = rules.slice(); arr[i] = { ...arr[i], ...patch }; set({ rules: arr }); };
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">Per-product rules — matched against item name (case-insensitive substring)</Label>
+        <div className="grid grid-cols-[1fr_90px_90px_40px] gap-2 text-xs text-muted-foreground">
+          <div>Product (name contains)</div><div>Buy qty</div><div>Free qty</div><div></div>
+        </div>
+        {rules.map((u, i) => (
+          <div key={i} className="grid grid-cols-[1fr_90px_90px_40px] gap-2">
+            <Input value={u.product} onChange={(e) => update(i, { product: e.target.value })} placeholder="e.g. Sofa" />
+            <Input type="number" value={u.buyQty} onChange={(e) => update(i, { buyQty: Number(e.target.value) || 1 })} />
+            <Input type="number" value={u.freeQty} onChange={(e) => update(i, { freeQty: Number(e.target.value) || 0 })} />
+            <Button size="icon" variant="ghost" onClick={() => set({ rules: rules.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          </div>
+        ))}
+        <Button size="sm" variant="outline" onClick={() => set({ rules: [...rules, { product: "", buyQty: 10, freeQty: 1 }] })}><Plus className="h-4 w-4" /> Add product rule</Button>
+      </div>
+    );
+  }
   return null;
 }
 
