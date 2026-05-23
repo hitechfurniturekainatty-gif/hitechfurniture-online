@@ -445,10 +445,15 @@ export default function AdminReceivables() {
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Outstanding Amount</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {tab === "open" ? "Total Pending Amount" : "Total Closed Amount"}
+            </p>
             <p className="font-display text-2xl md:text-3xl font-semibold tabular-nums">{fmtAmount(total)}</p>
           </div>
-          <p className="text-sm text-muted-foreground">{rows.length} record{rows.length === 1 ? "" : "s"} saved</p>
+          <p className="text-sm text-muted-foreground">
+            {visibleRows.length} record{visibleRows.length === 1 ? "" : "s"} ·{" "}
+            <span className="text-foreground">{openCount} open</span> · {closedCount} closed
+          </p>
         </CardContent>
       </Card>
 
@@ -531,15 +536,27 @@ export default function AdminReceivables() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <div>
-            <CardTitle className="text-base">Saved receivables</CardTitle>
+            <CardTitle className="text-base">Customer follow-ups</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              {rows.length} record{rows.length === 1 ? "" : "s"} · Pending total: <span className="font-semibold text-foreground">{fmtAmount(total)}</span>
+              {visibleRows.length} record{visibleRows.length === 1 ? "" : "s"} · Total: <span className="font-semibold text-foreground">{fmtAmount(total)}</span>
               {selected.size > 0 && <> · <span className="font-medium text-foreground">{selected.size} selected</span></>}
             </p>
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as "open" | "closed"); setSelected(new Set()); }} className="mt-2">
+              <TabsList className="h-8">
+                <TabsTrigger value="open" className="text-xs h-7">Open ({openCount})</TabsTrigger>
+                <TabsTrigger value="closed" className="text-xs h-7">Closed ({closedCount})</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" className="gap-1" onClick={exportCSV} disabled={rows.length === 0}>
-              <Download className="h-4 w-4" /> Export CSV
+            <Button size="sm" variant="outline" className="gap-1" onClick={copyAll} disabled={visibleRows.length === 0}>
+              <Copy className="h-4 w-4" /> Copy all
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={exportCSV} disabled={visibleRows.length === 0}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={exportPDF} disabled={visibleRows.length === 0}>
+              <FileText className="h-4 w-4" /> PDF
             </Button>
             {selected.size > 0 && (
               <AlertDialog>
@@ -584,8 +601,10 @@ export default function AdminReceivables() {
         <CardContent className="px-0 sm:px-6">
           {loadingRows ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-          ) : rows.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm text-muted-foreground">No saved records yet.</p>
+          ) : visibleRows.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+              {tab === "open" ? "No open receivables." : "No closed customers yet."}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -599,11 +618,11 @@ export default function AdminReceivables() {
                     <TableHead>Customer Details</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-32 text-right">Actions</TableHead>
+                    <TableHead className="w-56 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r, idx) => (
+                  {visibleRows.map((r, idx) => (
                     <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
                       <TableCell>
                         <Checkbox
@@ -625,12 +644,27 @@ export default function AdminReceivables() {
                       <TableCell className="text-right font-semibold tabular-nums">{fmtAmount(Number(r.pending_amount))}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => copyOne(r)} title="Copy line">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 text-amber-600" onClick={() => setNoteFor(r)} title="Call notes">
+                            <StickyNote className="h-4 w-4" />
+                          </Button>
                           <Button size="icon" variant="default" className="h-9 w-9" disabled={!r.phone} onClick={() => callPhone(r.phone!)} title="Call">
                             <Phone className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="outline" className="h-9 w-9 text-emerald-600 hover:text-emerald-700" disabled={!r.phone} onClick={() => wa(r.phone!, Number(r.pending_amount))} title="WhatsApp">
                             <MessageCircle className="h-4 w-4" />
                           </Button>
+                          {tab === "open" ? (
+                            <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-600 hover:text-emerald-700" onClick={() => closeRow(r.id)} title="Mark as closed (paid)">
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button size="icon" variant="ghost" className="h-9 w-9 text-primary" onClick={() => reopenRow(r.id)} title="Reopen">
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => deleteOne(r.id)} title="Remove">
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -644,6 +678,13 @@ export default function AdminReceivables() {
           )}
         </CardContent>
       </Card>
+
+      <ReceivableCallLogWindow
+        open={!!noteFor}
+        receivableId={noteFor?.id ?? null}
+        title={noteFor ? [noteFor.bill_no, noteFor.customer_name].filter(Boolean).join(" · ") : ""}
+        onClose={() => setNoteFor(null)}
+      />
     </div>
   );
 }
