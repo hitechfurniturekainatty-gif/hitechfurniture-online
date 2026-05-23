@@ -1052,7 +1052,6 @@ function LivePerformancePanel({ fy, months, mode }: { fy: number; months: Vendor
 
 function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; months: VendorMonth[] }) {
   const buckets = useMemo(() => {
-    void 0;
     if (mode === "yearly") return [{ label: `FY ${fy}–${String(fy + 1).slice(-2)}`, months }];
     if (mode === "quarterly") {
       const order = [[4, 5, 6], [7, 8, 9], [10, 11, 12], [1, 2, 3]];
