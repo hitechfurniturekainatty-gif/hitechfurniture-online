@@ -916,11 +916,12 @@ function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; 
   return SchemeConfigEditorImpl({ scheme, onChange });
 }
 
-function InvoiceCard({ index, invoice, onChange, onRemove }: {
+function InvoiceCard({ index, invoice, onChange, onRemove, onEdit }: {
   index: number;
   invoice: Invoice;
   onChange: (patch: Partial<Invoice>) => void;
   onRemove: () => void;
+  onEdit: () => void;
 }) {
   const rows = invoice.rows;
   const totalCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
@@ -941,7 +942,6 @@ function InvoiceCard({ index, invoice, onChange, onRemove }: {
     onChange({ rows: next });
   };
   const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
-  const addRow = () => onChange({ rows: [...rows, { id: crypto.randomUUID(), item: "", qty: 1, price: 0, amountWithTax: 0, mrp: 0 }] });
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm">
@@ -968,9 +968,11 @@ function InvoiceCard({ index, invoice, onChange, onRemove }: {
           className="h-8 max-w-[150px] text-xs"
         />
         <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={addRow}><Plus className="h-3.5 w-3.5" /> Row</Button>
-          <Button size="icon" variant="ghost" onClick={onRemove} title="Remove invoice">
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button size="sm" variant="outline" onClick={onEdit} title="Edit invoice (re-paste / add items)">
+            <Pencil className="h-3.5 w-3.5" /> Edit
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onRemove} title="Delete invoice" className="text-destructive hover:text-destructive">
+            <Trash2 className="h-3.5 w-3.5" /> Delete
           </Button>
         </div>
       </div>
@@ -1041,6 +1043,205 @@ function InvoiceCard({ index, invoice, onChange, onRemove }: {
         <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
       </div>
     </div>
+  );
+}
+
+/* -------------------- Invoice add/edit dialog -------------------- */
+
+function InvoiceDialog({ open, invoice, onClose, onSave }: {
+  open: boolean;
+  invoice: Invoice | null;
+  onClose: () => void;
+  onSave: (inv: Invoice) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [date, setDate] = useState("");
+  const [rows, setRows] = useState<Row[]>([]);
+  const [paste, setPaste] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+
+  useEffect(() => {
+    if (!invoice) return;
+    setLabel(invoice.label || "");
+    setInvoiceNo(invoice.invoice_no || "");
+    setDate(invoice.date || "");
+    setRows(invoice.rows ? invoice.rows.map((r) => ({ ...r })) : []);
+    setPaste("");
+  }, [invoice, open]);
+
+  if (!invoice) return null;
+
+  const totalCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrpValue = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const avgDiscount = totalMrpValue > 0 ? ((totalMrpValue - totalCost) / totalMrpValue) * 100 : 0;
+
+  const append = (extra: Row[], mode: "append" | "replace") => {
+    if (!extra.length) { toast({ title: "No rows found in pasted text", variant: "destructive" }); return; }
+    setRows(mode === "replace" ? extra : [...rows, ...extra]);
+    setPaste("");
+    toast({ title: `${mode === "replace" ? "Replaced with" : "Added"} ${extra.length} rows` });
+  };
+
+  const parseLocal = (mode: "append" | "replace") => append(parseInvoiceText(paste), mode);
+
+  const parseAi = async (mode: "append" | "replace") => {
+    if (!paste.trim()) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("bulk-extract-items", { body: { text: paste, kind: "quotation" } });
+      if (error) throw error;
+      const items: any[] = data?.items || [];
+      const parsed: Row[] = items.map((it) => {
+        const qty = Number(it.quantity) || 1;
+        const price = Number(it.unit_price) || 0;
+        return {
+          id: crypto.randomUUID(),
+          item: [it.description, it.measurement].filter(Boolean).join(" — "),
+          qty,
+          price,
+          amountWithTax: price * qty,
+          mrp: 0,
+        };
+      });
+      append(parsed, mode);
+    } catch (e: any) {
+      toast({ title: "AI extract failed", description: e?.message || String(e), variant: "destructive" });
+    } finally { setAiBusy(false); }
+  };
+
+  const onFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const txt = await file.text();
+      setPaste(txt);
+      toast({ title: `Loaded ${file.name}` });
+    } catch (e: any) {
+      toast({ title: "File read failed", description: e?.message || String(e), variant: "destructive" });
+    }
+  };
+
+  const updateRow = (id: string, patch: Partial<Row>) => {
+    setRows(rows.map((r) => {
+      if (r.id !== id) return r;
+      const merged = { ...r, ...patch };
+      if ((patch.qty !== undefined || patch.price !== undefined) && patch.amountWithTax === undefined) {
+        merged.amountWithTax = (Number(merged.qty) || 0) * (Number(merged.price) || 0);
+      }
+      return merged;
+    }));
+  };
+  const addBlankRow = () => setRows([...rows, { id: crypto.randomUUID(), item: "", qty: 1, price: 0, amountWithTax: 0, mrp: 0 }]);
+  const removeRow = (id: string) => setRows(rows.filter((r) => r.id !== id));
+
+  const commit = () => {
+    onSave({ ...invoice, label: label.trim() || invoice.label, invoice_no: invoiceNo, date, rows });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> {invoice.rows.length ? "Edit invoice" : "Add invoice"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label className="text-xs">Label</Label>
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Invoice 1" />
+          </div>
+          <div>
+            <Label className="text-xs">Invoice no.</Label>
+            <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="e.g. INV/2025/001" />
+          </div>
+          <div>
+            <Label className="text-xs">Date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label className="text-xs font-semibold">
+              Bulk paste — strict 4-column format: <span className="font-mono">Item · Qty · Unit Price · Total Cost (incl. tax)</span>
+            </Label>
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs hover:bg-accent">
+              <Upload className="h-3.5 w-3.5" /> Upload .csv/.txt
+              <input type="file" accept=".csv,.txt,.tsv,text/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+          <Textarea rows={5} value={paste} onChange={(e) => setPaste(e.target.value)}
+            placeholder={"Tabs / pipes / commas / spaces all OK. Examples:\nComfobond 75x60x6\t10\t1250\t12500\nComfobond 72x60x6,10,1180,11800"} />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => parseLocal("append")} disabled={!paste.trim()}>
+              <Plus className="h-3.5 w-3.5" /> Parse & append
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => parseLocal("replace")} disabled={!paste.trim()}>
+              Parse & replace
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => parseAi("append")} disabled={!paste.trim() || aiBusy}>
+              {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} AI extract (append)
+            </Button>
+          </div>
+        </div>
+
+        <div className="max-h-[40vh] overflow-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="min-w-[200px]">Item Name</TableHead>
+                <TableHead className="w-20">Qty</TableHead>
+                <TableHead className="w-28">Unit Price</TableHead>
+                <TableHead className="w-32">Total Cost</TableHead>
+                <TableHead className="w-28">MRP / Unit</TableHead>
+                <TableHead className="w-24 text-right">Discount %</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">No rows yet — paste above or add manually.</TableCell></TableRow>
+              )}
+              {rows.map((r) => {
+                const mrpVal = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
+                const disc = mrpVal > 0 ? ((mrpVal - (Number(r.amountWithTax) || 0)) / mrpVal) * 100 : 0;
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell><Input value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-8" /></TableCell>
+                    <TableCell><Input type="number" min={0} value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
+                    <TableCell><Input type="number" min={0} value={r.price} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
+                    <TableCell><Input type="number" min={0} value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
+                    <TableCell>
+                      <Input type="number" min={0} value={r.mrp || ""} placeholder="—"
+                        onChange={(e) => updateRow(r.id, { mrp: Number(e.target.value) || 0 })} className="h-8" />
+                    </TableCell>
+                    <TableCell className={`text-right text-sm font-semibold ${r.mrp > 0 ? (disc > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400") : "text-muted-foreground"}`}>
+                      {r.mrp > 0 ? `${disc.toFixed(2)}%` : "—"}
+                    </TableCell>
+                    <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 p-2 text-xs">
+          <Button size="sm" variant="ghost" onClick={addBlankRow}><Plus className="h-3.5 w-3.5" /> Add row manually</Button>
+          <div className="ml-auto flex flex-wrap items-center gap-4">
+            <Stat label="Rows" value={String(rows.length)} />
+            <Stat label="Total Cost" value={`₹${fmt(totalCost)}`} />
+            <Stat label="Total MRP" value={`₹${fmt(totalMrpValue)}`} />
+            <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={commit}><Save className="h-4 w-4" /> Save invoice</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
