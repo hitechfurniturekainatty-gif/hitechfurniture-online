@@ -573,7 +573,154 @@ const AdminProducts = () => {
         </div>
       )}
 
-      {viewMode === "list" ? (
+      {viewMode === "stock" ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3 sm:px-5">
+              <div>
+                <p className="font-display text-base sm:text-lg">Closing Stock by Category</p>
+                <p className="text-xs text-muted-foreground">Valuation uses cost price (fallback: offer / MRP).</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-right">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Qty</p>
+                  <p className="font-display text-lg sm:text-xl">{stockTotals.qty}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Value</p>
+                  <p className="font-display text-lg text-primary sm:text-xl">{formatINR(stockTotals.amount)}</p>
+                </div>
+                <div className="inline-flex rounded-md border bg-background p-0.5">
+                  <Button type="button" size="sm" variant={stockItemView === "grid" ? "default" : "ghost"} onClick={() => setStockItemView("grid")} className="h-7 gap-1 px-2 text-xs"><LayoutGrid className="h-3 w-3" /></Button>
+                  <Button type="button" size="sm" variant={stockItemView === "list" ? "default" : "ghost"} onClick={() => setStockItemView("list")} className="h-7 gap-1 px-2 text-xs"><ListIcon className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            </div>
+            {stockByCategory.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground">No stock data yet.</div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {stockByCategory.map((g) => {
+                  const open = expandedCats.has(g.id);
+                  return (
+                    <li key={g.id}>
+                      <button
+                        type="button"
+                        onClick={() => toggleCat(g.id)}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40 sm:px-5"
+                      >
+                        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{toTitleCase(g.name)}</p>
+                          <p className="text-xs text-muted-foreground">{g.items.length} {g.items.length === 1 ? "product" : "products"}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Qty</p>
+                          <p className="font-display text-base">{g.qty}</p>
+                        </div>
+                        <div className="w-28 text-right sm:w-36">
+                          <p className="text-xs text-muted-foreground">Value</p>
+                          <p className="font-display text-base text-primary">{formatINR(g.amount)}</p>
+                        </div>
+                      </button>
+                      {open && (
+                        <div className="border-t bg-muted/20 px-3 py-3 sm:px-5 sm:py-4">
+                          {g.items.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No items.</p>
+                          ) : stockItemView === "grid" ? (
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                              {g.items.map((p) => {
+                                const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+                                const unit = Number(p.cost_price ?? p.offer_price ?? p.mrp ?? 0);
+                                const isLow = p.stock_quantity <= (p.reorder_level ?? 5);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={p.id}
+                                    onClick={() => openEdit(p)}
+                                    className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-shadow hover:shadow-md"
+                                  >
+                                    <div className="relative aspect-square bg-muted">
+                                      {cover ? (
+                                        <img src={cover} alt={p.product_name} className="h-full w-full object-contain p-2" />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No image</div>
+                                      )}
+                                      {isLow && (
+                                        <Badge variant="destructive" className="absolute right-2 top-2 gap-0.5 text-[10px]">
+                                          <AlertTriangle className="h-2.5 w-2.5" />
+                                          {p.stock_quantity === 0 ? "Out" : "Low"}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-1 flex-col gap-0.5 p-3">
+                                      <p className="line-clamp-2 text-sm font-medium leading-snug">{toTitleCase(p.product_name)}</p>
+                                      <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
+                                      <div className="mt-1 flex items-end justify-between gap-2">
+                                        <div>
+                                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Qty</p>
+                                          <p className="font-display text-base">{p.stock_quantity}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Value</p>
+                                          <p className="font-display text-sm text-primary">{formatINR(unit * (p.stock_quantity || 0))}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <ul className="divide-y divide-border rounded-lg border bg-card">
+                              {g.items.map((p) => {
+                                const cover = p.product_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
+                                const unit = Number(p.cost_price ?? p.offer_price ?? p.mrp ?? 0);
+                                const isLow = p.stock_quantity <= (p.reorder_level ?? 5);
+                                return (
+                                  <li key={p.id}>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEdit(p)}
+                                      className="flex w-full items-center gap-3 p-3 text-left hover:bg-accent/40"
+                                    >
+                                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                                        {cover ? <img src={cover} alt="" className="h-full w-full object-contain p-1" /> : null}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">{toTitleCase(p.product_name)}</p>
+                                        <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
+                                      </div>
+                                      {isLow && (
+                                        <Badge variant="destructive" className="shrink-0 gap-0.5 text-[10px]">
+                                          <AlertTriangle className="h-2.5 w-2.5" />
+                                          {p.stock_quantity === 0 ? "Out" : "Low"}
+                                        </Badge>
+                                      )}
+                                      <div className="w-14 shrink-0 text-right">
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Qty</p>
+                                        <p className="font-display text-sm">{p.stock_quantity}</p>
+                                      </div>
+                                      <div className="w-24 shrink-0 text-right sm:w-32">
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Value</p>
+                                        <p className="font-display text-sm text-primary">{formatINR(unit * (p.stock_quantity || 0))}</p>
+                                      </div>
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : viewMode === "list" ? (
       <Card>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
