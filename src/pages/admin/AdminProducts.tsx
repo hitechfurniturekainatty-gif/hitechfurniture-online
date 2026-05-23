@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
@@ -112,10 +112,12 @@ const AdminProducts = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+  const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
-    return (localStorage.getItem("admin_products_view") as "list" | "grid") || "list";
+    return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "list";
   });
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const [stockItemView, setStockItemView] = useState<"grid" | "list">("grid");
   useEffect(() => {
     try { localStorage.setItem("admin_products_view", viewMode); } catch {}
   }, [viewMode]);
@@ -175,6 +177,38 @@ const AdminProducts = () => {
     () => products.filter((p) => selected.has(p.id)),
     [products, selected],
   );
+
+  // Closing stock — group by main category. Unit value uses cost_price
+  // when set, otherwise falls back to offer_price/MRP so the figure is
+  // never zero just because cost isn't entered.
+  const stockByCategory = useMemo(() => {
+    const catName = (id: string) =>
+      mainCats.find((c) => c.id === id)?.name || "Uncategorised";
+    const groups = new Map<string, { id: string; name: string; items: Product[]; qty: number; amount: number }>();
+    for (const p of products) {
+      const key = p.main_category_id || "__none";
+      const g = groups.get(key) ?? { id: key, name: catName(p.main_category_id), items: [], qty: 0, amount: 0 };
+      const unit = Number(p.cost_price ?? p.offer_price ?? p.mrp ?? 0);
+      g.items.push(p);
+      g.qty += Number(p.stock_quantity) || 0;
+      g.amount += unit * (Number(p.stock_quantity) || 0);
+      groups.set(key, g);
+    }
+    return Array.from(groups.values()).sort((a, b) => b.amount - a.amount);
+  }, [products, mainCats]);
+  const stockTotals = useMemo(
+    () => stockByCategory.reduce(
+      (a, g) => ({ qty: a.qty + g.qty, amount: a.amount + g.amount }),
+      { qty: 0, amount: 0 },
+    ),
+    [stockByCategory],
+  );
+  const toggleCat = (id: string) =>
+    setExpandedCats((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
