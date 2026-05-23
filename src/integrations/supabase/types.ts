@@ -1490,10 +1490,44 @@ export type Database = {
           },
         ]
       }
+      receivable_call_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+          receivable_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note: string
+          receivable_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          receivable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_call_logs_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receivables: {
         Row: {
           batch: number
           bill_no: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
           customer_name: string | null
@@ -1508,6 +1542,8 @@ export type Database = {
         Insert: {
           batch?: number
           bill_no?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_name?: string | null
@@ -1522,6 +1558,8 @@ export type Database = {
         Update: {
           batch?: number
           bill_no?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_name?: string | null
