@@ -224,7 +224,7 @@ const defaultConfig = (kind: SchemeKind): any => {
     case "bogo": return { buyQty: 2, getQty: 1 };
     case "percent": return { percent: 5 };
     case "cashback": return { minAmount: 50000, cashback: 2000 };
-    case "custom": return { groups: [{ name: "Group 1", patterns: "", slabs: [{ minQty: 20, free: 3 }], freeProduct: "" }] };
+    case "custom": return { groups: [{ name: "Group 1", slabs: [{ minQty: 10, free: 2 }], rows: [{ pattern: "", freeProduct: "" }] }] };
   }
 };
 
