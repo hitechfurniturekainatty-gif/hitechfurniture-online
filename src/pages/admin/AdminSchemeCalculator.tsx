@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SchemePartyNotesButton } from "@/components/admin/SchemePartyNotesButton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
+import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
+import { downloadBlob } from "@/lib/downloadBlob";
+import { shareFilesNative } from "@/lib/nativeShare";
 
 type Row = {
   id: string;
@@ -480,6 +483,8 @@ const AdminSchemeCalculator = () => {
   const [vendorQuery, setVendorQuery] = useState("");
   const [fy, setFy] = useState<number>(currentFy());
   const [mode, setMode] = useState<TimelineMode>("monthly");
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
   const [customFys, setCustomFys] = useState<number[]>(() => {
@@ -557,6 +562,64 @@ const AdminSchemeCalculator = () => {
   }, [vendorId, fy]);
 
   const vendor = parties.find((p) => p.id === vendorId) || null;
+
+  const captureCanvases = async () => {
+    const node = reportRef.current;
+    if (!node) throw new Error("Nothing to capture");
+    const html2canvas = (await import("html2canvas-pro")).default;
+    const canvas = await html2canvas(node, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      windowWidth: Math.max(node.scrollWidth, 1200),
+    });
+    return canvas;
+  };
+
+  const baseFileName = () => {
+    const v = vendor ? vendor.name.replace(/[^a-z0-9]+/gi, "_") : "Vendor";
+    return `Scheme_${v}_FY${fy}-${String(fy + 1).slice(-2)}`;
+  };
+
+  const exportPdf = async (share = false) => {
+    if (!vendor) { toast({ title: "Pick a vendor first" }); return; }
+    setExporting(true);
+    try {
+      const canvas = await captureCanvases();
+      const { jsPDF } = await import("jspdf");
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      // A4 portrait at 96dpi-ish via points (pt). Use canvas px, slice per page.
+      const pdf = new jsPDF({ unit: "px", format: [imgW, imgH], compress: true });
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, imgW, imgH);
+      const blob = pdf.output("blob");
+      const name = `${baseFileName()}.pdf`;
+      if (share) {
+        await shareFilesNative([blob], baseFileName(), `Scheme report — ${vendor.name}`, "pdf");
+      } else {
+        downloadBlob(blob, name);
+      }
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    } finally { setExporting(false); }
+  };
+
+  const exportJpg = async (share = false) => {
+    if (!vendor) { toast({ title: "Pick a vendor first" }); return; }
+    setExporting(true);
+    try {
+      const canvas = await captureCanvases();
+      const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b as Blob), "image/jpeg", 0.92)!);
+      const name = `${baseFileName()}.jpg`;
+      if (share) {
+        await shareFilesNative([blob], baseFileName(), `Scheme report — ${vendor.name}`, "jpg");
+      } else {
+        downloadBlob(blob, name);
+      }
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e?.message ?? String(e), variant: "destructive" });
+    } finally { setExporting(false); }
+  };
   const filteredParties = useMemo(() => {
     const q = vendorQuery.trim().toLowerCase();
     if (!q) return parties.slice(0, 30);
@@ -679,6 +742,22 @@ const AdminSchemeCalculator = () => {
                     ))}
                   </div>
                 </div>
+                {vendor && (
+                  <div>
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">&nbsp;</Label>
+                    <div>
+                      <DownloadShareMenu
+                        label="Share"
+                        triggerSize="sm"
+                        busy={exporting}
+                        onPdf={() => exportPdf(false)}
+                        onJpg={() => exportJpg(true)}
+                        pdfTooltip="PDF — download full report"
+                        jpgTooltip="JPG — share via WhatsApp / others"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -690,7 +769,11 @@ const AdminSchemeCalculator = () => {
             ) : loading ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : mode === "monthly" ? (
-              <div className="space-y-4">
+              <div ref={reportRef} className="space-y-4 bg-background p-2">
+                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
+                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
+                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · Monthly</div>
+                </div>
                 {months.map((m) => (
                   <MonthBlock
                     key={m.month}
@@ -703,7 +786,11 @@ const AdminSchemeCalculator = () => {
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div ref={reportRef} className="space-y-4 bg-background p-2">
+                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
+                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
+                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · {mode}</div>
+                </div>
                 <AggregatedView
                   mode={mode}
                   fy={fy}
