@@ -831,7 +831,12 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
             {targets.length > 0 && <> · <span className="font-medium text-amber-600 dark:text-amber-400">{targets.length} pending</span></>}
           </div>
         </div>
-        <div className="hidden sm:block"><ProgressRing pct={completion} size={48} stroke={5} /></div>
+        <div className="flex items-center gap-2">
+          <div className={`text-lg font-bold tabular-nums ${completion >= 100 ? "text-emerald-600 dark:text-emerald-400" : completion > 0 ? "text-primary" : "text-muted-foreground"}`}>
+            {completion}%
+          </div>
+          <div className="hidden sm:block"><ProgressRing pct={completion} size={48} stroke={5} /></div>
+        </div>
         {open ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
       </button>
 
