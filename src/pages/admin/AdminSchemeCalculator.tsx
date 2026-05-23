@@ -347,12 +347,22 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
     const targets: Target[] = [];
     let totalFree = 0;
     for (const g of groups) {
-      const patterns: string[] = String(g.patterns || "")
-        .split(/[,\n]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
-      if (!patterns.length) continue;
+      // Backward compat: old shape used { patterns: csv, freeProduct: str }
+      const legacyPatterns: string[] = String(g.patterns || "")
+        .split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      const legacyRows = legacyPatterns.length
+        ? legacyPatterns.map((p) => ({ pattern: p, freeProduct: g.freeProduct || "" }))
+        : [];
+      const bundleRows: { pattern: string; freeProduct: string }[] =
+        Array.isArray(g.rows) && g.rows.length ? g.rows : legacyRows;
+      const activeRows = bundleRows
+        .map((r) => ({ pattern: String(r.pattern || "").trim().toLowerCase(), freeProduct: String(r.freeProduct || "").trim() }))
+        .filter((r) => r.pattern);
+      if (!activeRows.length) continue;
+      // Bundle: any row pattern matching contributes its qty to the same group total.
       const matchedRows = live.filter((r) => {
         const n = (r.item || "").toLowerCase();
-        return patterns.some((p) => n.includes(p));
+        return activeRows.some((ar) => n.includes(ar.pattern));
       });
       const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
       const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
@@ -360,15 +370,17 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
       let matchedSlab: any = null;
       for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
       totalFree += free;
-      const freeProd = String(g.freeProduct || "").trim() || (matchedRows[0]?.item ?? "—");
+      // Common reward = union of unique free products across rows (or first row's freebie).
+      const freebies = Array.from(new Set(activeRows.map((r) => r.freeProduct).filter(Boolean)));
+      const freeProd = freebies.join(" + ") || g.freeProduct || (matchedRows[0]?.item ?? "—");
       const matchedNames = matchedRows.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items matched";
       rep.push({
         item: `${g.name || "Group"} → ${freeProd}`,
         qty: groupQty,
         free,
         note: matchedSlab
-          ? `Total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
-          : `Total ${groupQty} qty [${matchedNames}] — below first slab`,
+          ? `Bundle total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free ${freeProd}`
+          : `Bundle total ${groupQty} qty [${matchedNames}] — below first slab`,
       });
       const nextSlab = slabs.find((s: any) => groupQty < Number(s.minQty));
       if (nextSlab) {
@@ -378,8 +390,8 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
           have: groupQty,
           need: Number(nextSlab.minQty),
           gap,
-          reward: `${nextSlab.free} free`,
-          note: `Buy ${gap} more ${g.name || "units"} to unlock`,
+          reward: `${nextSlab.free} free ${freeProd}`,
+          note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] to unlock`,
         });
       }
     }
