@@ -136,20 +136,35 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
     };
   }
   if (kind === "custom") {
-    const rules: any[] = config?.rules || [];
-    const rep = live.map((r) => {
-      const name = (r.item || "").toLowerCase();
-      const match = rules.find((u) => {
-        const p = String(u.product || "").trim().toLowerCase();
-        return p && name.includes(p);
+    const groups: any[] = config?.groups || [];
+    const rep: any[] = [];
+    let totalFree = 0;
+    for (const g of groups) {
+      const patterns: string[] = String(g.patterns || "")
+        .split(/[,\n]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (!patterns.length) continue;
+      const matchedRows = live.filter((r) => {
+        const n = (r.item || "").toLowerCase();
+        return patterns.some((p) => n.includes(p));
       });
-      if (!match) return { item: r.item, qty: r.qty, free: 0, note: "No matching custom rule" };
-      const buy = Math.max(1, Number(match.buyQty) || 1);
-      const get = Math.max(0, Number(match.freeQty) || 0);
-      const free = Math.floor(r.qty / buy) * get;
-      return { item: r.item, qty: r.qty, free, note: `Buy ${buy} → ${get} free (matches "${match.product}")` };
-    });
-    return { rep, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+      const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+      const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
+      let free = 0;
+      let matchedSlab: any = null;
+      for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
+      totalFree += free;
+      const freeProd = String(g.freeProduct || "").trim() || (matchedRows[0]?.item ?? "—");
+      const matchedNames = matchedRows.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items matched";
+      rep.push({
+        item: `${g.name || "Group"} → ${freeProd}`,
+        qty: groupQty,
+        free,
+        note: matchedSlab
+          ? `Total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
+          : `Total ${groupQty} qty [${matchedNames}] — below first slab`,
+      });
+    }
+    return { rep, summary: `Total free items: ${totalFree}` };
   }
   return { rep: [], summary: "" };
   void totalMrp;
