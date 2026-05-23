@@ -647,10 +647,18 @@ const AdminSchemeCalculator = () => {
 
 /* -------------------- Scheme config editor -------------------- */
 
-function MonthProgress({ period }: { period: Period }) {
+function MonthProgress({ period, cycleStart }: { period: Period; cycleStart?: string }) {
   const now = new Date();
   let start: Date, end: Date, label: string;
-  if (period === "monthly") {
+  if (cycleStart) {
+    start = new Date(cycleStart + "T00:00:00");
+    end = new Date(start);
+    if (period === "monthly") end.setMonth(end.getMonth() + 1);
+    else if (period === "quarterly") end.setMonth(end.getMonth() + 3);
+    else end.setFullYear(end.getFullYear() + 1);
+    end.setDate(end.getDate() - 1);
+    label = `${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
+  } else if (period === "monthly") {
     start = new Date(now.getFullYear(), now.getMonth(), 1);
     end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     label = start.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
