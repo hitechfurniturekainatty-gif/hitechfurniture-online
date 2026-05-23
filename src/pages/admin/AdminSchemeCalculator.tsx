@@ -1115,8 +1115,59 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
 
   const onFile = async (file: File | null) => {
     if (!file) return;
+    const name = file.name.toLowerCase();
     try {
-      const txt = await file.text();
+      let txt = "";
+      if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".ods")) {
+        const XLSX = await import("xlsx");
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const parts: string[] = [];
+        for (const sn of wb.SheetNames) {
+          const ws = wb.Sheets[sn];
+          // Tab-delimited so our parser's tab branch kicks in cleanly
+          parts.push(XLSX.utils.sheet_to_csv(ws, { FS: "\t", blankrows: false }));
+        }
+        txt = parts.join("\n");
+      } else if (name.endsWith(".pdf")) {
+        const pdfjs: any = await import("pdfjs-dist");
+        // Use a worker-less build path: disable worker to avoid CDN setup
+        try { pdfjs.GlobalWorkerOptions.workerSrc = ""; } catch {}
+        const buf = await file.arrayBuffer();
+        const doc = await pdfjs.getDocument({ data: buf, disableWorker: true }).promise;
+        const lines: string[] = [];
+        for (let p = 1; p <= doc.numPages; p++) {
+          const page = await doc.getPage(p);
+          const content = await page.getTextContent();
+          // Group items by Y position to reconstruct rows
+          const byY = new Map<number, { x: number; s: string }[]>();
+          for (const it of content.items as any[]) {
+            const y = Math.round((it.transform?.[5] ?? 0) * 2) / 2;
+            const x = it.transform?.[4] ?? 0;
+            const s = String(it.str ?? "").trim();
+            if (!s) continue;
+            if (!byY.has(y)) byY.set(y, []);
+            byY.get(y)!.push({ x, s });
+          }
+          const ys = [...byY.keys()].sort((a, b) => b - a);
+          for (const y of ys) {
+            const row = byY.get(y)!.sort((a, b) => a.x - b.x);
+            // Join cells with tabs when there's a big horizontal gap
+            let line = "";
+            let prevX = -Infinity;
+            for (const c of row) {
+              if (line && c.x - prevX > 15) line += "\t";
+              else if (line) line += " ";
+              line += c.s;
+              prevX = c.x + c.s.length * 4;
+            }
+            lines.push(line);
+          }
+        }
+        txt = lines.join("\n");
+      } else {
+        txt = await file.text();
+      }
       setPaste(txt);
       toast({ title: `Loaded ${file.name}` });
     } catch (e: any) {
@@ -1169,8 +1220,8 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
               Bulk paste — strict 4-column format: <span className="font-mono">Item · Qty · Unit Price · Total Cost (incl. tax)</span>
             </Label>
             <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs hover:bg-accent">
-              <Upload className="h-3.5 w-3.5" /> Upload .csv/.txt
-              <input type="file" accept=".csv,.txt,.tsv,text/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
+              <Upload className="h-3.5 w-3.5" /> Upload .xlsx / .pdf / .csv
+              <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,text/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
             </label>
           </div>
           <Textarea rows={5} value={paste} onChange={(e) => setPaste(e.target.value)}
