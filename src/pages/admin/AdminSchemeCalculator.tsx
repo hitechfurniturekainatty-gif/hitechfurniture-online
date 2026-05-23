@@ -566,9 +566,11 @@ const AdminSchemeCalculator = () => {
   };
 
   const ytd = useMemo(() => {
-    let totalAmount = 0, totalQty = 0, freeUnits = 0, completedSlabs = 0, totalSlabs = 0;
+    let totalAmount = 0, totalQty = 0, freeUnits = 0;
+    const pcts: number[] = [];
     months.forEach((m) => {
       const flat = m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+      if (!flat.length) return;
       const rep = computeFreeReport(
         { kind: m.scheme_kind, config: m.scheme_config },
         aggregateRowsByItem(flat),
@@ -578,11 +580,13 @@ const AdminSchemeCalculator = () => {
         totalQty += Number(r.qty) || 0;
       });
       freeUnits += rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
-      const targets = (rep as any).targets || [];
-      totalSlabs += rep.rep.length + targets.length;
-      completedSlabs += rep.rep.filter((x: any) => x.free > 0).length;
+      pcts.push(computeAchievementPct(
+        { kind: m.scheme_kind, config: m.scheme_config },
+        aggregateRowsByItem(flat),
+      ));
     });
-    return { totalAmount, totalQty, freeUnits, completionPct: totalSlabs ? Math.round((completedSlabs / totalSlabs) * 100) : 0 };
+    const completionPct = pcts.length ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : 0;
+    return { totalAmount, totalQty, freeUnits, completionPct };
   }, [months]);
 
   return (
