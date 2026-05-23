@@ -241,13 +241,23 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
 
   if (kind === "company") {
     const per = Math.max(1, Number(config?.everyQty) || 10);
-    const rep: Achieved[] = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / per), note: `1 free per ${per} qty` }));
-    const targets: Target[] = live.map((r) => {
-      const nextThreshold = (Math.floor(r.qty / per) + 1) * per;
-      const gap = nextThreshold - r.qty;
-      return { item: r.item, have: r.qty, need: nextThreshold, gap, reward: `+1 free`, note: `Buy ${gap} more for next free unit` };
-    });
-    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const free = Math.floor(groupQty / per);
+    const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
+    const rep: Achieved[] = [{
+      item: `All products → ${free} free`,
+      qty: groupQty,
+      free,
+      note: `Group total ${groupQty} qty [${matchedNames}] → 1 free per ${per}`,
+    }];
+    const nextThreshold = (Math.floor(groupQty / per) + 1) * per;
+    const gap = nextThreshold - groupQty;
+    const targets: Target[] = gap > 0 ? [{
+      item: "All products (group total)",
+      have: groupQty, need: nextThreshold, gap,
+      reward: `+1 free`, note: `Buy ${gap} more across any item to unlock next free unit`,
+    }] : [];
+    return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "own") {
     const target = (totalAmount * (Number(config?.targetMargin) || 0)) / 100;
@@ -262,29 +272,47 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
   }
   if (kind === "slab") {
     const slabs = (config?.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
-    const rep: Achieved[] = live.map((r) => {
-      let free = 0;
-      for (const s of slabs) if (r.qty >= Number(s.minQty)) free = Number(s.free);
-      const matched = slabs.find((s: any) => r.qty >= Number(s.minQty) && r.qty < (slabs[slabs.indexOf(s) + 1]?.minQty ?? Infinity));
-      return { item: r.item, qty: r.qty, free, note: matched ? `Slab ≥ ${matched.minQty} → ${matched.free}` : "Below first slab" };
-    });
-    const targets: Target[] = live.map((r) => {
-      const next = slabs.find((s: any) => r.qty < Number(s.minQty));
-      if (!next) return { item: r.item, have: r.qty, need: r.qty, gap: 0, reward: "Top slab reached", note: "All slabs unlocked" };
-      return { item: r.item, have: r.qty, need: Number(next.minQty), gap: Number(next.minQty) - r.qty, reward: `${next.free} free`, note: `Buy ${Number(next.minQty) - r.qty} more to unlock` };
-    }).filter((t) => t.gap > 0);
-    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    let free = 0;
+    let matchedSlab: any = null;
+    for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
+    const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
+    const rep: Achieved[] = [{
+      item: `All products → ${free} free`,
+      qty: groupQty,
+      free,
+      note: matchedSlab
+        ? `Group total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
+        : `Group total ${groupQty} qty [${matchedNames}] — below first slab`,
+    }];
+    const next = slabs.find((s: any) => groupQty < Number(s.minQty));
+    const targets: Target[] = next ? [{
+      item: "All products (group total)",
+      have: groupQty, need: Number(next.minQty), gap: Number(next.minQty) - groupQty,
+      reward: `${next.free} free`, note: `Buy ${Number(next.minQty) - groupQty} more across any item to unlock`,
+    }] : [];
+    return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "bogo") {
     const buy = Math.max(1, Number(config?.buyQty) || 1);
     const get = Math.max(0, Number(config?.getQty) || 0);
-    const rep: Achieved[] = live.map((r) => ({ item: r.item, qty: r.qty, free: Math.floor(r.qty / buy) * get, note: `Buy ${buy} Get ${get}` }));
-    const targets: Target[] = live.map((r) => {
-      const nextThreshold = (Math.floor(r.qty / buy) + 1) * buy;
-      const gap = nextThreshold - r.qty;
-      return { item: r.item, have: r.qty, need: nextThreshold, gap, reward: `+${get} free`, note: `Buy ${gap} more for next freebie` };
-    });
-    return { rep, targets, summary: `Total free items: ${rep.reduce((s, x) => s + x.free, 0)}` };
+    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const free = Math.floor(groupQty / buy) * get;
+    const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
+    const rep: Achieved[] = [{
+      item: `All products → ${free} free`,
+      qty: groupQty,
+      free,
+      note: `Group total ${groupQty} qty [${matchedNames}] → Buy ${buy} Get ${get}`,
+    }];
+    const nextThreshold = (Math.floor(groupQty / buy) + 1) * buy;
+    const gap = nextThreshold - groupQty;
+    const targets: Target[] = gap > 0 ? [{
+      item: "All products (group total)",
+      have: groupQty, need: nextThreshold, gap,
+      reward: `+${get} free`, note: `Buy ${gap} more across any item for next freebie`,
+    }] : [];
+    return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "percent") {
     const pct = Number(config?.percent) || 0;
