@@ -162,6 +162,47 @@ function parseInvoiceText(text: string): Row[] {
   return out;
 }
 
+/**
+ * Aggregate purchase rows by item name (case-insensitive). Sums qty &
+ * amountWithTax; computes a weighted unit price and qty-weighted MRP.
+ * This is the core of the "cumulative monthly quantity" comparison so
+ * Product Group rules (Buy N → Get free) actually match across invoices.
+ */
+function aggregateRowsByItem(rows: Row[]): Row[] {
+  const map = new Map<string, Row & { _mrpWeighted: number; _mrpQty: number }>();
+  for (const r of rows) {
+    const name = String(r.item || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const qty = Number(r.qty) || 0;
+    const amt = Number(r.amountWithTax) || 0;
+    const mrp = Number(r.mrp) || 0;
+    const existing = map.get(key);
+    if (existing) {
+      existing.qty += qty;
+      existing.amountWithTax += amt;
+      existing._mrpWeighted += mrp * qty;
+      existing._mrpQty += qty;
+    } else {
+      map.set(key, {
+        id: r.id,
+        item: name,
+        qty,
+        price: 0,
+        amountWithTax: amt,
+        mrp,
+        _mrpWeighted: mrp * qty,
+        _mrpQty: qty,
+      });
+    }
+  }
+  return Array.from(map.values()).map((r) => {
+    const price = r.qty > 0 ? r.amountWithTax / r.qty : 0;
+    const mrp = r._mrpQty > 0 ? r._mrpWeighted / r._mrpQty : r.mrp;
+    return { id: r.id, item: r.item, qty: r.qty, price, amountWithTax: r.amountWithTax, mrp };
+  });
+}
+
 const fmt = (n: number) =>
   Number.isFinite(n) ? n.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0";
 
