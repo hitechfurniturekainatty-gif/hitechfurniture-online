@@ -572,8 +572,9 @@ const AdminSchemeCalculator = () => {
       .upsert(payload, { onConflict: "party_id,fy_year,month" })
       .select()
       .single();
-    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
-    updateMonth(m.month, { id: (data as any).id });
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); throw error; }
+    const newId = (data as any).id;
+    if (newId && newId !== m.id) updateMonth(m.month, { id: newId });
     toast({ title: `Saved ${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}` });
   };
 
@@ -761,11 +762,17 @@ function ProgressRing({ pct, size = 96, stroke = 8, color = "hsl(var(--primary))
 
 function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   vm: VendorMonth; fy: number; savedSchemes: SchemeRow[];
-  onChange: (patch: Partial<VendorMonth>) => void; onSave: () => void;
+  onChange: (patch: Partial<VendorMonth>) => void; onSave: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [dialogInvoice, setDialogInvoice] = useState<Invoice | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(); } catch {} finally { setSaving(false); }
+  };
 
   const isCurrent = (() => {
     const now = new Date();
@@ -990,7 +997,10 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
           <div className="flex items-center justify-end gap-2">
             <SchemePartyNotesButton partyId={vm.party_id} />
-            <Button onClick={onSave}><Save className="h-4 w-4" /> Save {MONTH_NAME[vm.month]}</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving…" : `Save ${MONTH_NAME[vm.month]}`}
+            </Button>
           </div>
         </div>
       )}
