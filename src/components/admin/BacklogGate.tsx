@@ -10,11 +10,19 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
 const SS_KEY = "backlog_unlock_until";
-// Single-entry access: unlock is valid only while the Backlog screen is
-// mounted. We still keep a tiny TTL guard (a few seconds) so the in-memory
-// flag doesn't accidentally outlive the page, but every fresh entry to the
-// Backlog route must re-prompt for the PIN.
-const UNLOCK_MS = 5 * 1000;
+// Unlock is valid while the Backlog screen is mounted AND the admin keeps
+// interacting with it. After 10 minutes of inactivity the gate auto-locks
+// and the PIN is required again. Navigating away (back button, sidebar
+// link, closing the tab) also locks immediately via the unmount cleanup.
+const UNLOCK_MS = 10 * 60 * 1000;
+
+export function refreshBacklogUnlock() {
+  try {
+    if (((window as any).__backlogUnlockUntil ?? 0) > Date.now()) {
+      (window as any).__backlogUnlockUntil = Date.now() + UNLOCK_MS;
+    }
+  } catch { /* ignore */ }
+}
 
 export function isBacklogUnlocked(): boolean {
   try {
@@ -101,7 +109,7 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
   // becoming visible again.
   useEffect(() => {
     const tick = () => setUnlocked(isBacklogUnlocked());
-    const id = window.setInterval(tick, 3000);
+    const id = window.setInterval(tick, 5000);
     const onVis = () => tick();
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -109,6 +117,18 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
+
+  // Sliding 10-minute idle timeout: any pointer / keyboard / scroll activity
+  // inside the Backlog area pushes the auto-lock further out.
+  useEffect(() => {
+    if (!unlocked) return;
+    const bump = () => refreshBacklogUnlock();
+    const events: (keyof DocumentEventMap)[] = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    events.forEach((ev) => document.addEventListener(ev, bump, { passive: true } as any));
+    return () => {
+      events.forEach((ev) => document.removeEventListener(ev, bump as any));
+    };
+  }, [unlocked]);
 
   // SINGLE-ENTRY ACCESS: revoke unlock the moment this gate unmounts (the
   // user navigated to Home, another admin tab, or anywhere else). The next
@@ -123,35 +143,17 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
   // Also revoke if the route path changes away from /admin/backlog while the
   // gate stays mounted for any reason.
   useEffect(() => {
-    if (!location.pathname.startsWith("/admin/backlog")) {
+    if (!location.pathname.startsWith("/admin/backlog") && !location.pathname.startsWith("/admin/receivables")) {
       (window as any).__backlogUnlockUntil = 0;
       setUnlocked(false);
     }
   }, [location.pathname]);
 
-  // On a hard refresh of the Backlog page, force re-prompt by clearing any
-  // stale in-memory flag at mount time.
+  // On (re-)mount, ensure we start from a locked state — the PIN must be
+  // entered for every fresh visit. The unlock is then granted by onSubmit
+  // and persists in-memory while the gate stays mounted.
   useEffect(() => {
-    (window as any).__backlogUnlockUntil = 0;
-    setUnlocked(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // If the user reaches /admin/backlog via browser BACK or FORWARD navigation
-  // (i.e. not a deliberate fresh click), bounce them out immediately so the
-  // PIN prompt never reappears from history. A deliberate entry sets a
-  // short-lived intent flag in BacklogShortcut / sidebar click handlers.
-  useEffect(() => {
-    try {
-      const intent = (window as any).__backlogIntent as number | undefined;
-      const fresh = intent && Date.now() - intent < 4000;
-      if (fresh) {
-        (window as any).__backlogIntent = 0;
-        return;
-      }
-      // Not a fresh intent → treat as back/forward arrival. Redirect away.
-      navigate("/admin", { replace: true });
-    } catch { /* ignore */ }
+    if (!isBacklogUnlocked()) setUnlocked(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -268,7 +270,7 @@ export function BacklogGate({ children }: { children: React.ReactNode }) {
                 {pinSet === false ? "Set PIN & unlock" : "Unlock"}
               </Button>
               <p className="text-center text-[11px] text-muted-foreground">
-                Unlocked for 15 minutes after correct PIN. Auto-locks on sign-out.
+                Stays unlocked while you're using this page. Auto-locks after 10 minutes of inactivity, when you leave the page, or on sign-out.
               </p>
             </form>
           </CardContent>
