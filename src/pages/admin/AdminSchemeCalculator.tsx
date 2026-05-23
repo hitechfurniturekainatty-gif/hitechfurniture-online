@@ -800,14 +800,11 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const targets = (report as any).targets || [];
 
   const completion = useMemo(() => {
-    if (!flatRows.length) return 0;
-    if (!targets.length) return freeUnits > 0 ? 100 : 0;
-    const best = targets.reduce((acc: number, t: any) => {
-      const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
-      return Math.max(acc, pct);
-    }, 0);
-    return Math.min(100, best);
-  }, [flatRows, targets, freeUnits]);
+    return computeAchievementPct(
+      { kind: vm.scheme_kind, config: vm.scheme_config },
+      aggregateRowsByItem(flatRows),
+    );
+  }, [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]);
 
   const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
 
