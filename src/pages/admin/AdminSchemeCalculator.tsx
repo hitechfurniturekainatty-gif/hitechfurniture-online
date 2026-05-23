@@ -346,6 +346,9 @@ const AdminSchemeCalculator = () => {
   };
 
   const persistMonth = async (m: VendorMonth) => {
+    const flatRows: Row[] = (m.invoices && m.invoices.length)
+      ? m.invoices.flatMap((inv) => inv.rows)
+      : m.purchase_rows;
     const payload = {
       party_id: m.party_id,
       fy_year: m.fy_year,
@@ -353,7 +356,8 @@ const AdminSchemeCalculator = () => {
       scheme_kind: m.scheme_kind,
       scheme_config: m.scheme_config,
       purchases_text: m.purchases_text,
-      purchase_rows: m.purchase_rows as any,
+      purchase_rows: flatRows as any,
+      invoices: m.invoices as any,
     };
     const { data, error } = await supabase
       .from("scheme_vendor_months" as any)
