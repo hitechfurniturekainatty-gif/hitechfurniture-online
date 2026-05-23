@@ -1542,11 +1542,12 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[95vw] max-h-[95vh] sm:max-h-[90vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> {invoice.rows.length ? "Edit invoice" : "Add invoice"}</DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Label className="text-xs">Label</Label>
@@ -1584,7 +1585,7 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
           </div>
         </div>
 
-        <div className="max-h-[40vh] overflow-auto rounded-lg border">
+        <div className="overflow-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
@@ -1634,8 +1635,9 @@ function InvoiceDialog({ open, invoice, onClose, onSave }: {
             <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
           </div>
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-4 sm:px-6 py-3 border-t shrink-0 bg-background gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={commit}><Save className="h-4 w-4" /> Save invoice</Button>
         </DialogFooter>
