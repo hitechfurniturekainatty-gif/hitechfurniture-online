@@ -550,12 +550,14 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   useEffect(() => { if (isCurrent) setOpen(true); }, [isCurrent]);
 
   const report = useMemo(
-    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, vm.purchase_rows),
-    [vm.scheme_kind, vm.scheme_config, vm.purchase_rows]
+    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
+    [vm.scheme_kind, vm.scheme_config, vm.invoices, vm.purchase_rows]
   );
 
-  const totalQty = vm.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-  const totalAmount = vm.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalQty = flatRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const totalAmount = flatRows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrpValue = flatRows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const monthAvgDiscount = totalMrpValue > 0 ? ((totalMrpValue - totalAmount) / totalMrpValue) * 100 : 0;
   const freeUnits = report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0);
   const targets = (report as any).targets || [];
 
