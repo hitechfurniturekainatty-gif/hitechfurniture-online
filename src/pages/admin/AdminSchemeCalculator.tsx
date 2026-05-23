@@ -512,8 +512,12 @@ const AdminSchemeCalculator = () => {
   const ytd = useMemo(() => {
     let totalAmount = 0, totalQty = 0, freeUnits = 0, completedSlabs = 0, totalSlabs = 0;
     months.forEach((m) => {
-      const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
-      m.purchase_rows.forEach((r) => {
+      const flat = m.invoices && m.invoices.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+      const rep = computeFreeReport(
+        { kind: m.scheme_kind, config: m.scheme_config },
+        aggregateRowsByItem(flat),
+      );
+      flat.forEach((r) => {
         totalAmount += Number(r.amountWithTax) || 0;
         totalQty += Number(r.qty) || 0;
       });
