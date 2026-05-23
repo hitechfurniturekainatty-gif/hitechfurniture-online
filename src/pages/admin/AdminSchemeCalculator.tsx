@@ -608,9 +608,9 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   vm: VendorMonth; fy: number; savedSchemes: SchemeRow[];
   onChange: (patch: Partial<VendorMonth>) => void; onSave: () => void;
 }) {
-  const [paste, setPaste] = useState("");
-  const [parsing, setParsing] = useState(false);
   const [open, setOpen] = useState(false);
+  const [dialogInvoice, setDialogInvoice] = useState<Invoice | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const isCurrent = (() => {
     const now = new Date();
@@ -632,7 +632,18 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
     setInvoices(invoices.map((inv) => (inv.id === id ? { ...inv, ...patch } : inv)));
   };
   const removeInvoice = (id: string) => setInvoices(invoices.filter((inv) => inv.id !== id));
-  const addEmptyInvoice = () => setInvoices([...invoices, { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: [] }]);
+
+  const openAddInvoice = () => {
+    setDialogInvoice({ id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: [] });
+    setDialogOpen(true);
+  };
+  const openEditInvoice = (inv: Invoice) => { setDialogInvoice(inv); setDialogOpen(true); };
+  const saveDialogInvoice = (inv: Invoice) => {
+    const exists = invoices.some((x) => x.id === inv.id);
+    setInvoices(exists ? invoices.map((x) => (x.id === inv.id ? inv : x)) : [...invoices, inv]);
+    setDialogOpen(false);
+    setDialogInvoice(null);
+  };
 
   const report = useMemo(
     () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, flatRows),
@@ -657,28 +668,6 @@ function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   }, [vm.purchase_rows, targets, freeUnits]);
 
   const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
-
-  const parsePaste = async () => {
-    if (!paste.trim()) return;
-    setParsing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("bulk-extract-items", { body: { text: paste, kind: "quotation" } });
-      if (error) throw error;
-      const items: any[] = data?.items || [];
-      if (!items.length) { toast({ title: "No rows found" }); return; }
-      const parsed: Row[] = items.map((it) => {
-        const qty = Number(it.quantity) || 1;
-        const price = Number(it.unit_price) || 0;
-        return { id: crypto.randomUUID(), item: [it.description, it.measurement].filter(Boolean).join(" — "), qty, price, amountWithTax: price * qty, mrp: price };
-      });
-      const newInv: Invoice = { id: crypto.randomUUID(), label: `Invoice ${invoices.length + 1}`, rows: parsed };
-      setInvoices([...invoices, newInv]);
-      toast({ title: `Added ${parsed.length} rows as ${newInv.label}` });
-      setPaste("");
-    } catch (e: any) {
-      toast({ title: "Extract failed", description: e?.message || String(e), variant: "destructive" });
-    } finally { setParsing(false); }
-  };
 
   const applySaved = (id: string) => {
     const s = savedSchemes.find((x) => x.id === id);
