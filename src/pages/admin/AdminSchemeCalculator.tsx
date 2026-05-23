@@ -483,6 +483,8 @@ const AdminSchemeCalculator = () => {
   const [vendorQuery, setVendorQuery] = useState("");
   const [fy, setFy] = useState<number>(currentFy());
   const [mode, setMode] = useState<TimelineMode>("monthly");
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
   const [customFys, setCustomFys] = useState<number[]>(() => {
