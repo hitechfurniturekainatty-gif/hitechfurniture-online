@@ -602,6 +602,7 @@ const AdminSchemeCalculator = () => {
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : mode === "monthly" ? (
               <div className="space-y-4">
+                <LivePerformancePanel fy={fy} months={months} mode={mode} />
                 {months.map((m) => (
                   <MonthBlock
                     key={m.month}
@@ -614,7 +615,10 @@ const AdminSchemeCalculator = () => {
                 ))}
               </div>
             ) : (
-              <AggregatedView mode={mode} fy={fy} months={months} />
+              <div className="space-y-4">
+                <LivePerformancePanel fy={fy} months={months} mode={mode} />
+                <AggregatedView mode={mode} fy={fy} months={months} />
+              </div>
             )}
           </TabsContent>
 
