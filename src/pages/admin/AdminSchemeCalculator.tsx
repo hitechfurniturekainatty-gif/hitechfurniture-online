@@ -213,40 +213,43 @@ function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[
   void totalMrp;
 }
 
-/* -------------------- Component -------------------- */
+/* ============== Vendor Dashboard (Calculator) ============== */
+
+type TimelineMode = "monthly" | "quarterly" | "halfyearly" | "yearly";
+type VendorMonth = {
+  id?: string;
+  party_id: string;
+  fy_year: number;
+  month: number;
+  scheme_kind: SchemeKind;
+  scheme_config: any;
+  purchases_text: string | null;
+  purchase_rows: Row[];
+};
+
+const FY_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+const MONTH_NAME = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fyCalendarYear(fyYear: number, month: number) {
+  return month >= 4 ? fyYear : fyYear + 1;
+}
+function currentFy() {
+  const d = new Date();
+  return d.getMonth() + 1 >= 4 ? d.getFullYear() : d.getFullYear() - 1;
+}
 
 const AdminSchemeCalculator = () => {
   const [tab, setTab] = useState<"calc" | "parties" | "schemes">("calc");
 
-  // ===== Calculator state =====
-  const [activeScheme, setActiveScheme] = useState<{ id?: string; name: string; kind: SchemeKind; period: Period; config: any }>({
-    name: "Ad-hoc",
-    kind: "company",
-    period: "monthly",
-    config: defaultConfig("company"),
-  });
-  const [savedSchemes, setSavedSchemes] = useState<SchemeRow[]>([]);
-
-  const [partyId, setPartyId] = useState<string | null>(null);
-  const [partyLabel, setPartyLabel] = useState("");
   const [parties, setParties] = useState<Party[]>([]);
-  const [partyQuery, setPartyQuery] = useState("");
+  const [savedSchemes, setSavedSchemes] = useState<SchemeRow[]>([]);
+  const [vendorId, setVendorId] = useState<string | null>(null);
+  const [vendorQuery, setVendorQuery] = useState("");
+  const [fy, setFy] = useState<number>(currentFy());
+  const [mode, setMode] = useState<TimelineMode>("monthly");
+  const [months, setMonths] = useState<VendorMonth[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [rows, setRows] = useState<Row[]>(() => Array.from({ length: 5 }, newRow));
-  const [autofill, setAutofill] = useState("");
-  const [parsing, setParsing] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const totals = useMemo(() => {
-    const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const totalAmount = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
-    const totalMrp = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
-    return { totalQty, totalAmount, totalMrp };
-  }, [rows]);
-
-  const report = useMemo(() => computeFreeReport(activeScheme, rows), [activeScheme, rows]);
-
-  /* ----- Load parties + schemes ----- */
   useEffect(() => {
     (async () => {
       const [{ data: ps }, { data: ss }] = await Promise.all([
@@ -258,28 +261,269 @@ const AdminSchemeCalculator = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!vendorId) { setMonths([]); return; }
+    setLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("scheme_vendor_months" as any)
+        .select("*")
+        .eq("party_id", vendorId)
+        .eq("fy_year", fy);
+      if (error) { toast({ title: "Load failed", description: error.message, variant: "destructive" }); setLoading(false); return; }
+      const rows = ((data as any) || []) as VendorMonth[];
+      const full: VendorMonth[] = FY_MONTHS.map((m) => {
+        const existing = rows.find((r) => r.month === m);
+        return existing || {
+          party_id: vendorId,
+          fy_year: fy,
+          month: m,
+          scheme_kind: "company",
+          scheme_config: defaultConfig("company"),
+          purchases_text: "",
+          purchase_rows: [],
+        };
+      });
+      setMonths(full);
+      setLoading(false);
+    })();
+  }, [vendorId, fy]);
+
+  const vendor = parties.find((p) => p.id === vendorId) || null;
   const filteredParties = useMemo(() => {
-    const q = partyQuery.trim().toLowerCase();
+    const q = vendorQuery.trim().toLowerCase();
     if (!q) return parties.slice(0, 30);
     return parties.filter((p) =>
       [p.name, p.phone, p.place].filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
     ).slice(0, 50);
-  }, [parties, partyQuery]);
+  }, [parties, vendorQuery]);
 
-  /* ----- Row helpers ----- */
-  const updateRow = (id: string, patch: Partial<Row>) =>
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const addRow = () => setRows((rs) => [...rs, newRow()]);
-  const addMany = (n: number) => setRows((rs) => [...rs, ...Array.from({ length: n }, newRow)]);
-  const removeRow = (id: string) => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((r) => r.id !== id)));
-  const clearRows = () => setRows([newRow()]);
+  const updateMonth = (month: number, patch: Partial<VendorMonth>) => {
+    setMonths((arr) => arr.map((m) => (m.month === month ? { ...m, ...patch } : m)));
+  };
 
-  /* ----- Auto-fill ----- */
-  const parseText = async (text: string) => {
-    if (!text.trim()) return;
+  const persistMonth = async (m: VendorMonth) => {
+    const payload = {
+      party_id: m.party_id,
+      fy_year: m.fy_year,
+      month: m.month,
+      scheme_kind: m.scheme_kind,
+      scheme_config: m.scheme_config,
+      purchases_text: m.purchases_text,
+      purchase_rows: m.purchase_rows as any,
+    };
+    const { data, error } = await supabase
+      .from("scheme_vendor_months" as any)
+      .upsert(payload, { onConflict: "party_id,fy_year,month" })
+      .select()
+      .single();
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
+    updateMonth(m.month, { id: (data as any).id });
+    toast({ title: `Saved ${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}` });
+  };
+
+  const ytd = useMemo(() => {
+    let totalAmount = 0, totalQty = 0, freeUnits = 0, completedSlabs = 0, totalSlabs = 0;
+    months.forEach((m) => {
+      const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
+      m.purchase_rows.forEach((r) => {
+        totalAmount += Number(r.amountWithTax) || 0;
+        totalQty += Number(r.qty) || 0;
+      });
+      freeUnits += rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
+      const targets = (rep as any).targets || [];
+      totalSlabs += rep.rep.length + targets.length;
+      completedSlabs += rep.rep.filter((x: any) => x.free > 0).length;
+    });
+    return { totalAmount, totalQty, freeUnits, completionPct: totalSlabs ? Math.round((completedSlabs / totalSlabs) * 100) : 0 };
+  }, [months]);
+
+  return (
+    <AdminShell>
+      <div className="space-y-6 pb-28">
+        <h1 className="font-display text-2xl">Vendor Scheme Dashboard</h1>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+          <TabsList>
+            <TabsTrigger value="calc">Vendor Dashboard</TabsTrigger>
+            <TabsTrigger value="parties">Vendors ({parties.length})</TabsTrigger>
+            <TabsTrigger value="schemes">Scheme Templates ({savedSchemes.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="calc" className="space-y-5 pt-4">
+            <div className="sticky top-0 z-20 -mx-2 rounded-2xl border bg-card/90 px-3 py-3 shadow-sm backdrop-blur">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[240px] flex-1">
+                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Vendor</Label>
+                  <Input
+                    value={vendor ? `${vendor.name}${vendor.place ? ` — ${vendor.place}` : ""}` : vendorQuery}
+                    onChange={(e) => { setVendorQuery(e.target.value); setVendorId(null); }}
+                    placeholder="Search vendor by name / phone / place…"
+                  />
+                  {vendorQuery && !vendor && (
+                    <div className="mt-1 max-h-56 overflow-auto rounded border bg-popover">
+                      {filteredParties.length === 0 && <div className="p-2 text-xs text-muted-foreground">No vendors. Add one in Vendors tab.</div>}
+                      {filteredParties.map((p) => (
+                        <button key={p.id} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                          onClick={() => { setVendorId(p.id); setVendorQuery(""); }}>
+                          {p.name}{p.place ? ` — ${p.place}` : ""}{p.phone ? ` · ${p.phone}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Financial Year</Label>
+                  <Select value={String(fy)} onValueChange={(v) => setFy(Number(v))}>
+                    <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[currentFy() - 1, currentFy(), currentFy() + 1].map((y) => (
+                        <SelectItem key={y} value={String(y)}>FY {y}–{String(y + 1).slice(-2)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="ml-auto">
+                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Timeline</Label>
+                  <div className="inline-flex rounded-full border bg-background p-1">
+                    {(["monthly", "quarterly", "halfyearly", "yearly"] as TimelineMode[]).map((m) => (
+                      <button key={m} onClick={() => setMode(m)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors ${mode === m ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}>
+                        {m === "halfyearly" ? "Half-Yearly" : m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {!vendor ? (
+              <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center">
+                <TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Pick a vendor above to open their full year dashboard.</p>
+              </div>
+            ) : loading ? (
+              <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : mode === "monthly" ? (
+              <div className="space-y-4">
+                {months.map((m) => (
+                  <MonthBlock
+                    key={m.month}
+                    vm={m}
+                    fy={fy}
+                    savedSchemes={savedSchemes}
+                    onChange={(patch) => updateMonth(m.month, patch)}
+                    onSave={() => persistMonth(m)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <AggregatedView mode={mode} fy={fy} months={months} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="parties" className="pt-4">
+            <PartiesTab parties={parties} setParties={setParties} />
+          </TabsContent>
+
+          <TabsContent value="schemes" className="pt-4">
+            <SchemesTab schemes={savedSchemes} setSchemes={setSavedSchemes} onApply={() => setTab("calc")} />
+          </TabsContent>
+        </Tabs>
+
+        {vendor && (
+          <div className="fixed bottom-3 left-1/2 z-30 w-[min(1200px,95vw)] -translate-x-1/2 rounded-2xl border bg-card/95 px-4 py-3 shadow-2xl backdrop-blur">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="font-display text-sm">FY {fy}–{String(fy + 1).slice(-2)} · {vendor.name}</div>
+              <div className="ml-auto flex flex-wrap items-center gap-5">
+                <Stat label="YTD Purchases" value={`₹${fmt(ytd.totalAmount)}`} />
+                <Stat label="Total Qty" value={fmt(ytd.totalQty)} />
+                <Stat label="Free Units Earned" value={fmt(ytd.freeUnits)} tone="success" />
+                <div className="flex items-center gap-2">
+                  <ProgressRing pct={ytd.completionPct} size={42} stroke={5} />
+                  <div className="leading-tight">
+                    <div className="text-[10px] uppercase text-muted-foreground">Completion</div>
+                    <div className="text-sm font-semibold">{ytd.completionPct}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdminShell>
+  );
+};
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) {
+  const cls = tone === "success" ? "text-emerald-600 dark:text-emerald-400"
+    : tone === "warning" ? "text-amber-600 dark:text-amber-400"
+    : "text-foreground";
+  return (
+    <div className="leading-tight">
+      <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold ${cls}`}>{value}</div>
+    </div>
+  );
+}
+
+function ProgressRing({ pct, size = 96, stroke = 8, color = "hsl(var(--primary))" }: { pct: number; size?: number; stroke?: number; color?: string }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c - (Math.max(0, Math.min(100, pct)) / 100) * c;
+  return (
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" className="transition-all duration-500" />
+      <text x="50%" y="50%" dy=".35em" textAnchor="middle" transform={`rotate(90 ${size / 2} ${size / 2})`}
+        className="fill-foreground text-xs font-semibold">{Math.round(pct)}%</text>
+    </svg>
+  );
+}
+
+function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
+  vm: VendorMonth; fy: number; savedSchemes: SchemeRow[];
+  onChange: (patch: Partial<VendorMonth>) => void; onSave: () => void;
+}) {
+  const [paste, setPaste] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const isCurrent = (() => {
+    const now = new Date();
+    return now.getFullYear() === fyCalendarYear(fy, vm.month) && now.getMonth() + 1 === vm.month;
+  })();
+
+  useEffect(() => { if (isCurrent) setOpen(true); }, [isCurrent]);
+
+  const report = useMemo(
+    () => computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, vm.purchase_rows),
+    [vm.scheme_kind, vm.scheme_config, vm.purchase_rows]
+  );
+
+  const totalQty = vm.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const totalAmount = vm.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const freeUnits = report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0);
+  const targets = (report as any).targets || [];
+
+  const completion = useMemo(() => {
+    if (!vm.purchase_rows.length) return 0;
+    if (!targets.length) return freeUnits > 0 ? 100 : 50;
+    const best = targets.reduce((acc: number, t: any) => {
+      const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
+      return Math.max(acc, pct);
+    }, 0);
+    return Math.min(100, best);
+  }, [vm.purchase_rows, targets, freeUnits]);
+
+  const monthLabel = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
+
+  const parsePaste = async () => {
+    if (!paste.trim()) return;
     setParsing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("bulk-extract-items", { body: { text, kind: "quotation" } });
+      const { data, error } = await supabase.functions.invoke("bulk-extract-items", { body: { text: paste, kind: "quotation" } });
       if (error) throw error;
       const items: any[] = data?.items || [];
       if (!items.length) { toast({ title: "No rows found" }); return; }
@@ -288,409 +532,247 @@ const AdminSchemeCalculator = () => {
         const price = Number(it.unit_price) || 0;
         return { id: crypto.randomUUID(), item: [it.description, it.measurement].filter(Boolean).join(" — "), qty, price, amountWithTax: price * qty, mrp: price };
       });
-      setRows((rs) => {
-        const allEmpty = rs.every((r) => !r.item);
-        return allEmpty ? parsed : [...rs, ...parsed];
-      });
-      toast({ title: `Added ${parsed.length} rows` });
-      setAutofill("");
+      onChange({ purchase_rows: [...vm.purchase_rows, ...parsed], purchases_text: paste });
+      toast({ title: `Added ${parsed.length} rows to ${monthLabel}` });
+      setPaste("");
     } catch (e: any) {
-      toast({ title: "Auto-fill failed", description: e?.message || String(e), variant: "destructive" });
+      toast({ title: "Extract failed", description: e?.message || String(e), variant: "destructive" });
     } finally { setParsing(false); }
   };
 
-  const onUpload = async (file: File) => {
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    try {
-      let text = "";
-      if (ext === "txt" || ext === "csv") text = await file.text();
-      else if (ext === "xlsx" || ext === "xls") {
-        const XLSX = await import("xlsx");
-        const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        text = wb.SheetNames.map((n) => XLSX.utils.sheet_to_csv(wb.Sheets[n])).join("\n");
-      } else { toast({ title: "Paste text instead", description: "For PDF/Word, paste text below." }); return; }
-      await parseText(text);
-    } catch (e: any) {
-      toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
-    }
-  };
-
-  /* ----- Apply / Save scheme ----- */
-  const applySavedScheme = (id: string) => {
+  const applySaved = (id: string) => {
     const s = savedSchemes.find((x) => x.id === id);
     if (!s) return;
-    setActiveScheme({ id: s.id, name: s.name, kind: s.kind, period: s.period, config: s.config || defaultConfig(s.kind) });
-    toast({ title: `Applied scheme: ${s.name}` });
-  };
-
-  const saveCurrentSchemeAs = async (name: string) => {
-    if (!name.trim()) return;
-    const { data, error } = await supabase.from("scheme_rules").insert({
-      name: name.trim(), kind: activeScheme.kind, period: activeScheme.period, config: activeScheme.config,
-    }).select().single();
-    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
-    setSavedSchemes((arr) => [data as any, ...arr]);
-    setActiveScheme((s) => ({ ...s, id: (data as any).id, name: (data as any).name }));
-    toast({ title: `Saved scheme: ${name}` });
+    onChange({ scheme_kind: s.kind, scheme_config: s.config || defaultConfig(s.kind) });
   };
 
   return (
-    <AdminShell>
-      <div className="space-y-6">
-        <h1 className="font-display text-2xl">Scheme Calculator</h1>
+    <div className={`rounded-2xl border-2 bg-card shadow-sm transition-shadow ${isCurrent ? "border-primary/50 shadow-md" : "border-border"}`}>
+      <button onClick={() => setOpen((x) => !x)} className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-muted/30">
+        <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="text-[9px] font-medium uppercase">{MONTH_NAME[vm.month]}</div>
+          <div className="text-xs font-bold">{String(fyCalendarYear(fy, vm.month)).slice(-2)}</div>
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-base">{monthLabel}</h3>
+            {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">CURRENT</span>}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {totalQty} qty · ₹{fmt(totalAmount)} · <span className="font-medium text-emerald-600 dark:text-emerald-400">{freeUnits} free</span>
+            {targets.length > 0 && <> · <span className="font-medium text-amber-600 dark:text-amber-400">{targets.length} pending</span></>}
+          </div>
+        </div>
+        <div className="hidden sm:block"><ProgressRing pct={completion} size={48} stroke={5} /></div>
+        {open ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+      </button>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="calc">Calculator</TabsTrigger>
-            <TabsTrigger value="parties">Parties ({parties.length})</TabsTrigger>
-            <TabsTrigger value="schemes">Schemes ({savedSchemes.length})</TabsTrigger>
-          </TabsList>
-
-          {/* ========== CALCULATOR ========== */}
-          <TabsContent value="calc" className="space-y-6 pt-4">
-            {/* Invoice-style frame wrapping the whole calculator */}
-            <div className="rounded-xl border-2 border-foreground/20 bg-card shadow-md overflow-hidden">
-              {/* Invoice header */}
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-foreground/20 bg-muted/40 px-4 py-3">
-                <div>
-                  <h2 className="font-display text-xl leading-tight">Scheme Worksheet</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {activeScheme.name} · {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period}
-                  </p>
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  <div>Date: {new Date().toLocaleDateString("en-IN")}</div>
-                  <div>Party: <span className="font-medium text-foreground">{partyLabel || "—"}</span></div>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-5">
-
-            {/* Scheme picker + editor */}
-            <section className="rounded-lg border bg-background/40 p-4 space-y-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scheme</div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Saved scheme</Label>
-                  <Select value={activeScheme.id || ""} onValueChange={applySavedScheme}>
-                    <SelectTrigger><SelectValue placeholder="Pick a saved scheme…" /></SelectTrigger>
-                    <SelectContent>
-                      {savedSchemes.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">No saved schemes yet</div>}
-                      {savedSchemes.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name} · {SCHEME_LABEL[s.kind]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Scheme type</Label>
-                  <Select value={activeScheme.kind} onValueChange={(v) => setActiveScheme((s) => ({ ...s, id: undefined, kind: v as SchemeKind, config: defaultConfig(v as SchemeKind) }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(SCHEME_LABEL) as SchemeKind[]).map((k) => (
-                        <SelectItem key={k} value={k}>{SCHEME_LABEL[k]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Period</Label>
-                  <Select value={activeScheme.period} onValueChange={(v) => setActiveScheme((s) => ({ ...s, period: v as Period }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Cycle start date</Label>
-                  <Input
-                    type="date"
-                    value={activeScheme.config?.cycleStart || ""}
-                    onChange={(e) => setActiveScheme((s) => ({ ...s, config: { ...s.config, cycleStart: e.target.value } }))}
-                  />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Defaults to start of current {activeScheme.period === "monthly" ? "month" : activeScheme.period === "quarterly" ? "quarter" : "year"}.
-                  </p>
-                </div>
-              </div>
-
-              <SchemeConfigEditor scheme={activeScheme} onChange={(config) => setActiveScheme((s) => ({ ...s, config }))} />
-
-              <div className="flex flex-wrap items-end gap-2">
-                <div className="flex-1 min-w-[200px]">
-                  <Label className="text-xs">Save as scheme name</Label>
-                  <Input value={activeScheme.name} onChange={(e) => setActiveScheme((s) => ({ ...s, name: e.target.value }))} />
-                </div>
-                <Button onClick={() => saveCurrentSchemeAs(activeScheme.name)} variant="outline">
-                  <Save className="h-4 w-4" /> Save scheme
-                </Button>
-              </div>
-            </section>
-
-            {/* Party picker */}
-            <section className="rounded-lg border bg-background/40 p-4 space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill To / Party</div>
-              <Label className="text-xs">Party / Client</Label>
-              <Input value={partyLabel || partyQuery} placeholder="Search party (name / phone / place)…"
-                onChange={(e) => { setPartyQuery(e.target.value); setPartyLabel(""); setPartyId(null); }} />
-              {partyQuery && !partyLabel && (
-                <div className="max-h-56 overflow-auto rounded border bg-popover">
-                  {filteredParties.length === 0 && (
-                    <div className="p-2 text-xs text-muted-foreground">No matching parties. Use the “Parties” tab to add one.</div>
-                  )}
-                  {filteredParties.map((p) => (
-                    <button key={p.id} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                      onClick={() => { setPartyId(p.id); setPartyLabel(`${p.name}${p.place ? ` — ${p.place}` : ""}${p.phone ? ` · ${p.phone}` : ""}`); setPartyQuery(""); }}>
-                      {p.name}{p.place ? ` — ${p.place}` : ""}{p.phone ? ` · ${p.phone}` : ""}
-                    </button>
-                  ))}
-                </div>
+      {open && (
+        <div className="space-y-4 border-t p-4">
+          <section className="rounded-xl border bg-background/50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-sm font-semibold">① Scheme configuration</h4>
+              {savedSchemes.length > 0 && (
+                <Select value="" onValueChange={applySaved}>
+                  <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Apply template…" /></SelectTrigger>
+                  <SelectContent>{savedSchemes.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
               )}
-            </section>
-
-            {/* Auto-fill */}
-            <section className="rounded-lg border bg-background/40 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-medium">Auto-fill (paste / upload)</h2>
-                <div className="flex gap-2">
-                  <input ref={fileRef} type="file" className="hidden" accept=".csv,.txt,.xlsx,.xls"
-                    onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-                  <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> Upload</Button>
-                  <Button size="sm" onClick={() => parseText(autofill)} disabled={parsing || !autofill.trim()}>
-                    {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Extract
-                  </Button>
-                </div>
-              </div>
-              <Textarea rows={3} placeholder="Paste lines like:  Sofa 3-seater  2  12500"
-                value={autofill} onChange={(e) => setAutofill(e.target.value)} />
-            </section>
-
-            {/* Grid */}
-            <section className="rounded-lg border bg-background/40">
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-                <h2 className="font-medium">Items</h2>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={addRow}><Plus className="h-4 w-4" /> Add row</Button>
-                  <Button size="sm" variant="outline" onClick={() => addMany(10)}>+ 10 rows</Button>
-                  <Button size="sm" variant="ghost" onClick={clearRows}>Clear</Button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Sl</TableHead>
-                      <TableHead>Item & Size</TableHead>
-                      <TableHead className="w-20">Qty</TableHead>
-                      <TableHead className="w-28">Price</TableHead>
-                      <TableHead className="w-32">Amount + Tax</TableHead>
-                      <TableHead className="w-28">MRP</TableHead>
-                      <TableHead className="w-20">Margin %</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((r, i) => {
-                      const mrpTotal = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
-                      const margin = mrpTotal > 0 ? ((mrpTotal - (Number(r.amountWithTax) || 0)) / mrpTotal) * 100 : 0;
-                      return (
-                        <TableRow key={r.id}>
-                          <TableCell>{i + 1}</TableCell>
-                          <TableCell><Input value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} placeholder="e.g. Sofa 3-seater 180x90" /></TableCell>
-                          <TableCell><Input type="number" value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} /></TableCell>
-                          <TableCell><Input type="number" value={r.price} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) || 0 })} /></TableCell>
-                          <TableCell><Input type="number" value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} /></TableCell>
-                          <TableCell><Input type="number" value={r.mrp} onChange={(e) => updateRow(r.id, { mrp: Number(e.target.value) || 0 })} /></TableCell>
-                          <TableCell className="text-sm font-medium">{margin.toFixed(1)}%</TableCell>
-                          <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="flex flex-wrap gap-6 border-t p-3 text-sm">
-                <div>Total Qty: <span className="font-semibold">{totals.totalQty}</span></div>
-                <div>Total Amount: <span className="font-semibold">₹{fmt(totals.totalAmount)}</span></div>
-                <div>Total MRP: <span className="font-semibold">₹{fmt(totals.totalMrp)}</span></div>
-              </div>
-            </section>
-
-            {/* Notes / attachments — floating window like quotation notes */}
-            <section className="rounded-lg border bg-background/40 p-4 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-medium">Notes & attachments</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {partyLabel
-                      ? `Saved against: ${partyLabel}`
-                      : "Pick a party above to attach photos / PDFs of handwritten scheme pages."}
-                  </p>
-                </div>
-                <SchemePartyNotesButton partyId={partyId} />
-              </div>
-            </section>
-
-            {/* Report */}
-            <section className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="font-display text-lg">Scheme Report</h2>
-                <span className="text-xs text-muted-foreground">
-                  {SCHEME_LABEL[activeScheme.kind]} · {activeScheme.period} · {partyLabel || "no party"}
-                </span>
-              </div>
-              <MonthProgress period={activeScheme.period} cycleStart={activeScheme.config?.cycleStart} />
-              {report.rep.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Add items to see eligibility.</p>
-              ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
-                  {/* Achieved */}
-                  <div className="rounded-lg border bg-background p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">✓ Achieved Schemes</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {report.rep.reduce((s: number, r: any) => s + (r.free || 0), 0)} free unlocked
-                      </span>
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead className="w-16">Qty</TableHead>
-                          <TableHead className="w-16">Free</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {report.rep.map((f: any, i: number) => (
-                          <TableRow key={i}>
-                            <TableCell className="text-sm">
-                              <div>{f.item}</div>
-                              <div className="text-xs text-muted-foreground">{f.note}</div>
-                            </TableCell>
-                            <TableCell>{f.qty}</TableCell>
-                            <TableCell className="font-semibold text-emerald-600">{f.free}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Targets */}
-                  <div className="rounded-lg border bg-background p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">⏳ Target Reminders</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {(report as any).targets?.length || 0} pending
-                      </span>
-                    </div>
-                    {!(report as any).targets || (report as any).targets.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">All available slabs are unlocked. Nothing more to chase.</p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead className="w-20">Have / Need</TableHead>
-                            <TableHead className="w-20">Buy more</TableHead>
-                            <TableHead className="w-24">Reward</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(report as any).targets.map((t: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell className="text-sm">
-                                <div>{t.item}</div>
-                                {t.note && <div className="text-xs text-muted-foreground">{t.note}</div>}
-                              </TableCell>
-                              <TableCell className="text-sm">{t.have} / {t.need}</TableCell>
-                              <TableCell className="font-semibold text-amber-600">{t.gap}</TableCell>
-                              <TableCell className="text-sm">{t.reward}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="mt-3 rounded bg-muted/50 p-3 text-sm">{report.summary}</div>
-            </section>
-
-              </div>
-              {/* Invoice footer */}
-              <div className="border-t-2 border-foreground/20 bg-muted/40 px-4 py-2 text-center text-[11px] text-muted-foreground">
-                Scheme Worksheet · Internal use only · Generated by Scheme Calculator
+            </div>
+            <div className="mb-3 grid gap-3 md:grid-cols-2">
+              <div>
+                <Label className="text-xs">Scheme type</Label>
+                <Select value={vm.scheme_kind} onValueChange={(v) => onChange({ scheme_kind: v as SchemeKind, scheme_config: defaultConfig(v as SchemeKind) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{(Object.keys(SCHEME_LABEL) as SchemeKind[]).map((k) => <SelectItem key={k} value={k}>{SCHEME_LABEL[k]}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
             </div>
-          </TabsContent>
+            <SchemeConfigEditor scheme={{ kind: vm.scheme_kind, config: vm.scheme_config }} onChange={(c) => onChange({ scheme_config: c })} />
+          </section>
 
-          {/* ========== PARTIES ========== */}
-          <TabsContent value="parties" className="pt-4">
-            <PartiesTab parties={parties} setParties={setParties} />
-          </TabsContent>
+          <section className="rounded-xl border-2 border-dashed bg-background/50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-sm font-semibold">② Paste this month's purchase data</h4>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={parsePaste} disabled={parsing || !paste.trim()}>
+                  {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Extract
+                </Button>
+                {vm.purchase_rows.length > 0 && (
+                  <Button size="sm" variant="ghost" onClick={() => onChange({ purchase_rows: [], purchases_text: "" })}>Clear</Button>
+                )}
+              </div>
+            </div>
+            <Textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)}
+              placeholder={"Paste cumulative purchase lines — e.g.\nComfobond 75x60x6   10   12500\nComfobond 72x60x6   10   11800"} />
+            {vm.purchase_rows.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{vm.purchase_rows.length} rows captured · view</summary>
+                <div className="mt-2 max-h-56 overflow-auto rounded border bg-background">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-16">Qty</TableHead><TableHead className="w-24">Amount</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {vm.purchase_rows.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="text-sm">{r.item}</TableCell>
+                          <TableCell>{r.qty}</TableCell>
+                          <TableCell>₹{fmt(r.amountWithTax)}</TableCell>
+                          <TableCell><Button size="icon" variant="ghost" onClick={() => onChange({ purchase_rows: vm.purchase_rows.filter((x) => x.id !== r.id) })}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </details>
+            )}
+          </section>
 
-          {/* ========== SCHEMES ========== */}
-          <TabsContent value="schemes" className="pt-4">
-            <SchemesTab schemes={savedSchemes} setSchemes={setSavedSchemes} onApply={(s) => { applySavedScheme(s.id); setTab("calc"); }} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </AdminShell>
+          <section className="rounded-xl border bg-background/50 p-4">
+            <h4 className="mb-3 text-sm font-semibold">③ Live performance</h4>
+            {vm.purchase_rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Paste purchase data above to see achievements and targets.</p>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4">
+                  <div className="mb-3 flex items-start gap-3">
+                    <ProgressRing pct={completion} size={88} color="hsl(142 71% 45%)" />
+                    <div>
+                      <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <h5 className="text-sm font-semibold">Achieved</h5>
+                      </div>
+                      <div className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{freeUnits}</div>
+                      <div className="text-[11px] text-muted-foreground">free units unlocked</div>
+                    </div>
+                  </div>
+                  <ul className="space-y-1 text-xs">
+                    {report.rep.slice(0, 5).map((r: any, i: number) => (
+                      <li key={i} className="flex justify-between gap-2 border-t border-emerald-500/10 py-1">
+                        <span className="truncate">{r.item}</span>
+                        <span className="font-medium text-emerald-700 dark:text-emerald-400">{r.qty} → {r.free} free</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    <h5 className="text-sm font-semibold">Target reminders</h5>
+                  </div>
+                  {targets.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">All available slabs unlocked. Nothing more to chase this month.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {targets.slice(0, 4).map((t: any, i: number) => {
+                        const pct = t.need > 0 ? Math.round((t.have / t.need) * 100) : 0;
+                        return (
+                          <li key={i}>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <div className="truncate text-xs font-medium">{t.item}</div>
+                              <div className="text-[11px] text-amber-700 dark:text-amber-400">+{t.gap} for {t.reward}</div>
+                            </div>
+                            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-amber-500/10">
+                              <div className="h-full bg-amber-500 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
+                            </div>
+                            <div className="mt-1 text-[10px] text-muted-foreground">{t.have} / {t.need}</div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <div className="flex items-center justify-end gap-2">
+            <SchemePartyNotesButton partyId={vm.party_id} />
+            <Button onClick={onSave}><Save className="h-4 w-4" /> Save {MONTH_NAME[vm.month]}</Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
-};
+}
 
-/* -------------------- Scheme config editor -------------------- */
+function AggregatedView({ mode, fy, months }: { mode: TimelineMode; fy: number; months: VendorMonth[] }) {
+  const buckets = useMemo(() => {
+    if (mode === "yearly") return [{ label: `FY ${fy}–${String(fy + 1).slice(-2)}`, months }];
+    if (mode === "quarterly") {
+      const order = [[4, 5, 6], [7, 8, 9], [10, 11, 12], [1, 2, 3]];
+      return order.map((mset, i) => ({ label: `Q${i + 1}`, months: months.filter((m) => mset.includes(m.month)) }));
+    }
+    return [
+      { label: "H1 (Apr–Sep)", months: months.filter((m) => [4, 5, 6, 7, 8, 9].includes(m.month)) },
+      { label: "H2 (Oct–Mar)", months: months.filter((m) => [10, 11, 12, 1, 2, 3].includes(m.month)) },
+    ];
+  }, [mode, fy, months]);
 
-function MonthProgress({ period, cycleStart }: { period: Period; cycleStart?: string }) {
-  const now = new Date();
-  let start: Date, end: Date, label: string;
-  if (cycleStart) {
-    start = new Date(cycleStart + "T00:00:00");
-    end = new Date(start);
-    if (period === "monthly") end.setMonth(end.getMonth() + 1);
-    else if (period === "quarterly") end.setMonth(end.getMonth() + 3);
-    else end.setFullYear(end.getFullYear() + 1);
-    end.setDate(end.getDate() - 1);
-    label = `${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
-  } else if (period === "monthly") {
-    start = new Date(now.getFullYear(), now.getMonth(), 1);
-    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    label = start.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  } else if (period === "quarterly") {
-    const q = Math.floor(now.getMonth() / 3);
-    start = new Date(now.getFullYear(), q * 3, 1);
-    end = new Date(now.getFullYear(), q * 3 + 3, 0);
-    label = `Q${q + 1} ${now.getFullYear()}`;
-  } else {
-    start = new Date(now.getFullYear(), 0, 1);
-    end = new Date(now.getFullYear(), 11, 31);
-    label = String(now.getFullYear());
-  }
-  const total = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
-  const elapsed = Math.max(0, Math.min(total, Math.round((now.getTime() - start.getTime()) / 86400000) + 1));
-  const remaining = Math.max(0, total - elapsed);
-  const pct = Math.round((elapsed / total) * 100);
+  const chartData = months.map((m) => {
+    const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
+    const qty = m.purchase_rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const amount = m.purchase_rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+    const free = rep.rep.reduce((s: number, x: any) => s + (x.free || 0), 0);
+    const gap = ((rep as any).targets || []).reduce((s: number, t: any) => s + (Number(t.gap) || 0), 0);
+    return { name: MONTH_NAME[m.month], qty, amount: Math.round(amount), free, gap };
+  });
+
   return (
-    <div className="mb-3 rounded-md border bg-background p-3">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-medium">{label} · {period}</span>
-        <span className="text-muted-foreground">
-          Day {elapsed} of {total} · <span className="font-semibold text-foreground">{remaining} days left</span>
-        </span>
+    <div className="space-y-5">
+      <div className="rounded-2xl border bg-card p-4 shadow-sm">
+        <h3 className="mb-3 font-display text-base">Monthly comparison</h3>
+        <div className="h-72 w-full">
+          <ResponsiveContainer>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <RTooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="qty" name="Purchased Qty" stackId="a" fill="hsl(217 91% 60%)" />
+              <Bar dataKey="gap" name="Gap to next slab" stackId="a" fill="hsl(38 92% 50%)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="free" name="Free unlocked" fill="hsl(142 71% 45%)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {buckets.map((b) => {
+          const totalQty = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.qty) || 0), 0), 0);
+          const totalAmount = b.months.reduce((s, m) => s + m.purchase_rows.reduce((a, r) => a + (Number(r.amountWithTax) || 0), 0), 0);
+          const freeUnits = b.months.reduce((s, m) => {
+            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
+            return s + rep.rep.reduce((a: number, x: any) => a + (x.free || 0), 0);
+          }, 0);
+          const targetCount = b.months.reduce((s, m) => {
+            const rep = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, m.purchase_rows);
+            return s + (((rep as any).targets || []).length);
+          }, 0);
+          return (
+            <div key={b.label} className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.label}</div>
+              <div className="mt-2 text-2xl font-bold">₹{fmt(totalAmount)}</div>
+              <div className="text-xs text-muted-foreground">{totalQty} units purchased</div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-emerald-500/10 p-2">
+                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{freeUnits}</div>
+                  <div className="text-[10px] text-muted-foreground">free unlocked</div>
+                </div>
+                <div className="rounded-lg bg-amber-500/10 p-2">
+                  <div className="font-semibold text-amber-700 dark:text-amber-400">{targetCount}</div>
+                  <div className="text-[10px] text-muted-foreground">pending targets</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: SchemeKind; config: any }; onChange: (c: any) => void }) {
   const { kind, config } = scheme;
