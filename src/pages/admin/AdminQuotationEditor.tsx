@@ -407,7 +407,7 @@ const AdminQuotationEditor = () => {
       quantity: 1,
       unit_price: 0,
       amount: 0,
-      display_order: items.length,
+      display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: null,
       bundle_id: null,
       fulfillment_route: defaultRoute,
@@ -603,7 +603,7 @@ const AdminQuotationEditor = () => {
       quantity: 1,
       unit_price: Number(p.offer_price ?? p.mrp ?? 0),
       amount: Number(p.offer_price ?? p.mrp ?? 0),
-      display_order: items.length,
+      display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: p.id,
       bundle_id: null,
       fulfillment_route:
@@ -652,7 +652,7 @@ const AdminQuotationEditor = () => {
       quantity: 1,
       unit_price: price,
       amount: price,
-      display_order: items.length,
+      display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: null,
       bundle_id: b.id,
       fulfillment_route: "ready_stock",
@@ -1777,6 +1777,7 @@ const AdminQuotationEditor = () => {
                         updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                       }}
                       onFocus={(e) => e.currentTarget.select()}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       placeholder="1"
                     />
                   </label>
@@ -1793,6 +1794,7 @@ const AdminQuotationEditor = () => {
                         onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                         disabled={!canEditPrice}
                         onFocus={(e) => e.currentTarget.select()}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                         placeholder="0"
                       />
                     </label>
@@ -1839,6 +1841,7 @@ const AdminQuotationEditor = () => {
                     updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                   }}
                   onFocus={(e) => e.currentTarget.select()}
+                  onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                   placeholder="1"
                 />
                 {showPricing ? (
@@ -1852,6 +1855,7 @@ const AdminQuotationEditor = () => {
                     onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                     disabled={!canEditPrice}
                     onFocus={(e) => e.currentTarget.select()}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     placeholder="0"
                   />
                 ) : (
