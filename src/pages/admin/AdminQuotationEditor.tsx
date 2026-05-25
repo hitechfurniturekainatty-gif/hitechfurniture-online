@@ -1777,6 +1777,7 @@ const AdminQuotationEditor = () => {
                         updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                       }}
                       onFocus={(e) => e.currentTarget.select()}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       placeholder="1"
                     />
                   </label>
@@ -1793,6 +1794,7 @@ const AdminQuotationEditor = () => {
                         onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                         disabled={!canEditPrice}
                         onFocus={(e) => e.currentTarget.select()}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                         placeholder="0"
                       />
                     </label>
@@ -1839,6 +1841,7 @@ const AdminQuotationEditor = () => {
                     updateItem(it.id, { quantity: Number.isFinite(n) ? n : 1 });
                   }}
                   onFocus={(e) => e.currentTarget.select()}
+                  onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                   placeholder="1"
                 />
                 {showPricing ? (
@@ -1852,6 +1855,7 @@ const AdminQuotationEditor = () => {
                     onChange={(e) => updateItem(it.id, { unit_price: Number(e.target.value) || 0 })}
                     disabled={!canEditPrice}
                     onFocus={(e) => e.currentTarget.select()}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     placeholder="0"
                   />
                 ) : (
