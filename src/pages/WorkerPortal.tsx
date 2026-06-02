@@ -18,6 +18,7 @@ import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/Admin
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
+import { lazyImport } from "@/lib/lazyImport";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { downloadBlob } from "@/lib/downloadBlob";
 
@@ -266,7 +267,7 @@ const WorkerPortal = () => {
         .in("id", job.item_ids);
       if (error) throw error;
 
-      const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      const { generateJobWorkPdf } = await lazyImport(() => import("@/lib/quotationPdf"));
       // Smaller images keep the rasterised JPGs phone-friendly for WhatsApp.
       const COMPRESSED_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
       const pdfBlob = await generateJobWorkPdf({
@@ -292,7 +293,7 @@ const WorkerPortal = () => {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
         toast({ title: "PDF downloaded", description: baseFilename });
       } else {
-        const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+        const { pdfBlobToJpgPages } = await lazyImport(() => import("@/lib/pdfToJpg"));
         const blobs = await pdfBlobToJpgPages(pdfBlob);
         blobs.forEach((b, i) => {
           const name = blobs.length === 1 ? `${baseFilename}.jpg` : `${baseFilename}-p${i + 1}.jpg`;

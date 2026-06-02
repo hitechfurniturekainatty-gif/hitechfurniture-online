@@ -144,9 +144,10 @@ Please share more details.`;
   };
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
+    const { lazyImport } = await import("@/lib/lazyImport");
     const [{ generateProductPdf }, { pdfBlobToJpgBlob }] = await Promise.all([
-      import("@/lib/pdf"),
-      import("@/lib/pdfToJpg"),
+      lazyImport(() => import("@/lib/pdf")),
+      lazyImport(() => import("@/lib/pdfToJpg")),
     ]);
     const pdfBlob = await generateProductPdf({
       product_name: product.product_name,
@@ -166,7 +167,8 @@ Please share more details.`;
     setGeneratingJpg(true);
     try {
       const blob = await buildBrochureJpgBlob();
-      const { downloadBlob } = await import("@/lib/downloadBlob");
+      const { lazyImport } = await import("@/lib/lazyImport");
+      const { downloadBlob } = await lazyImport(() => import("@/lib/downloadBlob"));
       downloadBlob(blob, `${product.product_code}-brochure.jpg`);
       toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
     } catch (e) {
@@ -182,9 +184,10 @@ Please share more details.`;
   const handleDownloadPdf = async () => {
     setGeneratingJpg(true);
     try {
+      const { lazyImport } = await import("@/lib/lazyImport");
       const [{ generateProductPdf }, { downloadBlob }] = await Promise.all([
-        import("@/lib/pdf"),
-        import("@/lib/downloadBlob"),
+        lazyImport(() => import("@/lib/pdf")),
+        lazyImport(() => import("@/lib/downloadBlob")),
       ]);
       const pdfBlob = await generateProductPdf({
         product_name: product.product_name,
