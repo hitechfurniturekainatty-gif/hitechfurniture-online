@@ -211,9 +211,10 @@ const Catalog = () => {
     }
     setDownloadingPdf(true);
     try {
+      const { lazyImport } = await import("@/lib/lazyImport");
       const [{ generateCatalogPdf }, { downloadBlob }] = await Promise.all([
-        import("@/lib/catalogPdf"),
-        import("@/lib/downloadBlob"),
+        lazyImport(() => import("@/lib/catalogPdf")),
+        lazyImport(() => import("@/lib/downloadBlob")),
       ]);
       const items = filtered.map((p) => {
         const cover = [...(p.product_images ?? [])].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
