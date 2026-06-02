@@ -442,6 +442,7 @@ const AdminHomePage = () => {
                   </Label>
                 </div>
               </div>
+              <PublishAllItemsControl />
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">Brand line (small caps above headline)</Label>
@@ -721,3 +722,66 @@ const AdminHomePage = () => {
 };
 
 export default AdminHomePage;
+
+const PublishAllItemsControl = () => {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [counts, setCounts] = useState({ products: 0, productsPublished: 0, bundles: 0, bundlesPublished: 0 });
+
+  const refresh = async () => {
+    setLoading(true);
+    const [p, pp, b, bp] = await Promise.all([
+      supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_published", true),
+      supabase.from("product_bundles").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      supabase.from("product_bundles").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_published", true),
+    ]);
+    setCounts({
+      products: p.count ?? 0,
+      productsPublished: pp.count ?? 0,
+      bundles: b.count ?? 0,
+      bundlesPublished: bp.count ?? 0,
+    });
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const totalItems = counts.products + counts.bundles;
+  const totalPublished = counts.productsPublished + counts.bundlesPublished;
+  const allOn = totalItems > 0 && totalPublished === totalItems;
+
+  const toggleAll = async (publish: boolean) => {
+    setBusy(true);
+    const [r1, r2] = await Promise.all([
+      supabase.from("products").update({ is_published: publish }).is("deleted_at", null),
+      supabase.from("product_bundles").update({ is_published: publish }).is("deleted_at", null),
+    ]);
+    setBusy(false);
+    if (r1.error || r2.error) {
+      toast({ title: "Failed", description: r1.error?.message || r2.error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: publish ? "All items published" : "All items hidden", description: `${totalItems} items updated.` });
+    refresh();
+  };
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <Switch
+          id="publish-all-items"
+          checked={allOn}
+          disabled={loading || busy || totalItems === 0}
+          onCheckedChange={(v) => toggleAll(v)}
+        />
+        <Label htmlFor="publish-all-items" className="text-sm font-medium">
+          Show ALL items in public catalog (master switch)
+        </Label>
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {loading ? "Loading…" : `${totalPublished} of ${totalItems} items currently public (${counts.productsPublished}/${counts.products} products, ${counts.bundlesPublished}/${counts.bundles} bundles)`}
+      </span>
+    </div>
+  );
+};
