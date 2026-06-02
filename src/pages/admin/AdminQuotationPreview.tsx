@@ -32,6 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { Share2 } from "lucide-react";
 import { firstUrl } from "@/lib/firstUrl";
+import { lazyImport } from "@/lib/lazyImport";
 
 type QItem = {
   id: string;
@@ -235,7 +236,7 @@ const AdminQuotationPreview = () => {
     setSharing(true);
     try {
       // Lazy-load heavy PDF + rasteriser libs only when sharing
-      const { generateQuotationPdf } = await import("@/lib/quotationPdf");
+      const { generateQuotationPdf } = await lazyImport(() => import("@/lib/quotationPdf"));
       const data = {
         quotation_id: q.quotation_id,
         party_name: q.party_name,
@@ -271,7 +272,7 @@ const AdminQuotationPreview = () => {
         })),
       };
       const pdfBlob = await generateQuotationPdf(data, COMPRESSED_PDF_OPTIONS);
-      const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+      const { pdfBlobToJpgPages } = await lazyImport(() => import("@/lib/pdfToJpg"));
       // Page-by-page output: high-resolution (3×) sequence so each page
       // stays sharp on its own and items are never split across two images.
       const blobs = await pdfBlobToJpgPages(pdfBlob);
