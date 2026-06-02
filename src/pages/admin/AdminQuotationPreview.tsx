@@ -312,7 +312,7 @@ const AdminQuotationPreview = () => {
     if (!q) return;
     setSharing(true);
     try {
-      const { generateQuotationPdf } = await import("@/lib/quotationPdf");
+      const { generateQuotationPdf } = await lazyImport(() => import("@/lib/quotationPdf"));
       const data = {
         quotation_id: q.quotation_id,
         party_name: q.party_name,
@@ -446,7 +446,7 @@ const AdminQuotationPreview = () => {
         }
       }
 
-      const { generateJobWorkPdf } = await import("@/lib/quotationPdf");
+      const { generateJobWorkPdf } = await lazyImport(() => import("@/lib/quotationPdf"));
       // Worker-safe PDF: generateJobWorkPdf strips prices, GST and customer
       // contact details by design, so the same blob is safe whether we deliver
       // it as PDF or rasterised JPG.
@@ -480,7 +480,7 @@ const AdminQuotationPreview = () => {
         if (format === "pdf") {
           await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
         } else {
-          const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+          const { pdfBlobToJpgPages } = await lazyImport(() => import("@/lib/pdfToJpg"));
           const blobs = await pdfBlobToJpgPages(pdfBlob);
           await shareFilesNative(blobs, baseFilename, msg, "jpg");
         }
@@ -495,7 +495,7 @@ const AdminQuotationPreview = () => {
           description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,
         });
       } else {
-        const { pdfBlobToJpgPages } = await import("@/lib/pdfToJpg");
+        const { pdfBlobToJpgPages } = await lazyImport(() => import("@/lib/pdfToJpg"));
         const blobs = await pdfBlobToJpgPages(pdfBlob);
         await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
         toast({
