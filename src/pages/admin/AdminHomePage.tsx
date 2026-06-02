@@ -442,6 +442,7 @@ const AdminHomePage = () => {
                   </Label>
                 </div>
               </div>
+              <PublishAllItemsControl />
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">Brand line (small caps above headline)</Label>
