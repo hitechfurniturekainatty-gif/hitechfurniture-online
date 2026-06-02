@@ -29,9 +29,11 @@ import {
   Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
 } from "lucide-react";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
-// of blocking initial page paint on mobile.
-const loadPdfLib = () => import("@/lib/quotationPdf");
-const loadJpgLib = () => import("@/lib/pdfToJpg");
+// of blocking initial page paint on mobile. lazyImport reloads the page if
+// the cached chunk hash is stale after a redeploy.
+import { lazyImport } from "@/lib/lazyImport";
+const loadPdfLib = () => lazyImport(() => import("@/lib/quotationPdf"));
+const loadJpgLib = () => lazyImport(() => import("@/lib/pdfToJpg"));
 import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
