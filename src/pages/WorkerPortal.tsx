@@ -18,6 +18,7 @@ import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/Admin
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
+import { lazyImport } from "@/lib/lazyImport";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { downloadBlob } from "@/lib/downloadBlob";
 
