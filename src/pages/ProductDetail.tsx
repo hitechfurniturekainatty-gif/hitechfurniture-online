@@ -5,9 +5,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { buildWhatsAppUrl, formatINR, WHATSAPP_NUMBER } from "@/lib/brand";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 // PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
 // handlers below — keeping them out of the main bundle dramatically improves
 // first paint on the catalog/product pages.
@@ -494,6 +495,17 @@ Please share more details.`;
               pdfTooltip="PDF — print-quality brochure"
               jpgTooltip="JPG — image for WhatsApp"
             />
+          </div>
+          <div className="mt-3">
+            <Button
+              size="lg"
+              variant="default"
+              className="w-full sm:w-auto"
+              onClick={() => openEnquiryForm({ productName: product.product_name })}
+            >
+              <ClipboardList className="mr-1 h-5 w-5" />
+              Send Enquiry
+            </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
             On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure image + message in one step.
