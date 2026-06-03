@@ -2,10 +2,11 @@ import { Link, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 
 export const SiteHeader = () => {
   const { user, isStaff } = useAuth();
@@ -43,6 +44,15 @@ export const SiteHeader = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-2 justify-self-end">
+          <Button
+            variant="outline"
+            size="lg"
+            className="text-base"
+            onClick={() => openEnquiryForm()}
+          >
+            <ClipboardList className="h-4 w-4" />
+            General Enquiry
+          </Button>
           {isStaff ? (
             <Button asChild variant="default" size="lg" className="text-base">
               <Link to="/admin">Dashboard</Link>
@@ -81,6 +91,14 @@ export const SiteHeader = () => {
                 {n.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => { setOpen(false); openEnquiryForm(); }}
+              className="flex items-center gap-2 rounded-lg px-3 py-3 text-left text-base font-semibold text-primary hover:bg-muted active:bg-muted"
+            >
+              <ClipboardList className="h-4 w-4" />
+              General Enquiry
+            </button>
             <Link
               to={isStaff || user ? "/admin" : "/auth"}
               onClick={() => setOpen(false)}

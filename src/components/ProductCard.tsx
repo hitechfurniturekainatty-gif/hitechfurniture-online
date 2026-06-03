@@ -4,7 +4,8 @@ import { formatINR, buildWhatsAppUrl } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { toTitleCase } from "@/lib/textCase";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ClipboardList } from "lucide-react";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 
 export type ProductVariantData = {
   id: string;
@@ -99,6 +100,12 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
     window.open(buildWhatsAppUrl(msg), "_blank", "noopener");
   };
 
+  const openEnquiry = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openEnquiryForm({ productName: product.product_name });
+  };
+
   return (
     <Link to={`/${linkPrefix}/${product.id}`} className="product-card group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
@@ -132,6 +139,16 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
         >
           <MessageCircle className="h-3.5 w-3.5" />
           Inquire
+        </button>
+        <button
+          type="button"
+          onClick={openEnquiry}
+          aria-label="Send enquiry"
+          title="Send enquiry"
+          className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:scale-105 hover:shadow-lg"
+        >
+          <ClipboardList className="h-3.5 w-3.5" />
+          Enquiry
         </button>
       </div>
       {variants.length > 0 && (
