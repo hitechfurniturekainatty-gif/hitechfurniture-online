@@ -250,6 +250,13 @@ const AdminHomePage = () => {
         </div>
       </div>
 
+      {/* Prominent admin-only master controls for the public catalog.
+          Auto-saves on toggle so admins never wonder if the change took effect. */}
+      <PublicCatalogMasterControls
+        settings={settings}
+        onChanged={(patch) => setSettings({ ...settings, ...patch })}
+      />
+
       <Tabs defaultValue="hero">
         <TabsList className="mb-4 grid w-full grid-cols-5 max-w-3xl">
           <TabsTrigger value="hero">Hero Slider</TabsTrigger>
