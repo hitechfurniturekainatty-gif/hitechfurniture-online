@@ -709,65 +709,122 @@ const AdminHomePage = () => {
 
 export default AdminHomePage;
 
-const PublishAllItemsControl = () => {
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [counts, setCounts] = useState({ products: 0, productsPublished: 0, bundles: 0, bundlesPublished: 0 });
+/**
+ * Two big master switches at the top of the Home Page admin screen.
+ *
+ *  • Items ON/OFF  → flips `homepage_settings.show_public_catalog` AND, when
+ *    turned ON, bulk-publishes every product/bundle so per-item "draft"
+ *    flags don't silently hide everything from the public catalog.
+ *  • Prices ON/OFF → flips `homepage_settings.hide_public_prices` (inverted
+ *    for UX clarity: switch ON = prices visible).
+ *
+ *  Both auto-save the moment they are toggled — no separate Save click.
+ */
+const PublicCatalogMasterControls = ({
+  settings,
+  onChanged,
+}: {
+  settings: (HomepageSettings & { isNew?: boolean }) | null;
+  onChanged: (patch: Partial<HomepageSettings>) => void;
+}) => {
+  const [busy, setBusy] = useState<"items" | "prices" | null>(null);
 
-  const refresh = async () => {
-    setLoading(true);
-    const [p, pp, b, bp] = await Promise.all([
-      supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null),
-      supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_published", true),
-      supabase.from("product_bundles").select("id", { count: "exact", head: true }).is("deleted_at", null),
-      supabase.from("product_bundles").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_published", true),
-    ]);
-    setCounts({
-      products: p.count ?? 0,
-      productsPublished: pp.count ?? 0,
-      bundles: b.count ?? 0,
-      bundlesPublished: bp.count ?? 0,
-    });
-    setLoading(false);
+  if (!settings) return null;
+
+  const itemsOn = settings.show_public_catalog !== false;
+  const pricesOn = !settings.hide_public_prices;
+
+  const persist = async (patch: Partial<HomepageSettings>) => {
+    if (settings.isNew || !settings.id) {
+      const { data, error } = await supabase
+        .from("homepage_settings")
+        .insert({ ...DEFAULT_SETTINGS, ...patch })
+        .select()
+        .single();
+      if (error) throw error;
+      onChanged({ ...(data as any), isNew: false } as any);
+    } else {
+      const { error } = await supabase
+        .from("homepage_settings")
+        .update(patch)
+        .eq("id", settings.id);
+      if (error) throw error;
+      onChanged(patch);
+    }
   };
 
-  useEffect(() => { refresh(); }, []);
-
-  const totalItems = counts.products + counts.bundles;
-  const totalPublished = counts.productsPublished + counts.bundlesPublished;
-  const allOn = totalItems > 0 && totalPublished === totalItems;
-
-  const toggleAll = async (publish: boolean) => {
-    setBusy(true);
-    const [r1, r2] = await Promise.all([
-      supabase.from("products").update({ is_published: publish }).is("deleted_at", null),
-      supabase.from("product_bundles").update({ is_published: publish }).is("deleted_at", null),
-    ]);
-    setBusy(false);
-    if (r1.error || r2.error) {
-      toast({ title: "Failed", description: r1.error?.message || r2.error?.message, variant: "destructive" });
-      return;
+  const toggleItems = async (on: boolean) => {
+    setBusy("items");
+    try {
+      await persist({ show_public_catalog: on });
+      if (on) {
+        // Make sure every item is actually marked published so the public
+        // catalog page (which filters by is_published) shows them all.
+        await Promise.all([
+          supabase.from("products").update({ is_published: true }).is("deleted_at", null),
+          supabase.from("product_bundles").update({ is_published: true }).is("deleted_at", null),
+        ]);
+      }
+      toast({ title: on ? "Public catalog: items visible" : "Public catalog hidden" });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    toast({ title: publish ? "All items published" : "All items hidden", description: `${totalItems} items updated.` });
-    refresh();
+  };
+
+  const togglePrices = async (on: boolean) => {
+    setBusy("prices");
+    try {
+      await persist({ hide_public_prices: !on });
+      toast({ title: on ? "Prices & MRP visible to public" : "Prices & MRP hidden from public" });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
-      <div className="flex items-center gap-2">
-        <Switch
-          id="publish-all-items"
-          checked={allOn}
-          disabled={loading || busy || totalItems === 0}
-          onCheckedChange={(v) => toggleAll(v)}
-        />
-        <Label htmlFor="publish-all-items" className="text-sm font-medium">
-          Show ALL items in public catalog (master switch)
-        </Label>
-      </div>
-      <span className="text-xs text-muted-foreground">
-        {loading ? "Loading…" : `${totalPublished} of ${totalItems} items currently public (${counts.productsPublished}/${counts.products} products, ${counts.bundlesPublished}/${counts.bundles} bundles)`}
-      </span>
-    </div>
+    <Card className="mb-6 border-primary/40 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Public Catalog — Master Controls (Admin only)</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Use these two switches to instantly show or hide what visitors see on the public catalog. Changes save automatically.
+        </p>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-card-soft">
+          <div>
+            <Label htmlFor="master-items" className="text-sm font-semibold">Show items in public catalog</Label>
+            <p className="text-xs text-muted-foreground">Turning ON also publishes every product &amp; bundle.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {busy === "items" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              id="master-items"
+              checked={itemsOn}
+              disabled={busy !== null}
+              onCheckedChange={toggleItems}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-card-soft">
+          <div>
+            <Label htmlFor="master-prices" className="text-sm font-semibold">Show prices &amp; MRP</Label>
+            <p className="text-xs text-muted-foreground">Hides every price &amp; MRP across the public site when OFF.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {busy === "prices" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              id="master-prices"
+              checked={pricesOn}
+              disabled={busy !== null}
+              onCheckedChange={togglePrices}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
