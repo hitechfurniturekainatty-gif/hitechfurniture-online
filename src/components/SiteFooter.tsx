@@ -1,8 +1,9 @@
 import { Logo } from "./Logo";
 import { BRAND_NAME, WHATSAPP_NUMBER } from "@/lib/brand";
-import { MapPin, Phone, Mail, MessageCircle, Instagram, Facebook, BookOpen, Info } from "lucide-react";
+import { MapPin, Phone, Mail, MessageCircle, Instagram, Facebook, BookOpen, Info, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 
 const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/hy5mbzYsFP2c3vx27?g_st=iw";
 const FALLBACK_ADDRESS_LINES = [
@@ -111,6 +112,16 @@ export const SiteFooter = () => {
               <MessageCircle className="h-4 w-4" />
               Chat on WhatsApp →
             </a>
+          </li>
+          <li className="pt-2">
+            <button
+              type="button"
+              onClick={() => openEnquiryForm()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md"
+            >
+              <ClipboardList className="h-4 w-4" />
+              General Enquiry
+            </button>
           </li>
         </ul>
       </div>
