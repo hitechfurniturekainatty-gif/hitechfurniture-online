@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { BacklogShortcut } from "@/components/admin/BacklogShortcut";
 import { AdminOnly } from "@/components/admin/AdminOnly";
 import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
+import { EnquiryForm } from "@/components/EnquiryForm";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
@@ -94,6 +95,9 @@ const App = () => (
         {/* Floating internal-notes window — rendered at root so it persists
             across image picker, gallery, and other in-page dialogs. */}
         <GlobalNotesWindow />
+        {/* Global customer enquiry dialog — opened via openEnquiryForm() from
+            anywhere (product cards, product detail, header, footer). */}
+        <EnquiryForm />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Index />} />
