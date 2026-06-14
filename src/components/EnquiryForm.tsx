@@ -913,6 +913,21 @@ export const EnquiryForm = () => {
               )}
 
               {canSubmit && (
+                <>
+                  {/* Products section — moved to the very bottom so the selected
+                      catalog product (if any) appears right above the submit
+                      button. Hidden for purposes where listing items makes no
+                      sense (General Inquiry, Delivery & Installation). */}
+                  {(category === "New Purchase" ||
+                    category === "Custom Design" ||
+                    category === "Complaint & Replacement" ||
+                    category === "Service & Repair") && (
+                    <ItemsSection
+                      items={items}
+                      onChange={setItems}
+                      category={category}
+                    />
+                  )}
                 <Button
                   type="submit"
                   size="lg"
@@ -929,6 +944,7 @@ export const EnquiryForm = () => {
                     </>
                   )}
                 </Button>
+                </>
               )}
 
               {status === "submitting" && <SkeletonOverlay />}
