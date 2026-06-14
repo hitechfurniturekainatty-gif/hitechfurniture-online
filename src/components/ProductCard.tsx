@@ -66,7 +66,6 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
     ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
     : product.stock_quantity;
 
-
   const openEnquiry = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();

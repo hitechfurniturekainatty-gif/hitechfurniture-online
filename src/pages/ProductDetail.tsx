@@ -16,7 +16,6 @@ import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
-
 import { Seo } from "@/components/Seo";
 
 type Product = {
@@ -41,7 +40,6 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [generatingJpg, setGeneratingJpg] = useState(false);
-  
   const homepage = useHomepageSettings();
   const hidePrices = !!homepage?.hide_public_prices;
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
@@ -111,7 +109,6 @@ const ProductDetail = () => {
 
   // Canonical URL for the product page — used in SEO + share previews.
   const productUrl = `${window.location.origin}/product/${product.id}`;
-
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
     const { lazyImport } = await import("@/lib/lazyImport");

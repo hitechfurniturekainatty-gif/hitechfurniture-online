@@ -123,6 +123,8 @@ const Index = () => {
       {settings?.show_hero_window !== false && <HeroWindowReveal />}
 
 
+
+
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}
       {slides.length > 0 && (
