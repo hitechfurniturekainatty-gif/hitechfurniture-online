@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { HeroWindowReveal } from "@/components/HeroWindowReveal";
-import { HeroFurnishingVideo } from "@/components/HeroFurnishingVideo";
+
 import { Seo } from "@/components/Seo";
 import {
   alignClass,
@@ -122,8 +122,6 @@ const Index = () => {
       {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}
       {settings?.show_hero_window !== false && <HeroWindowReveal />}
 
-      {/* Cinematic home-furnishing video band */}
-      <HeroFurnishingVideo />
 
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}

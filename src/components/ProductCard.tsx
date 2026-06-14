@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { memo, useMemo, useState } from "react";
-import { formatINR, buildWhatsAppUrl } from "@/lib/brand";
+import { formatINR } from "@/lib/brand";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { toTitleCase } from "@/lib/textCase";
-import { MessageCircle, ClipboardList } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 
 export type ProductVariantData = {
@@ -66,39 +66,6 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
     ? variants.reduce((s, v) => s + (v.stock_quantity || 0), 0)
     : product.stock_quantity;
 
-  const inquireOnWhatsApp = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const colorLine = activeVariant
-      ? `*Color:* ${activeVariant.color_name}`
-      : product.available_colors && product.available_colors.length > 0
-        ? `*Colors available:* ${product.available_colors.join(", ")}`
-        : "";
-    const priceLine = !hidePrice
-      ? onOffer
-        ? `*Price:* ${formatINR(product.offer_price!)}  ( *MRP:* ${formatINR(product.mrp)} )`
-        : `*MRP:* ${formatINR(product.mrp)}`
-      : "";
-    const productUrl = `${window.location.origin}/${linkPrefix}/${product.id}`;
-    const imgUrl = activeVariant?.image_url || baseCover || "";
-    const msg = [
-      "*New Catalog Inquiry*",
-      "Hello, I'm interested in this product:",
-      "",
-      `*Product:* ${product.product_name}`,
-      `*Code:* ${product.product_code}`,
-      priceLine,
-      colorLine,
-      "",
-      imgUrl ? `*Photo:* ${imgUrl}` : "",
-      `*View Product:* ${productUrl}`,
-      "",
-      "Please share more details.",
-    ]
-      .filter(Boolean)
-      .join("\n");
-    window.open(buildWhatsAppUrl(msg), "_blank", "noopener");
-  };
 
   const openEnquiry = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -130,16 +97,6 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
         {totalStock <= 0 && (
           <Badge variant="secondary" className="absolute right-3 top-3 z-10">Out of stock</Badge>
         )}
-        <button
-          type="button"
-          onClick={inquireOnWhatsApp}
-          aria-label="Inquire on WhatsApp"
-          title="Inquire on WhatsApp"
-          className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-md transition-all hover:scale-105 hover:shadow-lg"
-        >
-          <MessageCircle className="h-3.5 w-3.5" />
-          Inquire
-        </button>
         <button
           type="button"
           onClick={openEnquiry}

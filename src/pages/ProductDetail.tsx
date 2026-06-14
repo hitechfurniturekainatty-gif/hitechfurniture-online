@@ -5,9 +5,9 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MessageCircle, Loader2, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
-import { buildWhatsAppUrl, formatINR, WHATSAPP_NUMBER } from "@/lib/brand";
+import { formatINR } from "@/lib/brand";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 // PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
 // handlers below — keeping them out of the main bundle dramatically improves
@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
-import { openWhatsAppApp } from "@/lib/whatsapp";
+
 import { Seo } from "@/components/Seo";
 
 type Product = {
@@ -41,13 +41,9 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [generatingJpg, setGeneratingJpg] = useState(false);
-  const [sendingWa, setSendingWa] = useState(false);
+  
   const homepage = useHomepageSettings();
   const hidePrices = !!homepage?.hide_public_prices;
-  // Customer inquiries from the public catalog must always reach the admin
-  // line (+91 95266 10404) regardless of any per-staff WhatsApp number set
-  // in homepage settings.
-  const waNumber = WHATSAPP_NUMBER;
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
 
@@ -113,36 +109,9 @@ const ProductDetail = () => {
   const onOffer = product.offer_price && product.offer_price < product.mrp;
   const inStock = product.stock_quantity > 0;
 
-  // Public product URL — WhatsApp shows a rich link preview with the product image,
-  // which is the closest we can get to "auto-sending an image" via wa.me (the WhatsApp
-  // platform does NOT allow attaching files via a URL scheme — only the native Share
-  // Sheet on the user's device can attach files to a chat).
+  // Canonical URL for the product page — used in SEO + share previews.
   const productUrl = `${window.location.origin}/product/${product.id}`;
-  const priceLine = onOffer
-    ? `Price: ${formatINR(product.offer_price!)} (MRP ${formatINR(product.mrp)})`
-    : `MRP: ${formatINR(product.mrp)}`;
-  const descLine = product.description ? `\n${product.description}\n` : "";
-  const colorLine = product.available_colors && product.available_colors.length > 0
-    ? `Colors: ${product.available_colors.join(", ")}\n`
-    : "";
-  const whatsappMsg = `Hello, I'm interested in this product:
 
-Product: ${product.product_name}
-Code: ${product.product_code}
-${priceLine}
-${colorLine}${descLine}
-Photo: ${cover ?? productUrl}
-View / brochure: ${productUrl}
-
-Please share more details.`;
-
-  const openWaChat = () => {
-    if (waNumber) {
-      openWhatsAppApp(waNumber, whatsappMsg);
-    } else {
-      window.open(buildWhatsAppUrl(whatsappMsg), "_blank", "noopener");
-    }
-  };
 
   const buildBrochureJpgBlob = async (): Promise<Blob> => {
     const { lazyImport } = await import("@/lib/lazyImport");
@@ -210,67 +179,6 @@ Please share more details.`;
     }
   };
 
-  /**
-   * One-click inquiry: build the brochure JPG and try to share it via the native
-   * Web Share API. On mobile the user picks WhatsApp from the share sheet and the
-   * image + message are attached in one tap. On desktop we fall back to a normal
-   * download + opening wa.me with the pre-filled message.
-   */
-  const handleInquireOnWhatsApp = async () => {
-    setSendingWa(true);
-    try {
-      const blob = await buildBrochureJpgBlob();
-      const filename = `${product.product_code}-brochure.jpg`;
-      const file = new File([blob], filename, { type: "image/jpeg" });
-
-      const navAny = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      const canShareFiles =
-        typeof navigator.share === "function" &&
-        typeof navAny.canShare === "function" &&
-        navAny.canShare({ files: [file] });
-
-      if (canShareFiles) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: product.product_name,
-            text: whatsappMsg,
-          });
-          toast({
-            title: "Ready to send",
-            description: "Choose WhatsApp from the share sheet to deliver the brochure.",
-          });
-          return;
-        } catch (err) {
-          if ((err as Error).name === "AbortError") return;
-          console.warn("[WhatsApp inquiry] navigator.share failed, falling back:", err);
-        }
-      }
-
-      // Desktop fallback: download JPG + open WhatsApp chat
-      const { downloadBlob } = await import("@/lib/downloadBlob");
-      downloadBlob(blob, filename);
-      await new Promise((r) => setTimeout(r, 250));
-      openWaChat();
-
-      toast({
-        title: "Brochure ready ✓",
-        description:
-          "Image saved to Downloads. Drag it into the WhatsApp chat that just opened, then press send.",
-        duration: 8000,
-      });
-    } catch (e) {
-      console.error("[WhatsApp inquiry] failed:", e);
-      toast({
-        title: "Couldn't prepare brochure",
-        description: "Opening WhatsApp without the image — please try again to attach it.",
-        variant: "destructive",
-      });
-      openWaChat();
-    } finally {
-      setSendingWa(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -472,19 +380,6 @@ Please share more details.`;
 
           {/* Actions */}
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button
-              size="lg"
-              className="bg-[#25D366] text-white hover:bg-[#1ea855]"
-              onClick={handleInquireOnWhatsApp}
-              disabled={sendingWa}
-            >
-              {sendingWa ? (
-                <Loader2 className="mr-1 h-5 w-5 animate-spin" />
-              ) : (
-                <MessageCircle className="mr-1 h-5 w-5" />
-              )}
-              Inquire on WhatsApp
-            </Button>
             <DownloadShareMenu
               busy={generatingJpg}
               onPdf={handleDownloadPdf}
@@ -507,9 +402,6 @@ Please share more details.`;
               Send Enquiry
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            On mobile, tap "Inquire on WhatsApp" → pick WhatsApp from the share sheet to send the brochure image + message in one step.
-          </p>
         </div>
       </div>
 
