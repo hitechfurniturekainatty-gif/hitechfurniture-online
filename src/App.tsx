@@ -60,6 +60,7 @@ const SharedQuotationView = lazy(() => import("./pages/SharedQuotationView.tsx")
 const SharedJobView = lazy(() => import("./pages/SharedJobView.tsx"));
 const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
+const EnquiryLink = lazy(() => import("./pages/EnquiryLink.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
 const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
 const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
@@ -106,6 +107,8 @@ const App = () => (
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
+            <Route path="/enquiry" element={<EnquiryLink />} />
+            <Route path="/enquiry/:productId" element={<EnquiryLink />} />
             <Route path="/guide" element={<UserGuide />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminOverview />} />
