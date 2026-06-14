@@ -1,0 +1,1 @@
+UPDATE public.homepage_settings SET whatsapp_number = '919895134482' WHERE whatsapp_number = '919526610404';
