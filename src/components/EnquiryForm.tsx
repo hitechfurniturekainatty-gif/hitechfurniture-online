@@ -356,9 +356,27 @@ export const EnquiryForm = () => {
                 </DialogDescription>
               </DialogHeader>
               {productName && (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur">
-                  <Sparkles className="h-3 w-3" />
-                  Enquiring about: <span className="font-semibold">{productName}</span>
+                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/10 p-2 pr-4 text-white/95 backdrop-blur">
+                  {productImage ? (
+                    <img
+                      src={productImage}
+                      alt={productName}
+                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover ring-1 ring-white/30"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/10">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-white/60">
+                      Enquiring about
+                    </p>
+                    <p className="truncate text-sm font-semibold">{productName}</p>
+                    {productCode && (
+                      <p className="text-[11px] text-white/60">Code · {productCode}</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
