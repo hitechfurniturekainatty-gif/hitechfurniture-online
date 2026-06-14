@@ -498,10 +498,7 @@ export const EnquiryForm = () => {
                 </Field>
               </div>
 
-              {/* Products / items list — works for both catalog and free-form enquiries. */}
-              <ItemsSection items={items} onChange={setItems} />
-
-              {/* Main dropdown */}
+              {/* Main dropdown — pick FIRST so the rest of the form adapts. */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
                 <Field
                   label="What can we help you with today?"
@@ -525,6 +522,20 @@ export const EnquiryForm = () => {
                   </Select>
                 </Field>
               </div>
+
+              {/* Products / items list — only when listing items makes sense for
+                  the chosen category. Avoids duplicating "items" with Custom
+                  Design's own design questions or with General/Delivery flows. */}
+              {(category === "New Purchase" ||
+                category === "Custom Design" ||
+                category === "Complaint & Replacement" ||
+                category === "Service & Repair") && (
+                <ItemsSection
+                  items={items}
+                  onChange={setItems}
+                  category={category}
+                />
+              )}
 
               {/* Conditional sections */}
               {category === "New Purchase" && (
@@ -1246,9 +1257,11 @@ const readAsDataUrl = (file: File): Promise<string> =>
 const ItemsSection = ({
   items,
   onChange,
+  category,
 }: {
   items: EnquiryItem[];
   onChange: (items: EnquiryItem[]) => void;
+  category?: Category;
 }) => {
   const update = (id: string, patch: Partial<EnquiryItem>) =>
     onChange(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -1278,10 +1291,22 @@ const ItemsSection = ({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-display text-base font-semibold text-[#2c3e50]">
-            Products You Need
+            {category === "Custom Design"
+              ? "Pieces to Custom-Build"
+              : category === "Complaint & Replacement"
+                ? "Items with the Issue"
+                : category === "Service & Repair"
+                  ? "Items Needing Service"
+                  : "Products You Need"}
           </p>
           <p className="text-[11px] text-slate-500">
-            Add every item you'd like a quote for — upload a photo if you don't see it in the catalog.
+            {category === "Custom Design"
+              ? "List each piece you want custom-made — add a reference photo if you have one."
+              : category === "Complaint & Replacement"
+                ? "Add each affected item. A photo helps us identify the model."
+                : category === "Service & Repair"
+                  ? "Add every item that needs service — a photo speeds up identification."
+                  : "Add every item you'd like a quote for — upload a photo if you don't see it in the catalog."}
           </p>
         </div>
         <Button
