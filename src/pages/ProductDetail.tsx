@@ -9,9 +9,6 @@ import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, ClipboardList } from "lu
 import useEmblaCarousel from "embla-carousel-react";
 import { formatINR } from "@/lib/brand";
 import { openEnquiryForm } from "@/lib/enquiryForm";
-// PDF libs (@react-pdf/renderer is ~700KB) are loaded on-demand inside the
-// handlers below — keeping them out of the main bundle dramatically improves
-// first paint on the catalog/product pages.
 import { toast } from "@/hooks/use-toast";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
