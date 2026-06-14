@@ -19,6 +19,16 @@ Deno.serve(async (req) => {
     const productName: string | null = body.productName || null;
     const productImage: string | null = body.productImage || null;
     const productCode: string | null = body.productCode || null;
+    const itemsIn: Array<{
+      description?: string;
+      quantity?: number;
+      productId?: string | null;
+      productImageUrl?: string | null;
+      productCode?: string | null;
+      // Customer-uploaded reference image as data URL (base64)
+      uploadImageBase64?: string | null;
+      uploadImageName?: string | null;
+    }> = Array.isArray(body.items) ? body.items : [];
 
     if (!customerName || !phone || !location) {
       return new Response(
@@ -63,8 +73,52 @@ Deno.serve(async (req) => {
       .single();
     if (qErr) throw qErr;
 
-    if (productId || productImage || productName) {
-      await supabase.from("quotation_items").insert({
+    // Helper: upload a base64 data URL to storage and return its public URL.
+    const uploadDataUrl = async (dataUrl: string, hintName?: string | null) => {
+      try {
+        const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+        if (!m) return null;
+        const mime = m[1];
+        const b64 = m[2];
+        const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const ext = (mime.split("/")[1] || "jpg").split("+")[0];
+        const safeHint = (hintName || "ref").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 40);
+        const path = `enquiries/${q.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeHint}.${ext}`;
+        const { error } = await supabase.storage
+          .from("quotation-images")
+          .upload(path, bin, { contentType: mime, upsert: false });
+        if (error) {
+          console.error("upload failed", error);
+          return null;
+        }
+        return supabase.storage.from("quotation-images").getPublicUrl(path).data.publicUrl;
+      } catch (e) {
+        console.error("uploadDataUrl error", e);
+        return null;
+      }
+    };
+
+    // Build the list of items to insert.
+    const rows: Array<Record<string, unknown>> = [];
+    if (itemsIn.length > 0) {
+      for (const it of itemsIn) {
+        let imageUrl: string | null = it.productImageUrl || null;
+        if (!imageUrl && it.uploadImageBase64) {
+          imageUrl = await uploadDataUrl(it.uploadImageBase64, it.uploadImageName);
+        }
+        const desc = (it.description || "").trim();
+        if (!desc && !imageUrl && !it.productId) continue;
+        rows.push({
+          quotation_id: q.id,
+          product_id: it.productId || null,
+          description: desc || productName || category,
+          item_image_url: imageUrl,
+          quantity: Math.max(1, Number(it.quantity) || 1),
+          unit_price: 0,
+        });
+      }
+    } else if (productId || productImage || productName) {
+      rows.push({
         quotation_id: q.id,
         product_id: productId,
         description: productName || category,
@@ -72,6 +126,11 @@ Deno.serve(async (req) => {
         quantity: 1,
         unit_price: 0,
       });
+    }
+
+    if (rows.length > 0) {
+      const { error: itemsErr } = await supabase.from("quotation_items").insert(rows);
+      if (itemsErr) console.error("quotation_items insert error", itemsErr);
     }
 
     return new Response(JSON.stringify({ ok: true, quotation_id: qid }), {

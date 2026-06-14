@@ -24,6 +24,8 @@ import {
   MessageCircle,
   UploadCloud,
   X,
+  Plus,
+  ImagePlus,
 } from "lucide-react";
 import { registerEnquiryOpener, ENQUIRY_ENDPOINT } from "@/lib/enquiryForm";
 import { toast } from "@/hooks/use-toast";
@@ -47,6 +49,17 @@ interface UploadedFile {
   size: number;
   type: string;
   base64: string; // data URL
+}
+
+interface EnquiryItem {
+  id: string;
+  description: string;
+  quantity: number;
+  productId?: string;
+  productCode?: string;
+  productImageUrl?: string; // public URL from catalog
+  upload?: UploadedFile;    // customer-uploaded reference photo
+  fromCatalog?: boolean;
 }
 
 interface CommonState {
@@ -74,6 +87,11 @@ export const EnquiryForm = () => {
   const [productImage, setProductImage] = useState<string | undefined>(undefined);
   const [productCode, setProductCode] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
+
+  // Multiple items the customer wants a quote for (always shown so people can list more than one).
+  const [items, setItems] = useState<EnquiryItem[]>([
+    { id: cryptoId(), description: "", quantity: 1 },
+  ]);
 
   // Common fields
   const [common, setCommon] = useState<CommonState>({
@@ -134,6 +152,21 @@ export const EnquiryForm = () => {
       setProductCode(undefined);
       setStatus("idle");
       setOpen(true);
+      // Seed the first item from catalog (or reset to an empty row).
+      if (p || pid) {
+        setItems([
+          {
+            id: cryptoId(),
+            description: p || "",
+            quantity: 1,
+            productId: pid,
+            fromCatalog: true,
+          },
+          { id: cryptoId(), description: "", quantity: 1 },
+        ]);
+      } else {
+        setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
+      }
     });
     return () => registerEnquiryOpener(null);
   }, []);
@@ -154,7 +187,16 @@ export const EnquiryForm = () => {
         (a: { display_order: number }, b: { display_order: number }) =>
           a.display_order - b.display_order,
       );
-      setProductImage(imgs[0]?.image_url);
+      const cover = imgs[0]?.image_url;
+      setProductImage(cover);
+      // Attach the catalog cover + code to the catalog-sourced item.
+      setItems((prev) =>
+        prev.map((it) =>
+          it.productId === productId
+            ? { ...it, productImageUrl: cover, productCode: data.product_code ?? undefined }
+            : it,
+        ),
+      );
     })();
     return () => {
       cancelled = true;
@@ -188,6 +230,7 @@ export const EnquiryForm = () => {
     setProductId(undefined);
     setProductImage(undefined);
     setProductCode(undefined);
+    setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
     setStatus("idle");
   };
 
@@ -274,6 +317,25 @@ export const EnquiryForm = () => {
         break;
     }
 
+    // Items the customer entered (skip blank rows).
+    const cleanItems = items
+      .map((it) => ({
+        description: it.description.trim(),
+        quantity: Math.max(1, Number(it.quantity) || 1),
+        productId: it.productId || null,
+        productCode: it.productCode || null,
+        productImageUrl: it.productImageUrl || null,
+        uploadImageBase64: it.upload?.base64 || null,
+        uploadImageName: it.upload?.name || null,
+      }))
+      .filter(
+        (it) =>
+          it.description ||
+          it.productId ||
+          it.productImageUrl ||
+          it.uploadImageBase64,
+      );
+
     const payload = {
       // Backwards-compatible fields the existing Apps Script reads
       customerName: common.customerName.trim(),
@@ -289,6 +351,7 @@ export const EnquiryForm = () => {
       productId,
       productCode,
       productImage,
+      items: cleanItems,
       submittedAt: new Date().toISOString(),
       source: typeof window !== "undefined" ? window.location.href : "",
     };
@@ -314,6 +377,7 @@ export const EnquiryForm = () => {
             productName,
             productImage,
             productCode,
+            items: cleanItems,
           },
         }),
       ]);
@@ -428,6 +492,9 @@ export const EnquiryForm = () => {
                   />
                 </Field>
               </div>
+
+              {/* Products / items list — works for both catalog and free-form enquiries. */}
+              <ItemsSection items={items} onChange={setItems} />
 
               {/* Main dropdown */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
@@ -1169,6 +1236,167 @@ const readAsDataUrl = (file: File): Promise<string> =>
     r.onerror = reject;
     r.readAsDataURL(file);
   });
+
+const cryptoId = () =>
+  (typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36));
+
+// ---------- Items section (multi-product list) ----------
+const ItemsSection = ({
+  items,
+  onChange,
+}: {
+  items: EnquiryItem[];
+  onChange: (items: EnquiryItem[]) => void;
+}) => {
+  const update = (id: string, patch: Partial<EnquiryItem>) =>
+    onChange(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  const remove = (id: string) =>
+    onChange(items.length > 1 ? items.filter((it) => it.id !== id) : items);
+  const add = () =>
+    onChange([...items, { id: cryptoId(), description: "", quantity: 1 }]);
+
+  const handleUpload = async (id: string, file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      toast({
+        title: `${file.name} is too large`,
+        description: "Max 4MB per image.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const base64 = await readAsDataUrl(file);
+    update(id, {
+      upload: { name: file.name, size: file.size, type: file.type, base64 },
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="font-display text-base font-semibold text-[#2c3e50]">
+            Products You Need
+          </p>
+          <p className="text-[11px] text-slate-500">
+            Add every item you'd like a quote for — upload a photo if you don't see it in the catalog.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={add}
+          className="shrink-0"
+        >
+          <Plus className="h-4 w-4" /> Add item
+        </Button>
+      </div>
+
+      <ol className="space-y-3">
+        {items.map((it, idx) => {
+          const preview = it.upload?.base64 || it.productImageUrl;
+          return (
+            <li
+              key={it.id}
+              className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Item {idx + 1}
+                  {it.fromCatalog && (
+                    <span className="ml-2 rounded bg-[#2c3e50]/10 px-1.5 py-0.5 text-[10px] font-medium normal-case text-[#2c3e50]">
+                      from catalog
+                    </span>
+                  )}
+                </span>
+                {items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => remove(it.id)}
+                    className="text-slate-400 hover:text-rose-500"
+                    aria-label="Remove item"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                {/* Image preview / uploader */}
+                <label
+                  className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white text-slate-400 hover:border-[#2c3e50]/50 hover:text-[#2c3e50]"
+                  title="Upload reference photo"
+                >
+                  {preview ? (
+                    <img
+                      src={preview}
+                      alt={it.description || `Item ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-center text-[10px]">
+                      <ImagePlus className="h-5 w-5" />
+                      <span>Photo</span>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      handleUpload(it.id, e.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+
+                <div className="flex flex-1 flex-col gap-2">
+                  <Input
+                    value={it.description}
+                    onChange={(e) => update(it.id, { description: e.target.value })}
+                    placeholder={
+                      it.fromCatalog
+                        ? "Product name"
+                        : "Describe item (e.g., 3-seater leather sofa)"
+                    }
+                  />
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-slate-500">Qty</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={it.quantity}
+                      onChange={(e) =>
+                        update(it.id, { quantity: Math.max(1, Number(e.target.value) || 1) })
+                      }
+                      className="h-9 w-20"
+                    />
+                    {it.upload && (
+                      <button
+                        type="button"
+                        onClick={() => update(it.id, { upload: undefined })}
+                        className="ml-auto text-[11px] text-slate-500 hover:text-rose-500"
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                    {it.productCode && (
+                      <span className="ml-auto text-[11px] text-slate-500">
+                        Code · {it.productCode}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+};
 
 const buildSummaryMessage = (
   category: Category,
