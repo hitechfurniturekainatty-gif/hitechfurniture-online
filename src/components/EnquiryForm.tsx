@@ -1257,9 +1257,11 @@ const readAsDataUrl = (file: File): Promise<string> =>
 const ItemsSection = ({
   items,
   onChange,
+  category,
 }: {
   items: EnquiryItem[];
   onChange: (items: EnquiryItem[]) => void;
+  category?: Category;
 }) => {
   const update = (id: string, patch: Partial<EnquiryItem>) =>
     onChange(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -1289,10 +1291,22 @@ const ItemsSection = ({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-display text-base font-semibold text-[#2c3e50]">
-            Products You Need
+            {category === "Custom Design"
+              ? "Pieces to Custom-Build"
+              : category === "Complaint & Replacement"
+                ? "Items with the Issue"
+                : category === "Service & Repair"
+                  ? "Items Needing Service"
+                  : "Products You Need"}
           </p>
           <p className="text-[11px] text-slate-500">
-            Add every item you'd like a quote for — upload a photo if you don't see it in the catalog.
+            {category === "Custom Design"
+              ? "List each piece you want custom-made — add a reference photo if you have one."
+              : category === "Complaint & Replacement"
+                ? "Add each affected item. A photo helps us identify the model."
+                : category === "Service & Repair"
+                  ? "Add every item that needs service — a photo speeds up identification."
+                  : "Add every item you'd like a quote for — upload a photo if you don't see it in the catalog."}
           </p>
         </div>
         <Button
