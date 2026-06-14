@@ -1262,7 +1262,7 @@ const ItemsSection = ({
           onClick={add}
           className="shrink-0"
         >
-          <Plus className="h-4 w-4" /> Add item
+          <Plus className="h-4 w-4" /> Add More Products
         </Button>
       </div>
 
