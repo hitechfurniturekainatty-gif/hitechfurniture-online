@@ -79,6 +79,11 @@ const NATURE_OPTIONS: { value: Exclude<Category, "">; ml: string }[] = [
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB per file — keeps Apps Script payload small
 
+const cryptoId = () =>
+  (typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36));
+
 // ---------- Component ----------
 export const EnquiryForm = () => {
   const [open, setOpen] = useState(false);
