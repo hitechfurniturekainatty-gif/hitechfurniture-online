@@ -93,10 +93,10 @@ export const EnquiryForm = () => {
   const [productCode, setProductCode] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
 
-  // Multiple items the customer wants a quote for (always shown so people can list more than one).
-  const [items, setItems] = useState<EnquiryItem[]>([
-    { id: cryptoId(), description: "", quantity: 1 },
-  ]);
+  // Items list — starts empty so the user explicitly opts-in to each product.
+  // The "Add More Products" button is the only way items appear, avoiding the
+  // confusing pre-populated "black" Item 1 that used to show on open.
+  const [items, setItems] = useState<EnquiryItem[]>([]);
 
   // Common fields
   const [common, setCommon] = useState<CommonState>({
@@ -157,21 +157,11 @@ export const EnquiryForm = () => {
       setProductCode(undefined);
       setStatus("idle");
       setOpen(true);
-      // Seed the first item from catalog (or reset to an empty row).
-      if (p || pid) {
-        setItems([
-          {
-            id: cryptoId(),
-            description: p || "",
-            quantity: 1,
-            productId: pid,
-            fromCatalog: true,
-          },
-          { id: cryptoId(), description: "", quantity: 1 },
-        ]);
-      } else {
-        setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
-      }
+      // Always start the items list EMPTY — the customer adds each product
+      // themselves via "Add More Products". The selected catalog item (if
+      // any) is surfaced as a notice above the empty list so it can be
+      // added in one tap.
+      setItems([]);
     });
     return () => registerEnquiryOpener(null);
   }, []);
@@ -235,7 +225,7 @@ export const EnquiryForm = () => {
     setProductId(undefined);
     setProductImage(undefined);
     setProductCode(undefined);
-    setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
+    setItems([]);
     setStatus("idle");
   };
 
