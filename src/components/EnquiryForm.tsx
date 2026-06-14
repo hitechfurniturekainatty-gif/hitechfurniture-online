@@ -455,7 +455,7 @@ export const EnquiryForm = () => {
                           "Wardrobe",
                           "Office Chair",
                           "Almirah",
-                          "Other",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -463,6 +463,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {purchase.item === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={purchase.itemOther}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, itemOther: e.target.value }))
+                        }
+                        placeholder="Please specify the item you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Material Preference">
                     <Select
@@ -478,6 +488,8 @@ export const EnquiryForm = () => {
                           "Premium Mahogany",
                           "High-Quality MDF",
                           "Multiwood",
+                          "Other Wood",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -485,6 +497,20 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {(purchase.material === "Other Wood" || purchase.material === "Others") && (
+                      <Input
+                        className="mt-2"
+                        value={purchase.materialOther}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, materialOther: e.target.value }))
+                        }
+                        placeholder={
+                          purchase.material === "Other Wood"
+                            ? "Enter wood name (e.g., Rosewood, Mango Wood)"
+                            : "Please specify the material"
+                        }
+                      />
+                    )}
                   </Field>
                   <Field label="Seating / Size Capacity">
                     <Input
@@ -504,13 +530,29 @@ export const EnquiryForm = () => {
                         <SelectValue placeholder="Choose budget…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["Budget Friendly", "Mid-Range", "Premium Wood"].map((v) => (
+                        {["Budget Friendly", "Mid-Range", "Premium Wood", "Others"].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {(purchase.budget === "Budget Friendly" || purchase.budget === "Others") && (
+                      <Input
+                        className="mt-2"
+                        type="text"
+                        inputMode="numeric"
+                        value={purchase.budgetAmount}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, budgetAmount: e.target.value }))
+                        }
+                        placeholder={
+                          purchase.budget === "Budget Friendly"
+                            ? "Enter your approx. budget in ₹ (e.g., 15000)"
+                            : "Please specify your budget"
+                        }
+                      />
+                    )}
                   </Field>
                 </ConditionalBlock>
               )}
