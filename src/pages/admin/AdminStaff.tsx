@@ -228,7 +228,7 @@ const AdminStaff = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>WhatsApp number (with country code, e.g. 919526610404)</Label>
+                <Label>WhatsApp number (with country code, e.g. 919895134482)</Label>
                 <Input
                   value={form.whatsapp_number}
                   onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
