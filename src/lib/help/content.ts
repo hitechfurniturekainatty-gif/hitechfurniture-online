@@ -12,7 +12,7 @@ export const FIELD_HELP: Record<string, FieldHelp> = {
     example: "Lead = walk-in/phone enquiry · Direct Deal = ready stock sale · Custom Project = needs site measurement",
   },
   "quotation.party_name": { title: "Customer's full name as it should appear on the quotation.", example: "Mr. Rajesh Menon" },
-  "quotation.party_phone": { title: "Primary mobile number with country code. Used for WhatsApp share.", example: "+91 95266 10404" },
+  "quotation.party_phone": { title: "Primary mobile number with country code. Used for WhatsApp share.", example: "+91 98951 34482" },
   "quotation.party_place": { title: "City or area — used for delivery routing.", example: "Kakkanad" },
   "quotation.party_address": { title: "Full delivery address. Optional at creation, required before dispatch." },
   "quotation.advance_amount": {

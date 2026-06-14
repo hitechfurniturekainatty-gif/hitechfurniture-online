@@ -340,7 +340,7 @@ const AdminWorkers = () => {
             onFocusCapture={scrollFocusedIntoView}
           >
             <div className="space-y-1.5"><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label>WhatsApp number * (with country code, e.g. 919526610404)</Label><Input value={form.whatsapp_number} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} placeholder="91XXXXXXXXXX" /></div>
+            <div className="space-y-1.5"><Label>WhatsApp number * (with country code, e.g. 919895134482)</Label><Input value={form.whatsapp_number} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} placeholder="91XXXXXXXXXX" /></div>
             <div className="space-y-1.5"><Label>Phone (optional)</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Trade</Label><Input value={form.trade} onChange={(e) => setForm({ ...form, trade: e.target.value })} placeholder="Carpenter, Polish, Upholstery..." /></div>
             <div className="space-y-1.5"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
@@ -408,7 +408,7 @@ const AdminWorkers = () => {
                   inputMode="tel"
                   value={loginPhone}
                   onChange={(e) => setLoginPhone(e.target.value)}
-                  placeholder="919526610404"
+                  placeholder="919895134482"
                 />
               </div>
               <div className="space-y-1.5">

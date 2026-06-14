@@ -107,7 +107,7 @@ const Index = () => {
           "@type": "FurnitureStore",
           name: "Hitech Furniture & Interiors",
           description: "Custom furniture manufacturer and interior designer in Kalpetta, Wayanad. Retail and wholesale.",
-          telephone: settings?.contact_phone ?? "+91 95266 10404",
+          telephone: settings?.contact_phone ?? "+91 98951 34482",
           address: {
             "@type": "PostalAddress",
             addressLocality: "Kalpetta",
@@ -160,7 +160,7 @@ const Index = () => {
                     </Link>
                   </Button>
                   <Button asChild size="lg" variant="outline">
-                    <a href={`https://wa.me/${settings?.whatsapp_number || "919526610404"}`} target="_blank" rel="noopener">
+                    <a href={`https://wa.me/${settings?.whatsapp_number || "919895134482"}`} target="_blank" rel="noopener">
                       Chat on WhatsApp
                     </a>
                   </Button>

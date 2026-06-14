@@ -19,7 +19,7 @@ export const SiteFooter = () => {
   const mapsUrl = s?.google_maps_url || FALLBACK_MAPS_URL;
   const embedUrl = s?.google_maps_embed_url || FALLBACK_EMBED_URL;
   const addressLines = (s?.address_lines && s.address_lines.length ? s.address_lines : FALLBACK_ADDRESS_LINES);
-  const phone1 = s?.contact_phone || "+91 95266 10404";
+  const phone1 = s?.contact_phone || "+91 98951 34482";
   const phone2 = s?.contact_phone_secondary || "+91 95621 34796";
   const email = s?.contact_email || "hitechfurniturekainatty@gmail.com";
   const whatsappNumber = s?.whatsapp_number || WHATSAPP_NUMBER;

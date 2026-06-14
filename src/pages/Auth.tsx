@@ -118,7 +118,7 @@ const Auth = () => {
                   type={mode === "signup" ? "email" : "text"}
                   inputMode={mode === "login" ? "email" : undefined}
                   autoComplete={mode === "login" ? "username" : "email"}
-                  placeholder={mode === "login" ? "you@example.com or 9526610404" : "you@example.com"}
+                  placeholder={mode === "login" ? "you@example.com or 9895134482" : "you@example.com"}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required

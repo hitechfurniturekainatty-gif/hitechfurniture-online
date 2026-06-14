@@ -9,6 +9,6 @@ export const BANK_DETAILS = {
 export const COMPANY = {
   name: "Hitech Furniture and Interiors",
   address: "Kalpetta, Wayanad, Kerala",
-  phone: "+91 95266 10404",
+  phone: "+91 98951 34482",
   email: "",
 };

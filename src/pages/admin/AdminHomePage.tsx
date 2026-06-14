@@ -625,7 +625,7 @@ const AdminHomePage = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">Primary phone</Label>
-                  <Input value={settings.contact_phone ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })} placeholder="+91 95266 10404" />
+                  <Input value={settings.contact_phone ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })} placeholder="+91 98951 34482" />
                 </div>
                 <div>
                   <Label className="text-xs">Secondary phone</Label>
@@ -679,7 +679,7 @@ const AdminHomePage = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">WhatsApp number (digits only, with country code)</Label>
-                  <Input value={settings.whatsapp_number} onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value.replace(/\D/g, "") })} placeholder="919526610404" />
+                  <Input value={settings.whatsapp_number} onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value.replace(/\D/g, "") })} placeholder="919895134482" />
                 </div>
                 <div>
                   <Label className="text-xs">WhatsApp default message</Label>
