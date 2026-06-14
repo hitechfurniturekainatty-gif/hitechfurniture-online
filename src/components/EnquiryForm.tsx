@@ -1343,10 +1343,7 @@ const ItemsSection = ({
             variant="outline"
             onClick={() => {
               onAddCatalogProduct();
-              // Scroll to and focus the freshly-added item.
-              const nextId = cryptoId();
-              // We don't actually have the new id here, but the next render will.
-              // Use a deferred lookup against the last item in the list.
+              // Scroll to and focus the freshly-added (last) item.
               setTimeout(() => {
                 const last = document.querySelector<HTMLInputElement>(
                   "[data-item-input]:last-of-type",
