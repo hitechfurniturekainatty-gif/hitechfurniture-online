@@ -1,5 +1,5 @@
 // Tiny pubsub so any button can open the global enquiry dialog.
-type Opts = { productName?: string };
+type Opts = { productName?: string; productId?: string };
 type Opener = (opts: Opts) => void;
 
 let opener: Opener | null = null;
