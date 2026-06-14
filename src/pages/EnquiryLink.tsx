@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { Loader2 } from "lucide-react";
 
@@ -12,22 +12,16 @@ import { Loader2 } from "lucide-react";
  * the button on the home page.
  */
 const EnquiryLink = () => {
-  const navigate = useNavigate();
+  const { productId: routeProductId } = useParams();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Give the global <EnquiryForm /> a tick to mount, then open it.
-    const t = window.setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
-      const productId = params.get("product") ?? undefined;
-      const productName = params.get("name") ?? undefined;
-      openEnquiryForm({
-        productId: productId || undefined,
-        productName: productName || undefined,
-      });
-      navigate("/", { replace: true });
-    }, 80);
-    return () => window.clearTimeout(t);
-  }, [navigate]);
+    const productId =
+      routeProductId || searchParams.get("product") || undefined;
+    const productName = searchParams.get("name") || undefined;
+    // openEnquiryForm self-retries until the global <EnquiryForm /> mounts.
+    openEnquiryForm({ productId, productName });
+  }, [routeProductId, searchParams]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 text-center">
