@@ -573,6 +573,7 @@ export const EnquiryForm = () => {
                           "Full Bedroom Set",
                           "Custom Living Room Unit",
                           "TV Unit",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -580,6 +581,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {custom.workType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={custom.workTypeOther}
+                        onChange={(e) =>
+                          setCustom((s) => ({ ...s, workTypeOther: e.target.value }))
+                        }
+                        placeholder="Describe the custom work you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Specific Dimensions / Requirements">
                     <Textarea
@@ -647,6 +658,7 @@ export const EnquiryForm = () => {
                           "Foam / Cushion Sagging",
                           "Wrong Color Delivered",
                           "Missing Parts / Screws",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -654,6 +666,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {complaint.issueType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={complaint.issueTypeOther}
+                        onChange={(e) =>
+                          setComplaint((s) => ({ ...s, issueTypeOther: e.target.value }))
+                        }
+                        placeholder="Please describe the issue type"
+                      />
+                    )}
                   </Field>
                   <Field label="Detailed Description of Issue" required>
                     <Textarea
@@ -706,6 +728,7 @@ export const EnquiryForm = () => {
                           "Re-Polishing Work",
                           "Cushion / Fabric Change",
                           "Shifting & Re-fixing",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -713,6 +736,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {service.serviceType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={service.serviceTypeOther}
+                        onChange={(e) =>
+                          setService((s) => ({ ...s, serviceTypeOther: e.target.value }))
+                        }
+                        placeholder="Please specify the service you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Current Furniture Condition">
                     <Textarea
@@ -801,6 +834,7 @@ export const EnquiryForm = () => {
                           "2nd Floor (No Lift)",
                           "3rd Floor (No Lift)",
                           "With Lift Access",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -808,6 +842,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {delivery.floor === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={delivery.floorOther}
+                        onChange={(e) =>
+                          setDelivery((s) => ({ ...s, floorOther: e.target.value }))
+                        }
+                        placeholder="Please specify floor details"
+                      />
+                    )}
                   </Field>
                 </ConditionalBlock>
               )}
