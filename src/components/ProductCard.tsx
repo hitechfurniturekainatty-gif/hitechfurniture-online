@@ -69,7 +69,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
   const openEnquiry = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    openEnquiryForm({ productName: product.product_name });
+    openEnquiryForm({ productName: product.product_name, productId: product.id });
   };
 
   return (

@@ -393,7 +393,7 @@ const ProductDetail = () => {
               size="lg"
               variant="default"
               className="w-full sm:w-auto"
-              onClick={() => openEnquiryForm({ productName: product.product_name })}
+              onClick={() => openEnquiryForm({ productName: product.product_name, productId: product.id })}
             >
               <ClipboardList className="mr-1 h-5 w-5" />
               Enquiry Form

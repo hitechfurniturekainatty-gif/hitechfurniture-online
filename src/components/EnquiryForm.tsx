@@ -28,6 +28,7 @@ import {
 import { registerEnquiryOpener, ENQUIRY_ENDPOINT } from "@/lib/enquiryForm";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 // ---------- Types ----------
 type Category =
@@ -69,6 +70,9 @@ const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB per file — keeps Apps Script pa
 export const EnquiryForm = () => {
   const [open, setOpen] = useState(false);
   const [productName, setProductName] = useState<string | undefined>(undefined);
+  const [productId, setProductId] = useState<string | undefined>(undefined);
+  const [productImage, setProductImage] = useState<string | undefined>(undefined);
+  const [productCode, setProductCode] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
 
   // Common fields
@@ -82,12 +86,16 @@ export const EnquiryForm = () => {
   // Section-specific state (kept independent so resets are targeted)
   const [purchase, setPurchase] = useState({
     item: "",
+    itemOther: "",
     material: "",
+    materialOther: "",
     sizeCapacity: "",
     budget: "",
+    budgetAmount: "",
   });
   const [custom, setCustom] = useState({
     workType: "",
+    workTypeOther: "",
     dimensions: "",
     fabricColor: "",
     refImages: [] as UploadedFile[],
@@ -96,12 +104,14 @@ export const EnquiryForm = () => {
     invoiceNumber: "",
     purchaseDate: "",
     issueType: "",
+    issueTypeOther: "",
     description: "",
     proofFiles: [] as UploadedFile[],
   });
   const [service, setService] = useState({
     billNumber: "",
     serviceType: "",
+    serviceTypeOther: "",
     condition: "",
     preferredDate: "",
   });
@@ -111,18 +121,45 @@ export const EnquiryForm = () => {
     mapLink: "",
     assembly: "",
     floor: "",
+    floorOther: "",
   });
   const [general, setGeneral] = useState({ subject: "", message: "" });
 
   // Open hooks
   useEffect(() => {
-    registerEnquiryOpener(({ productName: p } = {}) => {
+    registerEnquiryOpener(({ productName: p, productId: pid } = {}) => {
       setProductName(p);
+      setProductId(pid);
+      setProductImage(undefined);
+      setProductCode(undefined);
       setStatus("idle");
       setOpen(true);
     });
     return () => registerEnquiryOpener(null);
   }, []);
+
+  // Pull cover image + code for the catalog model so admin can identify it.
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("product_code, product_images(image_url, display_order)")
+        .eq("id", productId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setProductCode(data.product_code ?? undefined);
+      const imgs = (data.product_images ?? []).slice().sort(
+        (a: { display_order: number }, b: { display_order: number }) =>
+          a.display_order - b.display_order,
+      );
+      setProductImage(imgs[0]?.image_url);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   // Deep-link: WhatsApp / external sites can share
   //   https://hitechfurniture-online.lovable.app/?enquiry=1
@@ -148,21 +185,25 @@ export const EnquiryForm = () => {
     setCategory("");
     resetSections();
     setProductName(undefined);
+    setProductId(undefined);
+    setProductImage(undefined);
+    setProductCode(undefined);
     setStatus("idle");
   };
 
   const resetSections = () => {
-    setPurchase({ item: "", material: "", sizeCapacity: "", budget: "" });
-    setCustom({ workType: "", dimensions: "", fabricColor: "", refImages: [] });
+    setPurchase({ item: "", itemOther: "", material: "", materialOther: "", sizeCapacity: "", budget: "", budgetAmount: "" });
+    setCustom({ workType: "", workTypeOther: "", dimensions: "", fabricColor: "", refImages: [] });
     setComplaint({
       invoiceNumber: "",
       purchaseDate: "",
       issueType: "",
+      issueTypeOther: "",
       description: "",
       proofFiles: [],
     });
-    setService({ billNumber: "", serviceType: "", condition: "", preferredDate: "" });
-    setDelivery({ orderId: "", address: "", mapLink: "", assembly: "", floor: "" });
+    setService({ billNumber: "", serviceType: "", serviceTypeOther: "", condition: "", preferredDate: "" });
+    setDelivery({ orderId: "", address: "", mapLink: "", assembly: "", floor: "", floorOther: "" });
     setGeneral({ subject: "", message: "" });
   };
 
@@ -245,17 +286,37 @@ export const EnquiryForm = () => {
       // New structured payload for upgraded backends
       category,
       details,
+      productId,
+      productCode,
+      productImage,
       submittedAt: new Date().toISOString(),
       source: typeof window !== "undefined" ? window.location.href : "",
     };
 
     try {
-      await fetch(ENQUIRY_ENDPOINT, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-      });
+      // Fire-and-forget to legacy Apps Script + create lead in our database in parallel.
+      const summary = buildSummaryMessage(category, details);
+      await Promise.allSettled([
+        fetch(ENQUIRY_ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        }),
+        supabase.functions.invoke("create-enquiry-lead", {
+          body: {
+            customerName: common.customerName.trim(),
+            phone: common.phone.trim(),
+            location: common.location.trim(),
+            category,
+            summary,
+            productId,
+            productName,
+            productImage,
+            productCode,
+          },
+        }),
+      ]);
       setStatus("success");
     } catch (err) {
       console.error("[Enquiry] submit failed:", err);
@@ -295,9 +356,27 @@ export const EnquiryForm = () => {
                 </DialogDescription>
               </DialogHeader>
               {productName && (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur">
-                  <Sparkles className="h-3 w-3" />
-                  Enquiring about: <span className="font-semibold">{productName}</span>
+                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/10 p-2 pr-4 text-white/95 backdrop-blur">
+                  {productImage ? (
+                    <img
+                      src={productImage}
+                      alt={productName}
+                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover ring-1 ring-white/30"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/10">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-white/60">
+                      Enquiring about
+                    </p>
+                    <p className="truncate text-sm font-semibold">{productName}</p>
+                    {productCode && (
+                      <p className="text-[11px] text-white/60">Code · {productCode}</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -394,7 +473,7 @@ export const EnquiryForm = () => {
                           "Wardrobe",
                           "Office Chair",
                           "Almirah",
-                          "Other",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -402,6 +481,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {purchase.item === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={purchase.itemOther}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, itemOther: e.target.value }))
+                        }
+                        placeholder="Please specify the item you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Material Preference">
                     <Select
@@ -417,6 +506,8 @@ export const EnquiryForm = () => {
                           "Premium Mahogany",
                           "High-Quality MDF",
                           "Multiwood",
+                          "Other Wood",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -424,6 +515,20 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {(purchase.material === "Other Wood" || purchase.material === "Others") && (
+                      <Input
+                        className="mt-2"
+                        value={purchase.materialOther}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, materialOther: e.target.value }))
+                        }
+                        placeholder={
+                          purchase.material === "Other Wood"
+                            ? "Enter wood name (e.g., Rosewood, Mango Wood)"
+                            : "Please specify the material"
+                        }
+                      />
+                    )}
                   </Field>
                   <Field label="Seating / Size Capacity">
                     <Input
@@ -443,13 +548,29 @@ export const EnquiryForm = () => {
                         <SelectValue placeholder="Choose budget…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["Budget Friendly", "Mid-Range", "Premium Wood"].map((v) => (
+                        {["Budget Friendly", "Mid-Range", "Premium Wood", "Others"].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {(purchase.budget === "Budget Friendly" || purchase.budget === "Others") && (
+                      <Input
+                        className="mt-2"
+                        type="text"
+                        inputMode="numeric"
+                        value={purchase.budgetAmount}
+                        onChange={(e) =>
+                          setPurchase((s) => ({ ...s, budgetAmount: e.target.value }))
+                        }
+                        placeholder={
+                          purchase.budget === "Budget Friendly"
+                            ? "Enter your approx. budget in ₹ (e.g., 15000)"
+                            : "Please specify your budget"
+                        }
+                      />
+                    )}
                   </Field>
                 </ConditionalBlock>
               )}
@@ -470,6 +591,7 @@ export const EnquiryForm = () => {
                           "Full Bedroom Set",
                           "Custom Living Room Unit",
                           "TV Unit",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -477,6 +599,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {custom.workType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={custom.workTypeOther}
+                        onChange={(e) =>
+                          setCustom((s) => ({ ...s, workTypeOther: e.target.value }))
+                        }
+                        placeholder="Describe the custom work you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Specific Dimensions / Requirements">
                     <Textarea
@@ -544,6 +676,7 @@ export const EnquiryForm = () => {
                           "Foam / Cushion Sagging",
                           "Wrong Color Delivered",
                           "Missing Parts / Screws",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -551,6 +684,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {complaint.issueType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={complaint.issueTypeOther}
+                        onChange={(e) =>
+                          setComplaint((s) => ({ ...s, issueTypeOther: e.target.value }))
+                        }
+                        placeholder="Please describe the issue type"
+                      />
+                    )}
                   </Field>
                   <Field label="Detailed Description of Issue" required>
                     <Textarea
@@ -603,6 +746,7 @@ export const EnquiryForm = () => {
                           "Re-Polishing Work",
                           "Cushion / Fabric Change",
                           "Shifting & Re-fixing",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -610,6 +754,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {service.serviceType === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={service.serviceTypeOther}
+                        onChange={(e) =>
+                          setService((s) => ({ ...s, serviceTypeOther: e.target.value }))
+                        }
+                        placeholder="Please specify the service you need"
+                      />
+                    )}
                   </Field>
                   <Field label="Current Furniture Condition">
                     <Textarea
@@ -698,6 +852,7 @@ export const EnquiryForm = () => {
                           "2nd Floor (No Lift)",
                           "3rd Floor (No Lift)",
                           "With Lift Access",
+                          "Others",
                         ].map((v) => (
                           <SelectItem key={v} value={v}>
                             {v}
@@ -705,6 +860,16 @@ export const EnquiryForm = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {delivery.floor === "Others" && (
+                      <Input
+                        className="mt-2"
+                        value={delivery.floorOther}
+                        onChange={(e) =>
+                          setDelivery((s) => ({ ...s, floorOther: e.target.value }))
+                        }
+                        placeholder="Please specify floor details"
+                      />
+                    )}
                   </Field>
                 </ConditionalBlock>
               )}
