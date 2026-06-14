@@ -424,30 +424,9 @@ export const EnquiryForm = () => {
                   Tell us what you need — we&apos;ll respond on WhatsApp shortly.
                 </DialogDescription>
               </DialogHeader>
-              {productName && (
-                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/10 p-2 pr-4 text-white/95 backdrop-blur">
-                  {productImage ? (
-                    <img
-                      src={productImage}
-                      alt={productName}
-                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover ring-1 ring-white/30"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/10">
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider text-white/60">
-                      Enquiring about
-                    </p>
-                    <p className="truncate text-sm font-semibold">{productName}</p>
-                    {productCode && (
-                      <p className="text-[11px] text-white/60">Code · {productCode}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Product chip intentionally not shown here — selected product is rendered
+                  at the very bottom of the form, just above the submit button, to avoid
+                  confusing duplication with the items list. */}
             </div>
 
             <form
@@ -523,58 +502,9 @@ export const EnquiryForm = () => {
                 </Field>
               </div>
 
-              {/* Products / items list — only when listing items makes sense for
-                  the chosen category. Avoids duplicating "items" with Custom
-                  Design's own design questions or with General/Delivery flows. */}
-              {(category === "New Purchase" ||
-                category === "Custom Design" ||
-                category === "Complaint & Replacement" ||
-                category === "Service & Repair") && (
-                <ItemsSection
-                  items={items}
-                  onChange={setItems}
-                  category={category}
-                />
-              )}
-
               {/* Conditional sections */}
               {category === "New Purchase" && (
                 <ConditionalBlock title="New Purchase" ml="പുതിയ ഫർണിച്ചർ വാങ്ങാൻ">
-                  <Field label="Furniture Item Needed">
-                    <Select
-                      value={purchase.item}
-                      onValueChange={(v) => setPurchase((s) => ({ ...s, item: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose item…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[
-                          "Sofa",
-                          "Cot",
-                          "Dining Table",
-                          "Wardrobe",
-                          "Office Chair",
-                          "Almirah",
-                          "Others",
-                        ].map((v) => (
-                          <SelectItem key={v} value={v}>
-                            {v}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {purchase.item === "Others" && (
-                      <Input
-                        className="mt-2"
-                        value={purchase.itemOther}
-                        onChange={(e) =>
-                          setPurchase((s) => ({ ...s, itemOther: e.target.value }))
-                        }
-                        placeholder="Please specify the item you need"
-                      />
-                    )}
-                  </Field>
                   <Field label="Material Preference">
                     <Select
                       value={purchase.material}
@@ -983,6 +913,21 @@ export const EnquiryForm = () => {
               )}
 
               {canSubmit && (
+                <>
+                  {/* Products section — moved to the very bottom so the selected
+                      catalog product (if any) appears right above the submit
+                      button. Hidden for purposes where listing items makes no
+                      sense (General Inquiry, Delivery & Installation). */}
+                  {(category === "New Purchase" ||
+                    category === "Custom Design" ||
+                    category === "Complaint & Replacement" ||
+                    category === "Service & Repair") && (
+                    <ItemsSection
+                      items={items}
+                      onChange={setItems}
+                      category={category}
+                    />
+                  )}
                 <Button
                   type="submit"
                   size="lg"
@@ -999,6 +944,7 @@ export const EnquiryForm = () => {
                     </>
                   )}
                 </Button>
+                </>
               )}
 
               {status === "submitting" && <SkeletonOverlay />}
@@ -1316,7 +1262,7 @@ const ItemsSection = ({
           onClick={add}
           className="shrink-0"
         >
-          <Plus className="h-4 w-4" /> Add item
+          <Plus className="h-4 w-4" /> Add More Products
         </Button>
       </div>
 
