@@ -286,17 +286,37 @@ export const EnquiryForm = () => {
       // New structured payload for upgraded backends
       category,
       details,
+      productId,
+      productCode,
+      productImage,
       submittedAt: new Date().toISOString(),
       source: typeof window !== "undefined" ? window.location.href : "",
     };
 
     try {
-      await fetch(ENQUIRY_ENDPOINT, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-      });
+      // Fire-and-forget to legacy Apps Script + create lead in our database in parallel.
+      const summary = buildSummaryMessage(category, details);
+      await Promise.allSettled([
+        fetch(ENQUIRY_ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        }),
+        supabase.functions.invoke("create-enquiry-lead", {
+          body: {
+            customerName: common.customerName.trim(),
+            phone: common.phone.trim(),
+            location: common.location.trim(),
+            category,
+            summary,
+            productId,
+            productName,
+            productImage,
+            productCode,
+          },
+        }),
+      ]);
       setStatus("success");
     } catch (err) {
       console.error("[Enquiry] submit failed:", err);
