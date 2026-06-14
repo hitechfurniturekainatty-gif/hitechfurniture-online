@@ -25,7 +25,7 @@ export const SiteHeader = () => {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 shadow-card-soft backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="container-page grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3 md:py-4">
         <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex items-center gap-3 justify-self-start">
-          <Logo className="h-12 w-auto sm:h-14 md:h-16" />
+          <Logo className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14" />
         </Link>
 
         <nav className="hidden items-center justify-center gap-10 md:flex">

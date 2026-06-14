@@ -31,7 +31,7 @@ export const SiteFooter = () => {
   <footer className="mt-24 border-t border-border/60 bg-secondary/40">
     <div className="container-page grid gap-10 py-14 md:grid-cols-4">
       <div className="md:col-span-1">
-        <Logo className="h-12 w-auto" />
+        <Logo className="h-10 w-10" />
         <p className="mt-4 max-w-sm text-sm text-muted-foreground">{about}</p>
         {(s?.instagram_url || s?.facebook_url) && (
           <div className="mt-4 flex items-center gap-2">
