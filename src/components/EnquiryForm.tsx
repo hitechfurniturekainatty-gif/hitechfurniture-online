@@ -93,10 +93,10 @@ export const EnquiryForm = () => {
   const [productCode, setProductCode] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
 
-  // Multiple items the customer wants a quote for (always shown so people can list more than one).
-  const [items, setItems] = useState<EnquiryItem[]>([
-    { id: cryptoId(), description: "", quantity: 1 },
-  ]);
+  // Items list — starts empty so the user explicitly opts-in to each product.
+  // The "Add More Products" button is the only way items appear, avoiding the
+  // confusing pre-populated "black" Item 1 that used to show on open.
+  const [items, setItems] = useState<EnquiryItem[]>([]);
 
   // Common fields
   const [common, setCommon] = useState<CommonState>({
@@ -157,21 +157,11 @@ export const EnquiryForm = () => {
       setProductCode(undefined);
       setStatus("idle");
       setOpen(true);
-      // Seed the first item from catalog (or reset to an empty row).
-      if (p || pid) {
-        setItems([
-          {
-            id: cryptoId(),
-            description: p || "",
-            quantity: 1,
-            productId: pid,
-            fromCatalog: true,
-          },
-          { id: cryptoId(), description: "", quantity: 1 },
-        ]);
-      } else {
-        setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
-      }
+      // Always start the items list EMPTY — the customer adds each product
+      // themselves via "Add More Products". The selected catalog item (if
+      // any) is surfaced as a notice above the empty list so it can be
+      // added in one tap.
+      setItems([]);
     });
     return () => registerEnquiryOpener(null);
   }, []);
@@ -235,7 +225,7 @@ export const EnquiryForm = () => {
     setProductId(undefined);
     setProductImage(undefined);
     setProductCode(undefined);
-    setItems([{ id: cryptoId(), description: "", quantity: 1 }]);
+    setItems([]);
     setStatus("idle");
   };
 
@@ -926,6 +916,27 @@ export const EnquiryForm = () => {
                       items={items}
                       onChange={setItems}
                       category={category}
+                      catalogProduct={{
+                        name: productName,
+                        id: productId,
+                        image: productImage,
+                        code: productCode,
+                      }}
+                      onAddCatalogProduct={() => {
+                        // Add the catalog-selected product as Item 1 (or Item N+1).
+                        setItems((prev) => [
+                          ...prev,
+                          {
+                            id: cryptoId(),
+                            description: productName || "",
+                            quantity: 1,
+                            productId,
+                            productImageUrl: productImage,
+                            productCode,
+                            fromCatalog: true,
+                          },
+                        ]);
+                      }}
                     />
                   )}
                 <Button
@@ -1200,21 +1211,53 @@ const readAsDataUrl = (file: File): Promise<string> =>
   });
 
 // ---------- Items section (multi-product list) ----------
+interface CatalogProductRef {
+  name?: string;
+  id?: string;
+  image?: string;
+  code?: string;
+}
+
 const ItemsSection = ({
   items,
   onChange,
   category,
+  catalogProduct,
+  onAddCatalogProduct,
 }: {
   items: EnquiryItem[];
   onChange: (items: EnquiryItem[]) => void;
   category?: Category;
+  catalogProduct?: CatalogProductRef;
+  onAddCatalogProduct?: () => void;
 }) => {
+  // Refs to each item's description input so we can scroll-to + focus the
+  // newly-added row when the customer clicks "Add More Products".
+  const itemInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+
   const update = (id: string, patch: Partial<EnquiryItem>) =>
     onChange(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
-  const remove = (id: string) =>
-    onChange(items.length > 1 ? items.filter((it) => it.id !== id) : items);
-  const add = () =>
-    onChange([...items, { id: cryptoId(), description: "", quantity: 1 }]);
+  const remove = (id: string) => {
+    const next = items.length > 1 ? items.filter((it) => it.id !== id) : items;
+    onChange(next);
+  };
+
+  const focusItem = (id: string) => {
+    // Wait for React to render the new row, then bring it into view and
+    // drop the customer straight into the description field.
+    requestAnimationFrame(() => {
+      const el = itemInputRefs.current.get(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el.focus({ preventScroll: true }), 250);
+    });
+  };
+
+  const add = () => {
+    const newId = cryptoId();
+    onChange([...items, { id: newId, description: "", quantity: 1 }]);
+    focusItem(newId);
+  };
 
   const handleUpload = async (id: string, file: File | null) => {
     if (!file) return;
@@ -1231,6 +1274,9 @@ const ItemsSection = ({
       upload: { name: file.name, size: file.size, type: file.type, base64 },
     });
   };
+
+  const hasCatalogProduct =
+    !!catalogProduct && (!!catalogProduct.id || !!catalogProduct.name);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -1258,13 +1304,76 @@ const ItemsSection = ({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant={items.length === 0 ? "default" : "outline"}
           onClick={add}
           className="shrink-0"
         >
           <Plus className="h-4 w-4" /> Add More Products
         </Button>
       </div>
+
+      {/* Selected-from-catalog notice — visible only when the form was opened
+          from a product card / detail page. Gives the customer a one-tap
+          shortcut to add the pre-selected item instead of typing it in. */}
+      {hasCatalogProduct && onAddCatalogProduct && (
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#2c3e50]/15 bg-[#2c3e50]/5 p-3">
+          {catalogProduct!.image ? (
+            <img
+              src={catalogProduct!.image}
+              alt={catalogProduct!.name || "Selected product"}
+              className="h-12 w-12 shrink-0 rounded-md object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#2c3e50]/10 text-[#2c3e50]">
+              <ImagePlus className="h-5 w-5" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-[#2c3e50]">
+              {catalogProduct!.name || "Selected product"}
+            </p>
+            <p className="text-[10px] text-slate-500">
+              Pre-selected from catalog
+              {catalogProduct!.code ? ` · Code ${catalogProduct!.code}` : ""}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              onAddCatalogProduct();
+              // Scroll to and focus the freshly-added (last) item.
+              setTimeout(() => {
+                const last = document.querySelector<HTMLInputElement>(
+                  "[data-item-input]:last-of-type",
+                );
+                if (last) {
+                  last.scrollIntoView({ behavior: "smooth", block: "center" });
+                  last.focus({ preventScroll: true });
+                }
+              }, 80);
+            }}
+            className="shrink-0 border-[#2c3e50]/30 text-[#2c3e50] hover:bg-[#2c3e50] hover:text-white"
+          >
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </div>
+      )}
+
+      {/* Empty state — replaces the old default Item 1 card. */}
+      {items.length === 0 && (
+        <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-6 text-center">
+          <ImagePlus className="mx-auto h-7 w-7 text-slate-400" />
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            No products added yet
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Click <span className="font-semibold">Add More Products</span> to
+            start your list — add as many items as you need.
+          </p>
+        </div>
+      )}
 
       <ol className="space-y-3">
         {items.map((it, idx) => {
@@ -1325,6 +1434,11 @@ const ItemsSection = ({
 
                 <div className="flex flex-1 flex-col gap-2">
                   <Input
+                    data-item-input
+                    ref={(el) => {
+                      if (el) itemInputRefs.current.set(it.id, el);
+                      else itemInputRefs.current.delete(it.id);
+                    }}
                     value={it.description}
                     onChange={(e) => update(it.id, { description: e.target.value })}
                     placeholder={
