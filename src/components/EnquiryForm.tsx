@@ -424,30 +424,9 @@ export const EnquiryForm = () => {
                   Tell us what you need — we&apos;ll respond on WhatsApp shortly.
                 </DialogDescription>
               </DialogHeader>
-              {productName && (
-                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/10 p-2 pr-4 text-white/95 backdrop-blur">
-                  {productImage ? (
-                    <img
-                      src={productImage}
-                      alt={productName}
-                      className="h-14 w-14 flex-shrink-0 rounded-xl object-cover ring-1 ring-white/30"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/10">
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider text-white/60">
-                      Enquiring about
-                    </p>
-                    <p className="truncate text-sm font-semibold">{productName}</p>
-                    {productCode && (
-                      <p className="text-[11px] text-white/60">Code · {productCode}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Product chip intentionally not shown here — selected product is rendered
+                  at the very bottom of the form, just above the submit button, to avoid
+                  confusing duplication with the items list. */}
             </div>
 
             <form
