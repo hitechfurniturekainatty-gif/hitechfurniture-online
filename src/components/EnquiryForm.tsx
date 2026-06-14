@@ -916,6 +916,27 @@ export const EnquiryForm = () => {
                       items={items}
                       onChange={setItems}
                       category={category}
+                      catalogProduct={{
+                        name: productName,
+                        id: productId,
+                        image: productImage,
+                        code: productCode,
+                      }}
+                      onAddCatalogProduct={() => {
+                        // Add the catalog-selected product as Item 1 (or Item N+1).
+                        setItems((prev) => [
+                          ...prev,
+                          {
+                            id: cryptoId(),
+                            description: productName || "",
+                            quantity: 1,
+                            productId,
+                            productImageUrl: productImage,
+                            productCode,
+                            fromCatalog: true,
+                          },
+                        ]);
+                      }}
                     />
                   )}
                 <Button
