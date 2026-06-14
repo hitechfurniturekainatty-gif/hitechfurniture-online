@@ -13,7 +13,6 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
 // handlers below — keeping them out of the main bundle dramatically improves
 // first paint on the catalog/product pages.
 import { toast } from "@/hooks/use-toast";
-import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { Seo } from "@/components/Seo";
@@ -39,7 +38,6 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
-  const [generatingJpg, setGeneratingJpg] = useState(false);
   const homepage = useHomepageSettings();
   const hidePrices = !!homepage?.hide_public_prices;
   // Embla carousel — provides native-feel swipe on mobile, click-drag on desktop.
@@ -109,72 +107,6 @@ const ProductDetail = () => {
 
   // Canonical URL for the product page — used in SEO + share previews.
   const productUrl = `${window.location.origin}/product/${product.id}`;
-
-  const buildBrochureJpgBlob = async (): Promise<Blob> => {
-    const { lazyImport } = await import("@/lib/lazyImport");
-    const [{ generateProductPdf }, { pdfBlobToJpgBlob }] = await Promise.all([
-      lazyImport(() => import("@/lib/pdf")),
-      lazyImport(() => import("@/lib/pdfToJpg")),
-    ]);
-    const pdfBlob = await generateProductPdf({
-      product_name: product.product_name,
-      product_code: product.product_code,
-      description: product.description,
-      mrp: Number(product.mrp),
-      offer_price: product.offer_price ? Number(product.offer_price) : null,
-      available_colors: product.available_colors,
-      material: product.material,
-      dimensions: product.dimensions,
-      cover_image: cover ?? null,
-    });
-    return await pdfBlobToJpgBlob(pdfBlob);
-  };
-
-  const handleDownloadJpg = async () => {
-    setGeneratingJpg(true);
-    try {
-      const blob = await buildBrochureJpgBlob();
-      const { lazyImport } = await import("@/lib/lazyImport");
-      const { downloadBlob } = await lazyImport(() => import("@/lib/downloadBlob"));
-      downloadBlob(blob, `${product.product_code}-brochure.jpg`);
-      toast({ title: "Brochure downloaded", description: "You can now share it on WhatsApp." });
-    } catch (e) {
-      toast({ title: "Image generation failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setGeneratingJpg(false);
-    }
-  };
-
-  // Generates the *raw* multi-page brochure PDF (no JPG rasterization).
-  // Customers usually prefer the crisp PDF; the JPG is offered alongside for
-  // workers / casual WhatsApp sharing.
-  const handleDownloadPdf = async () => {
-    setGeneratingJpg(true);
-    try {
-      const { lazyImport } = await import("@/lib/lazyImport");
-      const [{ generateProductPdf }, { downloadBlob }] = await Promise.all([
-        lazyImport(() => import("@/lib/pdf")),
-        lazyImport(() => import("@/lib/downloadBlob")),
-      ]);
-      const pdfBlob = await generateProductPdf({
-        product_name: product.product_name,
-        product_code: product.product_code,
-        description: product.description,
-        mrp: Number(product.mrp),
-        offer_price: product.offer_price ? Number(product.offer_price) : null,
-        available_colors: product.available_colors,
-        material: product.material,
-        dimensions: product.dimensions,
-        cover_image: cover ?? null,
-      });
-      downloadBlob(pdfBlob, `${product.product_code}-brochure.pdf`);
-      toast({ title: "Brochure PDF downloaded" });
-    } catch (e) {
-      toast({ title: "PDF generation failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setGeneratingJpg(false);
-    }
-  };
 
 
   return (
@@ -376,19 +308,7 @@ const ProductDetail = () => {
           )}
 
           {/* Actions */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <DownloadShareMenu
-              busy={generatingJpg}
-              onPdf={handleDownloadPdf}
-              onJpg={handleDownloadJpg}
-              triggerVariant="outline"
-              triggerSize="lg"
-              label="Download brochure"
-              pdfTooltip="PDF — print-quality brochure"
-              jpgTooltip="JPG — image for WhatsApp"
-            />
-          </div>
-          <div className="mt-3">
+          <div className="mt-8">
             <Button
               size="lg"
               variant="default"
