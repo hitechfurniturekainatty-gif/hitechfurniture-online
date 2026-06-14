@@ -28,6 +28,7 @@ import {
 import { registerEnquiryOpener, ENQUIRY_ENDPOINT } from "@/lib/enquiryForm";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 // ---------- Types ----------
 type Category =
@@ -69,6 +70,9 @@ const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB per file — keeps Apps Script pa
 export const EnquiryForm = () => {
   const [open, setOpen] = useState(false);
   const [productName, setProductName] = useState<string | undefined>(undefined);
+  const [productId, setProductId] = useState<string | undefined>(undefined);
+  const [productImage, setProductImage] = useState<string | undefined>(undefined);
+  const [productCode, setProductCode] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<Status>("idle");
 
   // Common fields
@@ -82,12 +86,16 @@ export const EnquiryForm = () => {
   // Section-specific state (kept independent so resets are targeted)
   const [purchase, setPurchase] = useState({
     item: "",
+    itemOther: "",
     material: "",
+    materialOther: "",
     sizeCapacity: "",
     budget: "",
+    budgetAmount: "",
   });
   const [custom, setCustom] = useState({
     workType: "",
+    workTypeOther: "",
     dimensions: "",
     fabricColor: "",
     refImages: [] as UploadedFile[],
@@ -96,12 +104,14 @@ export const EnquiryForm = () => {
     invoiceNumber: "",
     purchaseDate: "",
     issueType: "",
+    issueTypeOther: "",
     description: "",
     proofFiles: [] as UploadedFile[],
   });
   const [service, setService] = useState({
     billNumber: "",
     serviceType: "",
+    serviceTypeOther: "",
     condition: "",
     preferredDate: "",
   });
@@ -111,18 +121,45 @@ export const EnquiryForm = () => {
     mapLink: "",
     assembly: "",
     floor: "",
+    floorOther: "",
   });
   const [general, setGeneral] = useState({ subject: "", message: "" });
 
   // Open hooks
   useEffect(() => {
-    registerEnquiryOpener(({ productName: p } = {}) => {
+    registerEnquiryOpener(({ productName: p, productId: pid } = {}) => {
       setProductName(p);
+      setProductId(pid);
+      setProductImage(undefined);
+      setProductCode(undefined);
       setStatus("idle");
       setOpen(true);
     });
     return () => registerEnquiryOpener(null);
   }, []);
+
+  // Pull cover image + code for the catalog model so admin can identify it.
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("product_code, product_images(image_url, display_order)")
+        .eq("id", productId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setProductCode(data.product_code ?? undefined);
+      const imgs = (data.product_images ?? []).slice().sort(
+        (a: { display_order: number }, b: { display_order: number }) =>
+          a.display_order - b.display_order,
+      );
+      setProductImage(imgs[0]?.image_url);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   // Deep-link: WhatsApp / external sites can share
   //   https://hitechfurniture-online.lovable.app/?enquiry=1
@@ -148,21 +185,25 @@ export const EnquiryForm = () => {
     setCategory("");
     resetSections();
     setProductName(undefined);
+    setProductId(undefined);
+    setProductImage(undefined);
+    setProductCode(undefined);
     setStatus("idle");
   };
 
   const resetSections = () => {
-    setPurchase({ item: "", material: "", sizeCapacity: "", budget: "" });
-    setCustom({ workType: "", dimensions: "", fabricColor: "", refImages: [] });
+    setPurchase({ item: "", itemOther: "", material: "", materialOther: "", sizeCapacity: "", budget: "", budgetAmount: "" });
+    setCustom({ workType: "", workTypeOther: "", dimensions: "", fabricColor: "", refImages: [] });
     setComplaint({
       invoiceNumber: "",
       purchaseDate: "",
       issueType: "",
+      issueTypeOther: "",
       description: "",
       proofFiles: [],
     });
-    setService({ billNumber: "", serviceType: "", condition: "", preferredDate: "" });
-    setDelivery({ orderId: "", address: "", mapLink: "", assembly: "", floor: "" });
+    setService({ billNumber: "", serviceType: "", serviceTypeOther: "", condition: "", preferredDate: "" });
+    setDelivery({ orderId: "", address: "", mapLink: "", assembly: "", floor: "", floorOther: "" });
     setGeneral({ subject: "", message: "" });
   };
 
