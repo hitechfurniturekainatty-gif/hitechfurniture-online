@@ -45,13 +45,13 @@ export const SiteHeader = () => {
 
         <div className="hidden md:flex items-center gap-2 justify-self-end">
           <Button
-            variant="outline"
-            size="lg"
-            className="text-base"
+            variant="ghost"
+            size="sm"
+            className="text-base font-semibold text-foreground/80 hover:text-primary"
             onClick={() => openEnquiryForm()}
           >
             <ClipboardList className="h-4 w-4" />
-            General Enquiry
+            Enquiry Form
           </Button>
           {isStaff ? (
             <Button asChild variant="default" size="lg" className="text-base">
@@ -97,7 +97,7 @@ export const SiteHeader = () => {
               className="flex items-center gap-2 rounded-lg px-3 py-3 text-left text-base font-semibold text-primary hover:bg-muted active:bg-muted"
             >
               <ClipboardList className="h-4 w-4" />
-              General Enquiry
+              Enquiry Form
             </button>
             <Link
               to={isStaff || user ? "/admin" : "/auth"}

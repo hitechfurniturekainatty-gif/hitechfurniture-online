@@ -396,7 +396,7 @@ const ProductDetail = () => {
               onClick={() => openEnquiryForm({ productName: product.product_name })}
             >
               <ClipboardList className="mr-1 h-5 w-5" />
-              Send Enquiry
+              Enquiry Form
             </Button>
           </div>
         </div>

@@ -120,7 +120,7 @@ export const SiteFooter = () => {
               className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md"
             >
               <ClipboardList className="h-4 w-4" />
-              General Enquiry
+              Enquiry Form
             </button>
           </li>
         </ul>
