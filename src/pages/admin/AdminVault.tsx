@@ -216,6 +216,58 @@ export default function AdminVault() {
     fetchEntries();
   };
 
+  const startEdit = (entry: VaultEntry) => {
+    setEditId(entry.id);
+    setEditHeading(entry.heading);
+    setEditLink(entry.link);
+    setEditUsername(entry.username);
+    setEditPassword(entry.password);
+    setEditExtras(entry.extras.map((r) => ({ ...r })));
+    setEditShowPw(false);
+    setEditOpen(true);
+  };
+
+  const cancelEdit = () => {
+    setEditOpen(false);
+    setEditId(null);
+    setEditHeading("");
+    setEditLink("");
+    setEditUsername("");
+    setEditPassword("");
+    setEditExtras([]);
+  };
+
+  const updateEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId || !editHeading.trim()) {
+      toast({ title: "Heading is required", variant: "destructive" });
+      return;
+    }
+    const cleanedExtras = editExtras.filter((r) => r.key.trim() || r.value.trim());
+    const { error } = await supabase
+      .from("admin_vault_entries")
+      .update({
+        heading: editHeading.trim(),
+        link: editLink.trim() || null,
+        username: editUsername.trim() || null,
+        password: editPassword || null,
+        extras: cleanedExtras,
+      })
+      .eq("id", editId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Entry updated" });
+    cancelEdit();
+    fetchEntries();
+  };
+
+  const addEditExtra = () => setEditExtras((x) => [...x, { id: uid(), key: "", value: "" }]);
+  const updateEditExtra = (id: string, patch: Partial<ExtraRow>) =>
+    setEditExtras((x) => x.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const removeEditExtra = (id: string) => setEditExtras((x) => x.filter((r) => r.id !== id));
+
   const deleteEntry = async (id: string) => {
     const { error } = await supabase.from("admin_vault_entries").delete().eq("id", id);
     if (error) {
