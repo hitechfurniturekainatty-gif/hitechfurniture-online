@@ -65,6 +65,7 @@ const EnquiryLink = lazy(() => import("./pages/EnquiryLink.tsx"));
 const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
 const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
 const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
+const AdminVault = lazy(() => import("./pages/admin/AdminVault.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -143,6 +144,7 @@ const App = () => (
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
+            <Route path="/admin/vault" element={<AdminOnly><AdminVault /></AdminOnly>} />
             {/* Receivables is part of the Backlog area and requires the PIN */}
             <Route path="/admin/receivables" element={<AdminBacklog />} />
             <Route path="/worker/login" element={<WorkerLogin />} />
