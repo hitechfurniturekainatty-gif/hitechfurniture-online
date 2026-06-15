@@ -530,6 +530,7 @@ const AdminProducts = () => {
   type PdfScope =
     | { type: "all" }
     | { type: "main"; id: string }
+    | { type: "sub"; id: string }
     | { type: "product"; id: string };
 
   const downloadProductsPdf = async (
@@ -542,6 +543,7 @@ const AdminProducts = () => {
       const pool = products.filter((p) => {
         if (p.deleted_at) return false;
         if (scope.type === "main" && p.main_category_id !== scope.id) return false;
+        if (scope.type === "sub" && p.sub_category_id !== scope.id) return false;
         if (scope.type === "product" && p.id !== scope.id) return false;
         if (mode === "ready") return p.stock_status === "in_stock" && p.stock_quantity > 0;
         if (mode === "none") return p.stock_status === "out_of_stock" || p.stock_quantity <= 0;
@@ -658,6 +660,13 @@ const AdminProducts = () => {
         const cname = mc?.name ?? "Category";
         title = `${cname} — ${stockTitleMap[mode]}`;
         fileName = `hitech-${slug(cname)}-${stockFileMap[mode]}.pdf`;
+      } else if (scope.type === "sub") {
+        const sc = subCats.find((s) => s.id === scope.id);
+        const mc = sc ? mainCats.find((m) => m.id === sc.main_category_id) : undefined;
+        const sname = sc?.name ?? "Sub-category";
+        const mname = mc?.name ?? "";
+        title = `${mname ? `${mname} › ` : ""}${sname} — ${stockTitleMap[mode]}`;
+        fileName = `hitech-${mname ? `${slug(mname)}-` : ""}${slug(sname)}-${stockFileMap[mode]}.pdf`;
       } else if (scope.type === "product") {
         const prod = products.find((p) => p.id === scope.id);
         const pname = prod?.product_name ?? "Product";
