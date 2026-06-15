@@ -478,6 +478,85 @@ const AdminProducts = () => {
     load();
   };
 
+  const downloadProductsPdf = async (mode: "all" | "ready" | "none") => {
+    setPdfBusy(true);
+    try {
+      // Filter by stock mode
+      const pool = products.filter((p) => {
+        if (p.deleted_at) return false;
+        if (mode === "ready") return p.stock_status === "in_stock" && p.stock_quantity > 0;
+        if (mode === "none") return p.stock_status === "out_of_stock" || p.stock_quantity <= 0;
+        return true;
+      });
+
+      if (pool.length === 0) {
+        toast({ title: "Nothing to download", description: "No products match this filter." });
+        return;
+      }
+
+      // Group by main category, ordered by category name
+      const catMap = new Map(mainCats.map((c) => [c.id, c.name]));
+      const grouped = new Map<string, typeof pool>();
+      for (const p of pool) {
+        const name = catMap.get(p.main_category_id) ?? "Uncategorized";
+        if (!grouped.has(name)) grouped.set(name, []);
+        grouped.get(name)!.push(p);
+      }
+
+      const sections = Array.from(grouped.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, items]) => ({
+          name,
+          items: items
+            .slice()
+            .sort((a, b) => a.product_name.localeCompare(b.product_name))
+            .map((p) => {
+              const cover = [...(p.product_images ?? [])]
+                .sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+              return {
+                product_name: p.product_name,
+                product_code: p.product_code,
+                mrp: Number(p.mrp),
+                offer_price: p.offer_price != null ? Number(p.offer_price) : null,
+                material: p.material ?? null,
+                dimensions: p.dimensions ?? null,
+                cover_image: cover,
+              };
+            }),
+        }));
+
+      const { lazyImport } = await import("@/lib/lazyImport");
+      const [{ generateSectionedCatalogPdf }, { downloadBlob }] = await Promise.all([
+        lazyImport(() => import("@/lib/catalogPdf")),
+        lazyImport(() => import("@/lib/downloadBlob")),
+      ]);
+
+      const titleMap = {
+        all: "Complete Product Catalog",
+        ready: "Ready Stock Catalog",
+        none: "No-Stock Inventory Catalog",
+      } as const;
+      const fileMap = {
+        all: "hitech-products-all.pdf",
+        ready: "hitech-products-ready-stock.pdf",
+        none: "hitech-products-no-stock.pdf",
+      } as const;
+
+      const blob = await generateSectionedCatalogPdf(
+        sections,
+        titleMap[mode],
+        "Hitech Furniture & Interiors · Wayanad",
+      );
+      downloadBlob(blob, fileMap[mode]);
+      toast({ title: "PDF downloaded", description: `${pool.length} products across ${sections.length} sections.` });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "PDF generation failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   return (
     <AdminShell>
       {!authLoading && !isOfficeStaff && (
