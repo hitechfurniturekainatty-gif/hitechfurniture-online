@@ -791,7 +791,7 @@ const AdminProducts = () => {
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {isAdmin && (
+                    {isOfficeStaff && (
                       <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => remove(p)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -878,7 +878,7 @@ const AdminProducts = () => {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      {isAdmin && (
+                      {isOfficeStaff && (
                         <button
                           type="button"
                           onClick={() => remove(p)}
@@ -983,8 +983,8 @@ const AdminProducts = () => {
             <Field label="Offer price (₹)">
               <Input type="number" min={0} value={form.offer_price} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} />
             </Field>
-            {isAdmin && (
-              <Field label="Cost price (₹) — admin only">
+            {isOfficeStaff && (
+              <Field label="Cost price (₹) — staff only">
                 <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
               </Field>
             )}
