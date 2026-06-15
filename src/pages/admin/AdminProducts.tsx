@@ -1015,6 +1015,16 @@ const AdminProducts = () => {
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setStockProduct(p)} title="Manage inventory">
                       <Boxes className="h-4 w-4" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9"
+                      onClick={() => downloadProductsPdf("all", { type: "product", id: p.id })}
+                      disabled={pdfBusy}
+                      title="Download this product as PDF"
+                    >
+                      <FileDown className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
