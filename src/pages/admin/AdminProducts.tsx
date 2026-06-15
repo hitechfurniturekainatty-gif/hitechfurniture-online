@@ -297,11 +297,19 @@ const AdminProducts = () => {
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
+    setOrigPrices(null);
+    setPriceEffectiveDate("");
     setOpen(true);
   };
 
   const openEdit = async (p: Product) => {
     setEditing(p);
+    setOrigPrices({
+      cost: p.cost_price != null ? Number(p.cost_price) : null,
+      mrp: p.mrp != null ? Number(p.mrp) : null,
+      selling: p.offer_price != null ? Number(p.offer_price) : null,
+    });
+    setPriceEffectiveDate(new Date().toISOString().slice(0, 10));
     setForm({
       product_name: p.product_name,
       product_code: p.product_code,
