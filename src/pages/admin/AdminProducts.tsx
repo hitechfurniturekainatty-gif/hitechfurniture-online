@@ -484,12 +484,22 @@ const AdminProducts = () => {
     load();
   };
 
-  const downloadProductsPdf = async (mode: "all" | "ready" | "none") => {
+  type PdfScope =
+    | { type: "all" }
+    | { type: "main"; id: string }
+    | { type: "product"; id: string };
+
+  const downloadProductsPdf = async (
+    mode: "all" | "ready" | "none",
+    scope: PdfScope = { type: "all" },
+  ) => {
     setPdfBusy(true);
     try {
       // Filter by stock mode
       const pool = products.filter((p) => {
         if (p.deleted_at) return false;
+        if (scope.type === "main" && p.main_category_id !== scope.id) return false;
+        if (scope.type === "product" && p.id !== scope.id) return false;
         if (mode === "ready") return p.stock_status === "in_stock" && p.stock_quantity > 0;
         if (mode === "none") return p.stock_status === "out_of_stock" || p.stock_quantity <= 0;
         return true;
@@ -586,16 +596,31 @@ const AdminProducts = () => {
         import("@/lib/brand"),
       ]);
 
-      const titleMap = {
+      const stockTitleMap = {
         all: "Complete Product Catalog",
         ready: "Ready Stock Catalog",
         none: "No-Stock Inventory Catalog",
       } as const;
-      const fileMap = {
-        all: "hitech-products-all.pdf",
-        ready: "hitech-products-ready-stock.pdf",
-        none: "hitech-products-no-stock.pdf",
+      const stockFileMap = {
+        all: "all",
+        ready: "ready-stock",
+        none: "no-stock",
       } as const;
+      const slug = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
+      let title = stockTitleMap[mode];
+      let fileName = `hitech-products-${stockFileMap[mode]}.pdf`;
+      if (scope.type === "main") {
+        const mc = mainCats.find((m) => m.id === scope.id);
+        const cname = mc?.name ?? "Category";
+        title = `${cname} — ${stockTitleMap[mode]}`;
+        fileName = `hitech-${slug(cname)}-${stockFileMap[mode]}.pdf`;
+      } else if (scope.type === "product") {
+        const prod = products.find((p) => p.id === scope.id);
+        const pname = prod?.product_name ?? "Product";
+        title = pname;
+        fileName = `hitech-${slug(pname)}.pdf`;
+      }
 
       const contactLines: string[] = [];
       if (hp?.contact_phone) contactLines.push(hp.contact_phone);
@@ -607,7 +632,7 @@ const AdminProducts = () => {
       const blob = await generateStructuredCatalogPdf(
         sectionsBuilt,
         {
-          title: titleMap[mode],
+          title,
           brand_name: brand.BRAND_FULL_NAME,
           tagline: hp?.brand_tagline ?? brand.BRAND_TAGLINE,
           about: hp?.footer_about ?? null,
@@ -615,7 +640,7 @@ const AdminProducts = () => {
         },
         brand.CONTACT_LINE,
       );
-      downloadBlob(blob, fileMap[mode]);
+      downloadBlob(blob, fileName);
       toast({
         title: "PDF downloaded",
         description: `${pool.length} products across ${sectionsBuilt.length} main categor${sectionsBuilt.length === 1 ? "y" : "ies"}.`,
