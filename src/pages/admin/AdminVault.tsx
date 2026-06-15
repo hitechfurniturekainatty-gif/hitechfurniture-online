@@ -310,10 +310,69 @@ export default function AdminVault() {
               </form>
             )}
           </div>
-          <p className="text-center text-[11px] text-slate-600 mt-4">
-            Encrypted local vault • Double security enabled
-          </p>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setRecoveryOpen(true); setRecovered(null); setRecPhone(""); setRecDob(""); }}
+              className="inline-flex items-center gap-1.5 text-xs text-indigo-300 hover:text-indigo-200 transition"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> Forgot password / PIN?
+            </button>
+            <p className="text-center text-[11px] text-slate-600">
+              Secure vault • Double security enabled
+            </p>
+          </div>
         </div>
+
+        {recoveryOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center px-4" onClick={() => setRecoveryOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-4">
+                <HelpCircle className="h-5 w-5 text-indigo-400" />
+                <h2 className="text-lg font-semibold">Recovery Verification</h2>
+              </div>
+              {!recovered ? (
+                <form onSubmit={tryRecovery} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Confirm Phone Number</label>
+                    <input
+                      value={recPhone}
+                      onChange={(e) => setRecPhone(e.target.value)}
+                      placeholder="10-digit phone"
+                      autoFocus
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Son's Date of Birth (DD-MM-YYYY)</label>
+                    <input
+                      value={recDob}
+                      onChange={(e) => setRecDob(e.target.value)}
+                      placeholder="01-02-2025"
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setRecoveryOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+                    <button type="submit" className="flex-1 h-11 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-semibold text-sm">Verify</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold mb-1">Master Password</div>
+                    <div className="font-mono text-emerald-100 text-lg break-all">{recovered.master}</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mb-1">Secret PIN</div>
+                    <div className="font-mono text-amber-100 text-2xl tracking-[0.4em]">{recovered.pin}</div>
+                  </div>
+                  <button onClick={() => { setRecoveryOpen(false); setRecovered(null); }} className="w-full h-11 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm">Close</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -338,6 +397,12 @@ export default function AdminVault() {
             className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition text-sm font-medium"
           >
             <Lock className="h-4 w-4" /> Lock Vault
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="ml-2 inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm font-medium"
+          >
+            <Settings className="h-4 w-4" /> Security
           </button>
         </div>
       </header>
