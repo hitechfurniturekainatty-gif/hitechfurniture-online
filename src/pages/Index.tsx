@@ -9,7 +9,6 @@ import { toast } from "@/hooks/use-toast";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { HeroWindowReveal } from "@/components/HeroWindowReveal";
-import { RevealOnScroll } from "@/components/RevealOnScroll";
 
 import { Seo } from "@/components/Seo";
 import {
@@ -178,17 +177,18 @@ const Index = () => {
           separate intro section is needed when slides exist. */}
 
       {/* Brand story — static "About us" block shown on every visit. */}
-      <section className="container-page py-16 md:py-24">
-        <RevealOnScroll className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:p-14">
-          <p className="eyebrow mb-4">14+ Years of Craftsmanship</p>
-          <h2 className="section-title">
+      <section className="container-page py-12 md:py-16">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:p-12">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+            14+ Years of Craftsmanship
+          </p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">
             Welcome to <span className="text-primary">Hitech Furniture &amp; Interiors</span>
           </h2>
-          <div className="section-rule my-5" />
-          <p className="mx-auto text-sm font-medium text-muted-foreground md:text-base">
+          <p className="mx-auto mt-2 text-sm font-medium text-muted-foreground md:text-base">
             Kalpetta, Wayanad · Retail &amp; Wholesale
           </p>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
             We are a trusted retail and wholesale furniture shop dedicated to providing high-quality
             solutions for homes and businesses. Our specialty is{" "}
             <span className="font-semibold text-foreground">complete customization</span> — we manufacture
@@ -199,22 +199,20 @@ const Index = () => {
             natural wood textures, or placing a bulk wholesale order, our expert interior design team
             is here to bring your vision to life.
           </p>
-        </RevealOnScroll>
+        </div>
       </section>
 
       {/* Categories */}
-      <section className="container-page py-20 md:py-28">
-        <RevealOnScroll className="mb-12 flex items-end justify-between gap-6">
+      <section className="container-page py-16 md:py-20">
+        <div className="mb-10 flex items-end justify-between gap-6">
           <div>
-            <p className="eyebrow mb-3">Browse</p>
-            <h2 className="section-title">Shop by category</h2>
-            <p className="section-kicker">Curated collections across every room — sofas, beds, wardrobes and more.</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Browse</p>
+            <h2 className="font-display text-3xl text-foreground md:text-4xl">Shop by category</h2>
           </div>
-          <Link to="/catalog" className="group hidden text-sm font-medium text-primary md:inline-flex md:items-center md:gap-1">
-            View all
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          <Link to="/catalog" className="text-sm font-medium text-primary hover:underline">
+            View all →
           </Link>
-        </RevealOnScroll>
+        </div>
 
         {categories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
@@ -222,8 +220,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {categories.map((c, i) => (
-              <RevealOnScroll key={c.id} delay={Math.min(i * 60, 360)}>
+            {categories.map((c) => (
               <Link
                 key={c.id}
                 to={`/catalog?cat=${c.slug}`}
@@ -250,24 +247,22 @@ const Index = () => {
                     <span className="font-display text-2xl text-primary">{c.name[0]}</span>
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-foreground/90 via-foreground/50 to-transparent" />
-                <span className="absolute bottom-2 left-2 right-2 z-10 truncate text-center font-display text-sm font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-base">
+                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
+                <span className="absolute bottom-3 left-3 right-3 z-10 font-display text-base font-semibold text-background">
                   {c.name}
                 </span>
               </Link>
-              </RevealOnScroll>
             ))}
           </div>
         )}
       </section>
 
       {/* Featured products */}
-      <section className="container-page py-20 md:py-28">
-        <RevealOnScroll className="mb-12">
-          <p className="eyebrow mb-3">Featured</p>
-          <h2 className="section-title">Hand-picked pieces</h2>
-          <p className="section-kicker">A small, considered selection from our latest catalog.</p>
-        </RevealOnScroll>
+      <section className="container-page py-16 md:py-20">
+        <div className="mb-10">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Featured</p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">Hand-picked pieces</h2>
+        </div>
         {featured.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
             <p className="text-muted-foreground">No featured products yet.</p>
@@ -277,10 +272,8 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-            {featured.map((p, i) => (
-              <RevealOnScroll key={p.id} delay={Math.min(i * 70, 420)}>
-                <ProductCard product={p} />
-              </RevealOnScroll>
+            {featured.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         )}

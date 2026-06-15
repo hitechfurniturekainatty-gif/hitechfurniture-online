@@ -8,26 +8,6 @@ import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
 import { PipelineNotificationsBell } from "@/components/admin/PipelineNotificationsBell";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, isWarehouse, signOut } = useAuth();
@@ -38,7 +18,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // below (loading / !user / !isStaff). Otherwise React throws
   // "Rendered more hooks than during the previous render" when `loading`
   // flips from true → false.
-  // (group open-state is now handled per-section via <Collapsible defaultOpen>)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // Track Backlog unlock state so the sidebar item disappears the moment the
   // 15-minute window expires (or the admin signs out). Re-check every 5s.
@@ -108,6 +88,25 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     }
     // Don't preventDefault — normal navigation to /admin still happens.
   };
+
+  // Auto-open the sidebar group containing the current route. Declared at the
+  // top of the component (before early returns) so hook order stays stable.
+  useEffect(() => {
+    const path = location.pathname;
+    const groups: Record<string, string[]> = {
+      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services", "/admin/scheme-calculator"],
+      inventory: ["/admin/categories", "/admin/products"],
+      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
+      team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
+    };
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const [id, paths] of Object.entries(groups)) {
+        if (paths.some((p) => path === p || path.startsWith(p + "/"))) next[id] = true;
+      }
+      return next;
+    });
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -212,152 +211,113 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const isActiveTo = (to: string, end?: boolean) =>
     end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
 
-  const roleLabel = isAdmin
-    ? "Admin"
-    : isDelivery && !isOfficeStaff && !isMeasurementStaff
-    ? "Delivery"
-    : isMeasurementStaff && !isOfficeStaff
-    ? "Measurement Staff"
-    : "Staff";
-
-  const handleSignOut = () => {
-    lockBacklog();
-    setBacklogUnlocked(false);
-    signOut().then(() => navigate("/auth"));
-  };
-
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-[hsl(var(--secondary)/0.3)]">
-        <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-          <SidebarHeader className="border-b border-sidebar-border/60 px-3 py-3">
-            <Link to="/" onClick={handleLogoTap} className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.4)]">
-                <Logo className="h-6 w-6" />
-              </span>
-              <span className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="font-display text-sm font-bold tracking-tight text-sidebar-foreground">My Hitech</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/55">Workspace</span>
-              </span>
-            </Link>
-          </SidebarHeader>
-
-          <SidebarContent className="px-1.5 py-2">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navEntries.map((entry) => {
-                    if (entry.kind === "solo") {
-                      const active = isActiveTo(entry.to, entry.end);
-                      return (
-                        <SidebarMenuItem key={entry.to}>
-                          <SidebarMenuButton asChild isActive={active} tooltip={entry.label} className="h-10 rounded-lg font-medium">
-                            <RRNavLink
-                              to={entry.to}
-                              end={entry.end}
-                              onClick={(e) => {
-                                if (entry.to === "/admin" && entry.end) handleOverviewTap?.(e as any);
-                                if (entry.to === "/admin/backlog") {
-                                  (window as any).__backlogIntent = Date.now();
-                                }
-                              }}
-                            >
-                              <entry.icon />
-                              <span>{entry.label}</span>
-                            </RRNavLink>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
+    <div className="min-h-screen overflow-x-hidden bg-secondary/30">
+      <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
+        <div className="container-page flex items-center justify-between gap-2 py-3 md:py-4">
+          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={handleLogoTap}>
+            <Logo className="h-11 w-auto sm:h-12 md:h-14" />
+            <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button asChild size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="View site">
+              <Link to="/" target="_blank"><ExternalLink className="h-5 w-5" /></Link>
+            </Button>
+            <Button asChild size="default" variant="ghost" className="hidden sm:inline-flex text-base">
+              <Link to="/" target="_blank"><ExternalLink className="mr-1 h-5 w-5" /> View site</Link>
+            </Button>
+            <PipelineNotificationsBell />
+            <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+            <Button size="default" variant="ghost" className="hidden sm:inline-flex text-base" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
+              <LogOut className="mr-1 h-5 w-5" /> Sign out
+            </Button>
+          </div>
+        </div>
+      </header>
+      <div className="container-page grid gap-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:py-6">
+        <aside className="min-w-0 md:sticky md:top-20 md:self-start">
+          <nav
+            className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Admin navigation"
+          >
+            {navEntries.map((entry) => {
+              if (entry.kind === "solo") {
+                return (
+                  <RRNavLink
+                    key={entry.to}
+                    to={entry.to}
+                    end={entry.end}
+                    onClick={(e) => {
+                      if (entry.to === "/admin" && entry.end) handleOverviewTap?.(e as any);
+                      if (entry.to === "/admin/backlog") {
+                        (window as any).__backlogIntent = Date.now();
+                      }
+                    }}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                        isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                      )
                     }
-                    const groupActive = entry.children.some((c) => isActiveTo(c.to, c.end));
-                    return (
-                      <Collapsible key={entry.id} defaultOpen={groupActive} className="group/coll">
-                        <SidebarMenuItem>
-                          <CollapsibleTrigger asChild>
-                            <SidebarMenuButton
-                              isActive={groupActive}
-                              tooltip={entry.label}
-                              className="h-10 rounded-lg font-medium"
-                            >
-                              <entry.icon />
-                              <span className="flex-1 text-left">{entry.label}</span>
-                              <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/coll:rotate-180" />
-                            </SidebarMenuButton>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <SidebarMenuSub>
-                              {entry.children.map((c) => (
-                                <SidebarMenuSubItem key={c.to}>
-                                  <SidebarMenuSubButton asChild isActive={isActiveTo(c.to, c.end)}>
-                                    <RRNavLink to={c.to} end={c.end}>
-                                      <c.icon className="h-3.5 w-3.5" />
-                                      <span>{c.label}</span>
-                                    </RRNavLink>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              ))}
-                            </SidebarMenuSub>
-                          </CollapsibleContent>
-                        </SidebarMenuItem>
-                      </Collapsible>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-
-          <SidebarFooter className="border-t border-sidebar-border/60 px-2 py-2">
-            <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <UserCircle className="h-4 w-4" />
-              </span>
-              <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate text-xs font-semibold text-sidebar-foreground">{user?.email ?? "Signed in"}</span>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/55">{roleLabel}</span>
-              </div>
-            </div>
-          </SidebarFooter>
-        </Sidebar>
-
-        <SidebarInset className="flex min-w-0 flex-col bg-transparent">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/80 px-3 backdrop-blur-md md:h-16 md:px-6">
-            <SidebarTrigger className="h-9 w-9" />
-            <Link to="/" className="ml-1 hidden items-center gap-2.5 sm:flex">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.4)]">
-                <Logo className="h-5 w-5" rounded={false} />
-              </span>
-              <div className="flex flex-col leading-tight">
-                <span className="font-display text-sm font-bold tracking-tight text-foreground">Admin Dashboard</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{roleLabel} workspace</span>
-              </div>
-            </Link>
-            <div className="ml-1 flex flex-col leading-tight sm:hidden">
-              <span className="font-display text-sm font-bold tracking-tight text-foreground">Dashboard</span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{roleLabel}</span>
-            </div>
-            <div className="ml-auto flex items-center gap-1 sm:gap-2">
-              <Button asChild size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="View site">
-                <Link to="/" target="_blank"><ExternalLink className="h-4 w-4" /></Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                <Link to="/" target="_blank"><ExternalLink className="mr-1.5 h-4 w-4" /> View site</Link>
-              </Button>
-              <PipelineNotificationsBell />
-              <Button size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="Sign out" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={handleSignOut}>
-                <LogOut className="mr-1.5 h-4 w-4" /> Sign out
-              </Button>
-            </div>
-          </header>
-          <main className="min-w-0 flex-1 px-3 py-4 md:px-6 md:py-6 lg:px-8">
-            <div className="mx-auto w-full max-w-7xl animate-fade-in">{children}</div>
-          </main>
-        </SidebarInset>
-        <HelpFab />
+                  >
+                    <entry.icon className="h-4 w-4" /> {entry.label}
+                  </RRNavLink>
+                );
+              }
+              const open = !!openGroups[entry.id];
+              const groupActive = entry.children.some((c) => isActiveTo(c.to, c.end));
+              return (
+                <div key={entry.id} className="shrink-0 md:w-full">
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroups((p) => ({ ...p, [entry.id]: !p[entry.id] }))}
+                    aria-expanded={open}
+                    className={cn(
+                      "flex min-h-[44px] w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                      groupActive ? "bg-muted text-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                    )}
+                  >
+                    <entry.icon className="h-4 w-4" />
+                    <span className="flex-1 text-left">{entry.label}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+                  </button>
+                  {open && (
+                    <div className="mt-1 flex gap-1 md:ml-3 md:mt-1 md:flex-col md:border-l md:border-border md:pl-2">
+                      {entry.children.map((c) => (
+                        <RRNavLink
+                          key={c.to}
+                          to={c.to}
+                          end={c.end}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-smooth",
+                              isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
+                            )
+                          }
+                        >
+                          <c.icon className="h-4 w-4" /> {c.label}
+                        </RRNavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+          <p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">
+            Role: <span className="font-semibold text-foreground">{
+              isAdmin ? "Admin"
+                : isDelivery && !isOfficeStaff && !isMeasurementStaff ? "Delivery"
+                : isMeasurementStaff && !isOfficeStaff ? "Measurement Staff"
+                : "Staff"
+            }</span>
+          </p>
+        </aside>
+        <main className="min-w-0 pb-6">{children}</main>
       </div>
-    </SidebarProvider>
+      <HelpFab />
+    </div>
   );
 };

@@ -348,58 +348,11 @@ const AdminOverview = () => {
   return (
     <AdminShell>
       <div className="mb-6 sm:mb-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/80">Dashboard</p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight sm:text-4xl">Overview</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          {isMeasurementStaff && !isOfficeStaff ? "Your assigned measurement tasks." : "A premium, structured snapshot of your business — live."}
+        <h1 className="font-display text-2xl sm:text-3xl">Overview</h1>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+          {isMeasurementStaff && !isOfficeStaff ? "Your assigned measurement tasks." : "Quick snapshot of your business."}
         </p>
       </div>
-
-      {(isAdmin || isOfficeStaff) && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {[
-            { label: "Active Quotations", value: stats.quotations - (statusCounts["delivered"] ?? 0) - (statusCounts["rejected"] ?? 0), icon: FileText, tint: "primary", to: "/admin/quotations" },
-            { label: "In Production", value: pipelineCounts[4], icon: HardHat, tint: "violet", to: "/admin/quotations?status=stage4" },
-            { label: "Ready in Warehouse", value: pipelineCounts[5], icon: Warehouse, tint: "sky", to: "/admin/quotations?status=stage5" },
-            { label: "Out for Delivery", value: pipelineCounts[6], icon: Truck, tint: "amber", to: "/admin/quotations?status=stage6" },
-          ].map((c) => (
-            <Link
-              key={c.label}
-              to={c.to}
-              className={`group relative overflow-hidden rounded-2xl border bg-card p-4 transition-smooth hover:-translate-y-0.5 hover:shadow-product sm:p-5
-                ${c.tint === "primary" ? "border-primary/25" : ""}
-                ${c.tint === "violet" ? "border-violet-500/25" : ""}
-                ${c.tint === "sky" ? "border-sky-500/25" : ""}
-                ${c.tint === "amber" ? "border-amber-500/25" : ""}
-              `}
-            >
-              <div className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-60 blur-2xl transition-opacity group-hover:opacity-90
-                ${c.tint === "primary" ? "bg-primary/20" : ""}
-                ${c.tint === "violet" ? "bg-violet-500/20" : ""}
-                ${c.tint === "sky" ? "bg-sky-500/20" : ""}
-                ${c.tint === "amber" ? "bg-amber-500/25" : ""}
-              `} />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
-                  <p className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{c.value}</p>
-                </div>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border
-                  ${c.tint === "primary" ? "border-primary/30 bg-primary/10 text-primary" : ""}
-                  ${c.tint === "violet" ? "border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-300" : ""}
-                  ${c.tint === "sky" ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300" : ""}
-                  ${c.tint === "amber" ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : ""}
-                `}>
-                  <c.icon className="h-5 w-5" />
-                </span>
-              </div>
-              <div className="relative mt-3 inline-flex items-center text-[11px] font-semibold text-foreground/60 transition-colors group-hover:text-primary">
-                View details <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* 2-Day Delivery Reminder — prominent banner so deliveries within
           the next 48 hours never get missed. Click jumps to the filtered list. */}
