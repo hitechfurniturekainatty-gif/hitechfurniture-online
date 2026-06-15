@@ -967,6 +967,53 @@ export type Database = {
         }
         Relationships: []
       }
+      product_price_history: {
+        Row: {
+          cost_price: number | null
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          mrp: number | null
+          note: string | null
+          product_id: string
+          selling_price: number | null
+        }
+        Insert: {
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          mrp?: number | null
+          note?: string | null
+          product_id: string
+          selling_price?: number | null
+        }
+        Update: {
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          mrp?: number | null
+          note?: string | null
+          product_id?: string
+          selling_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variant_stock: {
         Row: {
           created_at: string
@@ -2163,6 +2210,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_product_price_change: {
+        Args: {
+          _cost_price: number
+          _effective_from?: string
+          _mrp: number
+          _note?: string
+          _product_id: string
+          _selling_price: number
+        }
+        Returns: string
+      }
       backlog_pin_is_set: { Args: never; Returns: boolean }
       catalog_pin_is_set: { Args: never; Returns: boolean }
       consume_bundle_stock: {
