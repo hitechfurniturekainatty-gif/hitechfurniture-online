@@ -105,3 +105,112 @@ export async function generateCatalogPdf(items: CatalogPdfItem[], title: string,
   const doc = <CatalogDoc items={items} title={title} subtitle={subtitle} />;
   return await pdf(doc).toBlob();
 }
+
+/* ---------- Section-wise (category grouped) catalog ---------- */
+
+export type CatalogPdfSection = {
+  name: string;
+  items: CatalogPdfItem[];
+};
+
+const sectionStyles = StyleSheet.create({
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#0E5C66",
+    backgroundColor: "#EFE7D4",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    borderLeft: "3pt solid #F4A227",
+  },
+  sectionMeta: { fontSize: 9, color: "#6E7F82", marginBottom: 8 },
+});
+
+const SectionedCatalogDoc = ({
+  sections,
+  title,
+  subtitle,
+}: {
+  sections: CatalogPdfSection[];
+  title: string;
+  subtitle: string;
+}) => {
+  const totalItems = sections.reduce((sum, s) => sum + s.items.length, 0);
+  return (
+    <Document>
+      {/* Cover */}
+      <Page size="A4" style={s.page}>
+        <View style={s.header}>
+          <Image src={logo} style={s.logo} />
+          <Text style={s.brandLine}>Furniture & Interiors</Text>
+        </View>
+        <View style={s.coverWrap}>
+          <Text style={s.coverTitle}>{title}</Text>
+          <Text style={s.coverSub}>{subtitle}</Text>
+          <Text style={{ fontSize: 11, color: "#6E7F82" }}>
+            {sections.length} sections · {totalItems} pieces
+          </Text>
+        </View>
+        <Text style={s.footer}>{CONTACT_LINE}</Text>
+      </Page>
+
+      {sections.map((section, si) => {
+        const pages: CatalogPdfItem[][] = [];
+        for (let i = 0; i < section.items.length; i += PER_PAGE) {
+          pages.push(section.items.slice(i, i + PER_PAGE));
+        }
+        if (pages.length === 0) pages.push([]);
+        return pages.map((chunk, pi) => (
+          <Page key={`${si}-${pi}`} size="A4" style={s.page}>
+            <View style={s.header}>
+              <Image src={logo} style={s.logo} />
+              <Text style={s.brandLine}>{title}</Text>
+            </View>
+            {pi === 0 && (
+              <>
+                <Text style={sectionStyles.sectionHeader}>{section.name}</Text>
+                <Text style={sectionStyles.sectionMeta}>{section.items.length} item{section.items.length === 1 ? "" : "s"}</Text>
+              </>
+            )}
+            {chunk.length === 0 ? (
+              <Text style={{ fontSize: 10, color: "#6E7F82", marginTop: 20 }}>No items in this section.</Text>
+            ) : (
+              <View style={s.grid}>
+                {chunk.map((p, i) => {
+                  const onOffer = p.offer_price != null && p.offer_price < p.mrp;
+                  return (
+                    <View key={i} style={s.card} wrap={false}>
+                      <View style={s.cardInner}>
+                        {p.cover_image && <Image src={p.cover_image} style={s.img} />}
+                        <Text style={s.name}>{p.product_name}</Text>
+                        <Text style={s.code}>Code · {p.product_code}</Text>
+                        <View style={s.priceRow}>
+                          <Text style={s.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
+                          {onOffer && <Text style={s.mrp}>{formatINR(p.mrp)}</Text>}
+                        </View>
+                        {p.material && <Text style={s.meta}>Material: {p.material}</Text>}
+                        {p.dimensions && <Text style={s.meta}>Size: {p.dimensions}</Text>}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            <Text style={s.footer}>{CONTACT_LINE}</Text>
+            <Text style={s.pageLabel}>{section.name} · {pi + 1} / {pages.length}</Text>
+          </Page>
+        ));
+      })}
+    </Document>
+  );
+};
+
+export async function generateSectionedCatalogPdf(
+  sections: CatalogPdfSection[],
+  title: string,
+  subtitle: string,
+): Promise<Blob> {
+  const doc = <SectionedCatalogDoc sections={sections} title={title} subtitle={subtitle} />;
+  return await pdf(doc).toBlob();
+}
