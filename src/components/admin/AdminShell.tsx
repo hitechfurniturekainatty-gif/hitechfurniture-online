@@ -8,6 +8,26 @@ import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
 import { PipelineNotificationsBell } from "@/components/admin/PipelineNotificationsBell";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, isWarehouse, signOut } = useAuth();
@@ -18,7 +38,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // below (loading / !user / !isStaff). Otherwise React throws
   // "Rendered more hooks than during the previous render" when `loading`
   // flips from true → false.
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  // (group open-state is now handled per-section via <Collapsible defaultOpen>)
 
   // Track Backlog unlock state so the sidebar item disappears the moment the
   // 15-minute window expires (or the admin signs out). Re-check every 5s.
@@ -88,25 +108,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     }
     // Don't preventDefault — normal navigation to /admin still happens.
   };
-
-  // Auto-open the sidebar group containing the current route. Declared at the
-  // top of the component (before early returns) so hook order stays stable.
-  useEffect(() => {
-    const path = location.pathname;
-    const groups: Record<string, string[]> = {
-      operations: ["/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services", "/admin/scheme-calculator"],
-      inventory: ["/admin/categories", "/admin/products"],
-      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
-      team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
-    };
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      for (const [id, paths] of Object.entries(groups)) {
-        if (paths.some((p) => path === p || path.startsWith(p + "/"))) next[id] = true;
-      }
-      return next;
-    });
-  }, [location.pathname]);
 
   if (loading) {
     return (
