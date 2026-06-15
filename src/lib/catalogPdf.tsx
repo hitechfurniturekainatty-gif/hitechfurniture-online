@@ -477,7 +477,7 @@ const StructuredCatalogDoc = ({
       {sections.map((main, mi) => {
         const mainItemCount = main.subs.reduce((a, s) => a + s.items.length, 0);
         return (
-          <>
+          <View key={`main-${mi}`}>
             {/* Main category banner page */}
             <Page key={`mb-${mi}`} size="A4" style={cs.page}>
               <PageChrome crumb={main.main_name} footerLine={footerLine} />
@@ -530,7 +530,7 @@ const StructuredCatalogDoc = ({
                 </Page>
               ));
             })}
-          </>
+          </View>
         );
       })}
     </Document>
