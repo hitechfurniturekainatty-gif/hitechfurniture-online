@@ -506,6 +506,8 @@ const AdminProducts = () => {
           material: p.material ?? null,
           dimensions: p.dimensions ?? null,
           cover_image: cover,
+          stock_quantity: Number(p.stock_quantity) || 0,
+          stock_status: p.stock_status,
         };
       };
 

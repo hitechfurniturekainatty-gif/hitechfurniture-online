@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo.jpeg";
 import { CONTACT_LINE } from "./brand";
@@ -42,6 +43,8 @@ export type CatalogPdfItem = {
   material: string | null;
   dimensions: string | null;
   cover_image: string | null;
+  stock_quantity?: number;
+  stock_status?: "in_stock" | "out_of_stock";
 };
 
 const PER_PAGE = 6; // 2 cols x 3 rows
@@ -246,16 +249,47 @@ export type StructuredCatalogCover = {
  * where network images silently fail to render).
  */
 async function urlToDataUrl(url: string): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
   try {
-    const res = await fetch(url, { mode: "cors" });
+    const absoluteUrl =
+      typeof window !== "undefined" && url.startsWith("/")
+        ? new URL(url, window.location.origin).toString()
+        : url;
+    const res = await fetch(absoluteUrl, { mode: "cors", credentials: "omit", cache: "force-cache" });
     if (!res.ok) return null;
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result as string);
-      fr.onerror = () => reject(fr.error);
-      fr.readAsDataURL(blob);
-    });
+    if (typeof document === "undefined") {
+      return await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = document.createElement("img");
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("Image decode failed"));
+        el.src = objectUrl;
+      });
+      const maxEdge = 1200;
+      const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+      canvas.height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.84);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch {
     return null;
   }
@@ -276,11 +310,17 @@ export async function resolveCatalogImages(
       for (const it of s.items) if (it.cover_image) urls.add(it.cover_image);
     }
   }
-  const entries = await Promise.all(
-    Array.from(urls).map(async (u) => [u, await urlToDataUrl(u)] as const),
-  );
-  const map = new Map(entries);
-  const swap = (u: string | null) => (u ? map.get(u) ?? null : null);
+  const urlList = Array.from(urls);
+  const resolvedEntries: [string, string | null][] = [];
+  const batchSize = 8;
+  for (let i = 0; i < urlList.length; i += batchSize) {
+    const batch = await Promise.all(
+      urlList.slice(i, i + batchSize).map(async (u) => [u, await urlToDataUrl(u)] as [string, string | null]),
+    );
+    resolvedEntries.push(...batch);
+  }
+  const map = new Map(resolvedEntries);
+  const swap = (u: string | null) => (u ? map.get(u) ?? u : null);
   return sections.map((m) => ({
     ...m,
     main_banner: swap(m.main_banner),
@@ -329,27 +369,27 @@ const cs = StyleSheet.create({
 
   // Sub-category header
   subWrap: { marginBottom: 12 },
-  subBannerImg: { width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 8 },
+  subBannerImg: { width: "100%", height: 64, objectFit: "cover", borderRadius: 4, marginBottom: 8 },
   subHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#EFE7D4", borderLeft: "3pt solid #F4A227", paddingVertical: 6, paddingHorizontal: 10, marginBottom: 10 },
   subTitle: { fontSize: 14, fontWeight: 700, color: "#0E5C66" },
   subMeta: { fontSize: 9, color: "#6E7F82" },
 
-  // 2x2 grid
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
-  card: { width: "50%", padding: 6 },
-  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 10, backgroundColor: "#FFFFFF", height: 320 },
-  imgBox: { width: "100%", height: 200, backgroundColor: "#F4F1EA", borderRadius: 4, marginBottom: 8, alignItems: "center", justifyContent: "center" },
+  // 10-product grid: 2 columns x 5 rows per product page
+  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  card: { width: "50%", padding: 3 },
+  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 5, padding: 6, backgroundColor: "#FFFFFF", height: 104 },
+  imgBox: { width: "100%", height: 38, backgroundColor: "#F4F1EA", borderRadius: 3, marginBottom: 4, alignItems: "center", justifyContent: "center" },
   img: { width: "100%", height: "100%", objectFit: "contain" },
-  imgPlaceholder: { fontSize: 9, color: "#A8B1B3" },
-  name: { fontSize: 11, fontWeight: 700, color: "#0E5C66", marginBottom: 2 },
-  code: { fontSize: 8, color: "#6E7F82", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
+  imgPlaceholder: { fontSize: 7, color: "#A8B1B3" },
+  name: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66", marginBottom: 1, lineHeight: 1.15 },
+  code: { fontSize: 6.5, color: "#6E7F82", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 2 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  price: { fontSize: 12, fontWeight: 700, color: "#0E5C66" },
-  mrp: { fontSize: 8, color: "#6E7F82", textDecoration: "line-through" },
-  meta: { fontSize: 8, color: "#1F3F44", marginTop: 3 },
+  price: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66" },
+  mrp: { fontSize: 6.5, color: "#6E7F82", textDecoration: "line-through" },
+  meta: { fontSize: 6.5, color: "#1F3F44", marginTop: 1.5 },
 });
 
-const PER_GRID = 4; // 2 x 2
+const PER_GRID = 10; // 2 x 5
 
 const PageChrome = ({ crumb, footerLine }: { crumb: string; footerLine: string }) => (
   <>
@@ -385,6 +425,11 @@ const ProductCard = ({ p }: { p: CatalogPdfItem }) => {
           <Text style={cs.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
           {onOffer && <Text style={cs.mrp}>{formatINR(p.mrp)}</Text>}
         </View>
+        {typeof p.stock_quantity === "number" && (
+          <Text style={cs.meta}>
+            Stock: {p.stock_status === "out_of_stock" || p.stock_quantity <= 0 ? "No stock" : `${p.stock_quantity} ready`}
+          </Text>
+        )}
         {p.material && <Text style={cs.meta}>Material: {p.material}</Text>}
         {p.dimensions && <Text style={cs.meta}>Size: {p.dimensions}</Text>}
       </View>
@@ -438,7 +483,7 @@ const StructuredCatalogDoc = ({
       {sections.map((main, mi) => {
         const mainItemCount = main.subs.reduce((a, s) => a + s.items.length, 0);
         return (
-          <>
+          <Fragment key={`main-${mi}`}>
             {/* Main category banner page */}
             <Page key={`mb-${mi}`} size="A4" style={cs.page}>
               <PageChrome crumb={main.main_name} footerLine={footerLine} />
@@ -491,7 +536,7 @@ const StructuredCatalogDoc = ({
                 </Page>
               ));
             })}
-          </>
+          </Fragment>
         );
       })}
     </Document>
