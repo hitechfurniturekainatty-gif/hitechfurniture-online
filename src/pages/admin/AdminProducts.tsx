@@ -1277,6 +1277,18 @@ const AdminProducts = () => {
                 <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
               </Field>
             )}
+            {editing && (
+              <Field label="Price effective from">
+                <Input
+                  type="date"
+                  value={priceEffectiveDate}
+                  onChange={(e) => setPriceEffectiveDate(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Used only when MRP / Selling / Cost is changed. Catalog always shows the current price.
+                </p>
+              </Field>
+            )}
             <Field label="Stock quantity">
               <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
             </Field>
