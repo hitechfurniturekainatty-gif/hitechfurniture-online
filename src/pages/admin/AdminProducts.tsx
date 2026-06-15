@@ -693,17 +693,39 @@ const AdminProducts = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Download section-wise PDF</DropdownMenuLabel>
+              <DropdownMenuLabel>Stock filter</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={pdfStockFilter}
+                onValueChange={(v) => setPdfStockFilter(v as "all" | "ready" | "none")}
+              >
+                <DropdownMenuRadioItem value="all">All products</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="ready">Ready stock only</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="none">No-stock inventory only</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => downloadProductsPdf("all")}>
-                All products (with & without stock)
+              <DropdownMenuLabel>Download</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => downloadProductsPdf(pdfStockFilter, { type: "all" })}>
+                Entire catalog (all categories)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadProductsPdf("ready")}>
-                Ready stock only
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadProductsPdf("none")}>
-                No-stock inventory only
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>By main category…</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-80 w-64 overflow-y-auto">
+                  {mainCats.length === 0 ? (
+                    <DropdownMenuItem disabled>No categories</DropdownMenuItem>
+                  ) : (
+                    [...mainCats]
+                      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
+                      .map((mc) => (
+                        <DropdownMenuItem
+                          key={mc.id}
+                          onClick={() => downloadProductsPdf(pdfStockFilter, { type: "main", id: mc.id })}
+                        >
+                          {toTitleCase(mc.name)}
+                        </DropdownMenuItem>
+                      ))
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
