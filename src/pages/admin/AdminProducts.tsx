@@ -156,8 +156,8 @@ const AdminProducts = () => {
 
   useEffect(() => {
     load();
-    supabase.from("main_categories").select("id, name").order("display_order").then(({ data }) => setMainCats((data ?? []) as MainCat[]));
-    supabase.from("sub_categories").select("id, main_category_id, name").order("display_order").then(({ data }) => setSubCats((data ?? []) as SubCat[]));
+    supabase.from("main_categories").select("id, name, image_url, display_order").order("display_order").then(({ data }) => setMainCats((data ?? []) as MainCat[]));
+    supabase.from("sub_categories").select("id, main_category_id, name, image_url, display_order").order("display_order").then(({ data }) => setSubCats((data ?? []) as SubCat[]));
     loadLocations();
   }, []);
 
