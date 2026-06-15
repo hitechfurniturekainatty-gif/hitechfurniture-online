@@ -415,6 +415,35 @@ const AdminProducts = () => {
       productId = data.id;
     }
 
+    // If editing and any price field changed, record a new effective-dated
+    // history row via the RPC (it also re-syncs the live product prices).
+    if (editing && productId && origPrices) {
+      const newCost = form.cost_price ? Number(form.cost_price) : null;
+      const newMrp = form.mrp ? Number(form.mrp) : 0;
+      const newSelling = form.offer_price ? Number(form.offer_price) : null;
+      const costChanged = isOfficeStaff && (origPrices.cost ?? null) !== newCost;
+      const mrpChanged = (origPrices.mrp ?? 0) !== newMrp;
+      const sellingChanged = (origPrices.selling ?? null) !== newSelling;
+      if (costChanged || mrpChanged || sellingChanged) {
+        const eff = priceEffectiveDate ? new Date(priceEffectiveDate).toISOString() : new Date().toISOString();
+        const { error: rpcErr } = await supabase.rpc("apply_product_price_change", {
+          _product_id: productId,
+          _cost_price: isOfficeStaff ? newCost : null,
+          _selling_price: newSelling,
+          _mrp: newMrp,
+          _effective_from: eff,
+          _note: null,
+        });
+        if (rpcErr) {
+          // Non-fatal — the live product row was already updated above.
+          toast({ title: "Price saved, history log failed", description: rpcErr.message, variant: "destructive" });
+        } else {
+          setHistoryReloadKey((k) => k + 1);
+          setOrigPrices({ cost: newCost, mrp: newMrp, selling: newSelling });
+        }
+      }
+    }
+
     // Sync images: delete all then re-insert in order (simple approach)
     if (productId) {
       await supabase.from("product_images").delete().eq("product_id", productId);
