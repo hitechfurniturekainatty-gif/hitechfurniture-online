@@ -37,6 +37,7 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
+import { PriceHistorySection } from "@/components/admin/PriceHistorySection";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string; image_url: string | null; display_order: number };
