@@ -588,6 +588,59 @@ export default function AdminVault() {
           )}
         </section>
       </main>
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center px-4 overflow-y-auto py-8" onClick={() => setSettingsOpen(false)}>
+          <form onSubmit={saveSettings} className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-indigo-400" />
+              <h2 className="text-lg font-semibold">Vault Security Settings</h2>
+            </div>
+
+            <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-4 space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Current Credentials</div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase text-emerald-400 font-bold">Master Password</div>
+                  <div className="font-mono text-emerald-100 text-base break-all">{cfg?.master_password}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.master_password || "", "Master Password")} className="text-slate-400 hover:text-emerald-300"><Copy className="h-4 w-4" /></button>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                <div>
+                  <div className="text-[10px] uppercase text-amber-400 font-bold">Secret PIN</div>
+                  <div className="font-mono text-amber-100 text-base tracking-[0.3em]">{cfg?.secret_pin}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.secret_pin || "", "PIN")} className="text-slate-400 hover:text-amber-300"><Copy className="h-4 w-4" /></button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">New Master Password</label>
+                <input value={newMaster} onChange={(e) => setNewMaster(e.target.value)} className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20 outline-none px-3 text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">New Secret PIN (4+ digits)</label>
+                <input value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} maxLength={8} className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 outline-none px-3 text-slate-100 font-mono tracking-[0.3em]" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Recovery Phone</label>
+                <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="9605656290" className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Son's DOB (DD-MM-YYYY)</label>
+                <input value={newDob} onChange={(e) => setNewDob(e.target.value)} placeholder="01-02-2025" className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100" />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={() => setSettingsOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+              <button type="submit" className="flex-1 h-11 rounded-lg bg-gradient-to-r from-emerald-500 to-indigo-500 hover:from-emerald-400 hover:to-indigo-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2"><Save className="h-4 w-4" /> Save Changes</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
