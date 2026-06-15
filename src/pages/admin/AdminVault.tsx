@@ -49,6 +49,16 @@ export default function AdminVault() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
 
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editHeading, setEditHeading] = useState("");
+  const [editLink, setEditLink] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editShowPw, setEditShowPw] = useState(false);
+  const [editExtras, setEditExtras] = useState<ExtraRow[]>([]);
+
   const loadCfg = async () => {
     const { data, error } = await supabase
       .from("vault_config" as any)
