@@ -37,6 +37,7 @@ import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/Pri
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
+import { PriceHistorySection } from "@/components/admin/PriceHistorySection";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
 type MainCat = { id: string; name: string; image_url: string | null; display_order: number };
@@ -126,6 +127,11 @@ const AdminProducts = () => {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStockFilter, setPdfStockFilter] = useState<"all" | "ready" | "none">("all");
+  // Track the prices we loaded so we can detect changes on save and log
+  // a new effective-dated row in product_price_history via the RPC.
+  const [origPrices, setOrigPrices] = useState<{ cost: number | null; mrp: number | null; selling: number | null } | null>(null);
+  const [priceEffectiveDate, setPriceEffectiveDate] = useState<string>("");
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
@@ -291,11 +297,19 @@ const AdminProducts = () => {
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
+    setOrigPrices(null);
+    setPriceEffectiveDate("");
     setOpen(true);
   };
 
   const openEdit = async (p: Product) => {
     setEditing(p);
+    setOrigPrices({
+      cost: p.cost_price != null ? Number(p.cost_price) : null,
+      mrp: p.mrp != null ? Number(p.mrp) : null,
+      selling: p.offer_price != null ? Number(p.offer_price) : null,
+    });
+    setPriceEffectiveDate(new Date().toISOString().slice(0, 10));
     setForm({
       product_name: p.product_name,
       product_code: p.product_code,
@@ -399,6 +413,35 @@ const AdminProducts = () => {
       const { data, error } = await supabase.from("products").insert(payload).select("id").single();
       if (error || !data) { setSaving(false); return toast({ title: "Failed", description: error?.message, variant: "destructive" }); }
       productId = data.id;
+    }
+
+    // If editing and any price field changed, record a new effective-dated
+    // history row via the RPC (it also re-syncs the live product prices).
+    if (editing && productId && origPrices) {
+      const newCost = form.cost_price ? Number(form.cost_price) : null;
+      const newMrp = form.mrp ? Number(form.mrp) : 0;
+      const newSelling = form.offer_price ? Number(form.offer_price) : null;
+      const costChanged = isOfficeStaff && (origPrices.cost ?? null) !== newCost;
+      const mrpChanged = (origPrices.mrp ?? 0) !== newMrp;
+      const sellingChanged = (origPrices.selling ?? null) !== newSelling;
+      if (costChanged || mrpChanged || sellingChanged) {
+        const eff = priceEffectiveDate ? new Date(priceEffectiveDate).toISOString() : new Date().toISOString();
+        const { error: rpcErr } = await supabase.rpc("apply_product_price_change", {
+          _product_id: productId,
+          _cost_price: isOfficeStaff ? newCost : null,
+          _selling_price: newSelling,
+          _mrp: newMrp,
+          _effective_from: eff,
+          _note: null,
+        });
+        if (rpcErr) {
+          // Non-fatal — the live product row was already updated above.
+          toast({ title: "Price saved, history log failed", description: rpcErr.message, variant: "destructive" });
+        } else {
+          setHistoryReloadKey((k) => k + 1);
+          setOrigPrices({ cost: newCost, mrp: newMrp, selling: newSelling });
+        }
+      }
     }
 
     // Sync images: delete all then re-insert in order (simple approach)
@@ -1234,6 +1277,18 @@ const AdminProducts = () => {
                 <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
               </Field>
             )}
+            {editing && (
+              <Field label="Price effective from">
+                <Input
+                  type="date"
+                  value={priceEffectiveDate}
+                  onChange={(e) => setPriceEffectiveDate(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Used only when MRP / Selling / Cost is changed. Catalog always shows the current price.
+                </p>
+              </Field>
+            )}
             <Field label="Stock quantity">
               <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
             </Field>
@@ -1327,6 +1382,19 @@ const AdminProducts = () => {
               </div>
               <Switch checked={form.is_published} onCheckedChange={(v) => setForm({ ...form, is_published: v })} />
             </div>
+            {editing && (
+              <div className="sm:col-span-2 space-y-2 rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Price history</p>
+                  <p className="text-[11px] text-muted-foreground">Most recent first</p>
+                </div>
+                <PriceHistorySection
+                  productId={editing.id}
+                  showCost={isOfficeStaff}
+                  reloadKey={historyReloadKey}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
