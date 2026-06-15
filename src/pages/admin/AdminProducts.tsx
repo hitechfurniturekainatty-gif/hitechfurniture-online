@@ -13,7 +13,15 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/brand";
@@ -111,6 +119,7 @@ const AdminProducts = () => {
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
@@ -501,6 +510,27 @@ const AdminProducts = () => {
           <Button variant="outline" onClick={() => setLocationsDialogOpen(true)} className="gap-1.5">
             <MapPin className="h-4 w-4" /> Locations
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-1.5" disabled={pdfBusy}>
+                {pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                Catalog PDF
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Download section-wise PDF</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => downloadProductsPdf("all")}>
+                All products (with & without stock)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadProductsPdf("ready")}>
+                Ready stock only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadProductsPdf("none")}>
+                No-stock inventory only
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
             <KeyRound className="h-4 w-4" /> Catalog PIN
           </Button>
