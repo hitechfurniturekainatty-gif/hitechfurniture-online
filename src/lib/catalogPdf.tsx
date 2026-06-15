@@ -285,7 +285,6 @@ export async function resolveCatalogImages(
     }
   }
   const urlList = Array.from(urls);
-  const entries: readonly [string, string | null][] = [];
   const resolvedEntries: [string, string | null][] = [];
   const batchSize = 8;
   for (let i = 0; i < urlList.length; i += batchSize) {
@@ -294,8 +293,7 @@ export async function resolveCatalogImages(
     );
     resolvedEntries.push(...batch);
   }
-  entries = resolvedEntries;
-  const map = new Map(entries);
+  const map = new Map(resolvedEntries);
   const swap = (u: string | null) => (u ? map.get(u) ?? u : null);
   return sections.map((m) => ({
     ...m,
