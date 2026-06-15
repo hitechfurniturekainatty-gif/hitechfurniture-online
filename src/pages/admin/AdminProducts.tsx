@@ -34,8 +34,8 @@ import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
 import { ProductVariantsEditor, type VariantDraft } from "@/components/admin/ProductVariantsEditor";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 
-type MainCat = { id: string; name: string };
-type SubCat = { id: string; main_category_id: string; name: string };
+type MainCat = { id: string; name: string; image_url: string | null; display_order: number };
+type SubCat = { id: string; main_category_id: string; name: string; image_url: string | null; display_order: number };
 type Location = {
   id: string;
   building: string;
