@@ -425,6 +425,11 @@ const ProductCard = ({ p }: { p: CatalogPdfItem }) => {
           <Text style={cs.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
           {onOffer && <Text style={cs.mrp}>{formatINR(p.mrp)}</Text>}
         </View>
+        {typeof p.stock_quantity === "number" && (
+          <Text style={cs.meta}>
+            Stock: {p.stock_status === "out_of_stock" || p.stock_quantity <= 0 ? "No stock" : `${p.stock_quantity} ready`}
+          </Text>
+        )}
         {p.material && <Text style={cs.meta}>Material: {p.material}</Text>}
         {p.dimensions && <Text style={cs.meta}>Size: {p.dimensions}</Text>}
       </View>
