@@ -374,13 +374,28 @@ const cs = StyleSheet.create({
   subTitle: { fontSize: 14, fontWeight: 700, color: "#0E5C66" },
   subMeta: { fontSize: 9, color: "#6E7F82" },
 
-  // 10-product grid: 2 columns x 5 rows per product page
+  // 10-product grid: 2 columns x 5 rows per product page (horizontal cards)
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
   card: { width: "50%", padding: 3 },
-  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 5, padding: 6, backgroundColor: "#FFFFFF", height: 104 },
-  imgBox: { width: "100%", height: 38, backgroundColor: "#F4F1EA", borderRadius: 3, marginBottom: 4, alignItems: "center", justifyContent: "center" },
-  img: { width: "100%", height: "100%", objectFit: "contain" },
+  cardInner: {
+    flexDirection: "row",
+    border: "1pt solid #E5DFD2",
+    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
+    height: 96,
+    overflow: "hidden",
+    padding: 0,
+  },
+  imgBox: {
+    width: 96,
+    height: "100%",
+    backgroundColor: "#F4F1EA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  img: { width: "100%", height: "100%", objectFit: "cover" },
   imgPlaceholder: { fontSize: 7, color: "#A8B1B3" },
+  details: { flex: 1, paddingVertical: 6, paddingHorizontal: 8, justifyContent: "center" },
   name: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66", marginBottom: 1, lineHeight: 1.15 },
   code: { fontSize: 6.5, color: "#6E7F82", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 2 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
@@ -419,19 +434,21 @@ const ProductCard = ({ p }: { p: CatalogPdfItem }) => {
             <Text style={cs.imgPlaceholder}>No image</Text>
           )}
         </View>
-        <Text style={cs.name}>{p.product_name}</Text>
-        <Text style={cs.code}>Code · {p.product_code}</Text>
-        <View style={cs.priceRow}>
-          <Text style={cs.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
-          {onOffer && <Text style={cs.mrp}>{formatINR(p.mrp)}</Text>}
+        <View style={cs.details}>
+          <Text style={cs.name}>{p.product_name}</Text>
+          <Text style={cs.code}>Code · {p.product_code}</Text>
+          <View style={cs.priceRow}>
+            <Text style={cs.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
+            {onOffer && <Text style={cs.mrp}>{formatINR(p.mrp)}</Text>}
+          </View>
+          {typeof p.stock_quantity === "number" && (
+            <Text style={cs.meta}>
+              Stock: {p.stock_status === "out_of_stock" || p.stock_quantity <= 0 ? "No stock" : `${p.stock_quantity} ready`}
+            </Text>
+          )}
+          {p.material && <Text style={cs.meta}>Material: {p.material}</Text>}
+          {p.dimensions && <Text style={cs.meta}>Size: {p.dimensions}</Text>}
         </View>
-        {typeof p.stock_quantity === "number" && (
-          <Text style={cs.meta}>
-            Stock: {p.stock_status === "out_of_stock" || p.stock_quantity <= 0 ? "No stock" : `${p.stock_quantity} ready`}
-          </Text>
-        )}
-        {p.material && <Text style={cs.meta}>Material: {p.material}</Text>}
-        {p.dimensions && <Text style={cs.meta}>Size: {p.dimensions}</Text>}
       </View>
     </View>
   );
