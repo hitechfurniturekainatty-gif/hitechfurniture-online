@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault } from "lucide-react";
+import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, HelpCircle, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,9 +14,6 @@ type VaultEntry = {
   createdAt: number;
 };
 
-const MASTER_PASSWORD = "Admin@Hitech2026";
-const SECRET_PIN = "9946";
-
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 export default function AdminVault() {
@@ -24,6 +21,22 @@ export default function AdminVault() {
   const [masterInput, setMasterInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [showMaster, setShowMaster] = useState(false);
+
+  // Vault config from DB
+  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string; recovery_phone: string; recovery_dob: string } | null>(null);
+
+  // Recovery flow
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recPhone, setRecPhone] = useState("");
+  const [recDob, setRecDob] = useState("");
+  const [recovered, setRecovered] = useState<{ master: string; pin: string } | null>(null);
+
+  // Settings panel (after unlock)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newMaster, setNewMaster] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newDob, setNewDob] = useState("");
 
   // Form state
   const [heading, setHeading] = useState("");
@@ -37,6 +50,29 @@ export default function AdminVault() {
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+
+  const loadCfg = async () => {
+    const { data, error } = await supabase
+      .from("vault_config" as any)
+      .select("master_password, secret_pin, recovery_phone, recovery_dob")
+      .eq("id", true)
+      .maybeSingle();
+    if (error) {
+      toast({ title: "Failed to load vault config", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      const row = data as any;
+      setCfg({
+        master_password: row.master_password ?? "",
+        secret_pin: row.secret_pin ?? "",
+        recovery_phone: row.recovery_phone ?? "",
+        recovery_dob: row.recovery_dob ?? "",
+      });
+    }
+  };
+
+  useEffect(() => { loadCfg(); }, []);
 
   const fetchEntries = async () => {
     setLoading(true);
@@ -68,7 +104,7 @@ export default function AdminVault() {
 
   const tryMaster = (e: React.FormEvent) => {
     e.preventDefault();
-    if (masterInput === MASTER_PASSWORD) {
+    if (cfg && masterInput === cfg.master_password) {
       setStage(1);
       setMasterInput("");
     } else {
@@ -77,9 +113,14 @@ export default function AdminVault() {
   };
   const tryPin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === SECRET_PIN) {
+    if (cfg && pinInput === cfg.secret_pin) {
       setStage(2);
       setPinInput("");
+      // preload settings form
+      setNewMaster(cfg.master_password);
+      setNewPin(cfg.secret_pin);
+      setNewPhone(cfg.recovery_phone);
+      setNewDob(cfg.recovery_dob);
     } else {
       toast({ title: "Incorrect secret PIN", variant: "destructive" });
     }
@@ -93,6 +134,46 @@ export default function AdminVault() {
     setUsername("");
     setPassword("");
     setExtras([]);
+    setSettingsOpen(false);
+    setRecovered(null);
+    setRecoveryOpen(false);
+  };
+
+  const tryRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cfg) return;
+    const phoneOk = recPhone.replace(/\D/g, "") === (cfg.recovery_phone || "").replace(/\D/g, "");
+    const dobOk = recDob.trim() === (cfg.recovery_dob || "").trim();
+    if (phoneOk && dobOk) {
+      setRecovered({ master: cfg.master_password, pin: cfg.secret_pin });
+      toast({ title: "Identity verified" });
+    } else {
+      toast({ title: "Recovery answers don't match", variant: "destructive" });
+    }
+  };
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMaster.trim() || newPin.trim().length < 4) {
+      toast({ title: "Master password and 4+ digit PIN required", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase
+      .from("vault_config" as any)
+      .update({
+        master_password: newMaster.trim(),
+        secret_pin: newPin.trim(),
+        recovery_phone: newPhone.trim() || null,
+        recovery_dob: newDob.trim() || null,
+      })
+      .eq("id", true);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Vault security updated" });
+    await loadCfg();
+    setSettingsOpen(false);
   };
 
   const addExtra = () => setExtras((x) => [...x, { id: uid(), key: "", value: "" }]);
@@ -229,10 +310,69 @@ export default function AdminVault() {
               </form>
             )}
           </div>
-          <p className="text-center text-[11px] text-slate-600 mt-4">
-            Encrypted local vault • Double security enabled
-          </p>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setRecoveryOpen(true); setRecovered(null); setRecPhone(""); setRecDob(""); }}
+              className="inline-flex items-center gap-1.5 text-xs text-indigo-300 hover:text-indigo-200 transition"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> Forgot password / PIN?
+            </button>
+            <p className="text-center text-[11px] text-slate-600">
+              Secure vault • Double security enabled
+            </p>
+          </div>
         </div>
+
+        {recoveryOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center px-4" onClick={() => setRecoveryOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-4">
+                <HelpCircle className="h-5 w-5 text-indigo-400" />
+                <h2 className="text-lg font-semibold">Recovery Verification</h2>
+              </div>
+              {!recovered ? (
+                <form onSubmit={tryRecovery} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Confirm Phone Number</label>
+                    <input
+                      value={recPhone}
+                      onChange={(e) => setRecPhone(e.target.value)}
+                      placeholder="10-digit phone"
+                      autoFocus
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Son's Date of Birth (DD-MM-YYYY)</label>
+                    <input
+                      value={recDob}
+                      onChange={(e) => setRecDob(e.target.value)}
+                      placeholder="01-02-2025"
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setRecoveryOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+                    <button type="submit" className="flex-1 h-11 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-semibold text-sm">Verify</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold mb-1">Master Password</div>
+                    <div className="font-mono text-emerald-100 text-lg break-all">{recovered.master}</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mb-1">Secret PIN</div>
+                    <div className="font-mono text-amber-100 text-2xl tracking-[0.4em]">{recovered.pin}</div>
+                  </div>
+                  <button onClick={() => { setRecoveryOpen(false); setRecovered(null); }} className="w-full h-11 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm">Close</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -252,12 +392,20 @@ export default function AdminVault() {
               <p className="text-xs text-slate-500">{entries.length} saved {entries.length === 1 ? "record" : "records"}</p>
             </div>
           </div>
-          <button
-            onClick={lockVault}
-            className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition text-sm font-medium"
-          >
-            <Lock className="h-4 w-4" /> Lock Vault
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm font-medium"
+            >
+              <Settings className="h-4 w-4" /> Security
+            </button>
+            <button
+              onClick={lockVault}
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition text-sm font-medium"
+            >
+              <Lock className="h-4 w-4" /> Lock Vault
+            </button>
+          </div>
         </div>
       </header>
 
@@ -440,6 +588,59 @@ export default function AdminVault() {
           )}
         </section>
       </main>
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center px-4 overflow-y-auto py-8" onClick={() => setSettingsOpen(false)}>
+          <form onSubmit={saveSettings} className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-indigo-400" />
+              <h2 className="text-lg font-semibold">Vault Security Settings</h2>
+            </div>
+
+            <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-4 space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Current Credentials</div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase text-emerald-400 font-bold">Master Password</div>
+                  <div className="font-mono text-emerald-100 text-base break-all">{cfg?.master_password}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.master_password || "", "Master Password")} className="text-slate-400 hover:text-emerald-300"><Copy className="h-4 w-4" /></button>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                <div>
+                  <div className="text-[10px] uppercase text-amber-400 font-bold">Secret PIN</div>
+                  <div className="font-mono text-amber-100 text-base tracking-[0.3em]">{cfg?.secret_pin}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.secret_pin || "", "PIN")} className="text-slate-400 hover:text-amber-300"><Copy className="h-4 w-4" /></button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">New Master Password</label>
+                <input value={newMaster} onChange={(e) => setNewMaster(e.target.value)} className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20 outline-none px-3 text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">New Secret PIN (4+ digits)</label>
+                <input value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} maxLength={8} className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 outline-none px-3 text-slate-100 font-mono tracking-[0.3em]" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Recovery Phone</label>
+                <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="9605656290" className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Son's DOB (DD-MM-YYYY)</label>
+                <input value={newDob} onChange={(e) => setNewDob(e.target.value)} placeholder="01-02-2025" className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100" />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={() => setSettingsOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+              <button type="submit" className="flex-1 h-11 rounded-lg bg-gradient-to-r from-emerald-500 to-indigo-500 hover:from-emerald-400 hover:to-indigo-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2"><Save className="h-4 w-4" /> Save Changes</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
