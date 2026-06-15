@@ -250,8 +250,8 @@ const Index = () => {
                     <span className="font-display text-2xl text-primary">{c.name[0]}</span>
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
-                <span className="absolute bottom-3 left-3 right-3 z-10 font-display text-base font-semibold text-background">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-foreground/90 via-foreground/50 to-transparent" />
+                <span className="absolute bottom-2 left-2 right-2 z-10 truncate text-center font-display text-sm font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-base">
                   {c.name}
                 </span>
               </Link>
