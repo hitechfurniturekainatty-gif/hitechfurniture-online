@@ -24,8 +24,14 @@ export const SiteHeader = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 shadow-card-soft backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="container-page grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3 md:py-4">
-        <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex items-center gap-3 justify-self-start">
-          <Logo className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14" />
+        <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex items-center gap-3 justify-self-start min-w-0">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-glow shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.35)] ring-2 ring-white/80 sm:h-12 sm:w-12 md:h-14 md:w-14">
+            <Logo className="h-7 w-7 sm:h-9 sm:w-9 md:h-10 md:w-10" rounded={false} />
+          </span>
+          <span className="hidden min-w-0 flex-col leading-tight sm:flex">
+            <span className="font-display text-sm font-bold tracking-tight text-foreground md:text-base">Hitech Furniture</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">& Interiors</span>
+          </span>
         </Link>
 
         <nav className="hidden items-center justify-center gap-10 md:flex">

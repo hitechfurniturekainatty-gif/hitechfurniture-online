@@ -74,7 +74,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
 
   return (
     <Link to={`/${linkPrefix}/${product.id}`} className="product-card group block">
-      <div className="relative aspect-[4/5] overflow-hidden bg-transparent">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[hsl(40,25%,96%)] ring-1 ring-inset ring-border/50">
         {cover ? (
           <img
             src={cover}
@@ -83,7 +83,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
             decoding="async"
             width={400}
             height={500}
-            className="h-full w-full object-contain object-center transition-smooth group-hover:scale-[1.03]"
+            className="h-full w-full object-contain object-center p-3 transition-smooth group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
@@ -91,10 +91,10 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
           </div>
         )}
         {onOffer && (
-          <Badge className="absolute left-3 top-3 z-10 bg-accent text-accent-foreground">Offer</Badge>
+          <Badge className="absolute left-3 top-3 z-10 bg-accent text-accent-foreground shadow-sm">Offer</Badge>
         )}
         {totalStock <= 0 && (
-          <Badge variant="secondary" className="absolute right-3 top-3 z-10">Out of stock</Badge>
+          <Badge variant="secondary" className="absolute right-3 top-3 z-10 shadow-sm">Out of stock</Badge>
         )}
         <button
           type="button"
@@ -141,11 +141,11 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
       )}
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg leading-snug text-foreground line-clamp-2">
+          <h3 className="font-display text-lg leading-snug text-slate-900 line-clamp-2">
             {toTitleCase(product.product_name)}
           </h3>
         </div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Code · {product.product_code}</p>
+        <p className="text-xs uppercase tracking-wider text-slate-500">Code · {product.product_code}</p>
         {!hidePrice && (
         <div className="flex items-baseline gap-2 pt-1">
           {onOffer ? (
