@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault } from "lucide-react";
+import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, HelpCircle, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,9 +14,6 @@ type VaultEntry = {
   createdAt: number;
 };
 
-const MASTER_PASSWORD = "Admin@Hitech2026";
-const SECRET_PIN = "9946";
-
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 export default function AdminVault() {
@@ -24,6 +21,22 @@ export default function AdminVault() {
   const [masterInput, setMasterInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [showMaster, setShowMaster] = useState(false);
+
+  // Vault config from DB
+  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string; recovery_phone: string; recovery_dob: string } | null>(null);
+
+  // Recovery flow
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recPhone, setRecPhone] = useState("");
+  const [recDob, setRecDob] = useState("");
+  const [recovered, setRecovered] = useState<{ master: string; pin: string } | null>(null);
+
+  // Settings panel (after unlock)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newMaster, setNewMaster] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newDob, setNewDob] = useState("");
 
   // Form state
   const [heading, setHeading] = useState("");
@@ -37,6 +50,29 @@ export default function AdminVault() {
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+
+  const loadCfg = async () => {
+    const { data, error } = await supabase
+      .from("vault_config" as any)
+      .select("master_password, secret_pin, recovery_phone, recovery_dob")
+      .eq("id", true)
+      .maybeSingle();
+    if (error) {
+      toast({ title: "Failed to load vault config", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      const row = data as any;
+      setCfg({
+        master_password: row.master_password ?? "",
+        secret_pin: row.secret_pin ?? "",
+        recovery_phone: row.recovery_phone ?? "",
+        recovery_dob: row.recovery_dob ?? "",
+      });
+    }
+  };
+
+  useEffect(() => { loadCfg(); }, []);
 
   const fetchEntries = async () => {
     setLoading(true);
@@ -68,7 +104,7 @@ export default function AdminVault() {
 
   const tryMaster = (e: React.FormEvent) => {
     e.preventDefault();
-    if (masterInput === MASTER_PASSWORD) {
+    if (cfg && masterInput === cfg.master_password) {
       setStage(1);
       setMasterInput("");
     } else {
@@ -77,9 +113,14 @@ export default function AdminVault() {
   };
   const tryPin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === SECRET_PIN) {
+    if (cfg && pinInput === cfg.secret_pin) {
       setStage(2);
       setPinInput("");
+      // preload settings form
+      setNewMaster(cfg.master_password);
+      setNewPin(cfg.secret_pin);
+      setNewPhone(cfg.recovery_phone);
+      setNewDob(cfg.recovery_dob);
     } else {
       toast({ title: "Incorrect secret PIN", variant: "destructive" });
     }
@@ -93,6 +134,46 @@ export default function AdminVault() {
     setUsername("");
     setPassword("");
     setExtras([]);
+    setSettingsOpen(false);
+    setRecovered(null);
+    setRecoveryOpen(false);
+  };
+
+  const tryRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cfg) return;
+    const phoneOk = recPhone.replace(/\D/g, "") === (cfg.recovery_phone || "").replace(/\D/g, "");
+    const dobOk = recDob.trim() === (cfg.recovery_dob || "").trim();
+    if (phoneOk && dobOk) {
+      setRecovered({ master: cfg.master_password, pin: cfg.secret_pin });
+      toast({ title: "Identity verified" });
+    } else {
+      toast({ title: "Recovery answers don't match", variant: "destructive" });
+    }
+  };
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMaster.trim() || newPin.trim().length < 4) {
+      toast({ title: "Master password and 4+ digit PIN required", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase
+      .from("vault_config" as any)
+      .update({
+        master_password: newMaster.trim(),
+        secret_pin: newPin.trim(),
+        recovery_phone: newPhone.trim() || null,
+        recovery_dob: newDob.trim() || null,
+      })
+      .eq("id", true);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Vault security updated" });
+    await loadCfg();
+    setSettingsOpen(false);
   };
 
   const addExtra = () => setExtras((x) => [...x, { id: uid(), key: "", value: "" }]);
