@@ -613,6 +613,20 @@ export default function AdminVault() {
                 </div>
                 <button type="button" onClick={() => copy(cfg?.secret_pin || "", "PIN")} className="text-slate-400 hover:text-amber-300"><Copy className="h-4 w-4" /></button>
               </div>
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                <div>
+                  <div className="text-[10px] uppercase text-indigo-400 font-bold">Recovery Phone</div>
+                  <div className="font-mono text-indigo-100 text-base">{cfg?.recovery_phone || "—"}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.recovery_phone || "", "Recovery Phone")} className="text-slate-400 hover:text-indigo-300"><Copy className="h-4 w-4" /></button>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                <div>
+                  <div className="text-[10px] uppercase text-rose-400 font-bold">Son's DOB (Recovery)</div>
+                  <div className="font-mono text-rose-100 text-base">{cfg?.recovery_dob || "—"}</div>
+                </div>
+                <button type="button" onClick={() => copy(cfg?.recovery_dob || "", "Son's DOB")} className="text-slate-400 hover:text-rose-300"><Copy className="h-4 w-4" /></button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
