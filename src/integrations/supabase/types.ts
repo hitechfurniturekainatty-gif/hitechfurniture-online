@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_vault_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          extras: Json
+          heading: string
+          id: string
+          link: string | null
+          password: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          extras?: Json
+          heading: string
+          id?: string
+          link?: string | null
+          password?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          extras?: Json
+          heading?: string
+          id?: string
+          link?: string | null
+          password?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       bundle_images: {
         Row: {
           bundle_id: string
