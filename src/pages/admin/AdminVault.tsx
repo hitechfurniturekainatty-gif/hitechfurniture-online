@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save } from "lucide-react";
+import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save, LifeBuoy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,7 +23,13 @@ export default function AdminVault() {
   const [showMaster, setShowMaster] = useState(false);
 
   // Vault config from DB
-  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string } | null>(null);
+  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string; recovery_phone: string; recovery_dob: string } | null>(null);
+
+  // Recovery modal
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recPhone, setRecPhone] = useState("");
+  const [recDob, setRecDob] = useState("");
+  const [recRevealed, setRecRevealed] = useState(false);
 
   // Settings panel (after unlock)
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,7 +52,7 @@ export default function AdminVault() {
   const loadCfg = async () => {
     const { data, error } = await supabase
       .from("vault_config" as any)
-      .select("master_password, secret_pin")
+      .select("master_password, secret_pin, recovery_phone, recovery_dob")
       .eq("id", true)
       .maybeSingle();
     if (error) {
@@ -58,6 +64,8 @@ export default function AdminVault() {
       setCfg({
         master_password: row.master_password ?? "",
         secret_pin: row.secret_pin ?? "",
+        recovery_phone: row.recovery_phone ?? "",
+        recovery_dob: row.recovery_dob ?? "",
       });
     }
   };
@@ -123,6 +131,23 @@ export default function AdminVault() {
     setPassword("");
     setExtras([]);
     setSettingsOpen(false);
+    setRecoveryOpen(false);
+    setRecRevealed(false);
+    setRecPhone("");
+    setRecDob("");
+  };
+
+  const tryRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cfg) return;
+    const phoneOk = recPhone.trim() === (cfg.recovery_phone || "").trim();
+    const dobOk = recDob.trim() === (cfg.recovery_dob || "").trim();
+    if (phoneOk && dobOk) {
+      setRecRevealed(true);
+      toast({ title: "Identity verified" });
+    } else {
+      toast({ title: "Recovery details do not match", variant: "destructive" });
+    }
   };
 
   const saveSettings = async (e: React.FormEvent) => {
