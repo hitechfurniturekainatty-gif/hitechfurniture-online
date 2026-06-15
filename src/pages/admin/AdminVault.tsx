@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save, LifeBuoy } from "lucide-react";
+import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save, LifeBuoy, Pencil, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -48,6 +48,16 @@ export default function AdminVault() {
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editHeading, setEditHeading] = useState("");
+  const [editLink, setEditLink] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editShowPw, setEditShowPw] = useState(false);
+  const [editExtras, setEditExtras] = useState<ExtraRow[]>([]);
 
   const loadCfg = async () => {
     const { data, error } = await supabase
@@ -205,6 +215,58 @@ export default function AdminVault() {
     toast({ title: "Saved to vault" });
     fetchEntries();
   };
+
+  const startEdit = (entry: VaultEntry) => {
+    setEditId(entry.id);
+    setEditHeading(entry.heading);
+    setEditLink(entry.link);
+    setEditUsername(entry.username);
+    setEditPassword(entry.password);
+    setEditExtras(entry.extras.map((r) => ({ ...r })));
+    setEditShowPw(false);
+    setEditOpen(true);
+  };
+
+  const cancelEdit = () => {
+    setEditOpen(false);
+    setEditId(null);
+    setEditHeading("");
+    setEditLink("");
+    setEditUsername("");
+    setEditPassword("");
+    setEditExtras([]);
+  };
+
+  const updateEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId || !editHeading.trim()) {
+      toast({ title: "Heading is required", variant: "destructive" });
+      return;
+    }
+    const cleanedExtras = editExtras.filter((r) => r.key.trim() || r.value.trim());
+    const { error } = await supabase
+      .from("admin_vault_entries")
+      .update({
+        heading: editHeading.trim(),
+        link: editLink.trim() || null,
+        username: editUsername.trim() || null,
+        password: editPassword || null,
+        extras: cleanedExtras,
+      })
+      .eq("id", editId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Entry updated" });
+    cancelEdit();
+    fetchEntries();
+  };
+
+  const addEditExtra = () => setEditExtras((x) => [...x, { id: uid(), key: "", value: "" }]);
+  const updateEditExtra = (id: string, patch: Partial<ExtraRow>) =>
+    setEditExtras((x) => x.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const removeEditExtra = (id: string) => setEditExtras((x) => x.filter((r) => r.id !== id));
 
   const deleteEntry = async (id: string) => {
     const { error } = await supabase.from("admin_vault_entries").delete().eq("id", id);
@@ -533,12 +595,20 @@ export default function AdminVault() {
                           {new Date(entry.createdAt).toLocaleString()}
                         </p>
                       </div>
-                      <button
-                        onClick={() => deleteEntry(entry.id)}
-                        className="shrink-0 h-9 w-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center transition opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
+                        <button
+                          onClick={() => startEdit(entry)}
+                          className="h-9 w-9 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center transition"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteEntry(entry.id)}
+                          className="h-9 w-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center transition"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </header>
 
                     <div className="space-y-2.5">
@@ -632,6 +702,110 @@ export default function AdminVault() {
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={() => setSettingsOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
               <button type="submit" className="flex-1 h-11 rounded-lg bg-gradient-to-r from-emerald-500 to-indigo-500 hover:from-emerald-400 hover:to-indigo-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2"><Save className="h-4 w-4" /> Save Changes</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center px-4 overflow-y-auto py-8" onClick={cancelEdit}>
+          <form onSubmit={updateEntry} className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-indigo-400" />
+                <h2 className="text-lg font-semibold">Edit Entry</h2>
+              </div>
+              <button type="button" onClick={cancelEdit} className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Main Heading / Account Name</label>
+            <input
+              value={editHeading}
+              onChange={(e) => setEditHeading(e.target.value)}
+              placeholder="e.g. HDFC Bank, Google Suite"
+              autoFocus
+              className="w-full h-12 rounded-xl bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-4 text-base font-medium text-slate-100 placeholder:text-slate-600 transition mb-4"
+            />
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Website / Bank Link</label>
+                <input value={editLink} onChange={(e) => setEditLink(e.target.value)} placeholder="https://..." className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Username / Email</label>
+                <input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="user@example.com" className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600 transition" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={editShowPw ? "text" : "password"}
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 pr-10 text-slate-100 placeholder:text-slate-600 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditShowPw((s) => !s)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  >
+                    {editShowPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Extras */}
+            <div className="mt-2 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Custom Fields</h3>
+                <button
+                  type="button"
+                  onClick={addEditExtra}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1.5 rounded-lg transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Column
+                </button>
+              </div>
+              {editExtras.length === 0 ? (
+                <p className="text-xs text-slate-600 italic">No custom fields.</p>
+              ) : (
+                <div className="space-y-2">
+                  {editExtras.map((row) => (
+                    <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <input
+                        value={row.key}
+                        onChange={(e) => updateEditExtra(row.id, { key: e.target.value })}
+                        placeholder="Sub-Heading"
+                        className="h-10 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 outline-none px-3 text-sm text-amber-200 placeholder:text-slate-600 transition"
+                      />
+                      <input
+                        value={row.value}
+                        onChange={(e) => updateEditExtra(row.id, { value: e.target.value })}
+                        placeholder="Value"
+                        className="h-10 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-400/20 outline-none px-3 text-sm text-slate-100 placeholder:text-slate-600 transition"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEditExtra(row.id)}
+                        className="h-10 w-10 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center transition"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={cancelEdit} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+              <button type="submit" className="flex-1 h-11 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2"><Save className="h-4 w-4" /> Update Entry</button>
             </div>
           </form>
         </div>
