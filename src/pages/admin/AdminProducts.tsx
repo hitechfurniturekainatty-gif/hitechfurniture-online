@@ -1382,6 +1382,19 @@ const AdminProducts = () => {
               </div>
               <Switch checked={form.is_published} onCheckedChange={(v) => setForm({ ...form, is_published: v })} />
             </div>
+            {editing && (
+              <div className="sm:col-span-2 space-y-2 rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Price history</p>
+                  <p className="text-[11px] text-muted-foreground">Most recent first</p>
+                </div>
+                <PriceHistorySection
+                  productId={editing.id}
+                  showCost={isOfficeStaff}
+                  reloadKey={historyReloadKey}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
