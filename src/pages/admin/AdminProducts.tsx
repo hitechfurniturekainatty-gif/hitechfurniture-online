@@ -1109,6 +1109,15 @@ const AdminProducts = () => {
                       </button>
                       <button
                         type="button"
+                        onClick={() => downloadProductsPdf("all", { type: "product", id: p.id })}
+                        disabled={pdfBusy}
+                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                        title="Download PDF"
+                      >
+                        <FileDown className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => openEdit(p)}
                         className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
                         title="Edit"
