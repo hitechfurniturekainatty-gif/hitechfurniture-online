@@ -127,6 +127,11 @@ const AdminProducts = () => {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStockFilter, setPdfStockFilter] = useState<"all" | "ready" | "none">("all");
+  // Track the prices we loaded so we can detect changes on save and log
+  // a new effective-dated row in product_price_history via the RPC.
+  const [origPrices, setOrigPrices] = useState<{ cost: number | null; mrp: number | null; selling: number | null } | null>(null);
+  const [priceEffectiveDate, setPriceEffectiveDate] = useState<string>("");
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
