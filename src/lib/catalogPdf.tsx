@@ -369,7 +369,7 @@ const cs = StyleSheet.create({
 
   // Sub-category header
   subWrap: { marginBottom: 12 },
-  subBannerImg: { width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 8 },
+  subBannerImg: { width: "100%", height: 64, objectFit: "cover", borderRadius: 4, marginBottom: 8 },
   subHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#EFE7D4", borderLeft: "3pt solid #F4A227", paddingVertical: 6, paddingHorizontal: 10, marginBottom: 10 },
   subTitle: { fontSize: 14, fontWeight: 700, color: "#0E5C66" },
   subMeta: { fontSize: 9, color: "#6E7F82" },
@@ -377,8 +377,8 @@ const cs = StyleSheet.create({
   // 10-product grid: 2 columns x 5 rows per product page
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
   card: { width: "50%", padding: 3 },
-  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 5, padding: 7, backgroundColor: "#FFFFFF", height: 118 },
-  imgBox: { width: "100%", height: 50, backgroundColor: "#F4F1EA", borderRadius: 3, marginBottom: 5, alignItems: "center", justifyContent: "center" },
+  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 5, padding: 6, backgroundColor: "#FFFFFF", height: 104 },
+  imgBox: { width: "100%", height: 38, backgroundColor: "#F4F1EA", borderRadius: 3, marginBottom: 4, alignItems: "center", justifyContent: "center" },
   img: { width: "100%", height: "100%", objectFit: "contain" },
   imgPlaceholder: { fontSize: 7, color: "#A8B1B3" },
   name: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66", marginBottom: 1, lineHeight: 1.15 },
