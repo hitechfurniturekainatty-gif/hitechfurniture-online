@@ -608,8 +608,8 @@ const AdminProducts = () => {
       } as const;
       const slug = (s: string) =>
         s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
-      let title = stockTitleMap[mode];
-      let fileName = `hitech-products-${stockFileMap[mode]}.pdf`;
+      let title: string = stockTitleMap[mode];
+      let fileName: string = `hitech-products-${stockFileMap[mode]}.pdf`;
       if (scope.type === "main") {
         const mc = mainCats.find((m) => m.id === scope.id);
         const cname = mc?.name ?? "Category";
