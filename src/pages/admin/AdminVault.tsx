@@ -595,12 +595,20 @@ export default function AdminVault() {
                           {new Date(entry.createdAt).toLocaleString()}
                         </p>
                       </div>
-                      <button
-                        onClick={() => deleteEntry(entry.id)}
-                        className="shrink-0 h-9 w-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center transition opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
+                        <button
+                          onClick={() => startEdit(entry)}
+                          className="h-9 w-9 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center transition"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteEntry(entry.id)}
+                          className="h-9 w-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center transition"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </header>
 
                     <div className="space-y-2.5">
