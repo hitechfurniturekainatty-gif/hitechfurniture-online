@@ -778,6 +778,36 @@ const AdminProducts = () => {
                   )}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>By sub-category…</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-80 w-72 overflow-y-auto">
+                  {subCats.length === 0 ? (
+                    <DropdownMenuItem disabled>No sub-categories</DropdownMenuItem>
+                  ) : (
+                    [...mainCats]
+                      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
+                      .flatMap((mc) => {
+                        const subs = subCats
+                          .filter((s) => s.main_category_id === mc.id)
+                          .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+                        if (subs.length === 0) return [];
+                        return [
+                          <DropdownMenuLabel key={`lbl-${mc.id}`} className="text-xs text-muted-foreground">
+                            {toTitleCase(mc.name)}
+                          </DropdownMenuLabel>,
+                          ...subs.map((sc) => (
+                            <DropdownMenuItem
+                              key={sc.id}
+                              onClick={() => downloadProductsPdf(pdfStockFilter, { type: "sub", id: sc.id })}
+                            >
+                              {toTitleCase(sc.name)}
+                            </DropdownMenuItem>
+                          )),
+                        ];
+                      })
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
