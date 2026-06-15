@@ -392,18 +392,20 @@ export default function AdminVault() {
               <p className="text-xs text-slate-500">{entries.length} saved {entries.length === 1 ? "record" : "records"}</p>
             </div>
           </div>
-          <button
-            onClick={lockVault}
-            className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition text-sm font-medium"
-          >
-            <Lock className="h-4 w-4" /> Lock Vault
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="ml-2 inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm font-medium"
-          >
-            <Settings className="h-4 w-4" /> Security
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm font-medium"
+            >
+              <Settings className="h-4 w-4" /> Security
+            </button>
+            <button
+              onClick={lockVault}
+              className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition text-sm font-medium"
+            >
+              <Lock className="h-4 w-4" /> Lock Vault
+            </button>
+          </div>
         </div>
       </header>
 
