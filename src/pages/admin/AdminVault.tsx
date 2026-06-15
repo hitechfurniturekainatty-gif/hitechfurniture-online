@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save } from "lucide-react";
+import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault, Settings, Save, LifeBuoy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,7 +23,13 @@ export default function AdminVault() {
   const [showMaster, setShowMaster] = useState(false);
 
   // Vault config from DB
-  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string } | null>(null);
+  const [cfg, setCfg] = useState<{ master_password: string; secret_pin: string; recovery_phone: string; recovery_dob: string } | null>(null);
+
+  // Recovery modal
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recPhone, setRecPhone] = useState("");
+  const [recDob, setRecDob] = useState("");
+  const [recRevealed, setRecRevealed] = useState(false);
 
   // Settings panel (after unlock)
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,7 +52,7 @@ export default function AdminVault() {
   const loadCfg = async () => {
     const { data, error } = await supabase
       .from("vault_config" as any)
-      .select("master_password, secret_pin")
+      .select("master_password, secret_pin, recovery_phone, recovery_dob")
       .eq("id", true)
       .maybeSingle();
     if (error) {
@@ -58,6 +64,8 @@ export default function AdminVault() {
       setCfg({
         master_password: row.master_password ?? "",
         secret_pin: row.secret_pin ?? "",
+        recovery_phone: row.recovery_phone ?? "",
+        recovery_dob: row.recovery_dob ?? "",
       });
     }
   };
@@ -123,6 +131,23 @@ export default function AdminVault() {
     setPassword("");
     setExtras([]);
     setSettingsOpen(false);
+    setRecoveryOpen(false);
+    setRecRevealed(false);
+    setRecPhone("");
+    setRecDob("");
+  };
+
+  const tryRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cfg) return;
+    const phoneOk = recPhone.trim() === (cfg.recovery_phone || "").trim();
+    const dobOk = recDob.trim() === (cfg.recovery_dob || "").trim();
+    if (phoneOk && dobOk) {
+      setRecRevealed(true);
+      toast({ title: "Identity verified" });
+    } else {
+      toast({ title: "Recovery details do not match", variant: "destructive" });
+    }
   };
 
   const saveSettings = async (e: React.FormEvent) => {
@@ -280,11 +305,77 @@ export default function AdminVault() {
                 </button>
               </form>
             )}
+            <button
+              type="button"
+              onClick={() => { setRecoveryOpen(true); setRecRevealed(false); setRecPhone(""); setRecDob(""); }}
+              className="mt-4 w-full text-xs text-slate-400 hover:text-emerald-300 inline-flex items-center justify-center gap-1.5"
+            >
+              <LifeBuoy className="h-3.5 w-3.5" /> Forgot master password / PIN?
+            </button>
           </div>
           <p className="mt-4 text-center text-[11px] text-slate-600">
             Secure vault • Double security enabled
           </p>
         </div>
+
+        {recoveryOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center px-4 overflow-y-auto py-8" onClick={() => setRecoveryOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2">
+                <LifeBuoy className="h-5 w-5 text-amber-400" />
+                <h2 className="text-lg font-semibold">Account Recovery</h2>
+              </div>
+              {!recRevealed ? (
+                <form onSubmit={tryRecovery} className="space-y-4">
+                  <p className="text-xs text-slate-400">Confirm your recovery details to view the master password and PIN.</p>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Recovery Phone Number</label>
+                    <input
+                      value={recPhone}
+                      onChange={(e) => setRecPhone(e.target.value)}
+                      placeholder="Enter recovery phone"
+                      inputMode="numeric"
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Son's Date of Birth</label>
+                    <input
+                      value={recDob}
+                      onChange={(e) => setRecDob(e.target.value)}
+                      placeholder="DD-MM-YYYY"
+                      className="w-full h-11 rounded-lg bg-slate-950/60 border border-slate-700 focus:border-amber-400/60 focus:ring-2 focus:ring-amber-400/20 outline-none px-3 text-slate-100 placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setRecoveryOpen(false)} className="flex-1 h-11 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm text-slate-300">Cancel</button>
+                    <button type="submit" className="flex-1 h-11 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold text-sm">Verify</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-slate-950/60 border border-emerald-500/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase text-emerald-400 font-bold">Master Password</div>
+                        <div className="font-mono text-emerald-100 text-base break-all">{cfg?.master_password}</div>
+                      </div>
+                      <button type="button" onClick={() => copy(cfg?.master_password || "", "Master Password")} className="text-slate-400 hover:text-emerald-300"><Copy className="h-4 w-4" /></button>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase text-amber-400 font-bold">Secret PIN</div>
+                        <div className="font-mono text-amber-100 text-base tracking-[0.3em]">{cfg?.secret_pin}</div>
+                      </div>
+                      <button type="button" onClick={() => copy(cfg?.secret_pin || "", "PIN")} className="text-slate-400 hover:text-amber-300"><Copy className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setRecoveryOpen(false); setRecRevealed(false); }} className="w-full h-11 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm text-slate-200">Close</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

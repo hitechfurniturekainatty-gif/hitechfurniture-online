@@ -1,0 +1,1 @@
+ALTER TABLE public.vault_config ADD COLUMN IF NOT EXISTS recovery_phone TEXT; ALTER TABLE public.vault_config ADD COLUMN IF NOT EXISTS recovery_dob TEXT;
