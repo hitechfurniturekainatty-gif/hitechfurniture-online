@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -153,6 +153,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // then only reachable again via the triple-tap on the logo.
   const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin && backlogUnlocked };
   const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
+  const vault: SoloItem = { kind: "solo", to: "/admin/vault", label: "Credentials Vault", icon: Vault, show: isAdmin };
 
   const operations: GroupItem = {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
@@ -202,6 +203,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     team,
     homePage,
     backlog,
+    vault,
     trash,
     guide,
   ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
