@@ -494,41 +494,88 @@ const AdminProducts = () => {
         return;
       }
 
-      // Group by main category, ordered by category name
-      const catMap = new Map(mainCats.map((c) => [c.id, c.name]));
-      const grouped = new Map<string, typeof pool>();
-      for (const p of pool) {
-        const name = catMap.get(p.main_category_id) ?? "Uncategorized";
-        if (!grouped.has(name)) grouped.set(name, []);
-        grouped.get(name)!.push(p);
+      // Group by Main Category → Sub-category, ordered by display_order
+      const productToItem = (p: typeof pool[number]) => {
+        const cover = [...(p.product_images ?? [])]
+          .sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+        return {
+          product_name: p.product_name,
+          product_code: p.product_code,
+          mrp: Number(p.mrp),
+          offer_price: p.offer_price != null ? Number(p.offer_price) : null,
+          material: p.material ?? null,
+          dimensions: p.dimensions ?? null,
+          cover_image: cover,
+        };
+      };
+
+      const orderedMains = [...mainCats].sort(
+        (a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name),
+      );
+      // Track unknown main category for any orphan products
+      const sectionsBuilt = orderedMains
+        .map((mc) => {
+          const mainItems = pool.filter((p) => p.main_category_id === mc.id);
+          if (mainItems.length === 0) return null;
+          const mainSubs = subCats
+            .filter((s) => s.main_category_id === mc.id)
+            .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+
+          const subSections: { sub_name: string; sub_banner: string | null; items: ReturnType<typeof productToItem>[] }[] = [];
+          for (const sc of mainSubs) {
+            const subItems = mainItems
+              .filter((p) => p.sub_category_id === sc.id)
+              .sort((a, b) => a.product_name.localeCompare(b.product_name));
+            if (subItems.length === 0) continue;
+            subSections.push({
+              sub_name: sc.name,
+              sub_banner: sc.image_url ?? null,
+              items: subItems.map(productToItem),
+            });
+          }
+          // Products without a sub-category
+          const orphanSubItems = mainItems
+            .filter((p) => !p.sub_category_id || !mainSubs.some((s) => s.id === p.sub_category_id))
+            .sort((a, b) => a.product_name.localeCompare(b.product_name));
+          if (orphanSubItems.length > 0) {
+            subSections.push({
+              sub_name: "Other",
+              sub_banner: null,
+              items: orphanSubItems.map(productToItem),
+            });
+          }
+          return {
+            main_name: mc.name,
+            main_banner: mc.image_url ?? null,
+            subs: subSections,
+          };
+        })
+        .filter(Boolean) as { main_name: string; main_banner: string | null; subs: { sub_name: string; sub_banner: string | null; items: ReturnType<typeof productToItem>[] }[] }[];
+
+      // Products with an unknown main category
+      const uncategorisedItems = pool
+        .filter((p) => !orderedMains.some((m) => m.id === p.main_category_id))
+        .sort((a, b) => a.product_name.localeCompare(b.product_name));
+      if (uncategorisedItems.length > 0) {
+        sectionsBuilt.push({
+          main_name: "Uncategorised",
+          main_banner: null,
+          subs: [{ sub_name: "All", sub_banner: null, items: uncategorisedItems.map(productToItem) }],
+        });
       }
 
-      const sections = Array.from(grouped.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, items]) => ({
-          name,
-          items: items
-            .slice()
-            .sort((a, b) => a.product_name.localeCompare(b.product_name))
-            .map((p) => {
-              const cover = [...(p.product_images ?? [])]
-                .sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
-              return {
-                product_name: p.product_name,
-                product_code: p.product_code,
-                mrp: Number(p.mrp),
-                offer_price: p.offer_price != null ? Number(p.offer_price) : null,
-                material: p.material ?? null,
-                dimensions: p.dimensions ?? null,
-                cover_image: cover,
-              };
-            }),
-        }));
+      // Fetch homepage settings (brand details + about) for the cover page
+      const { data: hp } = await supabase
+        .from("homepage_settings")
+        .select("brand_tagline, footer_about, contact_phone, contact_phone_secondary, contact_email, address_lines")
+        .limit(1)
+        .maybeSingle();
 
       const { lazyImport } = await import("@/lib/lazyImport");
-      const [{ generateSectionedCatalogPdf }, { downloadBlob }] = await Promise.all([
+      const [{ generateStructuredCatalogPdf }, { downloadBlob }, brand] = await Promise.all([
         lazyImport(() => import("@/lib/catalogPdf")),
         lazyImport(() => import("@/lib/downloadBlob")),
+        import("@/lib/brand"),
       ]);
 
       const titleMap = {
@@ -542,13 +589,29 @@ const AdminProducts = () => {
         none: "hitech-products-no-stock.pdf",
       } as const;
 
-      const blob = await generateSectionedCatalogPdf(
-        sections,
-        titleMap[mode],
-        "Hitech Furniture & Interiors · Wayanad",
+      const contactLines: string[] = [];
+      if (hp?.contact_phone) contactLines.push(hp.contact_phone);
+      if (hp?.contact_phone_secondary) contactLines.push(hp.contact_phone_secondary);
+      if (hp?.contact_email) contactLines.push(hp.contact_email);
+      if (Array.isArray(hp?.address_lines)) contactLines.push(...hp.address_lines.filter(Boolean));
+      if (contactLines.length === 0) contactLines.push(brand.CONTACT_LINE);
+
+      const blob = await generateStructuredCatalogPdf(
+        sectionsBuilt,
+        {
+          title: titleMap[mode],
+          brand_name: brand.BRAND_FULL_NAME,
+          tagline: hp?.brand_tagline ?? brand.BRAND_TAGLINE,
+          about: hp?.footer_about ?? null,
+          contact_lines: contactLines,
+        },
+        brand.CONTACT_LINE,
       );
       downloadBlob(blob, fileMap[mode]);
-      toast({ title: "PDF downloaded", description: `${pool.length} products across ${sections.length} sections.` });
+      toast({
+        title: "PDF downloaded",
+        description: `${pool.length} products across ${sectionsBuilt.length} main categor${sectionsBuilt.length === 1 ? "y" : "ies"}.`,
+      });
     } catch (e) {
       console.error(e);
       toast({ title: "PDF generation failed", description: "Please try again.", variant: "destructive" });
