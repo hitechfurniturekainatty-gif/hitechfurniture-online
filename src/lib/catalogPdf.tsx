@@ -42,6 +42,8 @@ export type CatalogPdfItem = {
   material: string | null;
   dimensions: string | null;
   cover_image: string | null;
+  stock_quantity?: number;
+  stock_status?: "in_stock" | "out_of_stock";
 };
 
 const PER_PAGE = 6; // 2 cols x 3 rows
@@ -246,8 +248,14 @@ export type StructuredCatalogCover = {
  * where network images silently fail to render).
  */
 async function urlToDataUrl(url: string): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
   try {
-    const res = await fetch(url, { mode: "cors" });
+    const absoluteUrl =
+      typeof window !== "undefined" && url.startsWith("/")
+        ? new URL(url, window.location.origin).toString()
+        : url;
+    const res = await fetch(absoluteUrl, { mode: "cors", credentials: "omit", cache: "force-cache" });
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
@@ -276,11 +284,19 @@ export async function resolveCatalogImages(
       for (const it of s.items) if (it.cover_image) urls.add(it.cover_image);
     }
   }
-  const entries = await Promise.all(
-    Array.from(urls).map(async (u) => [u, await urlToDataUrl(u)] as const),
-  );
+  const urlList = Array.from(urls);
+  const entries: readonly [string, string | null][] = [];
+  const resolvedEntries: [string, string | null][] = [];
+  const batchSize = 8;
+  for (let i = 0; i < urlList.length; i += batchSize) {
+    const batch = await Promise.all(
+      urlList.slice(i, i + batchSize).map(async (u) => [u, await urlToDataUrl(u)] as [string, string | null]),
+    );
+    resolvedEntries.push(...batch);
+  }
+  entries = resolvedEntries;
   const map = new Map(entries);
-  const swap = (u: string | null) => (u ? map.get(u) ?? null : null);
+  const swap = (u: string | null) => (u ? map.get(u) ?? u : null);
   return sections.map((m) => ({
     ...m,
     main_banner: swap(m.main_banner),
