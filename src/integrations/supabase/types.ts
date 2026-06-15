@@ -2029,6 +2029,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vault_config: {
+        Row: {
+          id: boolean
+          master_password: string
+          recovery_dob: string | null
+          recovery_phone: string | null
+          secret_pin: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          master_password: string
+          recovery_dob?: string | null
+          recovery_phone?: string | null
+          secret_pin: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          master_password?: string
+          recovery_dob?: string | null
+          recovery_phone?: string | null
+          secret_pin?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       worker_status_updates: {
         Row: {
           created_at: string
