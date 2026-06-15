@@ -323,9 +323,18 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
         <SidebarInset className="flex min-w-0 flex-col bg-transparent">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/80 px-3 backdrop-blur-md md:h-16 md:px-6">
             <SidebarTrigger className="h-9 w-9" />
-            <div className="ml-1 hidden flex-col leading-tight sm:flex">
-              <span className="font-display text-sm font-bold tracking-tight text-foreground">Admin Dashboard</span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{roleLabel} workspace</span>
+            <Link to="/" className="ml-1 hidden items-center gap-2.5 sm:flex">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.4)]">
+                <Logo className="h-5 w-5" rounded={false} />
+              </span>
+              <div className="flex flex-col leading-tight">
+                <span className="font-display text-sm font-bold tracking-tight text-foreground">Admin Dashboard</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{roleLabel} workspace</span>
+              </div>
+            </Link>
+            <div className="ml-1 flex flex-col leading-tight sm:hidden">
+              <span className="font-display text-sm font-bold tracking-tight text-foreground">Dashboard</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{roleLabel}</span>
             </div>
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
               <Button asChild size="icon" variant="ghost" className="h-9 w-9 sm:hidden" aria-label="View site">
