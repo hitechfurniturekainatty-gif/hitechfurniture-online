@@ -333,17 +333,6 @@ export default function AdminVault() {
               </div>
               {!recovered ? (
                 <form onSubmit={tryRecovery} className="space-y-4">
-                  <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3 space-y-2">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Stored Recovery Details</div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-400">Recovery Phone</span>
-                      <span className="font-mono text-indigo-300 text-sm">{cfg?.recovery_phone || "—"}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-400">Son's DOB</span>
-                      <span className="font-mono text-rose-300 text-sm">{cfg?.recovery_dob || "—"}</span>
-                    </div>
-                  </div>
                   <div>
                     <label className="block text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Confirm Phone Number</label>
                     <input
