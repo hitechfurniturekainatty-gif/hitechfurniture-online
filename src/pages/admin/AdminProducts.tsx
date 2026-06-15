@@ -125,6 +125,7 @@ const AdminProducts = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfStockFilter, setPdfStockFilter] = useState<"all" | "ready" | "none">("all");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
