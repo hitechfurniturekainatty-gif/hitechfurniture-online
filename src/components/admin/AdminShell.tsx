@@ -168,9 +168,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const inventory: GroupItem = {
     kind: "group", id: "inventory", label: "Inventory", icon: Boxes,
     children: filt([
-      { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isAdmin },
-      { to: "/admin/products", label: "Products", icon: Package, show: isAdmin },
-      { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isAdmin },
+      { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isOfficeStaff },
+      { to: "/admin/products", label: "Products", icon: Package, show: isOfficeStaff },
+      { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isOfficeStaff },
     ]),
   };
   const logistics: GroupItem = {

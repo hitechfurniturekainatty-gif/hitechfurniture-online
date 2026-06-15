@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { BacklogShortcut } from "@/components/admin/BacklogShortcut";
 import { AdminOnly } from "@/components/admin/AdminOnly";
+import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
 import { EnquiryForm } from "@/components/EnquiryForm";
 
@@ -113,12 +114,12 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
-            <Route path="/admin/categories" element={<AdminOnly><AdminCategories /></AdminOnly>} />
-            <Route path="/admin/products" element={<AdminOnly><AdminProducts /></AdminOnly>} />
-            <Route path="/admin/products/bulk" element={<AdminOnly><AdminProductBulkCreate /></AdminOnly>} />
-            <Route path="/admin/bundles" element={<AdminOnly><AdminBundles /></AdminOnly>} />
-            <Route path="/admin/bundles/bulk" element={<AdminOnly><AdminBundleBulkCreate /></AdminOnly>} />
-            <Route path="/admin/bundles/:id" element={<AdminOnly><AdminBundleEditor /></AdminOnly>} />
+            <Route path="/admin/categories" element={<OfficeStaffOnly><AdminCategories /></OfficeStaffOnly>} />
+            <Route path="/admin/products" element={<OfficeStaffOnly><AdminProducts /></OfficeStaffOnly>} />
+            <Route path="/admin/products/bulk" element={<OfficeStaffOnly><AdminProductBulkCreate /></OfficeStaffOnly>} />
+            <Route path="/admin/bundles" element={<OfficeStaffOnly><AdminBundles /></OfficeStaffOnly>} />
+            <Route path="/admin/bundles/bulk" element={<OfficeStaffOnly><AdminBundleBulkCreate /></OfficeStaffOnly>} />
+            <Route path="/admin/bundles/:id" element={<OfficeStaffOnly><AdminBundleEditor /></OfficeStaffOnly>} />
             <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
             <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
             <Route path="/admin/pipeline" element={<AdminOnly><AdminPipelineMonitor /></AdminOnly>} />
