@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Lock, Unlock, ShieldCheck, Eye, EyeOff, Plus, Trash2, Copy, ExternalLink, KeyRound, Vault } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type ExtraRow = { id: string; key: string; value: string };
 type VaultEntry = {
@@ -15,22 +16,8 @@ type VaultEntry = {
 
 const MASTER_PASSWORD = "Admin@Hitech2026";
 const SECRET_PIN = "9946";
-const STORAGE_KEY = "hitech_admin_vault_v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-
-function loadVault(): VaultEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as VaultEntry[];
-  } catch {
-    return [];
-  }
-}
-function saveVault(entries: VaultEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
 
 export default function AdminVault() {
   const [stage, setStage] = useState<0 | 1 | 2>(0); // 0 = locked, 1 = pin step, 2 = unlocked
@@ -49,9 +36,34 @@ export default function AdminVault() {
   // Vault data
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+
+  const fetchEntries = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("admin_vault_entries")
+      .select("id, heading, link, username, password, extras, created_at")
+      .order("created_at", { ascending: false });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Failed to load vault", description: error.message, variant: "destructive" });
+      return;
+    }
+    setEntries(
+      (data || []).map((r: any) => ({
+        id: r.id,
+        heading: r.heading || "",
+        link: r.link || "",
+        username: r.username || "",
+        password: r.password || "",
+        extras: Array.isArray(r.extras) ? r.extras : [],
+        createdAt: new Date(r.created_at).getTime(),
+      }))
+    );
+  };
 
   useEffect(() => {
-    if (stage === 2) setEntries(loadVault());
+    if (stage === 2) fetchEntries();
   }, [stage]);
 
   const tryMaster = (e: React.FormEvent) => {
@@ -88,36 +100,42 @@ export default function AdminVault() {
     setExtras((x) => x.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const removeExtra = (id: string) => setExtras((x) => x.filter((r) => r.id !== id));
 
-  const saveEntry = (e: React.FormEvent) => {
+  const saveEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!heading.trim()) {
       toast({ title: "Main heading is required", variant: "destructive" });
       return;
     }
-    const newEntry: VaultEntry = {
-      id: uid(),
+    const { data: userRes } = await supabase.auth.getUser();
+    const cleanedExtras = extras.filter((r) => r.key.trim() || r.value.trim());
+    const { error } = await supabase.from("admin_vault_entries").insert({
       heading: heading.trim(),
-      link: link.trim(),
-      username: username.trim(),
-      password,
-      extras: extras.filter((r) => r.key.trim() || r.value.trim()),
-      createdAt: Date.now(),
-    };
-    const next = [newEntry, ...entries];
-    setEntries(next);
-    saveVault(next);
+      link: link.trim() || null,
+      username: username.trim() || null,
+      password: password || null,
+      extras: cleanedExtras,
+      created_by: userRes.user?.id ?? null,
+    });
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
     setHeading("");
     setLink("");
     setUsername("");
     setPassword("");
     setExtras([]);
     toast({ title: "Saved to vault" });
+    fetchEntries();
   };
 
-  const deleteEntry = (id: string) => {
-    const next = entries.filter((e) => e.id !== id);
-    setEntries(next);
-    saveVault(next);
+  const deleteEntry = async (id: string) => {
+    const { error } = await supabase.from("admin_vault_entries").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setEntries((arr) => arr.filter((e) => e.id !== id));
   };
 
   const copy = async (text: string, label: string) => {
