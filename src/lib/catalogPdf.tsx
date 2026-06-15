@@ -373,22 +373,22 @@ const cs = StyleSheet.create({
   subTitle: { fontSize: 14, fontWeight: 700, color: "#0E5C66" },
   subMeta: { fontSize: 9, color: "#6E7F82" },
 
-  // 2x2 grid
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
-  card: { width: "50%", padding: 6 },
-  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 10, backgroundColor: "#FFFFFF", height: 320 },
-  imgBox: { width: "100%", height: 200, backgroundColor: "#F4F1EA", borderRadius: 4, marginBottom: 8, alignItems: "center", justifyContent: "center" },
+  // 10-product grid: 2 columns x 5 rows per product page
+  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
+  card: { width: "50%", padding: 3 },
+  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 5, padding: 7, backgroundColor: "#FFFFFF", height: 118 },
+  imgBox: { width: "100%", height: 50, backgroundColor: "#F4F1EA", borderRadius: 3, marginBottom: 5, alignItems: "center", justifyContent: "center" },
   img: { width: "100%", height: "100%", objectFit: "contain" },
-  imgPlaceholder: { fontSize: 9, color: "#A8B1B3" },
-  name: { fontSize: 11, fontWeight: 700, color: "#0E5C66", marginBottom: 2 },
-  code: { fontSize: 8, color: "#6E7F82", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
+  imgPlaceholder: { fontSize: 7, color: "#A8B1B3" },
+  name: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66", marginBottom: 1, lineHeight: 1.15 },
+  code: { fontSize: 6.5, color: "#6E7F82", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 2 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  price: { fontSize: 12, fontWeight: 700, color: "#0E5C66" },
-  mrp: { fontSize: 8, color: "#6E7F82", textDecoration: "line-through" },
-  meta: { fontSize: 8, color: "#1F3F44", marginTop: 3 },
+  price: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66" },
+  mrp: { fontSize: 6.5, color: "#6E7F82", textDecoration: "line-through" },
+  meta: { fontSize: 6.5, color: "#1F3F44", marginTop: 1.5 },
 });
 
-const PER_GRID = 4; // 2 x 2
+const PER_GRID = 10; // 2 x 5
 
 const PageChrome = ({ crumb, footerLine }: { crumb: string; footerLine: string }) => (
   <>
