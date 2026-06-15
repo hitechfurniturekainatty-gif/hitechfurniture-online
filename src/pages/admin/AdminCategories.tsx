@@ -24,7 +24,7 @@ type EditMainState = { id: string; name: string; image: UploadedImage[] } | null
 type EditSubState = { id: string; name: string; main_category_id: string; image: UploadedImage[] } | null;
 
 const AdminCategories = () => {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, isOfficeStaff, loading: authLoading } = useAuth();
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
   const [newMain, setNewMain] = useState("");
@@ -191,13 +191,13 @@ const AdminCategories = () => {
 
   return (
     <AdminShell>
-      {!authLoading && !isAdmin && (
+      {!authLoading && !isOfficeStaff && (
         <div className="rounded-xl border bg-card p-6 text-center">
-          <h1 className="font-display text-xl">Admins only</h1>
+          <h1 className="font-display text-xl">Staff only</h1>
           <p className="mt-2 text-sm text-muted-foreground">You don't have permission to view Categories.</p>
         </div>
       )}
-      {!authLoading && isAdmin && (<>
+      {!authLoading && isOfficeStaff && (<>
       <div className="mb-6 sm:mb-8">
         <h1 className="font-display text-2xl sm:text-3xl">Categories</h1>
         <p className="mt-1 text-sm text-muted-foreground sm:text-base">Organize your catalog with main categories and sub-categories.</p>
@@ -286,7 +286,7 @@ const AdminCategories = () => {
                   <Button size="icon" variant="ghost" onClick={() => startEditMain(c)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  {isAdmin && (
+                  {isOfficeStaff && (
                     <Button size="icon" variant="ghost" onClick={() => remove("main_categories", c.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -372,7 +372,7 @@ const AdminCategories = () => {
                     <Button size="icon" variant="ghost" onClick={() => startEditSub(s)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {isAdmin && (
+                    {isOfficeStaff && (
                       <Button size="icon" variant="ghost" onClick={() => remove("sub_categories", s.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

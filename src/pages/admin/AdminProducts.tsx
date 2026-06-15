@@ -96,7 +96,7 @@ const emptyForm: FormState = {
 };
 
 const AdminProducts = () => {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, isOfficeStaff, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
@@ -374,7 +374,7 @@ const AdminProducts = () => {
       location_id: form.location_id || null,
       stock_status: form.stock_status,
     };
-    if (isAdmin) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
+    if (isOfficeStaff) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
 
     let productId = editing?.id;
     if (editing) {
@@ -471,13 +471,13 @@ const AdminProducts = () => {
 
   return (
     <AdminShell>
-      {!authLoading && !isAdmin && (
+      {!authLoading && !isOfficeStaff && (
         <div className="rounded-xl border bg-card p-6 text-center">
-          <h1 className="font-display text-xl">Admins only</h1>
+          <h1 className="font-display text-xl">Staff only</h1>
           <p className="mt-2 text-sm text-muted-foreground">You don't have permission to view Products.</p>
         </div>
       )}
-      {!authLoading && isAdmin && (<>
+      {!authLoading && isOfficeStaff && (<>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Products</h1>
@@ -791,7 +791,7 @@ const AdminProducts = () => {
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {isAdmin && (
+                    {isOfficeStaff && (
                       <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => remove(p)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -878,7 +878,7 @@ const AdminProducts = () => {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      {isAdmin && (
+                      {isOfficeStaff && (
                         <button
                           type="button"
                           onClick={() => remove(p)}
@@ -983,8 +983,8 @@ const AdminProducts = () => {
             <Field label="Offer price (₹)">
               <Input type="number" min={0} value={form.offer_price} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} />
             </Field>
-            {isAdmin && (
-              <Field label="Cost price (₹) — admin only">
+            {isOfficeStaff && (
+              <Field label="Cost price (₹) — staff only">
                 <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
               </Field>
             )}
