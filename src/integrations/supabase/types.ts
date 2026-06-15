@@ -2033,6 +2033,8 @@ export type Database = {
         Row: {
           id: boolean
           master_password: string
+          recovery_dob: string | null
+          recovery_phone: string | null
           secret_pin: string
           updated_at: string
           updated_by: string | null
@@ -2040,6 +2042,8 @@ export type Database = {
         Insert: {
           id?: boolean
           master_password: string
+          recovery_dob?: string | null
+          recovery_phone?: string | null
           secret_pin: string
           updated_at?: string
           updated_by?: string | null
@@ -2047,6 +2051,8 @@ export type Database = {
         Update: {
           id?: boolean
           master_password?: string
+          recovery_dob?: string | null
+          recovery_phone?: string | null
           secret_pin?: string
           updated_at?: string
           updated_by?: string | null
