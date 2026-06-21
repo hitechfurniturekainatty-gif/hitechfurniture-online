@@ -1,6 +1,20 @@
 // Tiny pubsub so any button can open the global enquiry dialog.
-type Opts = { productName?: string; productId?: string };
-type Opener = (opts: Opts) => void;
+export interface CatalogProduct {
+  productName?: string;
+  productId?: string;
+  productCode?: string;
+  productImageUrl?: string;
+}
+
+export interface EnquiryOpenOpts {
+  /** Legacy single-product shape — auto-wrapped into a 1-element catalogProducts array. */
+  productName?: string;
+  productId?: string;
+  /** Preferred shape: open the dialog pre-loaded with one or more catalog products. */
+  catalogProducts?: CatalogProduct[];
+}
+
+type Opener = (opts: EnquiryOpenOpts) => void;
 
 let opener: Opener | null = null;
 
@@ -8,7 +22,7 @@ export const registerEnquiryOpener = (fn: Opener | null) => {
   opener = fn;
 };
 
-export const openEnquiryForm = (opts: Opts = {}) => {
+export const openEnquiryForm = (opts: EnquiryOpenOpts = {}) => {
   if (opener) {
     opener(opts);
   } else {
