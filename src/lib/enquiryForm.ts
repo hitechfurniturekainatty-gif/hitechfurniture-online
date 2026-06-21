@@ -32,4 +32,4 @@ export const openEnquiryForm = (opts: EnquiryOpenOpts = {}) => {
 };
 
 export const ENQUIRY_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwirf8pOX8A3Xnyhj6OJOoiHCjoD-HeLHubMgYG3MN_5hwtmrBQAlKKPBWOHW_aK3K78g/exec";
+  "https://script.google.com/macros/s/AKfycbwQj-twMwtgYesPrj3xVj0WNq90ju5W1wlcbke6bU-2Ne3G1IroAitOXYxcgth4IMYv/exec";
