@@ -1186,6 +1186,25 @@ const AdminQuotationEditor = () => {
   // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
+    // Trip-bypass guard: marking a quotation delivered should normally happen
+    // via the driver workflow (trip_quotations.delivered_at). If no trip
+    // record exists for this quotation, require an explicit confirmation so
+    // bypassing logistics becomes a deliberate exception, not a habit.
+    if (newStatus === "delivered") {
+      const { count } = await supabase
+        .from("trip_quotations")
+        .select("id", { count: "exact", head: true })
+        .eq("quotation_id", q.id)
+        .not("delivered_at", "is", null);
+      if (!count || count === 0) {
+        const ok = window.confirm(
+          "No trip/driver delivery record exists for this quotation.\n\n" +
+            "Marking it delivered here bypasses the trip workflow — route, " +
+            "driver, and dispatch details will not be captured.\n\nContinue anyway?",
+        );
+        if (!ok) return;
+      }
+    }
     const { error } = await supabase.from("quotations").update({ status: newStatus }).eq("id", q.id);
     if (error) {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
