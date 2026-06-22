@@ -208,7 +208,6 @@ const Index = () => {
           <img
             src={livingRoomAsset.url}
             alt={villaSections[0].alt}
-            fetchPriority="high"
             className="absolute inset-0 h-full w-full scale-[1.06] object-cover animate-[fade-in_1.4s_ease-out_both]"
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.92)_8%,hsl(var(--background)/0.48)_42%,hsl(var(--foreground)/0.06)_100%)]" />
