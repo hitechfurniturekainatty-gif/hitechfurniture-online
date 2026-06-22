@@ -558,7 +558,7 @@ export const EnquiryForm = () => {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-xl">
+      <DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-xl" closeClassName="text-white/80 hover:text-white">
         {status === "success" ? (
           <SuccessView
             name={customerName}
