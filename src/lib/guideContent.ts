@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.3";
-export const GUIDE_LAST_UPDATED = "2026-05-11";
+export const APP_VERSION = "1.4";
+export const GUIDE_LAST_UPDATED = "2026-06-22";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -649,6 +649,16 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-4",
+        title: "v1.4 — 2026-06-22",
+        audience: ["everyone"],
+        bullets: [
+          "Public homepage redesigned into a cinematic luxury villa tour with a fixed scroll sequence: living room, dining room, kitchen, master bedroom, balcony, and full villa reveal.",
+          "New storytelling sections added for services, project gallery, testimonials, and a premium contact band with WhatsApp, call, enquiry form, maps, and social links.",
+          "Homepage visuals now use a brighter walnut, stone, beige, and champagne luxury palette to match the villa imagery and daylight showroom feel.",
+        ],
+      },
       {
         id: "v1-3",
         title: "v1.3 — 2026-05-11",
