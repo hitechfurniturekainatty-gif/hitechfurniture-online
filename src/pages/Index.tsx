@@ -7,12 +7,12 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
 import { buildWhatsAppUrl, WHATSAPP_NUMBER } from "@/lib/brand";
 import { COMPANY } from "@/lib/companyInfo";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
-import livingRoomAsset from "@/assets/villa-tour/living-room.png.asset.json";
-import diningRoomAsset from "@/assets/villa-tour/dining-room.png.asset.json";
-import kitchenAsset from "@/assets/villa-tour/kitchen.png.asset.json";
-import masterBedroomAsset from "@/assets/villa-tour/master-bedroom.png.asset.json";
-import balconyAsset from "@/assets/villa-tour/balcony.png.asset.json";
-import villaRevealAsset from "@/assets/villa-tour/villa-reveal.png.asset.json";
+import livingRoomAsset from "@/assets/villa-tour/living-room.png";
+import diningRoomAsset from "@/assets/villa-tour/dining-room.png";
+import kitchenAsset from "@/assets/villa-tour/kitchen.png";
+import masterBedroomAsset from "@/assets/villa-tour/master-bedroom.png";
+import balconyAsset from "@/assets/villa-tour/balcony.png";
+import villaRevealAsset from "@/assets/villa-tour/villa-reveal.png";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const SiteFooter = lazy(() =>
