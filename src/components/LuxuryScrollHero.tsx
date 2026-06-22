@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import livingRoomAsset from "@/assets/living-room-hero.png.asset.json";
-import diningRoomAsset from "@/assets/dining-room-hero.png.asset.json";
-import kitchenAsset from "@/assets/kitchen-hero.png.asset.json";
-import masterBedroomAsset from "@/assets/master-bedroom-hero.png.asset.json";
-import balconyAsset from "@/assets/balcony-hero.png.asset.json";
+import livingRoomImage from "@/assets/living-room-hero.png";
+import diningRoomImage from "@/assets/dining-room-hero.png";
+import kitchenImage from "@/assets/kitchen-hero.png";
+import masterBedroomImage from "@/assets/master-bedroom-hero.png";
+import balconyImage from "@/assets/balcony-hero.png";
 
 type Scene = {
   id: string;
@@ -17,31 +17,31 @@ const SCENES: Scene[] = [
   {
     id: "living-room",
     label: "Living Room",
-    imageUrl: livingRoomAsset.url,
+    imageUrl: livingRoomImage,
     alt: "Luxury living room interior with marble, walnut, chandelier and daylight flooding through tall glass windows",
   },
   {
     id: "dining-room",
     label: "Dining Room",
-    imageUrl: diningRoomAsset.url,
+    imageUrl: diningRoomImage,
     alt: "Luxury dining room interior with sculptural lighting, walnut finishes and soft beige seating",
   },
   {
     id: "kitchen",
     label: "Kitchen",
-    imageUrl: kitchenAsset.url,
+    imageUrl: kitchenImage,
     alt: "Premium kitchen with marble island, walnut cabinetry and warm daylight",
   },
   {
     id: "master-bedroom",
     label: "Master Bedroom",
-    imageUrl: masterBedroomAsset.url,
+    imageUrl: masterBedroomImage,
     alt: "Luxury master bedroom with upholstered bed, marble wall and floor-to-ceiling tropical view",
   },
   {
     id: "balcony",
     label: "Balcony",
-    imageUrl: balconyAsset.url,
+    imageUrl: balconyImage,
     alt: "Luxury balcony lounge with soft sectional seating, marble table and mountain view",
   },
 ];
