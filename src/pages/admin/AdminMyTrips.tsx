@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/brand";
+import { firstUrl } from "@/lib/firstUrl";
 
 type Trip = {
   id: string;
@@ -36,12 +37,25 @@ type PricingItem = {
   unit_price: number; amount: number;
 };
 
+// Item details visible to the delivery team (no prices). Used to render the
+// load-checklist under each stop so the driver can verify what's going out.
+type DeliveryItem = {
+  id: string;
+  quotation_id: string;
+  description: string;
+  quantity: number;
+  measurement: string | null;
+  item_image_url: string | null;
+  sketch_url: string | null;
+};
+
 const AdminMyTrips = () => {
   const { user, isDelivery, isOfficeStaff } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripQs, setTripQs] = useState<TripQ[]>([]);
   const [quotes, setQuotes] = useState<Q[]>([]);
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
+  const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
@@ -89,12 +103,20 @@ const AdminMyTrips = () => {
           .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
+        const { data: itemRows } = await supabase
+          .from("quotation_items")
+          .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url")
+          .in("quotation_id", qids)
+          .order("display_order", { ascending: true });
+        setDeliveryItems((itemRows ?? []) as DeliveryItem[]);
       } else {
         setQuotes([]);
+        setDeliveryItems([]);
       }
     } else {
       setTripQs([]);
       setQuotes([]);
+      setDeliveryItems([]);
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
     setLoading(false);
