@@ -8,7 +8,7 @@ import { ArrowRight, Copy, Check, QrCode, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
-import { HeroWindowReveal } from "@/components/HeroWindowReveal";
+import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 
 import { Seo } from "@/components/Seo";
 import {
@@ -119,15 +119,14 @@ const Index = () => {
       />
       <SiteHeader />
 
-      {/* Premium "Window Reveal" hero — scroll-linked door-opening cinematic. */}
-      {settings?.show_hero_window !== false && <HeroWindowReveal />}
+      <LuxuryScrollHero />
 
 
 
 
       {/* Dynamic hero slider. The legacy split-hero fallback was removed to
           eliminate the flash-of-old-UI on refresh. */}
-      {slides.length > 0 && (
+      {false && slides.length > 0 && (
         heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) ? (
           // Old-model split layout: slider on the left, intro frame on the right (desktop).
           // On mobile they stack — slider first, then intro.
