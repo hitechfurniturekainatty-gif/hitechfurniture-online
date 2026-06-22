@@ -140,7 +140,14 @@ const AdminOverview = () => {
           .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by, source_task_id")
           .is("deleted_at", null)
           .eq("status", "drafted")
-          .not("submitted_for_pricing_at", "is", null)
+          // Office sees ALL drafts that still need a price:
+          //  • measurement-task drafts that hit "Submit for pricing review"
+          //  • website-enquiry leads (lead_type='lead', stage 1) that have never
+          //    been priced — without this filter they sat invisible.
+          .or(
+            "submitted_for_pricing_at.not.is.null," +
+              "and(lead_type.eq.lead,pipeline_stage.eq.1)"
+          )
           .order("created_at", { ascending: false })
           .limit(20);
         setAwaitingPricing((data ?? []) as AwaitingPricing[]);
