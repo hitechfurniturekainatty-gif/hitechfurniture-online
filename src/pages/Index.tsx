@@ -34,7 +34,7 @@ const villaSections = [
     subtitle: "Crafting Luxury Living Spaces",
     description:
       "Step into a bright ultra-luxury villa where custom furniture, architectural lighting, stone textures, and refined proportions work as one seamless living experience.",
-    image: livingRoomAsset.url,
+    image: livingRoomAsset,
     alt: "Luxury living room interior with curved sofa, chandelier, marble wall and daylight glazing",
     align: "left" as const,
     notes: ["Slow cinematic zoom", "Smooth parallax scrolling", "Elegant text reveal", "Floating premium UI elements"],
@@ -48,7 +48,7 @@ const villaSections = [
     title: "Elegant Dining Experiences",
     description:
       "The walkthrough glides into a dining space shaped by rich walnut surfaces, sculptural lighting, and hospitality-grade comfort for memorable hosting.",
-    image: diningRoomAsset.url,
+    image: diningRoomAsset,
     alt: "Luxury dining room with walnut dining table, upholstered chairs and chandelier lighting",
     align: "right" as const,
     notes: ["Seamless walkthrough transition from living room", "Camera glides naturally toward dining area", "Chandelier depth animation", "Luxury fade-in effects"],
@@ -62,7 +62,7 @@ const villaSections = [
     title: "Premium Modular Kitchens",
     description:
       "From material selection to storage flow, every kitchen is designed to feel precise, luminous, and quietly opulent in daily use.",
-    image: kitchenAsset.url,
+    image: kitchenAsset,
     alt: "Luxury modular kitchen with marble island, walnut cabinetry and warm pendant lighting",
     align: "left" as const,
     notes: ["Smooth movement from dining room", "Camera subtly pushes forward", "Floating information cards", "Premium reveal effects"],
@@ -76,7 +76,7 @@ const villaSections = [
     title: "Luxury Bedrooms Designed For Comfort",
     description:
       "The villa slows into a sanctuary—layered textures, warm lighting, and custom furniture arranged with the poise of a private suite.",
-    image: masterBedroomAsset.url,
+    image: masterBedroomAsset,
     alt: "Luxury master bedroom with upholstered bed, warm walnut panels and panoramic glazing",
     align: "right" as const,
     notes: ["Natural transition from kitchen", "Soft layered parallax", "Luxury hotel-style presentation", "Elegant content animations"],
@@ -90,7 +90,7 @@ const villaSections = [
     title: "Outdoor Living Reimagined",
     description:
       "The experience opens to fresh air, panoramic views, and curated outdoor furniture that extends the villa lifestyle beyond the interior shell.",
-    image: balconyAsset.url,
+    image: balconyAsset,
     alt: "Luxury balcony lounge with sectional sofa, marble table and panoramic mountain view",
     align: "left" as const,
     notes: ["Open-air transition from bedroom", "Environmental motion effects", "Subtle luxury animations", "Spacious visual experience"],
@@ -105,7 +105,7 @@ const villaSections = [
     subtitle: "Complete Home Solutions By Hitech Furniture & Interiors",
     description:
       "A grand reveal of the full residence—every room connected through one material story, one design language, and one execution partner.",
-    image: villaRevealAsset.url,
+    image: villaRevealAsset,
     alt: "Full luxury villa exterior reveal with large glazed openings and illuminated interiors",
     align: "center" as const,
     notes: ["Smooth zoom-out", "Reveal the complete villa", "Showcase all designed spaces together", "Cinematic grand finale"],
@@ -125,12 +125,12 @@ const services = [
 ];
 
 const galleryItems = [
-  { title: "Living Room", image: livingRoomAsset.url, alt: villaSections[0].alt, tall: true },
-  { title: "Dining Room", image: diningRoomAsset.url, alt: villaSections[1].alt },
-  { title: "Kitchen", image: kitchenAsset.url, alt: villaSections[2].alt },
-  { title: "Master Bedroom", image: masterBedroomAsset.url, alt: villaSections[3].alt, wide: true },
-  { title: "Balcony", image: balconyAsset.url, alt: villaSections[4].alt },
-  { title: "Villa Reveal", image: villaRevealAsset.url, alt: villaSections[5].alt, tall: true },
+  { title: "Living Room", image: livingRoomAsset, alt: villaSections[0].alt, tall: true },
+  { title: "Dining Room", image: diningRoomAsset, alt: villaSections[1].alt },
+  { title: "Kitchen", image: kitchenAsset, alt: villaSections[2].alt },
+  { title: "Master Bedroom", image: masterBedroomAsset, alt: villaSections[3].alt, wide: true },
+  { title: "Balcony", image: balconyAsset, alt: villaSections[4].alt },
+  { title: "Villa Reveal", image: villaRevealAsset, alt: villaSections[5].alt, tall: true },
 ];
 
 const testimonials = [
@@ -206,7 +206,7 @@ const Index = () => {
       <main>
         <section className="relative isolate min-h-[calc(100svh-4.5rem)] overflow-hidden border-b border-border/60">
           <img
-            src={livingRoomAsset.url}
+            src={livingRoomAsset}
             alt={villaSections[0].alt}
             className="absolute inset-0 h-full w-full scale-[1.06] object-cover animate-[fade-in_1.4s_ease-out_both]"
           />
