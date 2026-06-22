@@ -2245,6 +2245,7 @@ export type Database = {
         Returns: string
       }
       next_service_id: { Args: never; Returns: string }
+      notify_stale_unpaid_drafts: { Args: never; Returns: number }
       override_advance_quotation: {
         Args: { _quotation_id: string; _target_stage: number }
         Returns: undefined
