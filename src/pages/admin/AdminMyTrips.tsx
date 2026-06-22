@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/brand";
+import { firstUrl } from "@/lib/firstUrl";
 
 type Trip = {
   id: string;
@@ -36,12 +37,25 @@ type PricingItem = {
   unit_price: number; amount: number;
 };
 
+// Item details visible to the delivery team (no prices). Used to render the
+// load-checklist under each stop so the driver can verify what's going out.
+type DeliveryItem = {
+  id: string;
+  quotation_id: string;
+  description: string;
+  quantity: number;
+  measurement: string | null;
+  item_image_url: string | null;
+  sketch_url: string | null;
+};
+
 const AdminMyTrips = () => {
   const { user, isDelivery, isOfficeStaff } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripQs, setTripQs] = useState<TripQ[]>([]);
   const [quotes, setQuotes] = useState<Q[]>([]);
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
+  const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
@@ -89,12 +103,20 @@ const AdminMyTrips = () => {
           .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
           .in("id", qids);
         setQuotes((qs ?? []) as Q[]);
+        const { data: itemRows } = await supabase
+          .from("quotation_items")
+          .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url")
+          .in("quotation_id", qids)
+          .order("display_order", { ascending: true });
+        setDeliveryItems((itemRows ?? []) as DeliveryItem[]);
       } else {
         setQuotes([]);
+        setDeliveryItems([]);
       }
     } else {
       setTripQs([]);
       setQuotes([]);
+      setDeliveryItems([]);
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
     setLoading(false);
@@ -325,6 +347,51 @@ const AdminMyTrips = () => {
                           <Lock className="h-3 w-3" /> Pricing details hidden by office.
                         </p>
                       )}
+
+                      {/* Load checklist — what the driver is actually delivering.
+                          No prices, just photo + description + qty + measurement so
+                          items can be physically verified against the truck. */}
+                      {s.q && (() => {
+                        const items = deliveryItems.filter((it) => it.quotation_id === s.q!.id);
+                        if (items.length === 0) return null;
+                        return (
+                          <div className="rounded-md border border-border bg-muted/20 p-2">
+                            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Items to deliver ({items.length})
+                            </p>
+                            <ul className="space-y-1.5">
+                              {items.map((it) => {
+                                const thumb = firstUrl(it.item_image_url) ?? firstUrl(it.sketch_url);
+                                return (
+                                  <li key={it.id} className="flex items-start gap-2 rounded border border-border/50 bg-background p-1.5">
+                                    {thumb ? (
+                                      <img
+                                        src={thumb}
+                                        alt={it.description}
+                                        loading="lazy"
+                                        className="h-12 w-12 shrink-0 rounded object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
+                                        No photo
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium leading-tight">{it.description}</p>
+                                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                        Qty: <span className="font-semibold text-foreground">{it.quantity}</span>
+                                        {it.measurement && (
+                                          <> · {it.measurement}</>
+                                        )}
+                                      </p>
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        );
+                      })()}
 
                       <div className="flex flex-wrap gap-2">
                         {s.q?.party_phone && (
