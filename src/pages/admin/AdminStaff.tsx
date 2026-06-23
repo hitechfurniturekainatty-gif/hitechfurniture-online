@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck, HardHat } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
 
@@ -43,6 +44,7 @@ const roleColor: Record<Role, string> = {
 const AdminStaff = () => {
   const { isAdmin, user } = useAuth();
   const [rows, setRows] = useState<StaffRow[]>([]);
+  const [workerByUserId, setWorkerByUserId] = useState<Record<string, { id: string; name: string }>>({});
   const [loading, setLoading] = useState(true);
 
   // Create
@@ -77,12 +79,20 @@ const AdminStaff = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke("list-staff-users");
+    const [{ data, error }, wRes] = await Promise.all([
+      supabase.functions.invoke("list-staff-users"),
+      supabase.from("workers").select("id, name, user_id").not("user_id", "is", null).is("deleted_at", null),
+    ]);
     if (error) {
       toast({ title: "Failed to load staff", description: error.message, variant: "destructive" });
     } else {
       setRows((data?.users ?? []) as StaffRow[]);
     }
+    const map: Record<string, { id: string; name: string }> = {};
+    ((wRes.data ?? []) as any[]).forEach((w) => {
+      if (w.user_id) map[w.user_id] = { id: w.id, name: w.name };
+    });
+    setWorkerByUserId(map);
     setLoading(false);
   };
 
@@ -295,6 +305,17 @@ const AdminStaff = () => {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className={r.role ? roleColor[r.role] : "bg-muted"}>{r.role ? roleLabel[r.role] : "No role"}</Badge>
+                    {workerByUserId[r.user_id] ? (
+                      <Link to={`/admin/workers/${workerByUserId[r.user_id].id}`}>
+                        <Badge variant="outline" className="cursor-pointer gap-1 hover:bg-muted">
+                          <HardHat className="h-3 w-3" /> Worker: {workerByUserId[r.user_id].name}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <Badge variant="outline" className="gap-1 text-muted-foreground">
+                        <HardHat className="h-3 w-3" /> No worker profile
+                      </Badge>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
                     </Button>

@@ -62,6 +62,7 @@ type Q = {
 type StageFilterKey =
   | "all"
   | "active"
+  | "confirmed"
   | "stage1"
   | "stage2"
   | "stage3"
@@ -72,6 +73,7 @@ type StageFilterKey =
 
 const STAGE_FILTER_KEYS: StageFilterKey[] = [
   "active",
+  "confirmed",
   "all",
   "stage1",
   "stage2",
@@ -85,6 +87,7 @@ const STAGE_FILTER_KEYS: StageFilterKey[] = [
 const stageFilterLabel = (k: StageFilterKey) => {
   if (k === "all") return "All";
   if (k === "active") return "Active";
+  if (k === "confirmed") return "Confirmed Orders";
   if (k === "rejected") return "Rejected";
   const num = Number(k.replace("stage", "")) as PipelineStage;
   return STAGE_DEFS[num].label;
@@ -654,6 +657,9 @@ const AdminQuotations = () => {
         // Hide rejected from every other tab.
         if (s === "rejected") return false;
         if (statusFilter === "active") return s !== "delivered";
+        if (statusFilter === "confirmed") {
+          return (s === "finalized" || s === "delivered") && (r.advance_amount ?? 0) > 0;
+        }
         if (statusFilter.startsWith("stage")) {
           const num = Number(statusFilter.replace("stage", "")) as PipelineStage;
           return stageFor(r).stage === num;
@@ -668,6 +674,10 @@ const AdminQuotations = () => {
     const c: Record<string, number> = {
       all: docFiltered.length,
       active: nonRejected.filter((r) => normalizeStatus(r.status) !== "delivered").length,
+      confirmed: nonRejected.filter((r) => {
+        const s = normalizeStatus(r.status);
+        return (s === "finalized" || s === "delivered") && (r.advance_amount ?? 0) > 0;
+      }).length,
       rejected: docFiltered.filter((r) => normalizeStatus(r.status) === "rejected").length,
       stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0, stage6: 0,
     };
@@ -1004,12 +1014,12 @@ const AdminQuotations = () => {
                       <SelectItem value="lead">Lead — stays in Client Hub for follow-up</SelectItem>
                       <SelectItem value="direct_deal">Direct Deal — auto-routes to OPS for pricing</SelectItem>
                       <SelectItem value="consultation">Consultation — stays in Client Hub</SelectItem>
-                      <SelectItem value="custom_project">Custom Project — routes to Dimensions: Pending</SelectItem>
+                      <SelectItem value="custom_project">Custom Project (walk-in) — manual measurement entry</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
                     {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
-                   {form.lead_type === "custom_project" && "A pending task lands in the Dimensions pool — any measurement staff on duty can pick it up."}
+                   {form.lead_type === "custom_project" && "For walk-in / phone customers only. A Dimensions task is auto-assigned to measurement staff. Website-sourced enquiries should be assigned from the Enquiries Inbox instead."}
                     {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
                     {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
                   </p>
