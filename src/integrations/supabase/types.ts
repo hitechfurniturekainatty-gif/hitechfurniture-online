@@ -1430,6 +1430,7 @@ export type Database = {
           dispatch_vehicle_number: string | null
           dispatched_at: string | null
           document_type: string
+          enquiry_type: string | null
           expected_delivery_date: string | null
           gst_amount: number
           gst_percent: number
@@ -1476,6 +1477,7 @@ export type Database = {
           dispatch_vehicle_number?: string | null
           dispatched_at?: string | null
           document_type?: string
+          enquiry_type?: string | null
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -1522,6 +1524,7 @@ export type Database = {
           dispatch_vehicle_number?: string | null
           dispatched_at?: string | null
           document_type?: string
+          enquiry_type?: string | null
           expected_delivery_date?: string | null
           gst_amount?: number
           gst_percent?: number
