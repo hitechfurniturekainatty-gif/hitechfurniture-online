@@ -304,6 +304,17 @@ const AdminStaff = () => {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className={r.role ? roleColor[r.role] : "bg-muted"}>{r.role ? roleLabel[r.role] : "No role"}</Badge>
+                    {workerByUserId[r.user_id] ? (
+                      <Link to={`/admin/workers/${workerByUserId[r.user_id].id}`}>
+                        <Badge variant="outline" className="cursor-pointer gap-1 hover:bg-muted">
+                          <HardHat className="h-3 w-3" /> Worker: {workerByUserId[r.user_id].name}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <Badge variant="outline" className="gap-1 text-muted-foreground">
+                        <HardHat className="h-3 w-3" /> No worker profile
+                      </Badge>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
                     </Button>
