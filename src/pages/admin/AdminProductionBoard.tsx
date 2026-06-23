@@ -164,13 +164,13 @@ const Inner = () => {
   const moveTo = async (job: JobRow, target: ColumnKey) => {
     if (columnFor(job) === target) return;
     setSavingId(job.id);
-    let patch: Record<string, any> = {};
-    if (target === "assigned") patch = { status: "assigned" };
-    else if (target === "in_progress") patch = { status: "in_progress" };
-    else if (target === "completed") patch = { status: "completed", warehouse_status: "in_warehouse" };
-    else if (target === "dispatched") patch = { status: "completed", warehouse_status: "dispatched" };
+    const patch: { status: string; warehouse_status?: string } =
+      target === "assigned" ? { status: "assigned" }
+        : target === "in_progress" ? { status: "in_progress" }
+        : target === "completed" ? { status: "completed", warehouse_status: "in_warehouse" }
+        : { status: "completed", warehouse_status: "dispatched" };
 
-    const { error } = await supabase.from("job_work_orders").update(patch).eq("id", job.id);
+    const { error } = await supabase.from("job_work_orders").update(patch as any).eq("id", job.id);
     setSavingId(null);
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
