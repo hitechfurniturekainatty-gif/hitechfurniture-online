@@ -292,7 +292,7 @@ const AdminOverview = () => {
     return <Navigate to="/admin/my-trips" replace />;
   }
 
-  type StatCard = { label: string; value: number; icon: any; to: string };
+  type StatCard = { label: string; value: number | null; icon: any; to: string };
   type Group = {
     key: string;
     title: string;
@@ -398,9 +398,9 @@ const AdminOverview = () => {
         </Link>
       )}
 
-      {/* Top Highlight Grids: Upcoming Deliveries + In-Progress Quotations */}
+      {/* Top Highlight Grids: Upcoming Deliveries + Drafts needing pricing + Stage 3 OPS */}
       {(isAdmin || isOfficeStaff || isMeasurementStaff) && (
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Upcoming Deliveries */}
           <Card className="border-amber-500/40 bg-amber-500/5">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
@@ -440,23 +440,64 @@ const AdminOverview = () => {
             </CardContent>
           </Card>
 
-          {/* OPS: In-Progress (renamed from Awaiting Pricing) */}
+          {/* Drafts needing pricing — measurement-task drafts submitted for review. */}
+          {isOfficeStaff && (
+            <Card className="border-rose-500/40 bg-rose-500/5">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+                <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
+                  <Ruler className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                  Drafts needing pricing
+                  <Badge variant="secondary" className="ml-1">{needsPricing.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {needsPricing.length === 0 ? (
+                  <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
+                    No measurement drafts waiting on a price.
+                  </p>
+                ) : (
+                  needsPricing.slice(0, 5).map((q) => (
+                    <Link
+                      key={q.id}
+                      to={`/admin/quotations/${q.id}`}
+                      className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
+                    >
+                      <p className="truncate font-medium text-foreground">{q.party_name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {q.party_phone && (
+                          <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
+                        )}
+                        {q.party_place && (
+                          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
+                        )}
+                      </div>
+                    </Link>
+                  ))
+                )}
+                <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                  <Link to="/admin/quotations?status=drafted">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Stage 3 — OPS Work (finalized quotations not yet in Production). */}
           {isOfficeStaff && (
             <Card className="border-emerald-500/40 bg-emerald-500/5">
               <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
                 <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  OPS: In-Progress
-                  <Badge variant="secondary" className="ml-1">{awaitingPricing.length}</Badge>
+                  Stage 3 — OPS Work
+                  <Badge variant="secondary" className="ml-1">{pipelineCounts[3]}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {awaitingPricing.length === 0 ? (
+                {opsStage3.length === 0 ? (
                   <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
-                    No quotations in OPS right now.
+                    No finalized quotations in OPS right now.
                   </p>
                 ) : (
-                  awaitingPricing.slice(0, 5).map((q) => (
+                  opsStage3.slice(0, 5).map((q) => (
                     <Link
                       key={q.id}
                       to={`/admin/quotations/${q.id}`}
@@ -488,8 +529,8 @@ const AdminOverview = () => {
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
             <div>
-              <CardTitle className="font-display text-lg sm:text-xl">Quotations by Status</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">Live counts across the new 6-stage automated pipeline.</p>
+              <CardTitle className="font-display text-lg sm:text-xl">Pipeline — by Stage</CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">Live counts across the 6-stage automated pipeline.</p>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/admin/pipeline">Open monitor</Link>
@@ -625,66 +666,6 @@ const AdminOverview = () => {
         </Card>
       )}
 
-      {/* What's New — recent platform updates so admins can quickly see / try them */}
-      {isAdmin && (
-        <Card className="mb-6 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-              <Sparkles className="h-5 w-5 text-primary" />
-              What's new
-            </CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Latest improvements live in your workspace — May 2026.</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border bg-card p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <Link2 className="h-4 w-4 text-emerald-600" />
-                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">NEW</span>
-                </div>
-                <p className="text-sm font-semibold">Live Mobile Share Link</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">A 3rd export option next to JPG / PDF — pinch-zoom URL that auto-updates with every edit, WhatsApp-ready.</p>
-              </div>
-              <div className="rounded-xl border bg-card p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <Warehouse className="h-4 w-4 text-amber-600" />
-                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">NEW</span>
-                </div>
-                <p className="text-sm font-semibold">Per-Item Ready Stock vs Custom</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Toggle each line item — Ready Stock skips Production and goes straight to Warehouse. Mixed orders show "Partially Ready".</p>
-              </div>
-              <div className="rounded-xl border bg-card p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <Layers className="h-4 w-4 text-primary" />
-                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">NEW</span>
-                </div>
-                <p className="text-sm font-semibold">6-Stage Automated Pipeline</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Client Hub → Dimensions → OPS → Production → Warehouse → Logistics. Files move automatically as work progresses.</p>
-              </div>
-              <div className="rounded-xl border bg-card p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <Users className="h-4 w-4 text-sky-600" />
-                  <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">NEW</span>
-                </div>
-                <p className="text-sm font-semibold">Role-Based Dashboards & Guide</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Office, Measurement, Production Unit and Delivery each land on a tailored screen — and the User Guide now shows only their relevant chapters.</p>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link to="/admin/pipeline">Open Pipeline Monitor <ArrowRight className="ml-1 h-3 w-3" /></Link>
-              </Button>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/admin/quotations">Try per-item routing <ArrowRight className="ml-1 h-3 w-3" /></Link>
-              </Button>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/guide">Read the guide <ArrowRight className="ml-1 h-3 w-3" /></Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="space-y-6">
         {groups.map((g) => (
           <section key={g.key} className={`rounded-2xl border p-4 sm:p-5 ${g.accent.replace("text-", "")}`}>
@@ -708,7 +689,13 @@ const AdminOverview = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="font-display text-3xl font-semibold text-foreground">{c.value}</p>
+                      {c.value === null ? (
+                        <p className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                          Open <ArrowRight className="h-3.5 w-3.5" />
+                        </p>
+                      ) : (
+                        <p className="font-display text-3xl font-semibold text-foreground">{c.value}</p>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>
