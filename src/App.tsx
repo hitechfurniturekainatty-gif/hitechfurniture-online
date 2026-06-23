@@ -23,6 +23,7 @@ const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
+const AdminEnquiriesInbox = lazy(() => import("./pages/admin/AdminEnquiriesInbox.tsx"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
 const AdminProductBulkCreate = lazy(() => import("./pages/admin/AdminProductBulkCreate.tsx"));
@@ -115,6 +116,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
+            <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
             <Route path="/admin/categories" element={<OfficeStaffOnly><AdminCategories /></OfficeStaffOnly>} />
             <Route path="/admin/products" element={<OfficeStaffOnly><AdminProducts /></OfficeStaffOnly>} />
             <Route path="/admin/products/bulk" element={<OfficeStaffOnly><AdminProductBulkCreate /></OfficeStaffOnly>} />
