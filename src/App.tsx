@@ -10,9 +10,17 @@ import { AdminOnly } from "@/components/admin/AdminOnly";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
 import { EnquiryForm } from "@/components/EnquiryForm";
+import { Navigate, useParams } from "react-router-dom";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
+
+// Legacy /admin/services/:id and /admin/complaints/:id URLs now redirect to
+// the unified Enquiries Inbox detail sheet (canonical screen).
+const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
+  const { id } = useParams();
+  return <Navigate to={`/admin/enquiries?open=${kind}:${id}`} replace />;
+};
 
 // Lazy-loaded: every other route. Big wins:
 // - PDF library (@react-pdf/renderer ~600kb) only loads when admin opens the editor
