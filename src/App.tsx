@@ -130,6 +130,7 @@ const App = () => (
             <Route path="/admin/bundles/bulk" element={<OfficeStaffOnly><AdminBundleBulkCreate /></OfficeStaffOnly>} />
             <Route path="/admin/bundles/:id" element={<OfficeStaffOnly><AdminBundleEditor /></OfficeStaffOnly>} />
             <Route path="/admin/staff" element={<AdminOnly><AdminStaff /></AdminOnly>} />
+            <Route path="/admin/people" element={<Navigate to="/admin/staff" replace />} />
             <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
             <Route path="/admin/pipeline" element={<AdminOnly><AdminPipelineMonitor /></AdminOnly>} />
             <Route path="/admin/workers" element={<AdminOnly><AdminWorkers /></AdminOnly>} />
