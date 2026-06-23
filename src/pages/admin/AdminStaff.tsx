@@ -43,6 +43,7 @@ const roleColor: Record<Role, string> = {
 const AdminStaff = () => {
   const { isAdmin, user } = useAuth();
   const [rows, setRows] = useState<StaffRow[]>([]);
+  const [workerByUserId, setWorkerByUserId] = useState<Record<string, { id: string; name: string }>>({});
   const [loading, setLoading] = useState(true);
 
   // Create
@@ -77,12 +78,20 @@ const AdminStaff = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke("list-staff-users");
+    const [{ data, error }, wRes] = await Promise.all([
+      supabase.functions.invoke("list-staff-users"),
+      supabase.from("workers").select("id, name, user_id").not("user_id", "is", null).is("deleted_at", null),
+    ]);
     if (error) {
       toast({ title: "Failed to load staff", description: error.message, variant: "destructive" });
     } else {
       setRows((data?.users ?? []) as StaffRow[]);
     }
+    const map: Record<string, { id: string; name: string }> = {};
+    ((wRes.data ?? []) as any[]).forEach((w) => {
+      if (w.user_id) map[w.user_id] = { id: w.id, name: w.name };
+    });
+    setWorkerByUserId(map);
     setLoading(false);
   };
 
