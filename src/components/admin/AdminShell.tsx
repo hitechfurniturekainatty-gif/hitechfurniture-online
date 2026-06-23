@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -94,10 +94,12 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const path = location.pathname;
     const groups: Record<string, string[]> = {
-      operations: ["/admin/enquiries", "/admin/quotations", "/admin/pipeline", "/admin/measurement-tasks", "/admin/services", "/admin/scheme-calculator"],
+      operations: ["/admin/enquiries", "/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
+      finance: ["/admin/scheme-calculator", "/admin/backlog", "/admin/receivables"],
       inventory: ["/admin/categories", "/admin/products"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
-      team: ["/admin/staff", "/admin/workers", "/admin/staff-monitor"],
+      team: ["/admin/staff", "/admin/workers", "/admin/people", "/admin/staff-monitor", "/admin/production"],
+      system: ["/admin/home-page", "/admin/vault", "/admin/trash", "/guide"],
     };
     setOpenGroups((prev) => {
       const next = { ...prev };
@@ -146,25 +148,24 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff };
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
-  const homePage: SoloItem = { kind: "solo", to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin };
-  const guide: SoloItem = { kind: "solo", to: "/guide", label: "User Guide", icon: BookOpen, show: true };
-  // Only show Backlog in the sidebar while it is currently unlocked. After the
-  // 15-min auto-lock or sign-out, the menu disappears entirely — the area is
-  // then only reachable again via the triple-tap on the logo.
-  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin && backlogUnlocked };
-  const trash: SoloItem = { kind: "solo", to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin };
-  const vault: SoloItem = { kind: "solo", to: "/admin/vault", label: "Credentials Vault", icon: Vault, show: isAdmin };
+  // Backlog is gated by the triple-tap unlock and only appears inside the
+  // Finance group while currently unlocked (see `finance` below).
 
   const operations: GroupItem = {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
       { to: "/admin/enquiries", label: "Enquiries Inbox", icon: Inbox, show: isOfficeStaff },
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
-      { to: "/admin/quotations?status=stage1&lead=consultation", label: "Admin Tasks", icon: Activity, show: isOfficeStaff },
-      { to: "/admin/pipeline", label: "Workflow Pipeline", icon: GitBranch, show: isAdmin },
+      { to: "/admin/quotations?status=stage1&lead=consultation", label: "Client Hub Leads", icon: Activity, show: isOfficeStaff },
       { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff || isWorker },
       { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
-      { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Activity, show: isOfficeStaff },
+    ]),
+  };
+  const finance: GroupItem = {
+    kind: "group", id: "finance", label: "Finance", icon: Calculator,
+    children: filt([
+      { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Calculator, show: isOfficeStaff },
+      { to: "/admin/backlog", label: "Backlog & Receivables", icon: Archive, show: isAdmin && backlogUnlocked },
     ]),
   };
   const inventory: GroupItem = {
@@ -187,10 +188,18 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const team: GroupItem = {
     kind: "group", id: "team", label: "Team Management", icon: UsersRound,
     children: filt([
-      { to: "/admin/staff", label: "Staff Management", icon: Users, show: isAdmin },
+      { to: "/admin/staff", label: "People", icon: UsersRound, show: isAdmin },
       { to: "/admin/staff-monitor", label: "Staff Monitor", icon: Activity, show: isAdmin },
-      { to: "/admin/workers", label: "Production Unit", icon: HardHat, show: isAdmin },
       { to: "/admin/production", label: "Production Board", icon: GitBranch, show: isOfficeStaff },
+    ]),
+  };
+  const system: GroupItem = {
+    kind: "group", id: "system", label: "System", icon: Settings,
+    children: filt([
+      { to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin },
+      { to: "/admin/vault", label: "Credentials Vault", icon: Vault, show: isAdmin },
+      { to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin },
+      { to: "/guide", label: "User Guide", icon: BookOpen, show: true },
     ]),
   };
 
@@ -199,14 +208,11 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     myWork,
     myTrips,
     operations,
+    finance,
     inventory,
     logistics,
     team,
-    homePage,
-    backlog,
-    vault,
-    trash,
-    guide,
+    system,
   ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
 
   const isActiveTo = (to: string, end?: boolean) =>

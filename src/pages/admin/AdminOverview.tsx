@@ -533,7 +533,7 @@ const AdminOverview = () => {
               <p className="mt-0.5 text-xs text-muted-foreground">Live counts across the 6-stage automated pipeline.</p>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/pipeline">Open monitor</Link>
+              <Link to="/admin/pipeline">View full pipeline →</Link>
             </Button>
           </CardHeader>
           <CardContent>

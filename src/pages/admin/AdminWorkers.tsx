@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, Trash2, Pencil, MessageCircle, HardHat, ListChecks, KeyRound, Copy, Check } from "lucide-react";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { Link } from "react-router-dom";
+import { PeopleTabs } from "@/components/admin/PeopleTabs";
 
 type Worker = {
   id: string;
@@ -267,6 +268,7 @@ const AdminWorkers = () => {
 
   return (
     <AdminShell>
+      <PeopleTabs />
       {!authLoading && !isAdmin && (
         <div className="rounded-xl border bg-card p-6 text-center">
           <h1 className="font-display text-xl">Admins only</h1>
