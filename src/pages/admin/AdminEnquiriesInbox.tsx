@@ -228,15 +228,30 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     if (!row) return;
     if (row.kind === "lead") {
       (async () => {
-        const { data } = await supabase
+        // No FK between user_roles and profiles (both reference auth.users),
+        // so PostgREST can't embed — fetch in two steps.
+        const { data: roleRows } = await supabase
           .from("user_roles")
-          .select("user_id, profiles!inner(display_name,email)")
+          .select("user_id")
           .eq("role", "measurement_staff");
+        const ids = Array.from(new Set((roleRows ?? []).map((r: any) => r.user_id)));
+        if (ids.length === 0) {
+          setMeasurementStaff([]);
+          return;
+        }
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id,display_name,email")
+          .in("user_id", ids);
+        const byId = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
         setMeasurementStaff(
-          (data ?? []).map((r: any) => ({
-            user_id: r.user_id,
-            name: r.profiles?.display_name || r.profiles?.email || r.user_id.slice(0, 8),
-          })),
+          ids.map((uid: string) => {
+            const p: any = byId.get(uid);
+            return {
+              user_id: uid,
+              name: p?.display_name || p?.email || uid.slice(0, 8),
+            };
+          }),
         );
       })();
     } else {
