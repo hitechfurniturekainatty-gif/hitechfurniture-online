@@ -1107,7 +1107,7 @@ const AdminProducts = () => {
                         className={`underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-foreground/70"}`}
                         title="Manage stock"
                       >
-                        Stock {p.stock_quantity}
+                        On {p.stock_quantity} · Res {reservedOf(p.id)} · Avail {availableOf(p.id, p.stock_quantity)}
                       </button>
                     </p>
                   </div>
@@ -1195,7 +1195,7 @@ const AdminProducts = () => {
                         className={`text-left text-xs underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-muted-foreground"}`}
                         title="Manage stock"
                       >
-                        Stock: {p.stock_quantity}
+                        On {p.stock_quantity} · Res {reservedOf(p.id)} · Avail {availableOf(p.id, p.stock_quantity)}
                       </button>
                     </div>
                     <div className="flex items-stretch border-t">
