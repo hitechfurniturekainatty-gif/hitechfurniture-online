@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ import { formatINR } from "@/lib/brand";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { StockMovementDialog } from "@/components/admin/StockMovementDialog";
+import { ProductQrDialog, type QrTarget } from "@/components/admin/ProductQrDialog";
 import { PriceLabelPrintDialog, type LabelProduct } from "@/components/admin/PriceLabelPrintDialog";
 import { LocationsDialog } from "@/components/admin/LocationsDialog";
 import { CatalogPinDialog } from "@/components/admin/CatalogPinDialog";
@@ -123,6 +124,7 @@ const AdminProducts = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [qrTarget, setQrTarget] = useState<QrTarget | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -1125,6 +1127,15 @@ const AdminProducts = () => {
                     >
                       <FileDown className="h-4 w-4" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9"
+                      onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
+                      title="Generate QR"
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -1215,6 +1226,14 @@ const AdminProducts = () => {
                         title="Download PDF"
                       >
                         <FileDown className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
+                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
+                        title="Generate QR"
+                      >
+                        <QrCode className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
@@ -1483,6 +1502,11 @@ const AdminProducts = () => {
         onChanged={loadLocations}
       />
       <CatalogPinDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen} />
+      <ProductQrDialog
+        open={!!qrTarget}
+        onOpenChange={(o) => { if (!o) setQrTarget(null); }}
+        target={qrTarget}
+      />
     </AdminShell>
   );
 };
