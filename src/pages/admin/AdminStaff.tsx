@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck, HardHat } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
 
