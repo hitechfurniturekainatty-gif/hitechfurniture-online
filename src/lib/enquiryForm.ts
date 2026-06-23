@@ -30,6 +30,3 @@ export const openEnquiryForm = (opts: EnquiryOpenOpts = {}) => {
     setTimeout(() => opener?.(opts), 50);
   }
 };
-
-export const ENQUIRY_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwQj-twMwtgYesPrj3xVj0WNq90ju5W1wlcbke6bU-2Ne3G1IroAitOXYxcgth4IMYv/exec";
