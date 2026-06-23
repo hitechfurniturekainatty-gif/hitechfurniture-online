@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,13 @@ import { EnquiryForm } from "@/components/EnquiryForm";
 
 // Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
+
+// Legacy /admin/services/:id and /admin/complaints/:id URLs now redirect to
+// the unified Enquiries Inbox detail sheet (canonical screen).
+const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
+  const { id } = useParams();
+  return <Navigate to={`/admin/enquiries?open=${kind}:${id}`} replace />;
+};
 
 // Lazy-loaded: every other route. Big wins:
 // - PDF library (@react-pdf/renderer ~600kb) only loads when admin opens the editor
@@ -46,8 +53,6 @@ const AdminWarehouse = lazy(() => import("./pages/admin/AdminWarehouse.tsx"));
 const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
 const AdminMyTrips = lazy(() => import("./pages/admin/AdminMyTrips.tsx"));
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.tsx"));
-const AdminServiceEditor = lazy(() => import("./pages/admin/AdminServiceEditor.tsx"));
-const AdminComplaintEditor = lazy(() => import("./pages/admin/AdminComplaintEditor.tsx"));
 const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
 const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
 const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
@@ -141,8 +146,9 @@ const App = () => (
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/my-trips" element={<AdminMyTrips />} />
             <Route path="/admin/services" element={<AdminServices />} />
-            <Route path="/admin/services/:id" element={<AdminServiceEditor />} />
-            <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
+            {/* Legacy editor URLs — redirect to the canonical Enquiries Inbox detail sheet. */}
+            <Route path="/admin/services/:id" element={<EnquiryRedirect kind="service" />} />
+            <Route path="/admin/complaints/:id" element={<EnquiryRedirect kind="complaint" />} />
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />

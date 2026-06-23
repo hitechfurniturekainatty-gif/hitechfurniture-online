@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
@@ -57,6 +58,7 @@ const InboxPage = () => {
   const [filter, setFilter] = useState<"all" | Kind>("all");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Row | null>(null);
+  const [params, setParams] = useSearchParams();
 
   const load = async () => {
     setLoading(true);
@@ -113,6 +115,47 @@ const InboxPage = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Deep-link support: /admin/enquiries?open=complaint:<id> or service:<id> or lead:<id>.
+  // Lets the legacy AdminComplaintEditor/AdminServiceEditor routes redirect here
+  // and still land directly on the record, even if its status is no longer "pending".
+  useEffect(() => {
+    const raw = params.get("open");
+    if (!raw) return;
+    const [k, id] = raw.split(":");
+    if (!id || !["lead", "complaint", "service"].includes(k)) return;
+    (async () => {
+      if (k === "lead") {
+        const { data } = await supabase.from("quotations").select("*").eq("id", id).maybeSingle();
+        if (data) setOpen({
+          id: data.id, kind: "lead", code: data.quotation_id,
+          name: data.party_name, phone: data.party_phone, place: data.party_place,
+          preview: (data.notes ?? "").replace(/^Website enquiry — .*?\n+/, ""),
+          enquiry_type: data.enquiry_type, created_at: data.created_at, raw: data,
+        });
+      } else if (k === "complaint") {
+        const { data } = await supabase.from("customer_complaints").select("*").eq("id", id).maybeSingle();
+        if (data) setOpen({
+          id: data.id, kind: "complaint", code: data.complaint_code,
+          name: data.customer_name, phone: data.customer_phone, place: data.customer_place,
+          preview: data.issue_description ?? "", enquiry_type: "complaint_replacement",
+          created_at: data.created_at, raw: data,
+        });
+      } else {
+        const { data } = await supabase.from("customer_services").select("*").eq("id", id).maybeSingle();
+        if (data) setOpen({
+          id: data.id, kind: "service", code: data.service_code,
+          name: data.customer_name, phone: data.customer_phone, place: data.customer_place,
+          preview: [data.item_description, data.work_needed].filter(Boolean).join(" — "),
+          enquiry_type: "service_repair", created_at: data.created_at, raw: data,
+        });
+      }
+      // Clear the param so refreshes don't keep re-opening.
+      const next = new URLSearchParams(params);
+      next.delete("open");
+      setParams(next, { replace: true });
+    })();
+  }, [params, setParams]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -314,7 +357,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
       worker_id: assigneeId,
       item_ids: [],
       status: "assigned",
-      job_type: "service",
+      job_type: row.kind === "complaint" ? "complaint" : "service",
       created_by: user?.id ?? null,
       notes: `${meta.label} ${row.code ?? ""} — ${row.name} (${row.place ?? ""})\n${row.preview ?? ""}`,
     };

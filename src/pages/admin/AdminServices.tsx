@@ -393,7 +393,7 @@ const AdminServices = () => {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button asChild size="sm">
-            <Link to={`/admin/services/${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
+            <Link to={`/admin/enquiries?open=service:${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
           </Button>
           {isAdmin && (
             <Button size="icon" variant="ghost" onClick={() => removeService(r)} aria-label="Delete">
@@ -440,7 +440,7 @@ const AdminServices = () => {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button asChild size="sm">
-            <Link to={`/admin/complaints/${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
+            <Link to={`/admin/enquiries?open=complaint:${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
           </Button>
           {isAdmin && (
             <Button size="icon" variant="ghost" onClick={() => removeComplaint(r)} aria-label="Delete">
