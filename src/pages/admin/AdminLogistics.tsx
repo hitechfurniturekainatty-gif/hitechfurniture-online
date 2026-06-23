@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Truck, Navigation2, Route as RouteIcon, Sparkles } from "lucide-react";
+import { Loader2, MapPin, Truck, Navigation2, Route as RouteIcon, Sparkles, Warehouse as WarehouseIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { LeafletMap, coloredIcon } from "@/components/logistics/LeafletMap";
@@ -274,6 +274,11 @@ const AdminLogistics = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-display text-sm font-semibold">{formatINR(p.total)}</span>
+                        <Button asChild size="sm" variant="ghost" title="Open this order in the Warehouse view">
+                          <Link to={`/admin/warehouse#q-${p.id}`}>
+                            <WarehouseIcon className="mr-1 h-3.5 w-3.5" />Warehouse
+                          </Link>
+                        </Button>
                         <Button asChild size="sm" variant="outline">
                           <Link to={`/admin/quotations/${p.id}`}>Open</Link>
                         </Button>
