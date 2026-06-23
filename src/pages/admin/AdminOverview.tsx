@@ -308,13 +308,13 @@ const AdminOverview = () => {
       ]
     : [];
 
-  const groups: StatGroup[] = [
+  const groups: StatGroup[] = ([
     {
       key: "sales",
       title: "Sales & Services",
       subtitle: "6-stage pipeline counts, services and complaints",
       icon: ShoppingBag,
-      accent: "emerald",
+      accent: "emerald" as const,
       cards: salesCards,
     },
     {
@@ -322,7 +322,7 @@ const AdminOverview = () => {
       title: "Logistics & Fleet",
       subtitle: "Stage 6 dispatch — Out for Delivery, trips and routes",
       icon: Truck,
-      accent: "sky",
+      accent: "sky" as const,
       cards: logisticsCards,
     },
     {
@@ -330,10 +330,10 @@ const AdminOverview = () => {
       title: "Inventory & Catalog",
       subtitle: "Products and categories",
       icon: Boxes,
-      accent: "orange",
+      accent: "orange" as const,
       cards: inventoryCards,
     },
-  ].filter((g) => g.cards.length > 0);
+  ] satisfies StatGroup[]).filter((g) => g.cards.length > 0);
 
   return (
     <AdminShell>
