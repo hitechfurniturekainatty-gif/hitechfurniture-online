@@ -1229,6 +1229,14 @@ const AdminProducts = () => {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
+                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
+                        title="Generate QR"
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => openEdit(p)}
                         className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
                         title="Edit"
