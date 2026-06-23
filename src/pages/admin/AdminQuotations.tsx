@@ -1014,12 +1014,12 @@ const AdminQuotations = () => {
                       <SelectItem value="lead">Lead — stays in Client Hub for follow-up</SelectItem>
                       <SelectItem value="direct_deal">Direct Deal — auto-routes to OPS for pricing</SelectItem>
                       <SelectItem value="consultation">Consultation — stays in Client Hub</SelectItem>
-                      <SelectItem value="custom_project">Custom Project — routes to Dimensions: Pending</SelectItem>
+                      <SelectItem value="custom_project">Custom Project (walk-in) — manual measurement entry</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
                     {form.lead_type === "direct_deal" && "Skips measurement — lands in OPS: In-Progress immediately."}
-                   {form.lead_type === "custom_project" && "A pending task lands in the Dimensions pool — any measurement staff on duty can pick it up."}
+                   {form.lead_type === "custom_project" && "For walk-in / phone customers only. A Dimensions task is auto-assigned to measurement staff. Website-sourced enquiries should be assigned from the Enquiries Inbox instead."}
                     {form.lead_type === "lead" && "New lead. Owner: Sales / Admin in Client Hub."}
                     {form.lead_type === "consultation" && "Consultation. Owner: Sales / Admin in Client Hub."}
                   </p>
