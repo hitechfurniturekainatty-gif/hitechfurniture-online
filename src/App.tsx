@@ -46,8 +46,6 @@ const AdminWarehouse = lazy(() => import("./pages/admin/AdminWarehouse.tsx"));
 const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
 const AdminMyTrips = lazy(() => import("./pages/admin/AdminMyTrips.tsx"));
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.tsx"));
-const AdminServiceEditor = lazy(() => import("./pages/admin/AdminServiceEditor.tsx"));
-const AdminComplaintEditor = lazy(() => import("./pages/admin/AdminComplaintEditor.tsx"));
 const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
 const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
 const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
@@ -141,8 +139,9 @@ const App = () => (
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/my-trips" element={<AdminMyTrips />} />
             <Route path="/admin/services" element={<AdminServices />} />
-            <Route path="/admin/services/:id" element={<AdminServiceEditor />} />
-            <Route path="/admin/complaints/:id" element={<AdminComplaintEditor />} />
+            {/* Legacy editor URLs — redirect to the canonical Enquiries Inbox detail sheet. */}
+            <Route path="/admin/services/:id" element={<EnquiryRedirect kind="service" />} />
+            <Route path="/admin/complaints/:id" element={<EnquiryRedirect kind="complaint" />} />
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
