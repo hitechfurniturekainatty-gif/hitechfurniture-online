@@ -140,6 +140,12 @@ const AdminProducts = () => {
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [stockItemView, setStockItemView] = useState<"grid" | "list">("grid");
   const [stockFilter, setStockFilter] = useState<"all" | "with_stock" | "without_stock">("all");
+  // Per-product committed (reserved) quantity from finalized, not-yet-delivered
+  // ready-stock items. Live computed via the get_reserved_stock() DB function
+  // so it always reflects current orders without storing duplicate state.
+  const [reservedMap, setReservedMap] = useState<Record<string, number>>({});
+  const reservedOf = (id: string) => reservedMap[id] ?? 0;
+  const availableOf = (id: string, onHand: number) => Math.max(0, onHand - reservedOf(id));
   useEffect(() => {
     try { localStorage.setItem("admin_products_view", viewMode); } catch {}
   }, [viewMode]);
@@ -164,6 +170,18 @@ const AdminProducts = () => {
     // inflate the catalog count.
     const safe = ((data ?? []) as Product[]).filter((p) => !p.deleted_at);
     setProducts(safe);
+    // Refresh reserved totals alongside products — kept best-effort so a
+    // function/permission glitch never blocks the catalog from rendering.
+    try {
+      const { data: rs } = await (supabase as any).rpc("get_reserved_stock");
+      const map: Record<string, number> = {};
+      ((rs ?? []) as { product_id: string; reserved: number }[]).forEach((r) => {
+        map[r.product_id] = Number(r.reserved) || 0;
+      });
+      setReservedMap(map);
+    } catch {
+      setReservedMap({});
+    }
   };
 
   useEffect(() => {
