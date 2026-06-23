@@ -148,10 +148,8 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff };
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
-  // Only show Backlog in the sidebar while it is currently unlocked. After the
-  // 15-min auto-lock or sign-out, the menu disappears entirely — the area is
-  // then only reachable again via the triple-tap on the logo.
-  const backlog: SoloItem = { kind: "solo", to: "/admin/backlog", label: "Backlog", icon: Archive, show: isAdmin && backlogUnlocked };
+  // Backlog is gated by the triple-tap unlock and only appears inside the
+  // Finance group while currently unlocked (see `finance` below).
 
   const operations: GroupItem = {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
