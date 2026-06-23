@@ -126,6 +126,20 @@ const AdminWarehouse = () => {
       .then(({ data }) => setVehicles((data ?? []) as Vehicle[]));
   }, [canAccess]);
 
+  // When opened from Logistics (cross-link with #q-<id>), scroll to the
+  // matching quotation card once the rows have loaded.
+  useEffect(() => {
+    if (loading || rows.length === 0) return;
+    if (!window.location.hash) return;
+    const id = window.location.hash.slice(1);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2500);
+    }
+  }, [loading, rows]);
+
   const buckets = useMemo(() => {
     // Warehouse + Delivery should only ever see Ready-Stock items.
     // Custom items remain hidden in Production until that team moves them.
