@@ -793,7 +793,7 @@ export type Database = {
           recipients: string[]
           source_id: string | null
           source_type: string
-          stage: number
+          stage: number | null
           target_role: Database["public"]["Enums"]["app_role"]
           title: string
         }
@@ -807,7 +807,7 @@ export type Database = {
           recipients?: string[]
           source_id?: string | null
           source_type?: string
-          stage: number
+          stage?: number | null
           target_role: Database["public"]["Enums"]["app_role"]
           title: string
         }
@@ -821,7 +821,7 @@ export type Database = {
           recipients?: string[]
           source_id?: string | null
           source_type?: string
-          stage?: number
+          stage?: number | null
           target_role?: Database["public"]["Enums"]["app_role"]
           title?: string
         }
