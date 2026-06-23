@@ -34,6 +34,8 @@ const AdminEnquiriesInbox = lazy(() => import("./pages/admin/AdminEnquiriesInbox
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
 const AdminProductBulkCreate = lazy(() => import("./pages/admin/AdminProductBulkCreate.tsx"));
+const AdminInventoryLedger = lazy(() => import("./pages/admin/AdminInventoryLedger.tsx"));
+const AdminInventoryReorder = lazy(() => import("./pages/admin/AdminInventoryReorder.tsx"));
 const AdminBundles = lazy(() => import("./pages/admin/AdminBundles.tsx"));
 const AdminBundleEditor = lazy(() => import("./pages/admin/AdminBundleEditor.tsx"));
 const AdminBundleBulkCreate = lazy(() => import("./pages/admin/AdminBundleBulkCreate.tsx"));
@@ -126,6 +128,8 @@ const App = () => (
             <Route path="/admin/categories" element={<OfficeStaffOnly><AdminCategories /></OfficeStaffOnly>} />
             <Route path="/admin/products" element={<OfficeStaffOnly><AdminProducts /></OfficeStaffOnly>} />
             <Route path="/admin/products/bulk" element={<OfficeStaffOnly><AdminProductBulkCreate /></OfficeStaffOnly>} />
+            <Route path="/admin/inventory/ledger" element={<OfficeStaffOnly><AdminInventoryLedger /></OfficeStaffOnly>} />
+            <Route path="/admin/inventory/reorder" element={<OfficeStaffOnly><AdminInventoryReorder /></OfficeStaffOnly>} />
             <Route path="/admin/bundles" element={<OfficeStaffOnly><AdminBundles /></OfficeStaffOnly>} />
             <Route path="/admin/bundles/bulk" element={<OfficeStaffOnly><AdminBundleBulkCreate /></OfficeStaffOnly>} />
             <Route path="/admin/bundles/:id" element={<OfficeStaffOnly><AdminBundleEditor /></OfficeStaffOnly>} />

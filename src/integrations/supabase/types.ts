@@ -2243,6 +2243,13 @@ export type Database = {
         Returns: undefined
       }
       current_worker_id: { Args: never; Returns: string }
+      get_reserved_stock: {
+        Args: never
+        Returns: {
+          product_id: string
+          reserved: number
+        }[]
+      }
       get_shared_delivery_note: { Args: { p_token: string }; Returns: Json }
       get_shared_job_work_order: { Args: { p_token: string }; Returns: Json }
       get_shared_quotation: { Args: { p_token: string }; Returns: Json }

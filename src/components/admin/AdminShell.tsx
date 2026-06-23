@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -96,7 +96,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     const groups: Record<string, string[]> = {
       operations: ["/admin/enquiries", "/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
       finance: ["/admin/scheme-calculator", "/admin/backlog", "/admin/receivables"],
-      inventory: ["/admin/categories", "/admin/products"],
+      inventory: ["/admin/categories", "/admin/products", "/admin/inventory"],
       logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
       team: ["/admin/staff", "/admin/workers", "/admin/people", "/admin/staff-monitor", "/admin/production"],
       system: ["/admin/home-page", "/admin/vault", "/admin/trash", "/guide"],
@@ -174,6 +174,8 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isOfficeStaff },
       { to: "/admin/products", label: "Products", icon: Package, show: isOfficeStaff },
       { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isOfficeStaff },
+      { to: "/admin/inventory/reorder", label: "Reorder Report", icon: AlertTriangle, show: isOfficeStaff },
+      { to: "/admin/inventory/ledger", label: "Stock Ledger", icon: ClipboardList, show: isOfficeStaff },
     ]),
   };
   const logistics: GroupItem = {
