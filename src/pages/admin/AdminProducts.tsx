@@ -1485,6 +1485,11 @@ const AdminProducts = () => {
         onChanged={loadLocations}
       />
       <CatalogPinDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen} />
+      <ProductQrDialog
+        open={!!qrTarget}
+        onOpenChange={(o) => { if (!o) setQrTarget(null); }}
+        target={qrTarget}
+      />
     </AdminShell>
   );
 };
