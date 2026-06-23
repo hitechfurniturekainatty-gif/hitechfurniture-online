@@ -1,0 +1,1 @@
+ALTER TABLE public.pipeline_notifications ALTER COLUMN stage DROP NOT NULL;

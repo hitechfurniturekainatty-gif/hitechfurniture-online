@@ -236,13 +236,27 @@ export const EnquiryForm = () => {
           photoName: photo?.name ?? null,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to surface the server's actual error message instead of a generic one.
+        let serverMsg: string | null = null;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            serverMsg = body?.error || body?.message || null;
+          }
+        } catch {
+          /* ignore parse errors */
+        }
+        throw new Error(serverMsg || error.message || "Unknown error");
+      }
       const code = (data as { code?: string } | null)?.code ?? null;
       setResultCode(code);
       setStatus("success");
     } catch (err) {
       console.error("[Enquiry] submit failed", err);
-      toast.error("Submission failed. Please check your internet and try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Submission failed: ${msg}`);
       setStatus("idle");
     }
   };
