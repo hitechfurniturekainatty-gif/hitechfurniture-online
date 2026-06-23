@@ -3,36 +3,20 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, TrendingUp } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, ArrowRight, Warehouse, Layers } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
-import { computeStage, ALL_STAGES, STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
+import { computeStage, type PipelineStage } from "@/lib/quotationPipeline";
+import { PipelineStageGrid } from "@/components/overview/PipelineStageGrid";
+import { FulfillmentSplitCard } from "@/components/overview/FulfillmentSplitCard";
+import { TrendsRow } from "@/components/overview/TrendsRow";
+import { HighlightCards, type UpcomingDelivery, type AwaitingPricing } from "@/components/overview/HighlightCards";
+import { GroupedStatsSections, type StatCard, type StatGroup } from "@/components/overview/GroupedStatsSections";
 
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
-
-type UpcomingDelivery = {
-  id: string;
-  quotation_id: string;
-  party_name: string;
-  party_place: string | null;
-  party_phone: string | null;
-  expected_delivery_date: string;
-  status: string;
-  total: number;
-};
-
-type AwaitingPricing = {
-  id: string;
-  quotation_id: string;
-  party_name: string;
-  party_place: string | null;
-  party_phone: string | null;
-  created_at: string;
-  created_by: string | null;
-};
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
@@ -292,16 +276,6 @@ const AdminOverview = () => {
     return <Navigate to="/admin/my-trips" replace />;
   }
 
-  type StatCard = { label: string; value: number | null; icon: any; to: string };
-  type Group = {
-    key: string;
-    title: string;
-    subtitle: string;
-    icon: any;
-    accent: string; // tailwind classes for tint (icon bg + border)
-    cards: StatCard[];
-  };
-
   const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
     isOfficeStaff && { label: "Quotations", value: stats.quotations, icon: FileText, to: "/admin/quotations" },
@@ -334,14 +308,13 @@ const AdminOverview = () => {
       ]
     : [];
 
-  const groups: Group[] = [
+  const groups: StatGroup[] = ([
     {
       key: "sales",
       title: "Sales & Services",
       subtitle: "6-stage pipeline counts, services and complaints",
       icon: ShoppingBag,
-      // Green / success theme
-      accent: "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+      accent: "emerald" as const,
       cards: salesCards,
     },
     {
@@ -349,8 +322,7 @@ const AdminOverview = () => {
       title: "Logistics & Fleet",
       subtitle: "Stage 6 dispatch — Out for Delivery, trips and routes",
       icon: Truck,
-      // Blue / info theme
-      accent: "border-sky-500/30 bg-sky-500/5 text-sky-600 dark:text-sky-400",
+      accent: "sky" as const,
       cards: logisticsCards,
     },
     {
@@ -358,11 +330,10 @@ const AdminOverview = () => {
       title: "Inventory & Catalog",
       subtitle: "Products and categories",
       icon: Boxes,
-      // Orange / warning theme
-      accent: "border-orange-500/30 bg-orange-500/5 text-orange-600 dark:text-orange-400",
+      accent: "orange" as const,
       cards: inventoryCards,
     },
-  ].filter((g) => g.cards.length > 0);
+  ] satisfies StatGroup[]).filter((g) => g.cards.length > 0);
 
   return (
     <AdminShell>
@@ -400,310 +371,27 @@ const AdminOverview = () => {
 
       {/* Top Highlight Grids: Upcoming Deliveries + Drafts needing pricing + Stage 3 OPS */}
       {(isAdmin || isOfficeStaff || isMeasurementStaff) && (
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Upcoming Deliveries */}
-          <Card className="border-amber-500/40 bg-amber-500/5">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-              <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-                <CalendarClock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                Upcoming Deliveries
-                <Badge variant="secondary" className="ml-1">{upcoming.length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {upcoming.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
-                  No deliveries scheduled in the next 2 days.
-                </p>
-              ) : (
-                upcoming.slice(0, 5).map((q) => (
-                  <Link
-                    key={q.id}
-                    to={`/admin/quotations/${q.id}`}
-                    className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
-                  >
-                    <p className="truncate font-medium text-foreground">{q.party_name}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {q.party_phone && (
-                        <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
-                      )}
-                      {q.party_place && (
-                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
-                      )}
-                    </div>
-                  </Link>
-                ))
-              )}
-              <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                <Link to="/admin/quotations">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Drafts needing pricing — measurement-task drafts submitted for review. */}
-          {isOfficeStaff && (
-            <Card className="border-rose-500/40 bg-rose-500/5">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-                <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-                  <Ruler className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                  Drafts needing pricing
-                  <Badge variant="secondary" className="ml-1">{needsPricing.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {needsPricing.length === 0 ? (
-                  <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
-                    No measurement drafts waiting on a price.
-                  </p>
-                ) : (
-                  needsPricing.slice(0, 5).map((q) => (
-                    <Link
-                      key={q.id}
-                      to={`/admin/quotations/${q.id}`}
-                      className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
-                    >
-                      <p className="truncate font-medium text-foreground">{q.party_name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {q.party_phone && (
-                          <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
-                        )}
-                        {q.party_place && (
-                          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
-                        )}
-                      </div>
-                    </Link>
-                  ))
-                )}
-                <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                  <Link to="/admin/quotations?status=drafted">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Stage 3 — OPS Work (finalized quotations not yet in Production). */}
-          {isOfficeStaff && (
-            <Card className="border-emerald-500/40 bg-emerald-500/5">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-                <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  Stage 3 — OPS Work
-                  <Badge variant="secondary" className="ml-1">{pipelineCounts[3]}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {opsStage3.length === 0 ? (
-                  <p className="rounded-lg border border-dashed bg-card/50 p-4 text-center text-xs text-muted-foreground">
-                    No finalized quotations in OPS right now.
-                  </p>
-                ) : (
-                  opsStage3.slice(0, 5).map((q) => (
-                    <Link
-                      key={q.id}
-                      to={`/admin/quotations/${q.id}`}
-                      className="block rounded-lg border bg-card p-3 transition-smooth hover:border-primary hover:shadow-sm"
-                    >
-                      <p className="truncate font-medium text-foreground">{q.party_name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {q.party_phone && (
-                          <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{q.party_phone}</span>
-                        )}
-                        {q.party_place && (
-                          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{q.party_place}</span>
-                        )}
-                      </div>
-                    </Link>
-                  ))
-                )}
-                <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                  <Link to="/admin/quotations?status=stage3">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        <HighlightCards
+          upcoming={upcoming}
+          needsPricing={needsPricing}
+          opsStage3={opsStage3}
+          stage3Count={pipelineCounts[3]}
+          isOfficeStaff={isOfficeStaff}
+        />
       )}
 
       {/* 6-Stage Pipeline: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics */}
-      {(isAdmin || isOfficeStaff) && (
-        <Card className="mb-6">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-            <div>
-              <CardTitle className="font-display text-lg sm:text-xl">Pipeline — by Stage</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">Live counts across the 6-stage automated pipeline.</p>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/pipeline">View full pipeline →</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {ALL_STAGES.map((s) => {
-                const def = STAGE_DEFS[s];
-                return (
-                  <Link
-                    key={s}
-                    to={`/admin/quotations?status=stage${s}`}
-                    className={`group relative block rounded-xl border p-3 transition-smooth hover:shadow-product ${stageToneClasses(def.tone)}`}
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Stage {s}</p>
-                    <p className="font-display text-2xl font-semibold">{pipelineCounts[s]}</p>
-                    <p className="mt-0.5 truncate text-sm font-semibold">{def.label}</p>
-                    <p className="text-[10px] opacity-70">{def.owner}</p>
-                  </Link>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {(isAdmin || isOfficeStaff) && <PipelineStageGrid pipelineCounts={pipelineCounts} />}
 
       {/* Trend sparklines — quotations & deliveries over the last N days */}
       {(isAdmin || isOfficeStaff) && (
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 font-display text-base sm:text-lg">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  Quotations Trend
-                </CardTitle>
-                <p className="mt-0.5 text-xs text-muted-foreground">New quotations created per day · last {trendDays} days</p>
-              </div>
-              <RangeToggle value={trendDays} onChange={setTrendDays} />
-            </CardHeader>
-            <CardContent>
-              <Sparkline data={trends.quotByDay} stroke="hsl(var(--primary))" height={64} />
-              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                {Object.entries(trends.statusTotals)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([s, n]) => (
-                    <Badge key={s} variant={statusBadgeVariant(s)} className="capitalize">
-                      {statusLabel(s)} · {n}
-                    </Badge>
-                  ))}
-                {Object.keys(trends.statusTotals).length === 0 && (
-                  <span className="text-muted-foreground">No quotations in this window.</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 font-display text-base sm:text-lg">
-                  <Truck className="h-4 w-4 text-sky-600" />
-                  Deliveries Trend
-                </CardTitle>
-                <p className="mt-0.5 text-xs text-muted-foreground">Trips planned per day · last {trendDays} days</p>
-              </div>
-              <RangeToggle value={trendDays} onChange={setTrendDays} />
-            </CardHeader>
-            <CardContent>
-              <Sparkline data={trends.tripsByDay} stroke="hsl(var(--sky, 199 89% 48%))" fallbackStroke="#0284c7" height={64} />
-              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800">Out for Delivery · {trends.outForDelivery}</Badge>
-                <Badge variant="secondary" className="bg-sky-100 text-sky-800">Active trips · {trends.tripsActive}</Badge>
-                <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">Completed · {trends.tripsCompleted}</Badge>
-                <Link to="/admin/trips" className="ml-auto inline-flex items-center text-[11px] font-medium text-primary hover:underline">
-                  Open trips <ArrowRight className="ml-0.5 h-3 w-3" />
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <TrendsRow trends={trends} trendDays={trendDays} setTrendDays={setTrendDays} />
       )}
 
       {/* Fulfillment Split — Ready Stock vs Custom Production (per item routing) */}
-      {(isAdmin || isOfficeStaff) && (
-        <Card className="mb-6 border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
-                <Layers className="h-5 w-5 text-primary" />
-                Fulfillment Split
-              </CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Per-item routing — Ready Stock items skip production and go straight to Warehouse.
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Ready Stock only</p>
-                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsReadyOnly}</p>
-                <p className="text-[10px] text-muted-foreground">Quotations</p>
-              </div>
-              <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">Custom only</p>
-                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsCustomOnly}</p>
-                <p className="text-[10px] text-muted-foreground">Quotations</p>
-              </div>
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Partially Ready</p>
-                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.quotsMixed}</p>
-                <p className="text-[10px] text-muted-foreground">Mixed quotations</p>
-              </div>
-              <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
-                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-                  <Warehouse className="h-3 w-3" /> In Warehouse
-                </p>
-                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.itemsReadyInWarehouse + fulfillment.jobsInWarehouse}</p>
-                <p className="text-[10px] text-muted-foreground">Items ready to pack</p>
-              </div>
-              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
-                <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400">
-                  <HardHat className="h-3 w-3" /> In Production
-                </p>
-                <p className="font-display text-2xl font-semibold text-foreground">{fulfillment.itemsInProduction}</p>
-                <p className="text-[10px] text-muted-foreground">Custom items being built</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {(isAdmin || isOfficeStaff) && <FulfillmentSplitCard fulfillment={fulfillment} />}
 
-      <div className="space-y-6">
-        {groups.map((g) => (
-          <section key={g.key} className={`rounded-2xl border p-4 sm:p-5 ${g.accent.replace("text-", "")}`}>
-            <div className="mb-3 flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${g.accent}`}>
-                <g.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="font-display text-lg font-semibold sm:text-xl">{g.title}</h2>
-                <p className="text-xs text-muted-foreground">{g.subtitle}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {g.cards.map((c) => (
-                <Link key={c.label} to={c.to} className="block">
-                  <Card className="bg-card transition-smooth hover:shadow-product">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <span className="truncate">{c.label}</span>
-                        <c.icon className={`h-4 w-4 ${g.accent.split(" ").filter((cls) => cls.startsWith("text-")).join(" ")}`} />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {c.value === null ? (
-                        <p className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                          Open <ArrowRight className="h-3.5 w-3.5" />
-                        </p>
-                      ) : (
-                        <p className="font-display text-3xl font-semibold text-foreground">{c.value}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      <GroupedStatsSections groups={groups} />
 
       {isOfficeStaff && (
         <Card className="mt-8">
@@ -741,49 +429,3 @@ const AdminOverview = () => {
 };
 
 export default AdminOverview;
-
-// ---------- Lightweight chart helpers (no extra deps) ----------
-
-const Sparkline = ({ data, stroke = "hsl(var(--primary))", fallbackStroke, height = 56 }: { data: number[]; stroke?: string; fallbackStroke?: string; height?: number }) => {
-  if (!data || data.length === 0) {
-    return <div className="flex h-14 items-center justify-center text-xs text-muted-foreground">No data yet.</div>;
-  }
-  const w = 600; // viewBox width — scales to container
-  const h = 100;
-  const max = Math.max(1, ...data);
-  const stepX = data.length > 1 ? w / (data.length - 1) : 0;
-  const points = data.map((v, i) => `${(i * stepX).toFixed(1)},${(h - (v / max) * (h - 8) - 2).toFixed(1)}`);
-  const path = `M ${points.join(" L ")}`;
-  const area = `${path} L ${(w).toFixed(1)},${h} L 0,${h} Z`;
-  const lastIdx = data.length - 1;
-  const lastX = lastIdx * stepX;
-  const lastY = h - (data[lastIdx] / max) * (h - 8) - 2;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
-      <defs>
-        <linearGradient id="spark-fill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#spark-fill)" stroke="none" />
-      <path d={path} fill="none" stroke={stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" style={fallbackStroke ? { stroke: fallbackStroke } : undefined} />
-      <circle cx={lastX} cy={lastY} r={3.5} fill={fallbackStroke || stroke} />
-    </svg>
-  );
-};
-
-const RangeToggle = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
-  <div className="inline-flex items-center rounded-md border bg-card p-0.5 text-[11px]">
-    {[7, 14, 30].map((d) => (
-      <button
-        key={d}
-        type="button"
-        onClick={() => onChange(d)}
-        className={`rounded px-2 py-0.5 font-medium transition-colors ${value === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-      >
-        {d}d
-      </button>
-    ))}
-  </div>
-);

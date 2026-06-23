@@ -126,6 +126,20 @@ const AdminWarehouse = () => {
       .then(({ data }) => setVehicles((data ?? []) as Vehicle[]));
   }, [canAccess]);
 
+  // When opened from Logistics (cross-link with #q-<id>), scroll to the
+  // matching quotation card once the rows have loaded.
+  useEffect(() => {
+    if (loading || rows.length === 0) return;
+    if (!window.location.hash) return;
+    const id = window.location.hash.slice(1);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2500);
+    }
+  }, [loading, rows]);
+
   const buckets = useMemo(() => {
     // Warehouse + Delivery should only ever see Ready-Stock items.
     // Custom items remain hidden in Production until that team moves them.
@@ -242,7 +256,7 @@ const AdminWarehouse = () => {
     group: { q: Row["quotations"]; items: Row[] },
     action: "dispatch" | "deliver" | null,
   ) => (
-    <Card key={group.q!.id}>
+    <Card key={group.q!.id} id={`q-${group.q!.id}`} className="scroll-mt-24">
       <CardContent className="flex flex-col gap-3 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs font-semibold">{group.q?.quotation_id}</span>
