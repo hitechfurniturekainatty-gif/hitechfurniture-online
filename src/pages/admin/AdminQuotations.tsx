@@ -62,6 +62,7 @@ type Q = {
 type StageFilterKey =
   | "all"
   | "active"
+  | "confirmed"
   | "stage1"
   | "stage2"
   | "stage3"
@@ -72,6 +73,7 @@ type StageFilterKey =
 
 const STAGE_FILTER_KEYS: StageFilterKey[] = [
   "active",
+  "confirmed",
   "all",
   "stage1",
   "stage2",
@@ -85,6 +87,7 @@ const STAGE_FILTER_KEYS: StageFilterKey[] = [
 const stageFilterLabel = (k: StageFilterKey) => {
   if (k === "all") return "All";
   if (k === "active") return "Active";
+  if (k === "confirmed") return "Confirmed Orders";
   if (k === "rejected") return "Rejected";
   const num = Number(k.replace("stage", "")) as PipelineStage;
   return STAGE_DEFS[num].label;
