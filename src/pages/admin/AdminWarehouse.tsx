@@ -242,7 +242,7 @@ const AdminWarehouse = () => {
     group: { q: Row["quotations"]; items: Row[] },
     action: "dispatch" | "deliver" | null,
   ) => (
-    <Card key={group.q!.id}>
+    <Card key={group.q!.id} id={`q-${group.q!.id}`} className="scroll-mt-24">
       <CardContent className="flex flex-col gap-3 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs font-semibold">{group.q?.quotation_id}</span>
