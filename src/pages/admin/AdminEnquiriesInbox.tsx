@@ -353,17 +353,26 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
           {row.kind === "complaint" && row.raw.original_quotation_code && (
             <Field label="Original bill">{row.raw.original_quotation_code}</Field>
           )}
-          {row.kind === "complaint" && Array.isArray(row.raw.photos) && row.raw.photos.length > 0 && (
-            <Field label="Photos">
-              <div className="flex flex-wrap gap-2">
-                {row.raw.photos.map((url: string) => (
-                  <a key={url} href={url} target="_blank" rel="noreferrer">
-                    <img src={url} alt="" className="h-20 w-20 rounded-md object-cover" />
-                  </a>
-                ))}
-              </div>
-            </Field>
-          )}
+          {row.kind === "complaint" && (() => {
+            const raw = row.raw.photos;
+            const urls: string[] = Array.isArray(raw)
+              ? raw.filter(Boolean)
+              : typeof raw === "string" && raw.trim()
+                ? raw.split(/[\s,]+/).filter((u) => /^https?:\/\//i.test(u))
+                : [];
+            if (urls.length === 0) return null;
+            return (
+              <Field label="Photos">
+                <div className="flex flex-wrap gap-2">
+                  {urls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt="" className="h-20 w-20 rounded-md object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </Field>
+            );
+          })()}
         </div>
 
         <div className="mt-6 space-y-3 border-t pt-5">
