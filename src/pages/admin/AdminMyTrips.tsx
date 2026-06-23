@@ -304,32 +304,44 @@ const AdminMyTrips = () => {
                         {s.q?.party_address || s.q?.delivery_place || s.q?.party_place}
                       </p>
 
-                      {/* Collect-from-customer pill — visible to both delivery & office.
-                          Per spec: hide every other monetary field by default. */}
+                      {/* Payment breakdown — always visible to the driver so they can
+                          verify Total / Advance received / Balance with the customer
+                          on the doorstep. Not gated behind show_price_to_delivery. */}
                       {s.q && (
-                        <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                              Collect from Customer
-                            </p>
-                            <p className="font-display text-xl font-bold text-emerald-800 dark:text-emerald-200">
-                              {formatINR(balanceToCollect(s.q))}
-                            </p>
+                        <div className="rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <span className="text-emerald-900/80 dark:text-emerald-200/80">Total (incl. GST)</span>
+                            <span className="font-semibold text-emerald-900 dark:text-emerald-100">{formatINR(Number(s.q.total ?? 0))}</span>
                           </div>
-                          <IndianRupee className="h-6 w-6 text-emerald-600/70 dark:text-emerald-400/70" />
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <span className="text-emerald-900/80 dark:text-emerald-200/80">Advance received</span>
+                            <span className="font-semibold text-emerald-900 dark:text-emerald-100">{formatINR(Number(s.q.advance_amount ?? 0))}</span>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-emerald-500/40 pt-1.5">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                                Balance to Collect
+                              </p>
+                              <p className="font-display text-xl font-bold text-emerald-800 dark:text-emerald-200">
+                                {formatINR(balanceToCollect(s.q))}
+                              </p>
+                            </div>
+                            <IndianRupee className="h-6 w-6 text-emerald-600/70 dark:text-emerald-400/70" />
+                          </div>
                         </div>
                       )}
 
-                      {/* Admin / OPS toggle to allow this driver to view full pricing.
-                          Delivery staff cannot flip this — RLS blocks the update too. */}
+                      {/* Admin / OPS toggle to allow driver to open the per-line-item
+                          pricing dialog. The three-line summary above is always shown
+                          regardless of this flag. */}
                       {s.q && isOfficeStaff && (
                         <div className="flex items-center justify-between gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold">Show Price to Delivery Team</p>
+                            <p className="text-xs font-semibold">Show Item-wise Pricing to Driver</p>
                             <p className="text-[11px] text-muted-foreground">
                               {s.q.show_price_to_delivery
-                                ? "Driver can open ‘View Full Pricing’ for this stop."
-                                : "Hidden — driver only sees the amount to collect."}
+                                ? "Driver can open ‘View Full Pricing’ for the line-item breakdown."
+                                : "Hidden — driver still sees Total / Advance / Balance, just not per-item rates."}
                             </p>
                           </div>
                           <Switch
@@ -341,10 +353,10 @@ const AdminMyTrips = () => {
                         </div>
                       )}
 
-                      {/* Lock indicator for delivery role when pricing is hidden. */}
+                      {/* Lock indicator for delivery role when item-wise pricing is hidden. */}
                       {s.q && isDelivery && !s.q.show_price_to_delivery && (
                         <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Lock className="h-3 w-3" /> Pricing details hidden by office.
+                          <Lock className="h-3 w-3" /> Item-wise pricing hidden by office.
                         </p>
                       )}
 
