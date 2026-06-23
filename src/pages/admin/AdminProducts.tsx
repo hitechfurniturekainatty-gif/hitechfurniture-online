@@ -1127,6 +1127,15 @@ const AdminProducts = () => {
                     >
                       <FileDown className="h-4 w-4" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9"
+                      onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
+                      title="Generate QR"
+                    >
+                      <QrCode className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
