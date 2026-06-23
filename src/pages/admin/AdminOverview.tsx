@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, Link2, Sparkles, TrendingUp } from "lucide-react";
+import { Package, FolderTree, AlertTriangle, FileText, Ruler, HardHat, Users, Clock, Truck, LifeBuoy, Wrench, ShoppingBag, Map, Route, Boxes, CalendarClock, CheckCircle2, Phone, MapPin, ArrowRight, Warehouse, Layers, TrendingUp } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +43,10 @@ const AdminOverview = () => {
   });
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [upcoming, setUpcoming] = useState<UpcomingDelivery[]>([]);
-  const [awaitingPricing, setAwaitingPricing] = useState<AwaitingPricing[]>([]);
+  // Split the old "OPS: In-Progress" list — measurement-task drafts (true
+  // "needs pricing") vs actual Stage-3 OPS quotations (finalized, no jobs yet).
+  const [needsPricing, setNeedsPricing] = useState<AwaitingPricing[]>([]);
+  const [opsStage3, setOpsStage3] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   // 30-day trend series for sparklines
   const [trendDays, setTrendDays] = useState(30);
@@ -132,25 +135,32 @@ const AdminOverview = () => {
         setUpcoming((data ?? []) as UpcomingDelivery[]);
       }
 
-      // Office staff: drafted quotations created by measurement staff
-      // (i.e. those linked to a measurement task) — these need pricing.
+      // Office staff: two distinct lists previously crammed into one card.
+      //  • Drafts needing pricing — measurement-task drafts that hit
+      //    "Submit for pricing review" (status='drafted', submitted_for_pricing_at).
+      //  • Stage 3 (OPS) — finalized quotations that haven't moved to
+      //    Production yet. Counted accurately via pipelineCounts[3];
+      //    here we just list the most recent finalized rows for the card.
       if (isOfficeStaff) {
-        const { data } = await supabase
-          .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by, source_task_id")
-          .is("deleted_at", null)
-          .eq("status", "drafted")
-          // Office sees ALL drafts that still need a price:
-          //  • measurement-task drafts that hit "Submit for pricing review"
-          //  • website-enquiry leads (lead_type='lead', stage 1) that have never
-          //    been priced — without this filter they sat invisible.
-          .or(
-            "submitted_for_pricing_at.not.is.null," +
-              "and(lead_type.eq.lead,pipeline_stage.eq.1)"
-          )
-          .order("created_at", { ascending: false })
-          .limit(20);
-        setAwaitingPricing((data ?? []) as AwaitingPricing[]);
+        const [{ data: pricingRows }, { data: opsRows }] = await Promise.all([
+          supabase
+            .from("quotations")
+            .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by")
+            .is("deleted_at", null)
+            .eq("status", "drafted")
+            .not("submitted_for_pricing_at", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("quotations")
+            .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by")
+            .is("deleted_at", null)
+            .eq("status", "finalized")
+            .order("updated_at", { ascending: false })
+            .limit(10),
+        ]);
+        setNeedsPricing((pricingRows ?? []) as AwaitingPricing[]);
+        setOpsStage3((opsRows ?? []) as AwaitingPricing[]);
       }
 
       // Pipeline summary (admin/office staff)
@@ -309,8 +319,10 @@ const AdminOverview = () => {
     ? [
         { label: "Stage 6 · Out for Delivery", value: pipelineCounts[6], icon: Truck, to: "/admin/quotations?status=stage6" },
         { label: "Logistics Mapping", value: pipelineCounts[6], icon: Map, to: "/admin/logistics" },
-        { label: "Trips", value: 0, icon: Truck, to: "/admin/trips" },
-        ...(isAdmin ? [{ label: "Route Manager", value: 0, icon: Route, to: "/admin/routes" }] : []),
+        // Trips / Route Manager — these are management screens, not metrics.
+        // value=null renders an "Open" link button instead of a fake "0".
+        { label: "Trips", value: null, icon: Truck, to: "/admin/trips" },
+        ...(isAdmin ? [{ label: "Route Manager", value: null, icon: Route, to: "/admin/routes" }] : []),
       ]
     : [];
 
