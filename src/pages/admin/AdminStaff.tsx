@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck, HardHat } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
+import { PeopleTabs } from "@/components/admin/PeopleTabs";
 
 type Role = "admin" | "staff" | "measurement_staff" | "delivery" | "warehouse";
 type StaffRow = {
@@ -195,6 +196,7 @@ const AdminStaff = () => {
 
   return (
     <AdminShell>
+      <PeopleTabs />
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Staff Management</h1>
