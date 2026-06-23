@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -176,6 +176,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isOfficeStaff },
       { to: "/admin/inventory/reorder", label: "Reorder Report", icon: AlertTriangle, show: isOfficeStaff },
       { to: "/admin/inventory/ledger", label: "Stock Ledger", icon: ClipboardList, show: isOfficeStaff },
+      { to: "/admin/inventory/receiving", label: "Inbound Receiving", icon: PackagePlus, show: isOfficeStaff },
+      { to: "/admin/inventory/stock-take", label: "Stock-take", icon: ClipboardCheck, show: isOfficeStaff },
+      { to: "/admin/inventory/transfers", label: "Transfers", icon: ArrowRightLeft, show: isOfficeStaff },
     ]),
   };
   const logistics: GroupItem = {
