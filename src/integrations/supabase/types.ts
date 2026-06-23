@@ -787,9 +787,12 @@ export type Database = {
           body: string | null
           created_at: string
           id: string
-          quotation_id: string
+          quotation_id: string | null
           read_at: string | null
           read_by: string | null
+          recipients: string[]
+          source_id: string | null
+          source_type: string
           stage: number
           target_role: Database["public"]["Enums"]["app_role"]
           title: string
@@ -798,9 +801,12 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
-          quotation_id: string
+          quotation_id?: string | null
           read_at?: string | null
           read_by?: string | null
+          recipients?: string[]
+          source_id?: string | null
+          source_type?: string
           stage: number
           target_role: Database["public"]["Enums"]["app_role"]
           title: string
@@ -809,9 +815,12 @@ export type Database = {
           body?: string | null
           created_at?: string
           id?: string
-          quotation_id?: string
+          quotation_id?: string | null
           read_at?: string | null
           read_by?: string | null
+          recipients?: string[]
+          source_id?: string | null
+          source_type?: string
           stage?: number
           target_role?: Database["public"]["Enums"]["app_role"]
           title?: string
@@ -2263,6 +2272,7 @@ export type Database = {
         Returns: undefined
       }
       reject_quotation: { Args: { _quotation_id: string }; Returns: undefined }
+      resolve_role_recipients: { Args: { p_role: string }; Returns: string[] }
       set_backlog_pin: { Args: { _pin: string }; Returns: undefined }
       set_catalog_pin: { Args: { _pin: string }; Returns: undefined }
       set_quotation_stage: {
