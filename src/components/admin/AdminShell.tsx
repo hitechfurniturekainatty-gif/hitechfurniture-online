@@ -180,7 +180,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     children: filt([
       { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff || isDelivery || isWarehouse },
       { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff || isDelivery || isWarehouse },
-      { to: "/admin/trips", label: "Trips", icon: Truck, show: isOfficeStaff || isDelivery },
       { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
       { to: "/admin/vehicles", label: "Vehicles", icon: Truck, show: isAdmin },
     ]),
