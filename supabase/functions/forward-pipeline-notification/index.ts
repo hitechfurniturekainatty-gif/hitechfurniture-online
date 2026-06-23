@@ -43,10 +43,12 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // Load notification + quotation context for enrichment.
+  // Load notification (all columns) for enrichment.
   const { data: n, error: nErr } = await admin
     .from("pipeline_notifications")
-    .select("id, quotation_id, stage, target_role, title, body, created_at")
+    .select(
+      "id, quotation_id, source_type, source_id, stage, target_role, recipients, title, body, created_at",
+    )
     .eq("id", notificationId)
     .maybeSingle();
   if (nErr || !n) {
@@ -56,13 +58,32 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { data: q } = await admin
-    .from("quotations")
-    .select(
-      "id, quotation_id, party_name, party_place, party_phone, party_address, total, advance_amount, status, pipeline_stage, salesperson_name, expected_delivery_date",
-    )
-    .eq("id", n.quotation_id)
-    .maybeSingle();
+  const { data: q } = n.quotation_id
+    ? await admin
+        .from("quotations")
+        .select(
+          "id, quotation_id, party_name, party_place, party_phone, party_address, total, advance_amount, status, pipeline_stage, salesperson_name, expected_delivery_date",
+        )
+        .eq("id", n.quotation_id)
+        .maybeSingle()
+    : { data: null };
+
+  // Load the source row for non-quotation modules so n8n gets full context.
+  let source: Record<string, unknown> | null = null;
+  if (n.source_id && n.source_type && n.source_type !== "quotation") {
+    const sourceTable: Record<string, string> = {
+      complaint: "customer_complaints",
+      service: "customer_services",
+      job: "job_work_orders",
+      delivery: "trips",
+      lead: "quotations",
+    };
+    const table = sourceTable[n.source_type];
+    if (table) {
+      const { data: s } = await admin.from(table).select("*").eq("id", n.source_id).maybeSingle();
+      source = s ?? null;
+    }
+  }
 
   const total = Number(q?.total ?? 0);
   const advance = Number(q?.advance_amount ?? 0);
@@ -74,12 +95,17 @@ Deno.serve(async (req) => {
   const payload = {
     notification: {
       id: n.id,
+      source_type: n.source_type,
+      source_id: n.source_id,
+      quotation_id: n.quotation_id,
       stage: n.stage,
       target_role: n.target_role,
+      recipients: n.recipients ?? [],
       title: n.title,
       body: n.body,
       created_at: n.created_at,
     },
+    source,
     quotation: q
       ? {
           id: q.id,
