@@ -53,8 +53,9 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 16, left: 22, right: 22, textAlign: "center", fontSize: 9, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 6 },
 });
 
-// Sum = 551 (matches usable width). Bigger Description / Measurement / Catalog so text reads easily.
-const cols = { sl: 22, desc: 120, img: 70, meas: 95, cat: 100, qty: 30, price: 54, amt: 60 };
+// Sum = 549 (usable 551pt minus table borderWidth 0.75 × 2 sides = 1.5pt → floor to 549).
+// desc trimmed 120→118 to absorb the 2pt; all other cols unchanged.
+const cols = { sl: 22, desc: 118, img: 70, meas: 95, cat: 100, qty: 30, price: 54, amt: 60 };
 
 export type QuotationItemPdf = {
   description: string;
@@ -154,7 +155,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       </View>
 
       <View style={styles.table}>
-        <View style={styles.tHead}>
+        <View style={styles.tHead} fixed>
           <Text style={[styles.th, { width: cols.sl }]}>Sl</Text>
           <Text style={[styles.th, { width: cols.desc }]}>Description</Text>
           <Text style={[styles.th, { width: cols.img }]}>Image</Text>
