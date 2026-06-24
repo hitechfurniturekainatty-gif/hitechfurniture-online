@@ -244,19 +244,25 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           </View>
         )}
 
-        {/* Advance — only if > 0 */}
-        {(q.advance_amount ?? 0) > 0 && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Less: Advance Received (INR)</Text>
-            <Text style={styles.totalValue}>- {fmtNum(q.advance_amount)}</Text>
-          </View>
-        )}
-
-        {/* Grand Total / Balance Due — always shown */}
+        {/* Grand Total — always shown */}
         <View style={styles.grandRow}>
-          <Text style={styles.grandLabel}>{(q.advance_amount ?? 0) > 0 ? "BALANCE DUE" : "GRAND TOTAL"}</Text>
-          <Text style={styles.grandValue}>{formatINR((q.advance_amount ?? 0) > 0 ? (q.balance_due ?? q.total) : q.total)}</Text>
+          <Text style={styles.grandLabel}>GRAND TOTAL</Text>
+          <Text style={styles.grandValue}>{formatINR(q.total)}</Text>
         </View>
+
+        {/* Advance + Balance Due — only if advance > 0 */}
+        {(q.advance_amount ?? 0) > 0 && (
+          <>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Less: Advance Received (INR)</Text>
+              <Text style={styles.totalValue}>- {fmtNum(q.advance_amount)}</Text>
+            </View>
+            <View style={[styles.grandRow, { backgroundColor: "#1F6B76" }]}>
+              <Text style={styles.grandLabel}>BALANCE DUE</Text>
+              <Text style={styles.grandValue}>{formatINR(q.balance_due ?? q.total)}</Text>
+            </View>
+          </>
+        )}
       </View>
       </View>
       )}
