@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode, EyeOff } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -135,6 +135,7 @@ const AdminProducts = () => {
   const [priceEffectiveDate, setPriceEffectiveDate] = useState<string>("");
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [showDraftsOnly, setShowDraftsOnly] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
     return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "list";
@@ -206,15 +207,19 @@ const AdminProducts = () => {
     if (showLowStockOnly) {
       list = list.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5));
     }
+    if (showDraftsOnly) {
+      list = list.filter((p) => !p.is_published);
+    }
     if (!search) return list;
     const q = search.toLowerCase();
     return list.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
-  }, [products, search, showLowStockOnly]);
+  }, [products, search, showLowStockOnly, showDraftsOnly]);
 
   const lowStockCount = useMemo(
     () => products.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5)).length,
     [products],
   );
+  const draftCount = useMemo(() => products.filter((p) => !p.is_published).length, [products]);
   const selectedProducts = useMemo(
     () => products.filter((p) => selected.has(p.id)),
     [products, selected],
@@ -417,7 +422,11 @@ const AdminProducts = () => {
       stock_quantity: Number(form.stock_quantity || 0),
       reorder_level: Number(form.reorder_level || 5),
       is_featured: form.is_featured,
-      is_published: form.is_published,
+      // Auto-flip draft → published when all 4 required fields are now present
+      is_published: (editing && !editing.is_published &&
+        form.images.length > 0 && !!mainCatId && !!form.product_name.trim() && (form.mrp ? Number(form.mrp) : 0) > 0)
+        ? true
+        : form.is_published,
       main_category_id: mainCatId,
       sub_category_id: form.sub_category_id || null,
       location_id: form.location_id || null,
@@ -854,6 +863,16 @@ const AdminProducts = () => {
         >
           <AlertTriangle className="h-3.5 w-3.5" />
           Low stock {lowStockCount > 0 && `(${lowStockCount})`}
+        </Button>
+        <Button
+          type="button"
+          variant={showDraftsOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowDraftsOnly((v) => !v)}
+          className="gap-1.5"
+        >
+          <EyeOff className="h-3.5 w-3.5" />
+          Drafts {draftCount > 0 && `(${draftCount})`}
         </Button>
         <div className="ml-auto inline-flex rounded-md border bg-background p-0.5">
           <Button
