@@ -625,15 +625,6 @@ const AdminQuotationPreview = () => {
                       </div>
                     )}
 
-                    {it.sketch_url && (
-                      <div className="rounded-lg border border-slate-200 bg-white p-2">
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Sketch</p>
-                        <button type="button" onClick={() => setZoomImage(it.sketch_url!)} className="block w-full overflow-hidden rounded border border-slate-200 bg-white">
-                          <img src={it.sketch_url} alt="Sketch" loading="lazy" className="h-auto w-full object-contain" />
-                        </button>
-                      </div>
-                    )}
-
                     {(it.catalog_text || it.catalog_image_url) && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                         <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -645,6 +636,15 @@ const AdminQuotationPreview = () => {
                             <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-auto w-full object-contain" />
                           </button>
                         )}
+                      </div>
+                    )}
+
+                    {it.sketch_url && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-2">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Sketch</p>
+                        <button type="button" onClick={() => setZoomImage(it.sketch_url!)} className="block w-full overflow-hidden rounded border border-slate-200 bg-white">
+                          <img src={it.sketch_url} alt="Sketch" loading="lazy" className="h-auto w-full object-contain" />
+                        </button>
                       </div>
                     )}
 
@@ -683,8 +683,8 @@ const AdminQuotationPreview = () => {
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="w-10 px-3 py-2 text-left">Sl No</th>
-                  <th className="px-3 py-2 text-left">Image</th>
                   <th className="px-3 py-2 text-left">Description</th>
+                  <th className="px-3 py-2 text-left">Image</th>
                   <th className="px-3 py-2 text-left">Measurement</th>
                   <th className="w-20 px-3 py-2 text-right">Qty</th>
                   {hasAnyPrice && canSeePrices && <th className="w-28 px-3 py-2 text-right">Price (INR)</th>}
@@ -697,15 +697,6 @@ const AdminQuotationPreview = () => {
                   return (
                     <tr key={it.id} className="border-t border-slate-200 align-top odd:bg-white even:bg-slate-50/60">
                       <td className="px-3 py-3 text-left text-slate-500 tabular-nums">{idx + 1}</td>
-                      <td className="px-3 py-3">
-                        {it.item_image_url ? (
-                          <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                            <img src={firstUrl(it.item_image_url) ?? ""} alt="" loading="lazy" className="h-full w-full object-contain" />
-                          </div>
-                        ) : (
-                          <div className="h-16 w-16 rounded border border-dashed border-slate-200 bg-slate-50" />
-                        )}
-                      </td>
                       <td className="px-3 py-3">
                         <p className="font-medium text-slate-900">{it.description}</p>
                         {it.catalog_text && <p className="mt-0.5 text-xs text-slate-500">Ref: {it.catalog_text}</p>}
@@ -722,6 +713,15 @@ const AdminQuotationPreview = () => {
                               </div>
                             )}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {it.item_image_url ? (
+                          <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                            <img src={firstUrl(it.item_image_url) ?? ""} alt="" loading="lazy" className="h-full w-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="h-16 w-16 rounded border border-dashed border-slate-200 bg-slate-50" />
                         )}
                       </td>
                       <td className="px-3 py-3 text-slate-700">{it.measurement || "—"}</td>

@@ -2015,55 +2015,40 @@ const AdminQuotationEditor = () => {
               )}
 
               <div className="space-y-4 p-3 sm:p-4">
-                {/* SECTION 1: Catalog code & item photo (description/qty/rate are in the compact row) */}
+                {/* SECTION 1: Model photo */}
                 <section className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catalog &amp; Photo</h3>
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Model Photo</h3>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Catalog name / code</Label>
-                      <Input
-                        className="h-11"
-                        value={it.catalog_text ?? ""}
-                        onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
-                        placeholder="e.g. SKU-1234"
-                        autoCapitalize="characters"
-                        autoComplete="off"
-                        spellCheck={false}
-                        style={{ textTransform: "uppercase" }}
-                      />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs font-medium">Item photo</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
+                        onClick={() => openPickerForItem(it.id)}
+                      >
+                        <Search className="mr-1 h-3 w-3" />
+                        Pick from catalog
+                      </Button>
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label className="text-xs font-medium">Item photo</Label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
-                          onClick={() => openPickerForItem(it.id)}
-                        >
-                          <Search className="mr-1 h-3 w-3" />
-                          Pick from catalog
-                        </Button>
-                      </div>
-                      <MultiImagePicker
-                        value={it.item_image_url}
-                        onChange={(v) => updateItem(it.id, { item_image_url: v })}
-                        folder="items"
-                        label="Item photos (multiple allowed)"
-                      />
-                    </div>
+                    <MultiImagePicker
+                      value={it.item_image_url}
+                      onChange={(v) => updateItem(it.id, { item_image_url: v })}
+                      folder="items"
+                      label="Item photos (multiple allowed)"
+                    />
                   </div>
                 </section>
 
-                {/* SECTION 2: Measurement & Sketches */}
+                {/* SECTION 2: Measurement */}
                 <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Measurement &amp; Site</h3>
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Measurement</h3>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Dimensions</Label>
@@ -2074,31 +2059,50 @@ const AdminQuotationEditor = () => {
                       placeholder="W x H x D"
                     />
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
-                      <MultiImagePicker
-                        value={it.measurement_image_url}
-                        onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
-                        folder="measurements"
-                        label="Measurement photos"
-                      />
-                    </CollapsibleField>
-                    <CollapsibleField label="Site photos" hasValue={!!it.site_photos}>
-                      <MultiImagePicker
-                        value={it.site_photos}
-                        onChange={(v) => updateItem(it.id, { site_photos: v })}
-                        folder="site-photos"
-                        label="Site photos (location context)"
-                      />
-                    </CollapsibleField>
-                    <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
-                      <MultiImagePicker
-                        value={it.catalog_image_url}
-                        onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
-                        folder="catalog"
-                        label="Catalog / cloth photos"
-                      />
-                    </CollapsibleField>
+                  <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
+                    <MultiImagePicker
+                      value={it.measurement_image_url}
+                      onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
+                      folder="measurements"
+                      label="Measurement photos"
+                    />
+                  </CollapsibleField>
+                </section>
+
+                {/* SECTION 3: Cloth & Catalog */}
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cloth &amp; Catalog</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Catalog name / code</Label>
+                    <Input
+                      className="h-11"
+                      value={it.catalog_text ?? ""}
+                      onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
+                      placeholder="e.g. SKU-1234"
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      spellCheck={false}
+                      style={{ textTransform: "uppercase" }}
+                    />
+                  </div>
+                  <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
+                    <MultiImagePicker
+                      value={it.catalog_image_url}
+                      onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
+                      folder="catalog"
+                      label="Catalog / cloth photos"
+                    />
+                  </CollapsibleField>
+                </section>
+
+                {/* SECTION 4: Sketch */}
+                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sketch</h3>
                   </div>
                   <SketchField
                     value={it.sketch_url}
