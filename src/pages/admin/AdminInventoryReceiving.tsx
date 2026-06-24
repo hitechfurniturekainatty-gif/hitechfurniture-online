@@ -166,10 +166,13 @@ const AdminInventoryReceiving = () => {
 
       toast({ title: `Restocked ${n} units`, description: resolved.product_name });
     } else {
-      // New product — create, then insert stock movement so trigger sets stock_quantity
-      const { data: newProd, error: insertErr } = await supabase
+      // New product — generate ID client-side so we don't need a SELECT-back
+      // (avoiding potential RLS read failures on draft rows post-insert).
+      const newProductId = crypto.randomUUID();
+      const { error: insertErr } = await supabase
         .from("products")
         .insert({
+          id: newProductId,
           product_name: name.trim(),
           product_code: `Auto-${Date.now().toString(36)}`,
           description: description || null,
@@ -179,30 +182,33 @@ const AdminInventoryReceiving = () => {
           stock_quantity: 0,
           is_published: canPublish,
           stock_status: n > 0 ? "in_stock" : "out_of_stock",
-        } as any)
-        .select("id")
-        .single();
+        } as any);
 
-      if (insertErr || !newProd) {
-        toast({ title: "Failed to create product", description: insertErr?.message, variant: "destructive" });
+      if (insertErr) {
+        toast({ title: "Failed to create product", description: insertErr.message, variant: "destructive" });
         setSubmitting(false);
         return;
       }
 
       // Stock movement triggers the stock_quantity bump
-      await supabase.from("stock_movements").insert({
-        product_id: newProd.id,
+      const { error: smErr2 } = await supabase.from("stock_movements").insert({
+        product_id: newProductId,
         change_qty: n,
         reason: "inbound_receive",
         note: supplierNote || null,
         resulting_stock: 0,
       } as any);
+      if (smErr2) {
+        toast({ title: "Stock movement failed", description: smErr2.message, variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
 
       // Photos
       if (images.length > 0) {
         await supabase.from("product_images").insert(
           images.map((img, i) => ({
-            product_id: newProd.id,
+            product_id: newProductId,
             image_url: img.url,
             display_order: i + 1,
           })),
