@@ -6,7 +6,6 @@ import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Copy, Check, QrCode, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { HeroSlider } from "@/components/HeroSlider";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 
@@ -94,8 +93,9 @@ const Index = () => {
   }, []);
 
   const heroIntro = sections.find((s) => s.section_key === "hero_intro");
-  // All sections except hero_intro render below the hero. Honour admin display_order.
-  const belowSections = sections.filter((s) => s.section_key !== "hero_intro");
+  const brandStory = sections.find((s) => s.section_key === "brand_story");
+  // All sections except hero_intro and brand_story render below the hero. Honour admin display_order.
+  const belowSections = sections.filter((s) => s.section_key !== "hero_intro" && s.section_key !== "brand_story");
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,79 +124,21 @@ const Index = () => {
 
 
 
-      {/* Dynamic hero slider. The legacy split-hero fallback was removed to
-          eliminate the flash-of-old-UI on refresh. */}
-      {false && slides.length > 0 && (
-        heroIntro && (heroIntro.eyebrow || heroIntro.title || heroIntro.body) ? (
-          // Old-model split layout: slider on the left, intro frame on the right (desktop).
-          // On mobile they stack — slider first, then intro.
-          <section className="container-page py-8 md:py-12">
-            <div className="grid items-stretch gap-6 md:grid-cols-2 lg:gap-8">
-              <div className="overflow-hidden rounded-3xl shadow-product">
-                <HeroSlider slides={slides} />
-              </div>
-              <div className="flex animate-fade-up flex-col justify-center rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-10">
-                {heroIntro.eyebrow && (
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-                    {heroIntro.eyebrow}
-                  </p>
-                )}
-                {heroIntro.title && (
-                  <h1 className="font-display text-3xl leading-[1.1] text-foreground md:text-4xl lg:text-5xl">
-                    {heroIntro.title}
-                  </h1>
-                )}
-                {heroIntro.body && (
-                  <p className="mt-4 max-w-xl whitespace-pre-line text-base text-muted-foreground">
-                    {heroIntro.body}
-                  </p>
-                )}
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Button asChild size="lg" className="group">
-                    <Link to={heroIntro.cta_link || "/catalog"}>
-                      {heroIntro.cta_label || "Explore catalog"}
-                      <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" variant="outline">
-                    <a href={`https://wa.me/${settings?.whatsapp_number || "919895134482"}`} target="_blank" rel="noopener">
-                      Chat on WhatsApp
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <HeroSlider slides={slides} />
-        )
-      )}
-
-      {/* heroIntro is now rendered inline alongside the slider (above), so no
-          separate intro section is needed when slides exist. */}
-
-      {/* Brand story — static "About us" block shown on every visit. */}
+      {/* Brand story — shown on every visit. Text editable via admin homepage sections (section_key='brand_story'). */}
       <section className="container-page py-12 md:py-16">
         <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:p-12">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-            14+ Years of Craftsmanship
+            {brandStory?.eyebrow ?? "14+ Years of Craftsmanship"}
           </p>
           <h2 className="font-display text-3xl text-foreground md:text-4xl">
-            Welcome to <span className="text-primary">Hitech Furniture &amp; Interiors</span>
+            {brandStory?.title ? (
+              brandStory.title
+            ) : (
+              <>Welcome to <span className="text-primary">Hitech Furniture &amp; Interiors</span></>
+            )}
           </h2>
-          <p className="mx-auto mt-2 text-sm font-medium text-muted-foreground md:text-base">
-            Kalpetta, Wayanad · Retail &amp; Wholesale
-          </p>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            We are a trusted retail and wholesale furniture shop dedicated to providing high-quality
-            solutions for homes and businesses. Our specialty is{" "}
-            <span className="font-semibold text-foreground">complete customization</span> — we manufacture
-            all types of custom furniture tailored exactly to your space, style, and requirements.
-          </p>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Whether you are looking for a single statement piece, exploring functional designs with
-            natural wood textures, or placing a bulk wholesale order, our expert interior design team
-            is here to bring your vision to life.
+          <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-base leading-relaxed text-muted-foreground md:text-lg">
+            {brandStory?.body ?? `We are a trusted retail and wholesale furniture shop dedicated to providing high-quality solutions for homes and businesses. Our specialty is complete customization — we manufacture all types of custom furniture tailored exactly to your space, style, and requirements.\n\nWhether you are looking for a single statement piece, exploring functional designs with natural wood textures, or placing a bulk wholesale order, our expert interior design team is here to bring your vision to life.`}
           </p>
         </div>
       </section>

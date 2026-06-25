@@ -52,6 +52,7 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 export const LuxuryScrollHero = () => {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -72,8 +73,11 @@ export const LuxuryScrollHero = () => {
       const rect = el.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const total = Math.max(el.offsetHeight - viewportHeight, 1);
-      const scrolled = clamp(-rect.top, 0, total);
-      setProgress(scrolled / total);
+      const next = clamp(-rect.top / total);
+      if (Math.abs(next - progressRef.current) > 0.005) {
+        progressRef.current = next;
+        setProgress(next);
+      }
     };
 
     const onScroll = () => {
@@ -174,14 +178,8 @@ export const LuxuryScrollHero = () => {
               className="mt-4 max-w-4xl font-display text-4xl leading-[1.02] text-background drop-shadow md:text-6xl lg:text-7xl"
               style={{ opacity: introFade }}
             >
-              Hitech Furniture &amp; Interiors
-            </h1>
-            <p
-              className="mt-4 max-w-2xl text-base text-background/90 md:text-lg lg:text-xl"
-              style={{ opacity: Math.max(introFade * 0.95, 0.2) }}
-            >
               Crafting Luxury Living Spaces
-            </p>
+            </h1>
           </div>
 
           <div className="flex items-end justify-between gap-6">

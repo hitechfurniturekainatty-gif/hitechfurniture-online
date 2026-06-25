@@ -436,7 +436,7 @@ const Catalog = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {mainCats.map((c) => (
+              {mainCats.filter((c) => (productCountByCat[c.id] ?? 0) > 0).map((c) => (
                 <button
                   key={c.id}
                   type="button"
