@@ -580,15 +580,18 @@ const StepTwo = (p: StepTwoProps) => {
       )}
 
       {!isComplaint && !isService && (
-        <Field label="Message / requirement">
-          <Textarea
-            value={p.message}
-            onChange={(e) => p.setMessage(e.target.value)}
-            placeholder="Tell us a bit about what you're looking for"
-            rows={4}
-            maxLength={1000}
-          />
-        </Field>
+        <>
+          <Field label="Message / requirement">
+            <Textarea
+              value={p.message}
+              onChange={(e) => p.setMessage(e.target.value)}
+              placeholder="Tell us a bit about what you're looking for"
+              rows={4}
+              maxLength={1000}
+            />
+          </Field>
+          <PhotoUpload photo={p.photo} onChange={p.onPhotoChange} />
+        </>
       )}
     </div>
   );
@@ -621,6 +624,7 @@ const StepThree = (p: {
     if (p.workNeeded) rows.push(["Work needed", p.workNeeded]);
   } else if (p.message) {
     rows.push(["Message", p.message]);
+    rows.push(["Photo attached", p.hasPhoto ? "Yes" : "No"]);
   }
 
   return (

@@ -128,19 +128,43 @@ Deno.serve(async (req) => {
     };
     const notes = `Website enquiry — ${labelMap[type]}\n\n${message || "(no message)"}`;
 
-    const { error: qErr } = await supabase.from("quotations").insert({
-      quotation_id: qid,
-      party_name: name,
-      party_place: place,
-      party_phone: phone,
-      notes,
-      salesperson_name: "Website Enquiry",
-      lead_type: "lead",
-      enquiry_type: type,
-      status: "drafted",
-      pipeline_stage: 1,
-    });
+    const { data: qRow, error: qErr } = await supabase
+      .from("quotations")
+      .insert({
+        quotation_id: qid,
+        party_name: name,
+        party_place: place,
+        party_phone: phone,
+        notes,
+        salesperson_name: "Website Enquiry",
+        lead_type: "lead",
+        enquiry_type: type,
+        status: "drafted",
+        pipeline_stage: 1,
+      })
+      .select("id")
+      .single();
     if (qErr) throw qErr;
+
+    // Capture customer's item description + reference photo item-wise,
+    // so staff see it as a proper line item, not buried in notes.
+    if (message || photoBase64) {
+      let itemImageUrl: string | null = null;
+      if (photoBase64) {
+        itemImageUrl = await uploadPhoto(supabase, photoBase64, photoName, "leads");
+      }
+      const { error: itemErr } = await supabase.from("quotation_items").insert({
+        quotation_id: qRow.id,
+        display_order: 1,
+        description: message || "(no description provided)",
+        item_image_url: itemImageUrl,
+        quantity: 1,
+        unit_price: 0,
+        amount: 0,
+        fulfillment_route: "custom",
+      });
+      if (itemErr) console.error("quotation_items insert failed", itemErr);
+    }
 
     return ok({ ok: true, type, code: qid });
   } catch (e) {
@@ -168,6 +192,7 @@ async function uploadPhoto(
   supabase: ReturnType<typeof createClient>,
   dataUrl: string,
   hintName: string | null,
+  folder: string = "complaints",
 ): Promise<string | null> {
   try {
     const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
@@ -177,7 +202,7 @@ async function uploadPhoto(
     const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const ext = (mime.split("/")[1] || "jpg").split("+")[0];
     const safe = (hintName || "photo").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 40);
-    const path = `complaints/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}.${ext}`;
+    const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}.${ext}`;
     const { error } = await supabase.storage
       .from("quotation-images")
       .upload(path, bin, { contentType: mime, upsert: false });
