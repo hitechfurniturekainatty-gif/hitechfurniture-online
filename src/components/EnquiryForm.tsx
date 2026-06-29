@@ -118,6 +118,9 @@ export const EnquiryForm = () => {
   const [itemDescription, setItemDescription] = useState("");
   const [workNeeded, setWorkNeeded] = useState("");
 
+  // lead-only
+  const [suggestedAmount, setSuggestedAmount] = useState<string>("");
+
   // success metadata
   const [resultCode, setResultCode] = useState<string | null>(null);
 
@@ -133,6 +136,7 @@ export const EnquiryForm = () => {
     setPhoto(null);
     setItemDescription("");
     setWorkNeeded("");
+    setSuggestedAmount("");
     setResultCode(null);
   };
 
@@ -222,6 +226,7 @@ export const EnquiryForm = () => {
     if (!category || !validateStep2()) return;
     setStatus("submitting");
     try {
+      const parsedAmount = suggestedAmount.trim() ? parseFloat(suggestedAmount) : null;
       const { data, error } = await supabase.functions.invoke("create-enquiry", {
         body: {
           type: category,
@@ -234,6 +239,7 @@ export const EnquiryForm = () => {
           workNeeded: workNeeded.trim(),
           photoBase64: photo?.base64 ?? null,
           photoName: photo?.name ?? null,
+          suggestedAmount: (parsedAmount && !isNaN(parsedAmount)) ? parsedAmount : null,
         },
       });
       if (error) {
@@ -253,6 +259,29 @@ export const EnquiryForm = () => {
       const code = (data as { code?: string } | null)?.code ?? null;
       setResultCode(code);
       setStatus("success");
+
+      // Non-blocking n8n webhook — fires after success, never blocks or errors the user
+      try {
+        const cleanPhone = phone.trim().replace(/\D+/g, "");
+        fetch("https://n8n.hitechfurniture.online/webhook/enquiry-suggested-amount", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            customer_name: name.trim(),
+            language: "en",
+            items: [
+              {
+                description: message.trim() || itemDescription.trim() || "",
+                qty: 1,
+                suggested_amount: (parsedAmount && !isNaN(parsedAmount)) ? parsedAmount : null,
+              },
+            ],
+          }),
+        }).catch(() => {});
+      } catch {
+        // intentionally swallowed
+      }
     } catch (err) {
       console.error("[Enquiry] submit failed", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -339,6 +368,8 @@ export const EnquiryForm = () => {
                   setItemDescription={setItemDescription}
                   workNeeded={workNeeded}
                   setWorkNeeded={setWorkNeeded}
+                  suggestedAmount={suggestedAmount}
+                  setSuggestedAmount={setSuggestedAmount}
                 />
               )}
 
@@ -493,6 +524,7 @@ interface StepTwoProps {
   onPhotoChange: (f: File | null) => void;
   itemDescription: string; setItemDescription: (v: string) => void;
   workNeeded: string; setWorkNeeded: (v: string) => void;
+  suggestedAmount: string; setSuggestedAmount: (v: string) => void;
 }
 
 const StepTwo = (p: StepTwoProps) => {
@@ -588,6 +620,16 @@ const StepTwo = (p: StepTwoProps) => {
               placeholder="Tell us a bit about what you're looking for"
               rows={4}
               maxLength={1000}
+            />
+          </Field>
+          <Field label="Expected price (optional)">
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={p.suggestedAmount}
+              onChange={(e) => p.setSuggestedAmount(e.target.value)}
+              placeholder="e.g. 25000"
+              min={0}
             />
           </Field>
           <PhotoUpload photo={p.photo} onChange={p.onPhotoChange} />

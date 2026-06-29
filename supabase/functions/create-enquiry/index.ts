@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     const workNeeded = String(body.workNeeded || "").trim();
     const photoBase64: string | null = body.photoBase64 || null;
     const photoName: string | null = body.photoName || null;
+    const suggestedAmount: number | null = typeof body.suggestedAmount === "number" && !isNaN(body.suggestedAmount) ? body.suggestedAmount : null;
 
     if (!type || !name || !phone || !place) {
       return new Response(
@@ -153,14 +154,15 @@ Deno.serve(async (req) => {
       if (photoBase64) {
         itemImageUrl = await uploadPhoto(supabase, photoBase64, photoName, "leads");
       }
+      const unitPrice = suggestedAmount ?? 0;
       const { error: itemErr } = await supabase.from("quotation_items").insert({
         quotation_id: qRow.id,
         display_order: 1,
         description: message || "(no description provided)",
         item_image_url: itemImageUrl,
         quantity: 1,
-        unit_price: 0,
-        amount: 0,
+        unit_price: unitPrice,
+        amount: unitPrice,
         fulfillment_route: "custom",
       });
       if (itemErr) console.error("quotation_items insert failed", itemErr);
