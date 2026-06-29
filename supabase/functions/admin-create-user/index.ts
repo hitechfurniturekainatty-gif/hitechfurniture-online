@@ -51,9 +51,11 @@ Deno.serve(async (req) => {
     const { error: roleInsertErr } = await admin.from('user_roles').insert({ user_id: newUserId, role });
     if (roleInsertErr) return json({ error: roleInsertErr.message }, 200);
 
-    if (typeof whatsapp_number === 'string' && whatsapp_number.trim()) {
-      await admin.from('profiles').update({ whatsapp_number: whatsapp_number.trim() }).eq('user_id', newUserId);
-    }
+    // Upsert profile so whatsapp is saved even when no auto-create trigger exists
+    await admin.from('profiles').upsert(
+      { user_id: newUserId, whatsapp_number: (typeof whatsapp_number === 'string' && whatsapp_number.trim()) ? whatsapp_number.trim() : null },
+      { onConflict: 'user_id', ignoreDuplicates: false }
+    );
 
     return json({ ok: true, user_id: newUserId });
   } catch (e) {

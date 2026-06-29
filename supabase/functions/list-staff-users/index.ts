@@ -61,7 +61,9 @@ Deno.serve(async (req) => {
             ? 'measurement_staff'
             : userRoles.includes('delivery')
               ? 'delivery'
-              : null;
+              : userRoles.includes('warehouse')
+                ? 'warehouse'
+                : null;
       return {
         user_id: u.id,
         id: u.id,
