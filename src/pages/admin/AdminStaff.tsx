@@ -86,6 +86,9 @@ const AdminStaff = () => {
     ]);
     if (error) {
       toast({ title: "Failed to load staff", description: error.message, variant: "destructive" });
+    } else if ((data as any)?.error) {
+      toast({ title: "Staff list error", description: `${(data as any).error}${(data as any).detail ? ` — ${(data as any).detail}` : ""}`, variant: "destructive" });
+      setRows([]);
     } else {
       setRows((data?.users ?? []) as StaffRow[]);
     }
