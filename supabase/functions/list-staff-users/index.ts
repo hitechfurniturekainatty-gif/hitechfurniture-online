@@ -36,13 +36,13 @@ Deno.serve(async (req) => {
     const allowed = callerRoles.some((r) => r === 'admin' || r === 'staff' || r === 'measurement_staff' || r === 'delivery');
     if (!allowed) return json({ error: 'Forbidden', detail: 'No staff role assigned to your account.' }, 200);
 
-    const { data: list, error } = await admin.auth.admin.listUsers({ perPage: 200 });
-    if (error) return json({ error: error.message, stage: 'listUsers' }, 200);
-
-    const [{ data: roles }, { data: profiles }] = await Promise.all([
+    const [{ data: authUsers, error: listErr }, { data: roles }, { data: profiles }] = await Promise.all([
+      admin.rpc('get_all_auth_users'),
       admin.from('user_roles').select('user_id, role'),
       admin.from('profiles').select('user_id, whatsapp_number'),
     ]);
+    if (listErr) return json({ error: listErr.message, stage: 'listUsers', detail: JSON.stringify(listErr) }, 200);
+
     const rolesByUser: Record<string, string[]> = {};
     (roles || []).forEach((r: { user_id: string; role: string }) => {
       (rolesByUser[r.user_id] ||= []).push(r.role);
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     (profiles || []).forEach((p: { user_id: string; whatsapp_number: string | null }) => {
       waByUser[p.user_id] = p.whatsapp_number ?? null;
     });
-    const users = list.users.map((u) => {
+    const users = (authUsers || []).map((u: { id: string; email: string; created_at: string; last_sign_in_at: string; user_metadata: Record<string, unknown> | null }) => {
       const userRoles = rolesByUser[u.id] || [];
       const role = userRoles.includes('admin')
         ? 'admin'
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         user_id: u.id,
         id: u.id,
         email: u.email,
-        display_name: (u.user_metadata as Record<string, unknown>)?.display_name || u.email?.split('@')[0],
+        display_name: (u.user_metadata as Record<string, unknown> | null)?.display_name || u.email?.split('@')[0],
         whatsapp_number: waByUser[u.id] ?? null,
         created_at: u.created_at,
         last_sign_in_at: u.last_sign_in_at,
