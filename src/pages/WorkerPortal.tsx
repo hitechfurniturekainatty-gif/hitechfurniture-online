@@ -199,9 +199,9 @@ const WorkerPortal = () => {
       if (photoFile) {
         const compressed = await compressImage(photoFile);
         const path = `worker-updates/${dialogJob.id}/${Date.now()}-${photoFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
-        const { error: upErr } = await supabase.storage.from("quotation-images").upload(path, compressed);
+        const { error: upErr } = await supabase.storage.from("quotations").upload(path, compressed);
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("quotation-images").getPublicUrl(path);
+        const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
         photoUrl = pub.publicUrl;
       }
 

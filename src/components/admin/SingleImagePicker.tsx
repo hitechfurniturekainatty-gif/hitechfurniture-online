@@ -12,12 +12,12 @@ import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
 /**
  * Single image picker with Upload / Camera / URL tabs.
  * Used for quotation item photos and measurement-sketch photos.
- * Stores in the `quotation-images` bucket by default.
+ * Stores in the `quotations` bucket by default.
  */
 export const SingleImagePicker = ({
   value,
   onChange,
-  bucket = "quotation-images",
+  bucket = "quotations",
   folder = "items",
   label,
   compact = false,

@@ -82,10 +82,10 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
         const safe = f.name.replace(/[^a-zA-Z0-9.]/g, "_");
         const path = `quotation-notes/${quotationId}/${Date.now()}-${safe}`;
         const { error: upErr } = await supabase.storage
-          .from("quotation-images")
+          .from("quotations")
           .upload(path, toUpload, { contentType: isPdf ? "application/pdf" : (toUpload as any).type || "image/jpeg" });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("quotation-images").getPublicUrl(path);
+        const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
         const { error: insErr } = await supabase.from("quotation_attached_notes").insert({
           quotation_id: quotationId,
           file_url: pub.publicUrl,

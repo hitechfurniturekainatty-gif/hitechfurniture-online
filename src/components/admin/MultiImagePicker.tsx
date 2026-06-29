@@ -27,7 +27,7 @@ type MultiImagePickerProps = {
 };
 
 export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps>(function MultiImagePicker(
-  { value, onChange, bucket = "quotation-images", folder = "measurements", label },
+  { value, onChange, bucket = "quotations", folder = "measurements", label },
   ref,
 ) {
   const [urlInput, setUrlInput] = useState("");

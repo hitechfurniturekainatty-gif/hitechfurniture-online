@@ -24,7 +24,7 @@ import {
  * - Eraser tool (object selection + delete) for surgical cleanup.
  * - Undo / redo with JSON snapshot stack.
  * - Clear canvas.
- * - Export → flattens to PNG (2x DPR), uploads to `quotation-images/sketches`,
+ * - Export → flattens to PNG (2x DPR), uploads to `quotations/sketches`,
  *   returns the public URL via `onSave`.
  */
 
@@ -517,7 +517,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
       const compressed = await compressImage(file);
       const path = `sketches/${crypto.randomUUID()}.png`;
       const { error } = await supabase.storage
-        .from("quotation-images")
+        .from("quotations")
         .upload(path, compressed, {
           contentType: compressed.type || "image/png",
           upsert: false,
@@ -527,7 +527,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         toast({ title: "Sketch upload failed", description: error.message, variant: "destructive" });
         return;
       }
-      const { data } = supabase.storage.from("quotation-images").getPublicUrl(path);
+      const { data } = supabase.storage.from("quotations").getPublicUrl(path);
       onSave(data.publicUrl);
       toast({ title: "Sketch saved" });
       onOpenChange(false);

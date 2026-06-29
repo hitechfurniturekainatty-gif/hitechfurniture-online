@@ -337,7 +337,7 @@ const MultiInline = ({
         const ext = (compressed.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
         const path = `${folder}/${crypto.randomUUID()}.${ext}`;
         const { error } = await supabase.storage
-          .from("quotation-images")
+          .from("quotations")
           .upload(path, compressed, {
             upsert: false,
             contentType: compressed.type,
@@ -347,7 +347,7 @@ const MultiInline = ({
           toast({ title: "Upload failed", description: error.message, variant: "destructive" });
           return;
         }
-        const { data } = supabase.storage.from("quotation-images").getPublicUrl(path);
+        const { data } = supabase.storage.from("quotations").getPublicUrl(path);
         onChangeRef.current(joinUrls([...urlsRef.current, data.publicUrl]));
       } finally {
         URL.revokeObjectURL(previewUrl);

@@ -204,13 +204,13 @@ async function uploadPhoto(
     const safe = (hintName || "photo").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 40);
     const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}.${ext}`;
     const { error } = await supabase.storage
-      .from("quotation-images")
+      .from("quotations")
       .upload(path, bin, { contentType: mime, upsert: false });
     if (error) {
       console.error("complaint photo upload failed", error);
       return null;
     }
-    return supabase.storage.from("quotation-images").getPublicUrl(path).data.publicUrl;
+    return supabase.storage.from("quotations").getPublicUrl(path).data.publicUrl;
   } catch (e) {
     console.error("uploadPhoto error", e);
     return null;

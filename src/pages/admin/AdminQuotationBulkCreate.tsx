@@ -326,11 +326,11 @@ const AdminQuotationBulkCreate = () => {
         try {
           const compressed = await compressProductImage(r.image_file!);
           const path = `${q.id}/${uid()}-${compressed.name}`;
-          const { error: upErr } = await supabase.storage.from("quotation-images").upload(path, compressed, {
+          const { error: upErr } = await supabase.storage.from("quotations").upload(path, compressed, {
             contentType: compressed.type, upsert: false,
           });
           if (upErr) throw upErr;
-          const { data: pub } = supabase.storage.from("quotation-images").getPublicUrl(path);
+          const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
           urls[r.id] = pub.publicUrl;
         } catch (e) {
           console.warn("Image upload failed for", r.description, e);
