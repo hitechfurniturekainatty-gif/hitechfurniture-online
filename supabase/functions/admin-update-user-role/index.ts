@@ -77,7 +77,10 @@ Deno.serve(async (req) => {
       if (typeof email === 'string' && email.trim()) profilePatch.email = email.trim();
       if (typeof whatsapp_number === 'string') profilePatch.whatsapp_number = whatsapp_number.trim() || null;
       if (Object.keys(profilePatch).length) {
-        await admin.from('profiles').update(profilePatch).eq('user_id', user_id);
+        await admin.from('profiles').upsert(
+          { user_id, ...profilePatch },
+          { onConflict: 'user_id', ignoreDuplicates: false }
+        );
       }
       return json({ ok: true });
     }
