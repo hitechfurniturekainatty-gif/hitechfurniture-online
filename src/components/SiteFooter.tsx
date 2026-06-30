@@ -155,6 +155,9 @@ export const SiteFooter = () => {
           <Link to="/guide" className="inline-flex items-center gap-1 hover:text-primary">
             <BookOpen className="h-3.5 w-3.5" /> User Guide
           </Link>
+          <Link to="/privacy-policy" className="inline-flex items-center gap-1 hover:text-primary">
+            Privacy Policy
+          </Link>
           <span className="italic">Make your space extraordinary.</span>
         </div>
       </div>
