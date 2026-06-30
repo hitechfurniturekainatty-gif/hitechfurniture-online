@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -155,6 +155,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
       { to: "/admin/enquiries", label: "Enquiries Inbox", icon: Inbox, show: isOfficeStaff },
+      { to: "/admin/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, show: isOfficeStaff },
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
       { to: "/admin/quotations?status=stage1&lead=consultation", label: "Client Hub Leads", icon: Activity, show: isOfficeStaff },
       { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff || isWorker },
