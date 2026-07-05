@@ -71,11 +71,9 @@ const Catalog = () => {
     Promise.all([
       supabase.from("main_categories").select("id, name, slug, image_url").order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name, slug, image_url").order("display_order"),
-      supabase
-        .from("products")
-        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
-        .eq("is_published", true)
-        .is("deleted_at", null)
+      (supabase as any)
+        .from("products_safe_search")
+        .select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)")
         .order("created_at", { ascending: false }),
       (supabase as any)
         .from("product_bundles")

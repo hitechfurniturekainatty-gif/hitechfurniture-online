@@ -225,9 +225,16 @@ const AdminProductBulkCreate = () => {
       let created = 0;
       for (const r of rows) {
         const matched = cats.find((c) => norm(c.name) === norm(r.category));
+        // Duplicate detection: skip if product_code already exists
+        const code = r.product_code?.trim() || `Auto-${Date.now().toString(36)}-${uid()}`;
+        if (r.product_code?.trim()) {
+          const { data: existing } = await supabase.from("products").select("id").eq("product_code", code).maybeSingle();
+          if (existing) { console.warn("Skipping duplicate product_code:", code); continue; }
+        }
+        const { data: { user } } = await supabase.auth.getUser();
         const payload: any = {
           product_name: titleCaseTrim(r.product_name),
-          product_code: r.product_code?.trim() || `Auto-${Date.now().toString(36)}-${uid()}`,
+          product_code: code,
           description: r.description || null,
           mrp: r.mrp || 0,
           offer_price: r.offer_price ?? null,
@@ -236,7 +243,10 @@ const AdminProductBulkCreate = () => {
           dimensions: r.dimensions || null,
           stock_quantity: r.stock_quantity || 0,
           stock_status: (r.stock_quantity || 0) > 0 ? "in_stock" : "out_of_stock",
-          is_published: true,
+          is_published: false,
+          review_status: "pending_supervision",
+          creation_method: "direct_upload",
+          submitted_by: user?.id ?? null,
           main_category_id: matched?.id ?? fallbackCat,
         };
         const { data: p, error: pErr } = await supabase.from("products").insert(payload).select("id").single();
@@ -254,8 +264,8 @@ const AdminProductBulkCreate = () => {
         }
         created++;
       }
-      toast({ title: `Created ${created} products` });
-      navigate("/admin/products");
+      toast({ title: `Uploaded ${created} products — pending supervisor approval` });
+      navigate("/admin/products/approval");
     } catch (e: any) { toast({ title: "Save failed", description: e?.message, variant: "destructive" }); }
     finally { setSaving(false); }
   };

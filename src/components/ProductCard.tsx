@@ -20,6 +20,9 @@ export type ProductCardData = {
   id: string;
   product_name: string;
   product_code: string;
+  primary_image_url?: string | null;
+  discount_percent?: number | null;
+  availability_status?: string | null;
   mrp: number;
   offer_price: number | null;
   available_colors: string[] | null;
@@ -43,8 +46,10 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
     () =>
       product.product_images
         ?.slice()
-        .sort((a, b) => a.display_order - b.display_order)[0]?.image_url,
-    [product.product_images],
+        .sort((a, b) => a.display_order - b.display_order)[0]?.image_url
+      ?? product.primary_image_url
+      ?? undefined,
+    [product.product_images, product.primary_image_url],
   );
   // Pick the lowest display_order image without mutating the source array
   // and request a small WebP-rendered variant from Supabase Storage so mobile

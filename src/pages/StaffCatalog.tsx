@@ -52,7 +52,7 @@ const floorCompare = (a: string, b: string): number => {
   return (a || "").localeCompare(b || "");
 };
 
-type Location = { id: string; building: string; floor: string; section: string | null; is_active: boolean };
+type Location = { id: string; building: string; floor: string; section: string | null; part: string | null; is_active: boolean };
 type MainCat = { id: string; name: string };
 type SubCat = { id: string; main_category_id: string; name: string };
 type Product = {
@@ -62,15 +62,20 @@ type Product = {
   description: string | null;
   mrp: number;
   offer_price: number | null;
+  cost_price: number | null;
   material: string | null;
   dimensions: string | null;
   available_colors: string[] | null;
   stock_quantity: number;
+  reorder_level: number | null;
   stock_status: "in_stock" | "out_of_stock";
   location_id: string | null;
   floor_display_order: number;
   main_category_id: string;
   sub_category_id: string | null;
+  review_status: string | null;
+  creation_method: string | null;
+  primary_image_url: string | null;
   product_images: { image_url: string; display_order: number }[];
   product_variants: {
     id: string;
@@ -153,6 +158,8 @@ const StaffCatalog = () => {
   const [mainCatId, setMainCatId] = useState<string>("__all");
   const [subCatId, setSubCatId] = useState<string>("__all");
   const [stockFilter, setStockFilter] = useState<"available" | "out" | "all">("available");
+  const [reviewFilter, setReviewFilter] = useState<string>("__all");
+  const [methodFilter, setMethodFilter] = useState<string>("__all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -166,7 +173,7 @@ const StaffCatalog = () => {
       supabase.from("product_locations").select("*").eq("is_active", true).order("display_order"),
       supabase
         .from("products")
-        .select("id, product_name, product_code, description, mrp, offer_price, material, dimensions, available_colors, stock_quantity, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order, product_variant_stock(id, location_id, quantity, floor_display_order))")
+        .select("id, product_name, product_code, description, mrp, offer_price, cost_price, material, dimensions, available_colors, stock_quantity, reorder_level, stock_status, location_id, floor_display_order, main_category_id, sub_category_id, review_status, creation_method, primary_image_url, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order, location_id, floor_display_order, product_variant_stock(id, location_id, quantity, floor_display_order))")
         .is("deleted_at", null),
       supabase.from("main_categories").select("id, name").is("deleted_at", null).order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name").is("deleted_at", null).order("display_order"),
@@ -281,6 +288,8 @@ const StaffCatalog = () => {
     const matchesCategory = (p: Product) => {
       if (mainCatId !== "__all" && p.main_category_id !== mainCatId) return false;
       if (subCatId !== "__all" && p.sub_category_id !== subCatId) return false;
+      if (reviewFilter !== "__all" && p.review_status !== reviewFilter) return false;
+      if (methodFilter !== "__all" && p.creation_method !== methodFilter) return false;
       if (q && !p.product_name.toLowerCase().includes(q) && !p.product_code.toLowerCase().includes(q)) return false;
       return true;
     };
@@ -393,7 +402,7 @@ const StaffCatalog = () => {
       if (a.floor_display_order !== b.floor_display_order) return a.floor_display_order - b.floor_display_order;
       return a.product.product_name.localeCompare(b.product.product_name);
     });
-  }, [products, locations, mainCats, subCats, building, floor, locationId, mainCatId, subCatId, stockFilter, search]);
+  }, [products, locations, mainCats, subCats, building, floor, locationId, mainCatId, subCatId, stockFilter, reviewFilter, methodFilter, search]);
 
   const reloadProducts = async () => {
     const { data } = await supabase
@@ -671,6 +680,30 @@ const StaffCatalog = () => {
               </Select>
             </div>
             <div className="space-y-1.5">
+              <Label className="text-xs">Review status</Label>
+              <Select value={reviewFilter} onValueChange={setReviewFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">All statuses</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="pending_supervision">Pending approval</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Creation method</Label>
+              <Select value={methodFilter} onValueChange={setMethodFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">All methods</SelectItem>
+                  <SelectItem value="direct_creation">Direct creation</SelectItem>
+                  <SelectItem value="direct_upload">Bulk upload</SelectItem>
+                  <SelectItem value="automation_flow">Automation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Search</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -915,11 +948,22 @@ const StaffProductCard = ({
         )}
         {loc && (
           <p className="text-[11px] text-muted-foreground truncate">
-            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}
+            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}{loc.part ? ` · ${loc.part}` : ""}
           </p>
         )}
         {!loc && (
           <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
+        )}
+        {p.cost_price != null && (
+          <p className="text-[11px] font-medium text-orange-600">Cost: {formatINR(p.cost_price)}</p>
+        )}
+        {p.reorder_level != null && p.stock_quantity <= p.reorder_level && (
+          <Badge variant="outline" className="text-[10px] border-orange-400 text-orange-600">⚠ Reorder</Badge>
+        )}
+        {p.review_status && p.review_status !== "approved" && (
+          <Badge variant="outline" className={`text-[10px] ${p.review_status === "pending_supervision" ? "border-amber-400 text-amber-600" : "border-red-400 text-red-600"}`}>
+            {p.review_status === "pending_supervision" ? "Pending approval" : "Rejected"}
+          </Badge>
         )}
         {p.description && (
           <p className="text-xs text-foreground/70 line-clamp-3">{p.description}</p>

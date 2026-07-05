@@ -21,6 +21,11 @@ type Product = {
   description: string | null;
   mrp: number;
   offer_price: number | null;
+  discount_percent: number | null;
+  availability_status: string | null;
+  primary_image_url: string | null;
+  primary_material: string | null;
+  color_finish: string | null;
   available_colors: string[] | null;
   material: string | null;
   dimensions: string | null;
@@ -60,12 +65,10 @@ const ProductDetail = () => {
 
   useEffect(() => {
     if (!id) return;
-    supabase
-      .from("products")
-      .select("id, product_name, product_code, description, mrp, offer_price, available_colors, material, dimensions, stock_quantity, main_category_id, product_images(image_url, display_order), main_categories(name, slug)")
+    (supabase as any)
+      .from("products_safe_search")
+      .select("id, product_name, product_code, description, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, material, dimensions, stock_quantity, main_category_id, product_images(image_url, display_order), main_categories(name, slug)")
       .eq("id", id)
-      .eq("is_published", true)
-      .is("deleted_at", null)
       .maybeSingle()
       .then(({ data }) => {
         setProduct(data as Product | null);
@@ -97,7 +100,11 @@ const ProductDetail = () => {
     );
   }
 
-  const images = [...product.product_images].sort((a, b) => a.display_order - b.display_order);
+  const rawImages = [...product.product_images].sort((a, b) => a.display_order - b.display_order);
+  // Prepend primary_image_url if it isn't already in the gallery
+  const images = product.primary_image_url && !rawImages.some((i) => i.image_url === product.primary_image_url)
+    ? [{ image_url: product.primary_image_url, display_order: -1 }, ...rawImages]
+    : rawImages;
   const cover = images[activeImg]?.image_url ?? images[0]?.image_url;
   const onOffer = product.offer_price && product.offer_price < product.mrp;
   const inStock = product.stock_quantity > 0;
@@ -277,16 +284,22 @@ const ProductDetail = () => {
           )}
 
           <dl className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {product.material && (
+            {(product.primary_material || product.material) && (
               <div className="rounded-xl border border-border/60 bg-card p-4">
                 <dt className="text-xs uppercase tracking-wider text-muted-foreground">Material</dt>
-                <dd className="mt-1 font-medium">{product.material}</dd>
+                <dd className="mt-1 font-medium">{product.primary_material || product.material}</dd>
               </div>
             )}
             {product.dimensions && (
               <div className="rounded-xl border border-border/60 bg-card p-4">
                 <dt className="text-xs uppercase tracking-wider text-muted-foreground">Dimensions</dt>
                 <dd className="mt-1 font-medium">{product.dimensions}</dd>
+              </div>
+            )}
+            {product.color_finish && (
+              <div className="rounded-xl border border-border/60 bg-card p-4">
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">Color / Finish</dt>
+                <dd className="mt-1 font-medium">{product.color_finish}</dd>
               </div>
             )}
           </dl>

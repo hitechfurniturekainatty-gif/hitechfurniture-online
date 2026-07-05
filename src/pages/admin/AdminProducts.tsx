@@ -48,6 +48,7 @@ type Location = {
   building: string;
   floor: string;
   section: string | null;
+  part: string | null;
   display_order: number;
   is_active: boolean;
 };
@@ -91,9 +92,22 @@ type FormState = {
   main_category_id: string;
   sub_category_id: string;
   location_id: string;
+  location_section: string;
   stock_status: "in_stock" | "out_of_stock";
   images: UploadedImage[];
   variants: VariantDraft[];
+  // structured new fields
+  hsn_code: string;
+  gst_rate: string;
+  primary_material: string;
+  secondary_material: string;
+  dim_height: string;
+  dim_width: string;
+  dim_depth: string;
+  color_finish: string;
+  warranty_period: string;
+  delivery_condition: string;
+  publish_immediately: boolean;
 };
 
 const emptyForm: FormState = {
@@ -102,12 +116,16 @@ const emptyForm: FormState = {
   available_colors: "", material: "", dimensions: "",
   stock_quantity: "0",
   reorder_level: "5",
-  is_featured: false, is_published: true,
+  is_featured: false, is_published: false,
   main_category_id: "", sub_category_id: "",
-  location_id: "",
+  location_id: "", location_section: "",
   stock_status: "in_stock",
   images: [],
   variants: [],
+  hsn_code: "", gst_rate: "", primary_material: "",
+  secondary_material: "", dim_height: "", dim_width: "", dim_depth: "",
+  color_finish: "", warranty_period: "", delivery_condition: "",
+  publish_immediately: false,
 };
 
 const AdminProducts = () => {
@@ -262,10 +280,11 @@ const AdminProducts = () => {
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
-  // Derive Building / Floor / Section from the selected location_id
+  // Derive Building / Floor / Section from the selected location_id (or stored strings)
   const selectedLocation = locations.find((l) => l.id === form.location_id) || null;
   const formBuilding = selectedLocation?.building ?? "";
   const formFloor = selectedLocation?.floor ?? "";
+  const formSection = selectedLocation?.section ?? form.location_section ?? "";
   const buildingOptions = useMemo(
     () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
     [locations],
@@ -274,22 +293,30 @@ const AdminProducts = () => {
     () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
     [locations, formBuilding],
   );
-  const sectionOptions = useMemo(
-    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+  // Distinct section names for current building+floor
+  const sectionNameOptions = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor).map((l) => l.section ?? ""))).filter(Boolean),
     [locations, formBuilding, formFloor],
+  );
+  // Part options: location rows for chosen building+floor+section
+  const partOptions = useMemo(
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor && (l.section ?? "") === formSection),
+    [locations, formBuilding, formFloor, formSection],
   );
 
   const pickBuilding = (b: string) => {
-    // Pick the first matching location for this building (any floor) so the
-    // floor dropdown becomes meaningful but location_id is still set.
-    const first = locations.find((l) => l.is_active && l.building === b);
-    setForm({ ...form, location_id: first?.id ?? "" });
+    setForm({ ...form, location_id: "", location_section: "" });
   };
-  const pickFloor = (f: string) => {
-    const first = locations.find((l) => l.is_active && l.building === formBuilding && l.floor === f);
-    setForm({ ...form, location_id: first?.id ?? "" });
+  const pickFloor = (b: string, f: string) => {
+    setForm({ ...form, location_id: "", location_section: "" });
   };
-  const pickSection = (id: string) => {
+  const pickSection = (sectionName: string) => {
+    // Store section name; auto-pick location_id if there's exactly one part row
+    const rows = locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor && (l.section ?? "") === sectionName);
+    const autoId = rows.length === 1 ? rows[0].id : "";
+    setForm({ ...form, location_section: sectionName, location_id: autoId });
+  };
+  const pickPart = (id: string) => {
     setForm({ ...form, location_id: id });
   };
 
@@ -306,7 +333,8 @@ const AdminProducts = () => {
       .insert({
         building: formBuilding,
         floor: formFloor,
-        section: name,
+        section: formSection || name,
+        part: formSection ? name : null,
         display_order: (locations[locations.length - 1]?.display_order ?? 0) + 10,
       })
       .select("*")
@@ -315,8 +343,8 @@ const AdminProducts = () => {
     if (error || !data) return toast({ title: "Failed", description: error?.message, variant: "destructive" });
     setNewSection("");
     await loadLocations();
-    setForm((f) => ({ ...f, location_id: (data as Location).id }));
-    toast({ title: "Section added" });
+    setForm((f) => ({ ...f, location_id: (data as Location).id, location_section: (data as Location).section ?? "" }));
+    toast({ title: "Part added" });
   };
 
   const openNew = () => {
@@ -335,6 +363,7 @@ const AdminProducts = () => {
       selling: p.offer_price != null ? Number(p.offer_price) : null,
     });
     setPriceEffectiveDate(new Date().toISOString().slice(0, 10));
+    const loc = locations.find((l) => l.id === p.location_id);
     setForm({
       product_name: p.product_name,
       product_code: p.product_code,
@@ -352,11 +381,23 @@ const AdminProducts = () => {
       main_category_id: p.main_category_id,
       sub_category_id: p.sub_category_id ?? "",
       location_id: p.location_id ?? "",
+      location_section: loc?.section ?? "",
       stock_status: p.stock_status ?? "in_stock",
       images: p.product_images
         .sort((a, b) => a.display_order - b.display_order)
         .map((i) => ({ url: i.image_url, path: i.image_url })),
       variants: [],
+      hsn_code: (p as any).hsn_code ?? "",
+      gst_rate: (p as any).gst_rate?.toString() ?? "",
+      primary_material: (p as any).primary_material ?? "",
+      secondary_material: (p as any).secondary_material ?? "",
+      dim_height: (p as any).dim_height?.toString() ?? "",
+      dim_width: (p as any).dim_width?.toString() ?? "",
+      dim_depth: (p as any).dim_depth?.toString() ?? "",
+      color_finish: (p as any).color_finish ?? "",
+      warranty_period: (p as any).warranty_period ?? "",
+      delivery_condition: (p as any).delivery_condition ?? "",
+      publish_immediately: false,
     });
     setOpen(true);
     // Load variants + their per-location stock breakdown for this product
@@ -408,6 +449,9 @@ const AdminProducts = () => {
       titleCaseTrim(form.product_code) ||
       `Auto-${Date.now().toString(36)}`;
     setSaving(true);
+    // Approval logic: new products go to pending_supervision unless admin approves immediately
+    const isNew = !editing;
+    const immediateApprove = isAdmin && form.publish_immediately;
     const payload: any = {
       product_name: titleCaseTrim(form.product_name),
       product_code: autoCode,
@@ -422,17 +466,39 @@ const AdminProducts = () => {
       stock_quantity: Number(form.stock_quantity || 0),
       reorder_level: Number(form.reorder_level || 5),
       is_featured: form.is_featured,
-      // Auto-flip draft → published when all 4 required fields are now present
-      is_published: (editing && !editing.is_published &&
-        form.images.length > 0 && !!mainCatId && !!form.product_name.trim() && (form.mrp ? Number(form.mrp) : 0) > 0)
-        ? true
-        : form.is_published,
+      is_published: isNew
+        ? (immediateApprove ? true : false)
+        : (editing && !editing.is_published && form.images.length > 0 && !!mainCatId && !!form.product_name.trim() && (form.mrp ? Number(form.mrp) : 0) > 0)
+          ? true
+          : form.is_published,
       main_category_id: mainCatId,
       sub_category_id: form.sub_category_id || null,
       location_id: form.location_id || null,
       stock_status: form.stock_status,
+      // Structured fields
+      hsn_code: form.hsn_code.trim() || null,
+      gst_rate: form.gst_rate ? Number(form.gst_rate) : null,
+      primary_material: form.primary_material.trim() || null,
+      secondary_material: form.secondary_material.trim() || null,
+      dim_height: form.dim_height ? Number(form.dim_height) : null,
+      dim_width: form.dim_width ? Number(form.dim_width) : null,
+      dim_depth: form.dim_depth ? Number(form.dim_depth) : null,
+      color_finish: form.color_finish.trim() || null,
+      warranty_period: form.warranty_period.trim() || null,
+      delivery_condition: form.delivery_condition || null,
     };
+    if (isNew) {
+      payload.creation_method = "direct_creation";
+      payload.submitted_by = (await supabase.auth.getUser()).data.user?.id ?? null;
+      payload.review_status = immediateApprove ? "approved" : "pending_supervision";
+      if (immediateApprove) {
+        payload.reviewed_by = payload.submitted_by;
+        payload.reviewed_at = new Date().toISOString();
+      }
+    }
     if (isOfficeStaff) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
+    // primary_image_url = first image URL
+    if (form.images.length > 0) payload.primary_image_url = form.images[0].url;
 
     let productId = editing?.id;
     if (editing) {
@@ -1393,7 +1459,7 @@ const AdminProducts = () => {
             <Field label="Building" >
               <SearchableSelect
                 value={formBuilding || "__none"}
-                onChange={(v) => v === "__none" ? setForm({ ...form, location_id: "" }) : pickBuilding(v)}
+                onChange={(v) => v === "__none" ? setForm({ ...form, location_id: "", location_section: "" }) : pickBuilding(v)}
                 options={[{ value: "__none", label: "— Not assigned —" }, ...buildingOptions.map((b) => ({ value: b, label: b }))]}
                 placeholder="Choose building…"
               />
@@ -1401,27 +1467,36 @@ const AdminProducts = () => {
             <Field label="Floor">
               <SearchableSelect
                 value={formFloor || ""}
-                onChange={(v) => v && pickFloor(v)}
+                onChange={(v) => v && pickFloor(formBuilding, v)}
                 options={floorOptions.map((f) => ({ value: f, label: f }))}
                 placeholder={formBuilding ? "Choose floor…" : "Pick a building first"}
                 disabled={!formBuilding}
               />
             </Field>
-            <Field label="Section" wide>
+            <Field label="Section">
+              <SearchableSelect
+                value={formSection || ""}
+                onChange={(v) => v && pickSection(v)}
+                options={sectionNameOptions.map((s) => ({ value: s, label: s }))}
+                placeholder={formFloor ? "Choose section…" : "Pick a floor first"}
+                disabled={!formFloor}
+              />
+            </Field>
+            <Field label="Part" wide>
               <div className="space-y-2">
                 <SearchableSelect
                   value={form.location_id || ""}
-                  onChange={(v) => v && pickSection(v)}
-                  options={sectionOptions.map((l) => ({ value: l.id, label: l.section ? l.section : `(no section · ${l.floor})` }))}
-                  placeholder={formFloor ? "Choose section…" : "Pick a floor first"}
-                  disabled={!formFloor}
+                  onChange={(v) => v && pickPart(v)}
+                  options={partOptions.map((l) => ({ value: l.id, label: l.part ? l.part : `(no part · ${l.section ?? l.floor})` }))}
+                  placeholder={formSection ? "Choose part…" : "Pick a section first"}
+                  disabled={!formSection}
                 />
-                {formBuilding && formFloor && (
+                {formBuilding && formFloor && formSection && (
                   <div className="flex gap-2">
                     <Input
                       value={newSection}
                       onChange={(e) => setNewSection(e.target.value)}
-                      placeholder="+ Add new section (e.g. Part A)"
+                      placeholder="+ Add new part (e.g. Part A)"
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInlineSection(); } }}
                     />
                     <Button type="button" variant="outline" onClick={addInlineSection} disabled={addingSection || !newSection.trim()}>
@@ -1460,6 +1535,68 @@ const AdminProducts = () => {
             <Field label="Description" wide>
               <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </Field>
+
+            {/* ── Advanced details (collapsible) ─────────────────────────── */}
+            <div className="sm:col-span-2">
+              <details className="group rounded-lg border border-border">
+                <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none hover:bg-accent/30">
+                  <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                  Advanced details (optional)
+                </summary>
+                <div className="grid gap-4 px-4 pb-4 pt-2 sm:grid-cols-2">
+                  <Field label="Primary material">
+                    <Select value={form.primary_material || "__none"} onValueChange={(v) => setForm({ ...form, primary_material: v === "__none" ? "" : v })}>
+                      <SelectTrigger><SelectValue placeholder="Select material…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— None —</SelectItem>
+                        {["Teak", "Mahogany", "Sheesham", "Engineered Wood", "Metal", "Plastic", "Fabric", "Leather", "Glass", "Bamboo", "Rattan"].map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Secondary material">
+                    <Input value={form.secondary_material} onChange={(e) => setForm({ ...form, secondary_material: e.target.value })} placeholder="e.g. Fabric, Steel" />
+                  </Field>
+                  <Field label="Height (inches)">
+                    <Input type="number" min={0} step={0.1} value={form.dim_height} onChange={(e) => setForm({ ...form, dim_height: e.target.value })} placeholder="e.g. 36" />
+                  </Field>
+                  <Field label="Width (inches)">
+                    <Input type="number" min={0} step={0.1} value={form.dim_width} onChange={(e) => setForm({ ...form, dim_width: e.target.value })} placeholder="e.g. 72" />
+                  </Field>
+                  <Field label="Depth (inches)">
+                    <Input type="number" min={0} step={0.1} value={form.dim_depth} onChange={(e) => setForm({ ...form, dim_depth: e.target.value })} placeholder="e.g. 30" />
+                  </Field>
+                  <Field label="Color / finish">
+                    <Input value={form.color_finish} onChange={(e) => setForm({ ...form, color_finish: e.target.value })} placeholder="e.g. Walnut, Matte Black" />
+                  </Field>
+                  <Field label="Warranty period">
+                    <Input value={form.warranty_period} onChange={(e) => setForm({ ...form, warranty_period: e.target.value })} placeholder="e.g. 1 year, 6 months" />
+                  </Field>
+                  <Field label="Delivery condition">
+                    <Select value={form.delivery_condition || "__none"} onValueChange={(v) => setForm({ ...form, delivery_condition: v === "__none" ? "" : v })}>
+                      <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— Not specified —</SelectItem>
+                        <SelectItem value="pre_assembled">Pre-assembled</SelectItem>
+                        <SelectItem value="assembly_required">Assembly Required</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {isOfficeStaff && (
+                    <>
+                      <Field label="HSN code">
+                        <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} placeholder="e.g. 94036000" />
+                      </Field>
+                      <Field label="GST rate (%)">
+                        <Input type="number" min={0} max={100} value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} placeholder="e.g. 12" />
+                      </Field>
+                    </>
+                  )}
+                </div>
+              </details>
+            </div>
+
             <Field label="Images *" wide>
               <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
             </Field>
@@ -1470,13 +1607,27 @@ const AdminProducts = () => {
               </div>
               <Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium">Published</p>
-                <p className="text-xs text-muted-foreground">Hide to keep as draft.</p>
+            {editing ? (
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium">Published</p>
+                  <p className="text-xs text-muted-foreground">Hide to keep as draft.</p>
+                </div>
+                <Switch checked={form.is_published} onCheckedChange={(v) => setForm({ ...form, is_published: v })} />
               </div>
-              <Switch checked={form.is_published} onCheckedChange={(v) => setForm({ ...form, is_published: v })} />
-            </div>
+            ) : isAdmin ? (
+              <div className="flex items-center justify-between rounded-lg border border-border bg-amber-50 p-3">
+                <div>
+                  <p className="text-sm font-medium">Publish & approve immediately</p>
+                  <p className="text-xs text-muted-foreground">Admin only. Uncheck to send to Supervisor Approval queue.</p>
+                </div>
+                <Switch checked={form.publish_immediately} onCheckedChange={(v) => setForm({ ...form, publish_immediately: v })} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                This product will be sent to the Supervisor Approval queue before going live.
+              </div>
+            )}
             {editing && (
               <div className="sm:col-span-2 space-y-2 rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between">
