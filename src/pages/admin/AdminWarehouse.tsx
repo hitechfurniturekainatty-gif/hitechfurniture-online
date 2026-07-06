@@ -264,7 +264,7 @@ const AdminWarehouse = () => {
           <span className="text-xs text-muted-foreground">
             {group.q?.party_name} · {group.q?.party_place}
           </span>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
             {action === "dispatch" && canDispatch && (
               <Button
                 size="sm"

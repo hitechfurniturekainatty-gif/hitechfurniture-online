@@ -499,7 +499,7 @@ const AdminQuotationBulkCreate = () => {
           </CardContent>
         </Card>
 
-        <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center justify-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
           <Button variant="outline" onClick={() => setRows([])} disabled={rows.length === 0 || saving}>Clear all</Button>
           <Button onClick={approveAll} disabled={rows.length === 0 || saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}

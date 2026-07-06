@@ -447,7 +447,7 @@ export default function AdminVault() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-indigo-500/20 border border-emerald-400/30 flex items-center justify-center">
               <Vault className="h-5 w-5 text-emerald-400" />
@@ -457,7 +457,7 @@ export default function AdminVault() {
               <p className="text-xs text-slate-500">{entries.length} saved {entries.length === 1 ? "record" : "records"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setSettingsOpen(true)}
               className="inline-flex items-center gap-2 px-4 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm font-medium"

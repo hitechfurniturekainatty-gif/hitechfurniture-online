@@ -391,7 +391,7 @@ const AdminServices = () => {
             {new Date(r.created_at).toLocaleDateString()} • Est. ₹{Number(r.estimated_cost ?? 0).toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap shrink-0 items-center gap-2">
           <Button asChild size="sm">
             <Link to={`/admin/enquiries?open=service:${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
           </Button>
@@ -438,7 +438,7 @@ const AdminServices = () => {
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap shrink-0 items-center gap-2">
           <Button asChild size="sm">
             <Link to={`/admin/enquiries?open=complaint:${r.id}`}>Open <ArrowRight className="ml-1 h-3 w-3" /></Link>
           </Button>

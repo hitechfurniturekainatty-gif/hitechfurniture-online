@@ -303,10 +303,10 @@ const AdminSchemeCalculator = () => {
         <h1 className="font-display text-2xl">Vendor Scheme Dashboard</h1>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="calc">Vendor Dashboard</TabsTrigger>
-            <TabsTrigger value="parties">Vendors ({parties.length})</TabsTrigger>
-            <TabsTrigger value="schemes">Scheme Templates ({savedSchemes.length})</TabsTrigger>
+          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+            <TabsTrigger value="calc" className="whitespace-nowrap">Vendor Dashboard</TabsTrigger>
+            <TabsTrigger value="parties" className="whitespace-nowrap">Vendors ({parties.length})</TabsTrigger>
+            <TabsTrigger value="schemes" className="whitespace-nowrap">Scheme Templates ({savedSchemes.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="calc" className="space-y-5 pt-4">

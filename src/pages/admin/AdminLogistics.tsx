@@ -258,7 +258,7 @@ const AdminLogistics = () => {
                 const r = routes.find((x) => x.id === p.delivery_route_id);
                 return (
                   <Card key={p.id}>
-                    <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <CardContent className="flex flex-col flex-wrap gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs font-semibold">{p.quotation_id}</span>
@@ -272,7 +272,7 @@ const AdminLogistics = () => {
                         </div>
                         <p className="text-sm">{p.party_name} · {p.delivery_place || p.party_place}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-display text-sm font-semibold">{formatINR(p.total)}</span>
                         <Button asChild size="sm" variant="ghost" title="Open this order in the Warehouse view">
                           <Link to={`/admin/warehouse#q-${p.id}`}>

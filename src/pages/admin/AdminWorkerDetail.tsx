@@ -281,7 +281,7 @@ const AdminWorkerDetail = () => {
                       <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex flex-wrap shrink-0 gap-2">
                     <Button asChild size="sm" variant="outline" className="h-9">
                       <Link to={`/admin/quotations/${job.quotation_id}`}>
                         Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -312,7 +312,7 @@ const AdminWorkerDetail = () => {
                           placeholder="Office note for the worker"
                           className="text-sm"
                         />
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button size="sm" onClick={() => saveNote(job)} disabled={savingNote} className="h-8">
                             {savingNote ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
                             Save

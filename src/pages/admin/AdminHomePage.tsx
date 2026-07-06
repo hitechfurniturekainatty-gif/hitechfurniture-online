@@ -258,12 +258,12 @@ const AdminHomePage = () => {
       />
 
       <Tabs defaultValue="hero">
-        <TabsList className="mb-4 grid w-full grid-cols-5 max-w-3xl">
-          <TabsTrigger value="hero">Hero Slider</TabsTrigger>
-          <TabsTrigger value="hero_images">Main Images</TabsTrigger>
-          <TabsTrigger value="sections">Sections</TabsTrigger>
-          <TabsTrigger value="contact">Contact &amp; Find Us</TabsTrigger>
-          <TabsTrigger value="social">Social</TabsTrigger>
+        <TabsList className="mb-4 w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+          <TabsTrigger value="hero" className="whitespace-nowrap">Hero Slider</TabsTrigger>
+          <TabsTrigger value="hero_images" className="whitespace-nowrap">Main Images</TabsTrigger>
+          <TabsTrigger value="sections" className="whitespace-nowrap">Sections</TabsTrigger>
+          <TabsTrigger value="contact" className="whitespace-nowrap">Contact &amp; Find Us</TabsTrigger>
+          <TabsTrigger value="social" className="whitespace-nowrap">Social</TabsTrigger>
         </TabsList>
 
         {/* HERO */}

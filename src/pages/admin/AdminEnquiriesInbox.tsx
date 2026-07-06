@@ -209,12 +209,12 @@ const InboxPage = () => {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-          <TabsList>
-            <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
-            <TabsTrigger value="lead">Leads ({counts.lead})</TabsTrigger>
-            <TabsTrigger value="complaint">Complaints ({counts.complaint})</TabsTrigger>
-            <TabsTrigger value="service">Services ({counts.service})</TabsTrigger>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full sm:w-auto">
+          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+            <TabsTrigger value="all" className="whitespace-nowrap">All ({counts.all})</TabsTrigger>
+            <TabsTrigger value="lead" className="whitespace-nowrap">Leads ({counts.lead})</TabsTrigger>
+            <TabsTrigger value="complaint" className="whitespace-nowrap">Complaints ({counts.complaint})</TabsTrigger>
+            <TabsTrigger value="service" className="whitespace-nowrap">Services ({counts.service})</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="relative w-full sm:w-72">

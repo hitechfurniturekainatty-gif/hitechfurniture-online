@@ -290,7 +290,7 @@ const AdminWorkers = () => {
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((w) => (
             <Card key={w.id} className={!w.is_active ? "opacity-60" : ""}>
-              <CardContent className="flex items-start justify-between gap-3 p-4">
+              <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
                 <div className="flex gap-3 min-w-0">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <HardHat className="h-5 w-5 text-primary" />
@@ -315,7 +315,7 @@ const AdminWorkers = () => {
                     {!w.is_active && <Badge variant="outline" className="mt-1">Inactive</Badge>}
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-1">
+                <div className="flex flex-wrap shrink-0 gap-1">
                   <Button size="icon" variant="ghost" asChild title="View jobs">
                     <Link to={`/admin/workers/${w.id}`}><ListChecks className="h-4 w-4" /></Link>
                   </Button>
@@ -368,13 +368,14 @@ const AdminWorkers = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>Password (PIN, 4–6 digits) {editing && <span className="text-muted-foreground font-normal">— leave blank to keep current</span>}</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Input
                     inputMode="numeric"
                     value={form.login_pin}
                     onChange={(e) => setForm({ ...form, login_pin: e.target.value })}
                     maxLength={6}
                     placeholder={editing ? "Enter new PIN to reset" : "e.g. 1234"}
+                    className="min-w-0 flex-1"
                   />
                   <Button type="button" variant="outline" onClick={() => setForm({ ...form, login_pin: randomPin() })}>
                     Generate

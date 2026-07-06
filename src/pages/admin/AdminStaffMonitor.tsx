@@ -157,10 +157,10 @@ const AdminStaffMonitor = () => {
               Live view of every staff member's pending, in-progress and completed work.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:flex-initial">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search staff" className="h-10 w-56 pl-8" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search staff" className="h-10 w-full pl-8 sm:w-56" />
             </div>
             <Button variant="outline" onClick={load} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
