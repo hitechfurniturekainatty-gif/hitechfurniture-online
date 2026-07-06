@@ -217,7 +217,7 @@ const AdminMeasurementTasks = () => {
             {t.status}
           </Badge>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {mine && t.status !== "completed" && (
             <Button size="sm" onClick={() => startMeasurement(t)}>
               <Ruler className="mr-1.5 h-3.5 w-3.5" /> {t.draft_quotation_id ? "Continue" : "Start measurement"}

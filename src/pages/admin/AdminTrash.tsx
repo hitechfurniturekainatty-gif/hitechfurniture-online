@@ -181,7 +181,7 @@ const AdminTrash = () => {
                           <Badge variant="outline" className="text-[10px]">{fmtRemaining(row.deleted_at)}</Badge>
                         </p>
                       </div>
-                      <div className="flex shrink-0 gap-2">
+                      <div className="flex flex-wrap shrink-0 gap-2">
                         <Button size="sm" variant="outline" onClick={() => restore(t.key, row)} disabled={busyId === row.id}>
                           <RotateCcw className="mr-1 h-3.5 w-3.5" /> Restore
                         </Button>

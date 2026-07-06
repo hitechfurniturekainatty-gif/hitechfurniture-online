@@ -828,7 +828,7 @@ const AdminProducts = () => {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setLocationsDialogOpen(true)} className="gap-1.5">
             <MapPin className="h-4 w-4" /> Locations
           </Button>

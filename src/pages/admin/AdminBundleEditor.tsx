@@ -313,7 +313,7 @@ const AdminBundleEditor = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/bundles")}>
             <ArrowLeft className="mr-1 h-4 w-4" /> All bundles
           </Button>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={removeBundle}><Trash2 className="mr-1 h-4 w-4" /> Delete</Button>
             <Button onClick={save} disabled={saving}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}

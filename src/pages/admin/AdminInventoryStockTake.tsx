@@ -193,7 +193,7 @@ const AdminInventoryStockTake = () => {
                     ))}
                   </TableBody>
                 </Table>
-                <div className="flex justify-end gap-2 border-t p-3">
+                <div className="flex flex-wrap justify-end gap-2 border-t p-3">
                   <Button variant="outline" onClick={() => setReviewing(false)}>Back</Button>
                   <Button onClick={submit} disabled={submitting}>
                     {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

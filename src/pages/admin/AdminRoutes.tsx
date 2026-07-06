@@ -325,7 +325,7 @@ const AdminRoutes = () => {
               <p className="font-medium">
                 Click on the map to {pickMode === "destination" ? "set the destination pin" : "add a waypoint stop"}.
               </p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Button size="sm" variant={pickMode === "destination" ? "default" : "outline"} onClick={() => setPickMode("destination")}>
                   Set destination
                 </Button>
@@ -357,20 +357,22 @@ const AdminRoutes = () => {
                 <p className="text-xs text-muted-foreground">No waypoints yet. Click on the map after switching to "Add waypoint".</p>
               )}
               {draft.waypoints.map((w, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={i} className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: draft.color }}>
                     {i + 1}
                   </span>
-                  <Input value={w.name} onChange={(e) => renameWp(i, e.target.value)} className="h-9" />
-                  <Button size="icon" variant="ghost" onClick={() => moveWp(i, -1)} disabled={i === 0} className="h-8 w-8">
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => moveWp(i, 1)} disabled={i === draft.waypoints.length - 1} className="h-8 w-8">
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => removeWp(i)} className="h-8 w-8 text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Input value={w.name} onChange={(e) => renameWp(i, e.target.value)} className="h-9 min-w-0 flex-1" />
+                  <div className="flex shrink-0 gap-2">
+                    <Button size="icon" variant="ghost" onClick={() => moveWp(i, -1)} disabled={i === 0} className="h-8 w-8">
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => moveWp(i, 1)} disabled={i === draft.waypoints.length - 1} className="h-8 w-8">
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => removeWp(i)} className="h-8 w-8 text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
