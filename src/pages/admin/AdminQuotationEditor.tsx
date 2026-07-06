@@ -1511,14 +1511,63 @@ const AdminQuotationEditor = () => {
     );
   }
 
+  // Admin/Office bypass routing + reject — visible in early stages (Client
+  // Hub / Dimensions / OPS). Hoisted out of the toolbar JSX (instead of an
+  // inline IIFE) so both the desktop/tablet toolbar row and the mobile
+  // sticky bar below can share the exact same visibility rules and handlers.
+  const bypassStage = Number((q as any).pipeline_stage ?? 1);
+  const bypassStatus = normalizeStatus(q.status);
+  const canReject = canEditPrice && bypassStatus !== "rejected" && bypassStatus !== "delivered" && bypassStage <= 3;
+  const canBypass = canEditPrice && bypassStage <= 3 && bypassStatus !== "rejected";
+  const pushToStage = async (target: 4 | 5 | 6, label: string) => {
+    const ok = window.confirm(`Push this quotation directly to ${label}?`);
+    if (!ok) return;
+    const { error } = await supabase.rpc("override_advance_quotation", {
+      _quotation_id: q.id,
+      _target_stage: target,
+    });
+    if (error) {
+      toast({ title: "Override failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Sent to ${label}` });
+    const { data: fresh } = await supabase
+      .from("quotations").select("status, pipeline_stage")
+      .eq("id", q.id).maybeSingle();
+    if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
+    setStatusHistoryKey((k) => k + 1);
+  };
+  const handleReject = async () => {
+    const ok = window.confirm("Reject this quotation? This cancels the order.");
+    if (!ok) return;
+    const { error } = await supabase.rpc("reject_quotation", { _quotation_id: q.id });
+    if (error) {
+      toast({ title: "Reject failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setQ((prev) => prev ? { ...prev, status: "rejected" } : prev);
+    setStatusHistoryKey((k) => k + 1);
+    toast({ title: "Marked Rejected" });
+  };
+  const pushToSelectValueChange = (v: string) => {
+    if (v === "production") pushToStage(4, "Production");
+    else if (v === "warehouse") pushToStage(5, "Warehouse");
+    else if (v === "logistics") pushToStage(6, "Logistics");
+  };
+
   // Editor surface: white background with primary-color text for
   // comfortable, low-eye-strain reading while building a quotation.
   // Wraps the whole editor; cards inside inherit the white surface.
   const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
-      {/* Top bar */}
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
-        <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
+      {/* Top bar — identity row, then a single flex-wrap actions row.
+          Every button is a shrink-0 sibling in ONE wrapping flex container,
+          so at any width the row reflows onto more lines instead of
+          overflowing/overlapping (the old layout split actions across two
+          non-communicating flex groups, which could visually overlap at
+          tablet widths). */}
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-wrap items-start gap-2 sm:items-center">
           <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
             <Link to="/admin/quotations" aria-label="Back to quotations">
               <ArrowLeft className="h-4 w-4 sm:mr-1" />
@@ -1565,81 +1614,41 @@ const AdminQuotationEditor = () => {
           })()}
           {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
-              <Button size="sm" variant="outline" className="h-8" onClick={() => setStatus("delivered")}>Mark delivered</Button>
+              <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => setStatus("delivered")}>Mark delivered</Button>
             </div>
           )}
-          {/* Admin/Office bypass routing + reject — visible in early stages (Client Hub / Dimensions / OPS). */}
-          {canEditPrice && (() => {
-            const stage = Number((q as any).pipeline_stage ?? 1);
-            const status = normalizeStatus(q.status);
-            const canReject = status !== "rejected" && status !== "delivered" && stage <= 3;
-            const canBypass = stage <= 3 && status !== "rejected";
-            const pushTo = async (target: 4 | 5 | 6, label: string) => {
-              const ok = window.confirm(`Push this quotation directly to ${label}?`);
-              if (!ok) return;
-              const { error } = await supabase.rpc("override_advance_quotation", {
-                _quotation_id: q.id,
-                _target_stage: target,
-              });
-              if (error) {
-                toast({ title: "Override failed", description: error.message, variant: "destructive" });
-                return;
-              }
-              toast({ title: `Sent to ${label}` });
-              const { data: fresh } = await supabase
-                .from("quotations").select("status, pipeline_stage")
-                .eq("id", q.id).maybeSingle();
-              if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
-              setStatusHistoryKey((k) => k + 1);
-            };
-            return (
-              <div className="hidden flex-wrap gap-1 sm:flex">
-                {canBypass && (
-                  <Select onValueChange={(v) => {
-                    if (v === "production") pushTo(4, "Production");
-                    else if (v === "warehouse") pushTo(5, "Warehouse");
-                    else if (v === "logistics") pushTo(6, "Logistics");
-                  }}>
-                    <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Push to…" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="production">→ Production</SelectItem>
-                      <SelectItem value="warehouse">→ Warehouse</SelectItem>
-                      <SelectItem value="logistics">→ Logistics</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                {canReject && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-destructive hover:text-destructive"
-                    onClick={async () => {
-                      const ok = window.confirm("Reject this quotation? This cancels the order.");
-                      if (!ok) return;
-                      const { error } = await supabase.rpc("reject_quotation", { _quotation_id: q.id });
-                      if (error) {
-                        toast({ title: "Reject failed", description: error.message, variant: "destructive" });
-                        return;
-                      }
-                      setQ((prev) => prev ? { ...prev, status: "rejected" } : prev);
-                      setStatusHistoryKey((k) => k + 1);
-                      toast({ title: "Marked Rejected" });
-                    }}
-                  >
-                    Reject
-                  </Button>
-                )}
-              </div>
-            );
-          })()}
         </div>
-        {/* Desktop / tablet action buttons (hidden on mobile — sticky bar below) */}
-        <div className="hidden flex-wrap gap-2 sm:flex">
-          <Button onClick={saveAndPreview} disabled={saving}>
+
+        {/* Desktop / tablet actions — one wrapping row (hidden on mobile,
+            the dedicated sticky bottom bar below covers the same actions
+            there). Every item is shrink-0 so it keeps its own footprint and
+            wraps onto a new line instead of being squeezed or overlapping. */}
+        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+          {canBypass && (
+            <Select onValueChange={pushToSelectValueChange}>
+              <SelectTrigger className="h-8 w-auto min-w-[130px] shrink-0"><SelectValue placeholder="Push to…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="production">→ Production</SelectItem>
+                <SelectItem value="warehouse">→ Warehouse</SelectItem>
+                <SelectItem value="logistics">→ Logistics</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {canReject && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 shrink-0 text-destructive hover:text-destructive"
+              onClick={handleReject}
+            >
+              Reject
+            </Button>
+          )}
+          <Button className="shrink-0" onClick={saveAndPreview} disabled={saving}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
           </Button>
           {isFieldOnly && q.source_task_id && !submittedForPricing && (
-            <Button onClick={submitForPricing} disabled={saving} variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button onClick={submitForPricing} disabled={saving} variant="default" className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white">
               <CheckCircle2 className="mr-2 h-4 w-4" />Submit for pricing
             </Button>
           )}
@@ -1652,8 +1661,8 @@ const AdminQuotationEditor = () => {
                 pdfTooltip="PDF — full quotation for customer"
                 jpgTooltip="JPG — high-res images for WhatsApp"
               />
-              <Button variant="outline" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
-              <Button variant="secondary" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
+              <Button variant="outline" className="shrink-0" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
+              <Button variant="secondary" className="shrink-0" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
               <AttachedNotesButton quotationId={q.id} />
             </>
           )}
@@ -2426,6 +2435,31 @@ const AdminQuotationEditor = () => {
 
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
+        {/* Admin/Office bypass routing + reject — same rules as the desktop
+            toolbar row, surfaced here too so they're reachable on mobile. */}
+        {(canBypass || canReject) && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {canBypass && (
+              <Select onValueChange={pushToSelectValueChange}>
+                <SelectTrigger className="h-11 min-w-[140px] flex-1"><SelectValue placeholder="Push to…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="production">→ Production</SelectItem>
+                  <SelectItem value="warehouse">→ Warehouse</SelectItem>
+                  <SelectItem value="logistics">→ Logistics</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            {canReject && (
+              <Button
+                variant="outline"
+                className="h-11 shrink-0 text-destructive hover:text-destructive"
+                onClick={handleReject}
+              >
+                Reject
+              </Button>
+            )}
+          </div>
+        )}
         {/* Row 1 (top): secondary actions — equal thirds so the Assign button is
             fully visible on narrow screens (was being clipped to a sliver before). */}
         {canEditPrice && (
