@@ -26,8 +26,14 @@ import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker"
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
-  Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2,
+  Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2, Columns2,
 } from "lucide-react";
+import {
+  DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, useDroppable,
+  type DragEndEvent, type DragStartEvent,
+} from "@dnd-kit/core";
+import { SplitPane } from "@/components/admin/quotation-dnd/SplitPane";
+import { CatalogDndPanel, type CatalogProduct } from "@/components/admin/quotation-dnd/CatalogDndPanel";
 // PDF renderer is heavy (~600KB). Lazy-load on first share/download instead
 // of blocking initial page paint on mobile. lazyImport reloads the page if
 // the cached chunk hash is stale after a redeploy.
@@ -196,6 +202,20 @@ const ProductRow = ({
   </button>
 );
 
+// Drop target for the D&D split view. Harmless (inert) when rendered
+// outside a DndContext, so it's safe to always wrap the Items card with it.
+const ItemsDropZone = ({ children }: { children: React.ReactNode }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: "quotation-items-dropzone" });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-xl transition-shadow ${isOver ? "ring-2 ring-primary" : ""}`}
+    >
+      {children}
+    </div>
+  );
+};
+
 export const statusLabel = (s: string) => {
   const map: Record<string, string> = {
     drafted: "Drafted",
@@ -263,6 +283,11 @@ const AdminQuotationEditor = () => {
   // Catalog picker can browse Products or Bundles
   const [pickerTab, setPickerTab] = useState<"products" | "bundles">("products");
   const [bundles, setBundles] = useState<Bundle[]>([]);
+
+  // Drag-and-drop split view — lets staff drag catalog products straight
+  // into the items list instead of (or alongside) the picker dialog above.
+  const [dndOpen, setDndOpen] = useState(false);
+  const [dragProduct, setDragProduct] = useState<CatalogProduct | null>(null);
 
   const [jobOpen, setJobOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -668,6 +693,61 @@ const AdminQuotationEditor = () => {
     });
     setProductPickerOpen(false);
     toast({ title: "Bundle added" });
+  };
+
+  // Drag-and-drop (or click) add from the split-view catalog panel. Always
+  // appends a new line — unlike the picker dialog it never targets an
+  // existing row, so it's safe to use independently of pickerTargetItemId.
+  const addFromCatalogViewProduct = (p: CatalogProduct) => {
+    const price = Number(p.offer_price ?? p.mrp ?? 0);
+    const next: QItem = {
+      id: `tmp-${crypto.randomUUID()}`,
+      description: `${p.product_name} (${p.product_code})`,
+      item_image_url: p.primary_image_url ?? null,
+      measurement: null,
+      measurement_image_url: null,
+      catalog_text: p.product_code ?? null,
+      catalog_image_url: null,
+      sketch_url: null,
+      site_photos: null,
+      quantity: 1,
+      unit_price: price,
+      amount: price,
+      display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
+      product_id: p.id,
+      bundle_id: null,
+      fulfillment_route:
+        (q?.lead_type === "custom_project" || q?.lead_type === "consultation") ? "custom" : "ready_stock",
+      _isNew: true,
+      _dirty: true,
+    };
+    setItems((prev) => {
+      const updated = [...prev, next];
+      itemsRef.current = updated;
+      return updated;
+    });
+    toast({ title: "Item added", description: `${p.product_name} added from catalog.` });
+  };
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+  );
+
+  const handleCatalogDragStart = (e: DragStartEvent) => {
+    setDragProduct((e.active.data.current?.product as CatalogProduct | undefined) ?? null);
+  };
+
+  // Escape (or the dragged node unmounting) fires onDragCancel instead of
+  // onDragEnd — clear the overlay here too so it never gets stuck visible.
+  const handleCatalogDragCancel = () => setDragProduct(null);
+
+  const handleCatalogDragEnd = (e: DragEndEvent) => {
+    setDragProduct(null);
+    const { active, over } = e;
+    if (!over || over.id !== "quotation-items-dropzone") return;
+    const product = active.data.current?.product as CatalogProduct | undefined;
+    if (product) addFromCatalogViewProduct(product);
   };
 
   // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
@@ -1431,13 +1511,10 @@ const AdminQuotationEditor = () => {
     );
   }
 
-  return (
-    <AdminShell>
-      {/*
-        Editor surface: white background with primary-color text for
-        comfortable, low-eye-strain reading while building a quotation.
-        Wraps the whole editor; cards inside inherit the white surface.
-      */}
+  // Editor surface: white background with primary-color text for
+  // comfortable, low-eye-strain reading while building a quotation.
+  // Wraps the whole editor; cards inside inherit the white surface.
+  const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
       {/* Top bar */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-center">
@@ -1661,6 +1738,7 @@ const AdminQuotationEditor = () => {
       </Card>
 
       {/* Items */}
+      <ItemsDropZone>
       <Card className="mb-4">
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex flex-wrap items-center gap-2">
@@ -1680,6 +1758,16 @@ const AdminQuotationEditor = () => {
             })()}
           </CardTitle>
           <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={dndOpen ? "default" : "outline"}
+              className="flex-1 sm:flex-initial"
+              onClick={() => setDndOpen((o) => !o)}
+              title="Split-view catalog: drag products straight into this list"
+            >
+              <Columns2 className="mr-1.5 h-4 w-4" />D&amp;D
+            </Button>
             <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
               <Package className="mr-1.5 h-4 w-4" />From catalog
             </Button>
@@ -2124,6 +2212,7 @@ const AdminQuotationEditor = () => {
           )}
         </CardContent>
       </Card>
+      </ItemsDropZone>
 
       {/* Live Preview dialog — quick read-only invoice render for verification while typing */}
       <Dialog open={livePreviewOpen} onOpenChange={setLivePreviewOpen}>
@@ -2751,6 +2840,42 @@ const AdminQuotationEditor = () => {
         })()}
       </div>
       </div>
+  );
+
+  return (
+    <AdminShell>
+      {dndOpen ? (
+        <DndContext
+          sensors={dndSensors}
+          onDragStart={handleCatalogDragStart}
+          onDragEnd={handleCatalogDragEnd}
+          onDragCancel={handleCatalogDragCancel}
+        >
+          <SplitPane
+            leftLabel="Catalog"
+            rightLabel="Quotation form"
+            left={<CatalogDndPanel onPick={addFromCatalogViewProduct} />}
+            right={<div className="p-1">{formBody}</div>}
+          />
+          <DragOverlay dropAnimation={null}>
+            {dragProduct ? (
+              <div className="flex items-center gap-2 rounded-md border bg-card p-2 shadow-lg">
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded bg-muted">
+                  {dragProduct.primary_image_url && (
+                    <img src={dragProduct.primary_image_url} alt="" className="h-full w-full object-contain p-0.5" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{dragProduct.product_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{dragProduct.product_code}</p>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      ) : (
+        formBody
+      )}
     </AdminShell>
   );
 };

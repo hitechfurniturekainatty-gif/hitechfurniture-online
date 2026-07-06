@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { shareLiveLink } from "@/lib/shareLink";
 import { MessageCircle } from "lucide-react";
 
@@ -404,24 +404,24 @@ const AdminWarehouse = () => {
             <DialogTitle>Assign vehicle & dispatch</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <RadioGroup value={vehicleChoice} onValueChange={(v) => setVehicleChoice(v)}>
-              {vehicles.map((v) => (
-                <div key={v.id} className="flex items-center gap-2">
-                  <RadioGroupItem value={v.id} id={`v-${v.id}`} />
-                  <Label htmlFor={`v-${v.id}`}>
-                    <span className="font-mono">{v.vehicle_number}</span>
-                    {v.label ? <span className="ml-2 text-xs text-muted-foreground">({v.label})</span> : null}
-                    {!v.driver_user_id && (
-                      <span className="ml-2 text-[10px] text-amber-600">no driver linked</span>
-                    )}
-                  </Label>
-                </div>
-              ))}
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="outside" id="vo" />
-                <Label htmlFor="vo">Outside vehicle</Label>
-              </div>
-            </RadioGroup>
+            <div className="space-y-1.5">
+              <Label htmlFor="vehicle-select">Vehicle</Label>
+              <Select value={vehicleChoice} onValueChange={setVehicleChoice}>
+                <SelectTrigger id="vehicle-select"><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
+                <SelectContent>
+                  {vehicles.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      <span className="font-mono">{v.vehicle_number}</span>
+                      {v.label ? <span className="ml-2 text-xs text-muted-foreground">({v.label})</span> : null}
+                      {!v.driver_user_id && (
+                        <span className="ml-2 text-[10px] text-amber-600">no driver linked</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="outside">Outside Vehicle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {vehicleChoice === "outside" && (
               <div className="space-y-2">
                 <div>

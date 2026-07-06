@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2 } from "lucide-react";
+import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -59,6 +59,29 @@ const InboxPage = () => {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Row | null>(null);
   const [params, setParams] = useSearchParams();
+  const [chatBusy, setChatBusy] = useState<Set<string>>(new Set());
+
+  const startChat = async (row: Row) => {
+    setChatBusy((s) => new Set(s).add(row.id));
+    const { data, error } = await supabase.rpc("start_lead_chat" as any, { p_quotation_id: row.id });
+    setChatBusy((s) => {
+      const next = new Set(s);
+      next.delete(row.id);
+      return next;
+    });
+    if (error || !(data as any)?.ok) {
+      toast.error((data as any)?.error || error?.message || "Failed to start chat");
+      return;
+    }
+    toast.success("WhatsApp sent");
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === row.id
+          ? { ...r, raw: { ...r.raw, enquiry_contacted_at: new Date().toISOString() } }
+          : r,
+      ),
+    );
+  };
 
   const load = async () => {
     setLoading(true);
@@ -206,7 +229,15 @@ const InboxPage = () => {
         ) : filtered.length === 0 ? (
           <p className="py-16 text-center text-muted-foreground">No enquiries match.</p>
         ) : (
-          filtered.map((r) => <RowCard key={`${r.kind}:${r.id}`} r={r} onOpen={() => setOpen(r)} />)
+          filtered.map((r) => (
+            <RowCard
+              key={`${r.kind}:${r.id}`}
+              r={r}
+              onOpen={() => setOpen(r)}
+              onChat={startChat}
+              chatBusy={chatBusy.has(r.id)}
+            />
+          ))
         )}
       </div>
 
@@ -219,9 +250,20 @@ const InboxPage = () => {
   );
 };
 
-const RowCard = ({ r, onOpen }: { r: Row; onOpen: () => void }) => {
+const RowCard = ({
+  r,
+  onOpen,
+  onChat,
+  chatBusy,
+}: {
+  r: Row;
+  onOpen: () => void;
+  onChat: (r: Row) => void;
+  chatBusy: boolean;
+}) => {
   const meta = KIND_META[r.kind];
   const Icon = meta.icon;
+  const contacted = r.kind === "lead" && !!r.raw?.enquiry_contacted_at;
   return (
     <Card className="cursor-pointer transition hover:shadow-md" onClick={onOpen}>
       <CardContent className="p-3 sm:p-4">
@@ -229,6 +271,32 @@ const RowCard = ({ r, onOpen }: { r: Row; onOpen: () => void }) => {
           <div className="flex flex-col items-center gap-1 pt-0.5">
             <Badge className={meta.cls}><Icon className="mr-1 h-3 w-3" />{meta.label}</Badge>
           </div>
+          {r.kind === "lead" && (
+            <div className="ml-auto flex shrink-0 flex-col items-end gap-1 pl-2 order-last">
+              {contacted && (
+                <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> Contacted
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                variant={contacted ? "ghost" : "outline"}
+                className="h-7 text-xs"
+                disabled={chatBusy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChat(r);
+                }}
+              >
+                {chatBusy ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <MessageCircle className="mr-1 h-3 w-3" />
+                )}
+                {contacted ? "Re-send" : "Chat"}
+              </Button>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2">
               <p className="font-semibold truncate">{r.name}</p>
