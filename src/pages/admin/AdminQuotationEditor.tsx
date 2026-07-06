@@ -77,6 +77,13 @@ type QItem = {
   delivered_at?: string | null;
   _isNew?: boolean;
   _dirty?: boolean;
+  // Stable React list key, independent of `id`. `id` starts as a `tmp-...`
+  // placeholder and is swapped for the real DB uuid once autosave inserts
+  // the row — but the list `key` must NEVER change, or React unmounts and
+  // remounts the row's <input> mid-keystroke, dropping focus/cursor and
+  // whatever the user was typing. Set once at creation and preserved
+  // through every save/merge/reload.
+  _clientKey: string;
 };
 
 type Quotation = {
@@ -330,7 +337,15 @@ const AdminQuotationEditor = () => {
     }
     if (e2) toast({ title: "Items load failed", description: e2.message, variant: "destructive" });
     const nextQ = quote as Quotation;
-    const nextItems = ((lines ?? []) as QItem[]).map((x) => ({ ...x }));
+    // Reuse the existing row's _clientKey when we already have it locally
+    // (e.g. a row we just autosaved, whose id flipped from tmp-... to a
+    // real uuid) so a realtime/silent reload never changes a row's React
+    // key out from under an in-progress edit. Only genuinely new-to-us
+    // rows (from another user) get a fresh key, seeded from their DB id.
+    const nextItems = ((lines ?? []) as Omit<QItem, "_clientKey">[]).map((x) => {
+      const existing = itemsRef.current.find((it) => it.id === x.id);
+      return { ...x, _clientKey: existing?._clientKey ?? x.id } as QItem;
+    });
     qRef.current = nextQ;
     itemsRef.current = nextItems;
     setQ(nextQ);
@@ -421,8 +436,10 @@ const AdminQuotationEditor = () => {
     const lt = q?.lead_type ?? "lead";
     const defaultRoute: "ready_stock" | "custom" =
       lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
+    const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
-      id: `tmp-${crypto.randomUUID()}`,
+      id: tmpId,
+      _clientKey: tmpId,
       description: "",
       item_image_url: null,
       measurement: null,
@@ -617,8 +634,10 @@ const AdminQuotationEditor = () => {
       toast({ title: "Item updated from catalog" });
       return;
     }
+    const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
-      id: `tmp-${crypto.randomUUID()}`,
+      id: tmpId,
+      _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
       item_image_url: p.product_images?.[0]?.image_url ?? null,
       measurement: null,
@@ -666,8 +685,10 @@ const AdminQuotationEditor = () => {
       toast({ title: "Bundle added to item" });
       return;
     }
+    const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
-      id: `tmp-${crypto.randomUUID()}`,
+      id: tmpId,
+      _clientKey: tmpId,
       description: b.name,
       item_image_url: b.main_image_url ?? null,
       measurement: null,
@@ -700,8 +721,10 @@ const AdminQuotationEditor = () => {
   // existing row, so it's safe to use independently of pickerTargetItemId.
   const addFromCatalogViewProduct = (p: CatalogProduct) => {
     const price = Number(p.offer_price ?? p.mrp ?? 0);
+    const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
-      id: `tmp-${crypto.randomUUID()}`,
+      id: tmpId,
+      _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
       item_image_url: p.primary_image_url ?? null,
       measurement: null,
@@ -1009,7 +1032,9 @@ const AdminQuotationEditor = () => {
   // Auto-save 1.2s after the user finishes editing ANY field on an item row
   // (description, quantity, unit price, measurement notes, image attachments,
   // sketch, etc.). Debounced so typing is never interrupted; the row simply
-  // persists in the background once the user pauses.
+  // persists in the background once the user pauses. Every keystroke resets
+  // this timer (via the imageFingerprint dependency below), so a fast typist
+  // never trips a save mid-word — it only fires after a genuine pause.
   const imageFingerprint = useMemo(
     () => [
       // Header fields — so blurring out of party name / phone / notes etc.
@@ -1071,6 +1096,12 @@ const AdminQuotationEditor = () => {
           it.product_id),
     );
     const hasPending = hasSavableItem || headerDirty;
+    // Skip while a save is already in flight — but keep `saving` in the
+    // dependency list below. Without it, an edit made *during* that in-flight
+    // save would set a fingerprint the effect never revisits (since only
+    // imageFingerprint/loading were watched), leaving it stuck "unsaved"
+    // until some unrelated later edit happened to fire the effect again.
+    // Re-running when `saving` flips back to false catches it immediately.
     if (!hasPending || saving) return;
     const t = setTimeout(async () => {
       const result = await saveAll({ silent: true });
@@ -1085,10 +1116,10 @@ const AdminQuotationEditor = () => {
           });
         }
       }
-    }, 600);
+    }, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageFingerprint, loading]);
+  }, [imageFingerprint, loading, saving]);
 
   // ---- PDF & WhatsApp ----
 
@@ -1813,7 +1844,7 @@ const AdminQuotationEditor = () => {
             </div>
           )}
           {items.map((it, idx) => (
-            <div key={it.id} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
               {/* Compact invoice row — Description / Qty / Rate / Amount inline */}
               <div className="flex flex-col gap-2 px-2 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] sm:items-center sm:px-3">
                 <div className="flex items-start gap-2 sm:contents">
@@ -2251,7 +2282,7 @@ const AdminQuotationEditor = () => {
                   {items.map((it, idx) => {
                     const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
                     return (
-                      <tr key={it.id} className="border-t align-top">
+                      <tr key={it._clientKey} className="border-t align-top">
                         <td className="px-2 py-2 text-muted-foreground">{idx + 1}</td>
                         <td className="px-2 py-2">
                           <div className="font-medium">{it.description || <span className="italic text-muted-foreground">Untitled</span>}</div>
