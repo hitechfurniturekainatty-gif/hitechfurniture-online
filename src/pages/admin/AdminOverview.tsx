@@ -15,6 +15,8 @@ import { FulfillmentSplitCard } from "@/components/overview/FulfillmentSplitCard
 import { TrendsRow } from "@/components/overview/TrendsRow";
 import { HighlightCards, type UpcomingDelivery, type AwaitingPricing } from "@/components/overview/HighlightCards";
 import { GroupedStatsSections, type StatCard, type StatGroup } from "@/components/overview/GroupedStatsSections";
+import { PipelineFunnelChart } from "@/components/overview/charts/PipelineFunnelChart";
+import { StockHealthBars, type LowStockProduct } from "@/components/overview/charts/StockHealthBars";
 import { isJobFinished } from "./AdminWorkerDetail";
 
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
@@ -46,7 +48,9 @@ const AdminOverview = () => {
     outForDelivery: number;
     tripsActive: number;
     tripsCompleted: number;
-  }>({ quotByDay: [], tripsByDay: [], statusTotals: {}, outForDelivery: 0, tripsActive: 0, tripsCompleted: 0 });
+    tripStatusCounts: Record<string, number>;
+  }>({ quotByDay: [], tripsByDay: [], statusTotals: {}, outForDelivery: 0, tripsActive: 0, tripsCompleted: 0, tripStatusCounts: {} });
+  const [lowStockList, setLowStockList] = useState<LowStockProduct[]>([]);
   // Fulfillment split metrics (Ready Stock vs Custom Production)
   const [fulfillment, setFulfillment] = useState({
     quotsReadyOnly: 0,
@@ -67,7 +71,7 @@ const AdminOverview = () => {
         // AdminProducts.tsx does), not a flat threshold — PostgREST can't
         // compare two columns of the same row server-side, so fetch both
         // and filter client-side.
-        supabase.from("products").select("id, stock_quantity, reorder_level").is("deleted_at", null).then((r) => r),
+        supabase.from("products").select("id, name, stock_quantity, reorder_level").is("deleted_at", null).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "drafted").then((r) => r),
         supabase.from("workers").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_active", true).then((r) => r),
@@ -81,11 +85,18 @@ const AdminOverview = () => {
         );
       }
       const r = await Promise.all(queries);
-      const lowStockRows = (r[2] as any)?.data as { stock_quantity: number | null; reorder_level: number | null }[] | undefined;
+      const lowStockRows = (r[2] as any)?.data as { id: string; name: string; stock_quantity: number | null; reorder_level: number | null }[] | undefined;
+      const lowStockOnly = (lowStockRows ?? []).filter((p) => (Number(p.stock_quantity) || 0) <= (p.reorder_level ?? 5));
+      setLowStockList(
+        lowStockOnly
+          .map((p) => ({ id: p.id, name: p.name, stock_quantity: Number(p.stock_quantity) || 0, reorder_level: p.reorder_level ?? 5 }))
+          .sort((a, b) => (a.stock_quantity - a.reorder_level) - (b.stock_quantity - b.reorder_level))
+          .slice(0, 8)
+      );
       setStats({
         products: r[0].count ?? 0,
         categories: r[1].count ?? 0,
-        lowStock: (lowStockRows ?? []).filter((p) => (Number(p.stock_quantity) || 0) <= (p.reorder_level ?? 5)).length,
+        lowStock: lowStockOnly.length,
         quotations: r[3].count ?? 0,
         drafts: r[4].count ?? 0,
         workers: r[5].count ?? 0,
@@ -275,17 +286,19 @@ const AdminOverview = () => {
           statusTotals[s] = (statusTotals[s] ?? 0) + 1;
         });
         let outForDelivery = 0, tripsActive = 0, tripsCompleted = 0;
+        const tripStatusCounts: Record<string, number> = {};
         // trips.status is planned/in_transit/delivered/cancelled — this used
         // to check "completed"/"in_progress", neither of which is real, so
         // every trip fell through all three branches uncounted.
         ((tT.data ?? []) as any[]).forEach((t) => {
           const i = dayIndex(t.trip_date);
           if (i >= 0 && i < days) tripsByDay[i]++;
+          tripStatusCounts[t.status] = (tripStatusCounts[t.status] ?? 0) + 1;
           if (t.status === "delivered") tripsCompleted++;
           else if (t.status === "in_transit") { outForDelivery++; tripsActive++; }
           else if (t.status === "planned") tripsActive++;
         });
-        setTrends({ quotByDay, tripsByDay, statusTotals, outForDelivery, tripsActive, tripsCompleted });
+        setTrends({ quotByDay, tripsByDay, statusTotals, outForDelivery, tripsActive, tripsCompleted, tripStatusCounts });
       }
     };
     run();
@@ -408,15 +421,26 @@ const AdminOverview = () => {
       {/* 6-Stage Pipeline: Client Hub → Dimensions → OPS → Production → Warehouse → Logistics */}
       {(isAdmin || isOfficeStaff) && <PipelineStageGrid pipelineCounts={pipelineCounts} />}
 
-      {/* Trend sparklines — quotations & deliveries over the last N days */}
+      {/* Charts — pipeline funnel + quotations/delivery trends, all from the
+          same verified counts as the cards above, just visualised. */}
       {(isAdmin || isOfficeStaff) && (
-        <TrendsRow trends={trends} trendDays={trendDays} setTrendDays={setTrendDays} />
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <PipelineFunnelChart pipelineCounts={pipelineCounts} />
+          <TrendsRow trends={trends} trendDays={trendDays} setTrendDays={setTrendDays} />
+        </div>
       )}
 
       {/* Fulfillment Split — Ready Stock vs Custom Production (per item routing) */}
       {(isAdmin || isOfficeStaff) && <FulfillmentSplitCard fulfillment={fulfillment} />}
 
       <GroupedStatsSections groups={groups} />
+
+      {/* Stock health — worst-off products vs their own reorder level */}
+      {isAdmin && lowStockList.length > 0 && (
+        <div className="mt-6">
+          <StockHealthBars products={lowStockList} />
+        </div>
+      )}
 
       {isOfficeStaff && (
         <Card className="mt-8">

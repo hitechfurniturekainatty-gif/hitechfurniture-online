@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/brand";
 import { isJobFinished, jobStatusTone, jobStatusLabel } from "./AdminWorkerDetail";
+import { tripStatusDonutData } from "@/lib/logistics";
+import { DailyBarChart } from "@/components/overview/charts/DailyBarChart";
+import { StatusDonut, type DonutSlice } from "@/components/overview/charts/StatusDonut";
 
 type Task = {
   id: string;
@@ -240,6 +243,34 @@ const AdminMyWork = () => {
   const overdueTasks = pendingTasks.filter((t) => new Date(t.created_at).getTime() < Date.now() - 2 * 86400_000);
   const todaysTasks = pendingTasks.filter((t) => (t.created_at).slice(0, 10) === todayIso);
 
+  // Measurement/office: tasks completed per day, last 14 days.
+  const TASK_TREND_DAYS = 14;
+  const tasksCompletedByDay = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (TASK_TREND_DAYS - 1));
+    const buckets = new Array(TASK_TREND_DAYS).fill(0);
+    doneTasks.forEach((t) => {
+      const d = new Date(t.completed_at ?? t.created_at);
+      d.setHours(0, 0, 0, 0);
+      const i = Math.floor((d.getTime() - start.getTime()) / 86400_000);
+      if (i >= 0 && i < TASK_TREND_DAYS) buckets[i]++;
+    });
+    return buckets;
+  }, [doneTasks]);
+
+  // Delivery: trip status split for the trips already loaded (last 14 days).
+  const tripStatusCounts: Record<string, number> = {};
+  driverTrips.forEach((t) => { tripStatusCounts[t.status] = (tripStatusCounts[t.status] ?? 0) + 1; });
+  const deliveryStatusDonutData = tripStatusDonutData(tripStatusCounts);
+
+  // Warehouse: every loaded job falls into exactly one of these 3 buckets.
+  const warehouseStatusDonutData: DonutSlice[] = [
+    { name: "In production", value: warehouseJobs.filter((j) => !isJobFinished(j.status)).length, color: "#8b5cf6" },
+    { name: "Waiting to dispatch", value: warehouseJobs.filter((j) => isJobFinished(j.status) && j.warehouse_status !== "dispatched").length, color: "#f59e0b" },
+    { name: "Dispatched", value: warehouseJobs.filter((j) => j.warehouse_status === "dispatched").length, color: "#10b981" },
+  ].filter((d) => d.value > 0);
+
   const TaskCard = ({ t }: { t: Task }) => (
     <Card>
       <CardContent className="p-4">
@@ -434,28 +465,61 @@ const AdminMyWork = () => {
         </div>
       )}
       {primaryRole === "delivery" && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Today's stops" value={todayTrip?.stops.length ?? 0} icon={Truck} />
-          <StatCard label="Remaining" value={todayRemainingStops} icon={Clock} />
-          <StatCard label="Overdue trips" value={overdueTrips.length} icon={AlertTriangle} />
-          <StatCard label="Trips (14d)" value={driverTrips.length} icon={CalendarDays} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard label="Today's stops" value={todayTrip?.stops.length ?? 0} icon={Truck} />
+            <StatCard label="Remaining" value={todayRemainingStops} icon={Clock} />
+            <StatCard label="Overdue trips" value={overdueTrips.length} icon={AlertTriangle} />
+            <StatCard label="Trips (14d)" value={driverTrips.length} icon={CalendarDays} />
+          </div>
+          {driverTrips.length > 0 && (
+            <Card className="mt-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base">Trip Status Split</CardTitle>
+                <p className="text-xs text-muted-foreground">Your trips over the last 14 days, by status</p>
+              </CardHeader>
+              <CardContent><StatusDonut data={deliveryStatusDonutData} /></CardContent>
+            </Card>
+          )}
+        </>
       )}
       {primaryRole === "warehouse" && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Waiting" value={warehouseWaiting.length} icon={WarehouseIcon} />
-          <StatCard label="Dispatched today" value={warehouseDispatchedToday} icon={PackageCheck} />
-          <StatCard label="Urgent waiting" value={warehouseWaiting.filter((j) => j.is_urgent).length} icon={Flame} />
-          <StatCard label="Total jobs" value={warehouseTotalCount} icon={FileText} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard label="Waiting" value={warehouseWaiting.length} icon={WarehouseIcon} />
+            <StatCard label="Dispatched today" value={warehouseDispatchedToday} icon={PackageCheck} />
+            <StatCard label="Urgent waiting" value={warehouseWaiting.filter((j) => j.is_urgent).length} icon={Flame} />
+            <StatCard label="Total jobs" value={warehouseTotalCount} icon={FileText} />
+          </div>
+          {warehouseStatusDonutData.length > 0 && (
+            <Card className="mt-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base">Job Status Split</CardTitle>
+                <p className="text-xs text-muted-foreground">Every loaded job, by warehouse stage</p>
+              </CardHeader>
+              <CardContent><StatusDonut data={warehouseStatusDonutData} /></CardContent>
+            </Card>
+          )}
+        </>
       )}
       {(primaryRole === "office" || primaryRole === "measurement") && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Pending tasks" value={pendingTasks.length} icon={Clock} />
-          <StatCard label="Overdue" value={overdueTasks.length} icon={AlertTriangle} />
-          <StatCard label="Done this month" value={doneThisMonth.length} icon={CalendarDays} />
-          <StatCard label="My quotations" value={quotations.length} icon={FileText} sub={`${quotesThisMonth.length} this month`} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard label="Pending tasks" value={pendingTasks.length} icon={Clock} />
+            <StatCard label="Overdue" value={overdueTasks.length} icon={AlertTriangle} />
+            <StatCard label="Done this month" value={doneThisMonth.length} icon={CalendarDays} />
+            <StatCard label="My quotations" value={quotations.length} icon={FileText} sub={`${quotesThisMonth.length} this month`} />
+          </div>
+          {doneTasks.length > 0 && (
+            <Card className="mt-3">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base">Tasks Completed</CardTitle>
+                <p className="text-xs text-muted-foreground">Per day · last {TASK_TREND_DAYS} days</p>
+              </CardHeader>
+              <CardContent><DailyBarChart data={tasksCompletedByDay} days={TASK_TREND_DAYS} unitLabel="task" /></CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {loading ? (

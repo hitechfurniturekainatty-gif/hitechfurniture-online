@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2, Eye } from "lucide-react";
 import { firstUrl } from "@/lib/firstUrl";
-import { JOB_STATUSES, jobStatusLabel, jobStatusTone, isJobFinished } from "@/pages/admin/AdminWorkerDetail";
+import { JOB_STATUSES, jobStatusLabel, jobStatusTone, jobStatusHex, isJobFinished } from "@/pages/admin/AdminWorkerDetail";
+import { StatusBar } from "@/components/overview/charts/StatusBar";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
@@ -347,6 +348,17 @@ const WorkerPortal = () => {
           <Stat label="Ready" value={counts.ready ?? 0} />
           <Stat label="Done" value={counts.delivered ?? 0} tone="success" />
         </div>
+
+        {jobs.length > 0 && (
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">All jobs, by status</p>
+              <StatusBar
+                data={JOB_STATUSES.map((s) => ({ name: s.label, value: counts[s.value] ?? 0, color: jobStatusHex(s.value) }))}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full justify-start overflow-x-auto [&::-webkit-scrollbar]:hidden">
