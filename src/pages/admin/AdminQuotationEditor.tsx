@@ -55,6 +55,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
 import { STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
+import { QuotationFlowLinks } from "@/components/admin/QuotationFlowLinks";
 
 type QItem = {
   id: string;
@@ -1649,6 +1650,10 @@ const AdminQuotationEditor = () => {
             </div>
           )}
         </div>
+
+        {/* Jump straight to production (worker) / delivery (trip) status —
+            only renders once there's something downstream to jump to. */}
+        <QuotationFlowLinks quotationId={q.id} />
 
         {/* Desktop / tablet actions — one wrapping row (hidden on mobile,
             the dedicated sticky bottom bar below covers the same actions

@@ -17,8 +17,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 195 35% 12%;
 
-    /* Brand teal from the logo */
-    --primary: 187 65% 24%;
+    /* Brand teal from the logo — peacock teal #0E5C66 */
+    --primary: 187 76% 23%;
     --primary-foreground: 40 33% 97%;
     --primary-glow: 184 55% 38%;
 
@@ -37,7 +37,7 @@
 
     --border: 195 15% 88%;
     --input: 195 15% 88%;
-    --ring: 187 65% 24%;
+    --ring: 187 76% 23%;
 
     --radius: 0.75rem;
 
@@ -58,12 +58,12 @@
 
     --sidebar-background: 40 33% 97%;
     --sidebar-foreground: 195 35% 18%;
-    --sidebar-primary: 187 65% 24%;
+    --sidebar-primary: 187 76% 23%;
     --sidebar-primary-foreground: 40 33% 97%;
     --sidebar-accent: 40 25% 92%;
     --sidebar-accent-foreground: 195 35% 18%;
     --sidebar-border: 195 15% 88%;
-    --sidebar-ring: 187 65% 24%;
+    --sidebar-ring: 187 76% 23%;
   }
 
   .dark {
