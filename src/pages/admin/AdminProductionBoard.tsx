@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, HardHat, FileText, LifeBuoy, Wrench } from "lucide-react";
+import { isJobFinished } from "./AdminWorkerDetail";
 
 type JobRow = {
   id: string;
@@ -42,7 +43,11 @@ const COLUMNS: { key: ColumnKey; label: string }[] = [
 
 const columnFor = (j: JobRow): ColumnKey => {
   if (j.warehouse_status === "dispatched") return "dispatched";
-  if (j.status === "completed" || j.status === "ready" || j.status === "done") return "completed";
+  // "Completed" means the canonical job_work_orders.status has reached a
+  // finished state — "ready" (production done, awaiting dispatch) or
+  // "delivered" (a worker marked it delivered directly). There's no
+  // separate "completed"/"done" status value; see JOB_FINISHED_STATUSES.
+  if (isJobFinished(j.status)) return "completed";
   if (j.status === "started" || j.status === "in_progress") return "in_progress";
   return "assigned";
 };
@@ -164,11 +169,15 @@ const Inner = () => {
   const moveTo = async (job: JobRow, target: ColumnKey) => {
     if (columnFor(job) === target) return;
     setSavingId(job.id);
+    // "Completed" and "Dispatched" both mean the job itself is done — they
+    // only differ in warehouse_status. Write "ready" (not "completed",
+    // which Worker Portal and the warehouse handoff logic don't recognize)
+    // so a job dragged here shows correctly if a worker later opens it.
     const patch: { status: string; warehouse_status?: string } =
       target === "assigned" ? { status: "assigned" }
         : target === "in_progress" ? { status: "in_progress" }
-        : target === "completed" ? { status: "completed", warehouse_status: "in_warehouse" }
-        : { status: "completed", warehouse_status: "dispatched" };
+        : target === "completed" ? { status: "ready", warehouse_status: "in_warehouse" }
+        : { status: "ready", warehouse_status: "dispatched" };
 
     const { error } = await supabase.from("job_work_orders").update(patch as any).eq("id", job.id);
     setSavingId(null);

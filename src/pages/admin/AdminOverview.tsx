@@ -15,6 +15,7 @@ import { FulfillmentSplitCard } from "@/components/overview/FulfillmentSplitCard
 import { TrendsRow } from "@/components/overview/TrendsRow";
 import { HighlightCards, type UpcomingDelivery, type AwaitingPricing } from "@/components/overview/HighlightCards";
 import { GroupedStatsSections, type StatCard, type StatGroup } from "@/components/overview/GroupedStatsSections";
+import { isJobFinished } from "./AdminWorkerDetail";
 
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
 
@@ -30,6 +31,10 @@ const AdminOverview = () => {
   // Split the old "OPS: In-Progress" list — measurement-task drafts (true
   // "needs pricing") vs actual Stage-3 OPS quotations (finalized, no jobs yet).
   const [needsPricing, setNeedsPricing] = useState<AwaitingPricing[]>([]);
+  // Separate accurate count — the list above is capped at 10 for display,
+  // same pattern as stage3Count/opsStage3 below (badge must never be
+  // driven by a limited array's .length, or it silently undercounts).
+  const [needsPricingCount, setNeedsPricingCount] = useState(0);
   const [opsStage3, setOpsStage3] = useState<AwaitingPricing[]>([]);
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   // 30-day trend series for sparklines
@@ -58,7 +63,11 @@ const AdminOverview = () => {
       const queries = [
         supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
         supabase.from("main_categories").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
-        supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null).lte("stock_quantity", 5).then((r) => r),
+        // Low stock has to match each product's own reorder_level (as
+        // AdminProducts.tsx does), not a flat threshold — PostgREST can't
+        // compare two columns of the same row server-side, so fetch both
+        // and filter client-side.
+        supabase.from("products").select("id, stock_quantity, reorder_level").is("deleted_at", null).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).then((r) => r),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "drafted").then((r) => r),
         supabase.from("workers").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_active", true).then((r) => r),
@@ -72,10 +81,11 @@ const AdminOverview = () => {
         );
       }
       const r = await Promise.all(queries);
+      const lowStockRows = (r[2] as any)?.data as { stock_quantity: number | null; reorder_level: number | null }[] | undefined;
       setStats({
         products: r[0].count ?? 0,
         categories: r[1].count ?? 0,
-        lowStock: r[2].count ?? 0,
+        lowStock: (lowStockRows ?? []).filter((p) => (Number(p.stock_quantity) || 0) <= (p.reorder_level ?? 5)).length,
         quotations: r[3].count ?? 0,
         drafts: r[4].count ?? 0,
         workers: r[5].count ?? 0,
@@ -126,7 +136,7 @@ const AdminOverview = () => {
       //    Production yet. Counted accurately via pipelineCounts[3];
       //    here we just list the most recent finalized rows for the card.
       if (isOfficeStaff) {
-        const [{ data: pricingRows }, { data: opsRows }] = await Promise.all([
+        const [{ data: pricingRows }, { data: opsRows }, { count: pricingCount }] = await Promise.all([
           supabase
             .from("quotations")
             .select("id, quotation_id, party_name, party_place, party_phone, created_at, created_by")
@@ -142,8 +152,15 @@ const AdminOverview = () => {
             .eq("status", "finalized")
             .order("updated_at", { ascending: false })
             .limit(10),
+          supabase
+            .from("quotations")
+            .select("id", { count: "exact", head: true })
+            .is("deleted_at", null)
+            .eq("status", "drafted")
+            .not("submitted_for_pricing_at", "is", null),
         ]);
         setNeedsPricing((pricingRows ?? []) as AwaitingPricing[]);
+        setNeedsPricingCount(pricingCount ?? 0);
         setOpsStage3((opsRows ?? []) as AwaitingPricing[]);
       }
 
@@ -160,7 +177,9 @@ const AdminOverview = () => {
           if (!j.quotation_id) return;
           const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0, warehouse: 0, dispatched: 0 };
           cur.total++;
-          if (j.status === "completed" || j.status === "done") cur.done++;
+          // job_work_orders.status is assigned/started/in_progress/ready/
+          // delivered — "completed"/"done" were never real values.
+          if (isJobFinished(j.status)) cur.done++;
           if (j.warehouse_status === "in_warehouse" || j.warehouse_status === "ready_to_pack" || j.warehouse_status === "ready_for_dispatch") cur.warehouse++;
           if (j.warehouse_status === "dispatched") cur.dispatched++;
           jobsByQ[j.quotation_id] = cur;
@@ -169,7 +188,9 @@ const AdminOverview = () => {
         ((tqP.data ?? []) as any[]).forEach((tq) => {
           const cur = tripsByQ[tq.quotation_id] ?? { has: false, completed: false };
           cur.has = true;
-          if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
+          // trips.status is planned/in_transit/delivered/cancelled —
+          // "completed" was never a real value here.
+          if (tq.trips?.status === "delivered" || tq.delivered_at) cur.completed = true;
           tripsByQ[tq.quotation_id] = cur;
         });
         const itemsByQ: Record<string, { total: number; ready: number; custom: number }> = {};
@@ -254,11 +275,14 @@ const AdminOverview = () => {
           statusTotals[s] = (statusTotals[s] ?? 0) + 1;
         });
         let outForDelivery = 0, tripsActive = 0, tripsCompleted = 0;
+        // trips.status is planned/in_transit/delivered/cancelled — this used
+        // to check "completed"/"in_progress", neither of which is real, so
+        // every trip fell through all three branches uncounted.
         ((tT.data ?? []) as any[]).forEach((t) => {
           const i = dayIndex(t.trip_date);
           if (i >= 0 && i < days) tripsByDay[i]++;
-          if (t.status === "completed") tripsCompleted++;
-          else if (t.status === "in_progress") { outForDelivery++; tripsActive++; }
+          if (t.status === "delivered") tripsCompleted++;
+          else if (t.status === "in_transit") { outForDelivery++; tripsActive++; }
           else if (t.status === "planned") tripsActive++;
         });
         setTrends({ quotByDay, tripsByDay, statusTotals, outForDelivery, tripsActive, tripsCompleted });
@@ -374,6 +398,7 @@ const AdminOverview = () => {
         <HighlightCards
           upcoming={upcoming}
           needsPricing={needsPricing}
+          needsPricingCount={needsPricingCount}
           opsStage3={opsStage3}
           stage3Count={pipelineCounts[3]}
           isOfficeStaff={isOfficeStaff}

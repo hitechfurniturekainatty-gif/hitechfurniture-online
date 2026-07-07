@@ -10,6 +10,7 @@ import { Loader2, ArrowRight, RefreshCw } from "lucide-react";
 import { computeStage, ALL_STAGES, STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import { formatINR } from "@/lib/brand";
+import { isJobFinished } from "./AdminWorkerDetail";
 
 type Q = {
   id: string;
@@ -24,7 +25,7 @@ type Q = {
   source_task_id: string | null;
 };
 
-type Job = { quotation_id: string | null; status: string };
+type Job = { quotation_id: string | null; status: string; warehouse_status: string | null };
 type TripQ = { quotation_id: string; trip: { status: string } | null };
 
 const AdminPipelineMonitor = () => {
@@ -43,7 +44,7 @@ const AdminPipelineMonitor = () => {
         .order("created_at", { ascending: false }),
       supabase
         .from("job_work_orders")
-        .select("quotation_id, status")
+        .select("quotation_id, status, warehouse_status")
         .is("deleted_at", null),
       supabase
         .from("trip_quotations")
@@ -58,16 +59,25 @@ const AdminPipelineMonitor = () => {
       const tStatus = tq.trips?.status as string | undefined;
       const cur = tripsByQ[qid] ?? { has: false, completed: false };
       cur.has = true;
-      if (tStatus === "completed" || tq.delivered_at) cur.completed = true;
+      // trips.status is planned/in_transit/delivered/cancelled — "completed"
+      // was never a real value here.
+      if (tStatus === "delivered" || tq.delivered_at) cur.completed = true;
       tripsByQ[qid] = cur;
     });
 
-    const jobsByQ: Record<string, { total: number; done: number }> = {};
+    const jobsByQ: Record<string, { total: number; done: number; warehouse: number; dispatched: number }> = {};
     jobs.forEach((j) => {
       if (!j.quotation_id) return;
-      const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0 };
+      const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0, warehouse: 0, dispatched: 0 };
       cur.total += 1;
-      if (j.status === "completed" || j.status === "done") cur.done += 1;
+      // job_work_orders.status is assigned/started/in_progress/ready/
+      // delivered — "completed"/"done" were never real values.
+      if (isJobFinished(j.status)) cur.done += 1;
+      // Matches the same 3-value "in warehouse" check used in Overview and
+      // AdminQuotations — only "in_warehouse" is ever written today, but
+      // this stays forward-compatible with the other two.
+      if (j.warehouse_status === "in_warehouse" || j.warehouse_status === "ready_to_pack" || j.warehouse_status === "ready_for_dispatch") cur.warehouse += 1;
+      if (j.warehouse_status === "dispatched") cur.dispatched += 1;
       jobsByQ[j.quotation_id] = cur;
     });
     const itemsByQ: Record<string, { total: number; ready: number; custom: number }> = {};
@@ -92,6 +102,8 @@ const AdminPipelineMonitor = () => {
         source_task_id: q.source_task_id,
         jobs_total: j?.total ?? 0,
         jobs_completed: j?.done ?? 0,
+        jobs_in_warehouse: j?.warehouse ?? 0,
+        jobs_dispatched: j?.dispatched ?? 0,
         has_trip: t?.has ?? false,
         trip_completed: t?.completed ?? false,
         items_total: itemsByQ[q.id]?.total ?? 0,

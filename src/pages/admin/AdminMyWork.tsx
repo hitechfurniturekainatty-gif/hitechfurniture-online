@@ -13,6 +13,7 @@ import {
   AlertTriangle, Flame, IndianRupee, PackageCheck, Sun,
 } from "lucide-react";
 import { formatINR } from "@/lib/brand";
+import { isJobFinished, jobStatusTone, jobStatusLabel } from "./AdminWorkerDetail";
 
 type Task = {
   id: string;
@@ -74,6 +75,9 @@ const AdminMyWork = () => {
   const [workerJobs, setWorkerJobs] = useState<WorkerJob[]>([]);
   const [driverTrips, setDriverTrips] = useState<DriverTrip[]>([]);
   const [warehouseJobs, setWarehouseJobs] = useState<WorkerJob[]>([]);
+  // Separate accurate count — warehouseJobs itself is capped at 200 rows
+  // for display, so "Total jobs" must not be driven by its .length.
+  const [warehouseTotalCount, setWarehouseTotalCount] = useState(0);
 
   const primaryRole: "office" | "measurement" | "worker" | "delivery" | "warehouse" =
     isOfficeStaff || isAdmin ? "office"
@@ -162,12 +166,16 @@ const AdminMyWork = () => {
       }
 
       if (isWarehouse) {
-        const { data: wjobs } = await supabase
-          .from("job_work_orders")
-          .select("id,status,is_urgent,created_at,status_updated_at,quotation_id,warehouse_status")
-          .is("deleted_at", null)
-          .order("status_updated_at", { ascending: false })
-          .limit(200);
+        const [{ data: wjobs }, { count: wTotal }] = await Promise.all([
+          supabase
+            .from("job_work_orders")
+            .select("id,status,is_urgent,created_at,status_updated_at,quotation_id,warehouse_status")
+            .is("deleted_at", null)
+            .order("status_updated_at", { ascending: false })
+            .limit(200),
+          supabase.from("job_work_orders").select("id", { count: "exact", head: true }).is("deleted_at", null),
+        ]);
+        setWarehouseTotalCount(wTotal ?? 0);
         const list = (wjobs ?? []) as WorkerJob[];
         const qids = Array.from(new Set(list.map((j) => j.quotation_id))).filter(Boolean);
         if (qids.length) {
@@ -202,10 +210,14 @@ const AdminMyWork = () => {
           : isWarehouse ? "Warehouse"
             : isMeasurementStaff ? "Measurement Staff" : "Staff";
 
-  const workerOpen = workerJobs.filter((j) => j.status === "assigned" || j.status === "in_progress");
+  // job_work_orders.status only ever contains assigned/started/in_progress/
+  // ready/delivered (see JOB_STATUSES) — "started" was previously missing
+  // from "open", and "completed" (never a real value) meant "done this
+  // week" always read zero.
+  const workerOpen = workerJobs.filter((j) => j.status === "assigned" || j.status === "started" || j.status === "in_progress");
   const workerUrgent = workerOpen.filter((j) => j.is_urgent);
   const workerDoneThisWeek = workerJobs.filter((j) => {
-    if (j.status !== "completed") return false;
+    if (!isJobFinished(j.status)) return false;
     const t = new Date(j.status_updated_at ?? j.created_at).getTime();
     return t >= Date.now() - 7 * 86400_000;
   }).length;
@@ -213,9 +225,12 @@ const AdminMyWork = () => {
   const todayTrip = driverTrips.find((t) => t.trip_date === todayIso);
   const todayRemainingStops = todayTrip ? todayTrip.stops.filter((s) => !s.delivered_at).length : 0;
   const todayCollect = todayTrip ? todayTrip.stops.filter((s) => !s.delivered_at).reduce((s, x) => s + x.balance, 0) : 0;
-  const overdueTrips = driverTrips.filter((t) => t.trip_date < todayIso && t.status !== "completed" && t.stops.some((s) => !s.delivered_at));
+  // trips.status is planned/in_transit/delivered/cancelled (see
+  // tripStatusLabel in src/lib/logistics.ts) — "completed" isn't a real
+  // trip status, which made this condition always true.
+  const overdueTrips = driverTrips.filter((t) => t.trip_date < todayIso && t.status !== "delivered" && t.status !== "cancelled" && t.stops.some((s) => !s.delivered_at));
 
-  const warehouseWaiting = warehouseJobs.filter((j) => j.status === "completed" && j.warehouse_status !== "dispatched");
+  const warehouseWaiting = warehouseJobs.filter((j) => isJobFinished(j.status) && j.warehouse_status !== "dispatched");
   const warehouseDispatchedToday = warehouseJobs.filter((j) => {
     if (j.warehouse_status !== "dispatched") return false;
     return (j.status_updated_at ?? "").slice(0, 10) === todayIso;
@@ -310,7 +325,7 @@ const AdminMyWork = () => {
           </div>
           <div className="flex flex-col items-end gap-1">
             {j.is_urgent && <Badge variant="destructive" className="gap-1"><Flame className="h-3 w-3" /> Urgent</Badge>}
-            <Badge variant={j.status === "completed" ? "default" : j.status === "in_progress" ? "secondary" : "outline"}>{j.status}</Badge>
+            <Badge variant={jobStatusTone(j.status)}>{jobStatusLabel(j.status)}</Badge>
           </div>
         </div>
         <div className="mt-3">
@@ -431,7 +446,7 @@ const AdminMyWork = () => {
           <StatCard label="Waiting" value={warehouseWaiting.length} icon={WarehouseIcon} />
           <StatCard label="Dispatched today" value={warehouseDispatchedToday} icon={PackageCheck} />
           <StatCard label="Urgent waiting" value={warehouseWaiting.filter((j) => j.is_urgent).length} icon={Flame} />
-          <StatCard label="Total jobs" value={warehouseJobs.length} icon={FileText} />
+          <StatCard label="Total jobs" value={warehouseTotalCount} icon={FileText} />
         </div>
       )}
       {(primaryRole === "office" || primaryRole === "measurement") && (
@@ -450,7 +465,7 @@ const AdminMyWork = () => {
           <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <TabsTrigger value="open" className="whitespace-nowrap">Open ({workerOpen.length})</TabsTrigger>
             <TabsTrigger value="urgent" className="whitespace-nowrap">Urgent ({workerUrgent.length})</TabsTrigger>
-            <TabsTrigger value="history" className="whitespace-nowrap">Completed ({workerJobs.filter((j) => j.status === "completed").length})</TabsTrigger>
+            <TabsTrigger value="history" className="whitespace-nowrap">Completed ({workerJobs.filter((j) => isJobFinished(j.status)).length})</TabsTrigger>
           </TabsList>
           <TabsContent value="open" className="mt-4">
             <div className="grid gap-3 md:grid-cols-2">
@@ -466,7 +481,7 @@ const AdminMyWork = () => {
           </TabsContent>
           <TabsContent value="history" className="mt-4">
             <div className="grid gap-3 md:grid-cols-2">
-              {workerJobs.filter((j) => j.status === "completed").map((j) => <WorkerJobCard key={j.id} j={j} />)}
+              {workerJobs.filter((j) => isJobFinished(j.status)).map((j) => <WorkerJobCard key={j.id} j={j} />)}
             </div>
           </TabsContent>
         </Tabs>

@@ -29,6 +29,7 @@ import { computeStage, stageToneClasses, ALL_STAGES, STAGE_DEFS, type PipelineSt
 import { HelpHint } from "@/components/help/HelpHint";
 import { ActionHint } from "@/components/help/ActionHint";
 import { PipelineSteps } from "@/components/admin/PipelineSteps";
+import { isJobFinished } from "./AdminWorkerDetail";
 import {
   saveNewQuotationDraft,
   loadNewQuotationDraft,
@@ -228,7 +229,9 @@ const AdminQuotations = () => {
       if (!j.quotation_id) return;
       const cur = jobs[j.quotation_id] ?? { total: 0, done: 0, in_warehouse: 0, dispatched: 0 };
       cur.total += 1;
-      if (j.status === "completed" || j.status === "done") cur.done += 1;
+      // job_work_orders.status is assigned/started/in_progress/ready/
+      // delivered — "completed"/"done" were never real values.
+      if (isJobFinished(j.status)) cur.done += 1;
       const ws = j.warehouse_status;
       if (ws === "in_warehouse" || ws === "ready_to_pack" || ws === "ready_for_dispatch") cur.in_warehouse += 1;
       if (ws === "dispatched") cur.dispatched += 1;
@@ -240,7 +243,9 @@ const AdminQuotations = () => {
       const qid = tq.quotation_id as string;
       const cur = trips[qid] ?? { has: false, completed: false };
       cur.has = true;
-      if (tq.trips?.status === "completed" || tq.delivered_at) cur.completed = true;
+      // trips.status is planned/in_transit/delivered/cancelled —
+      // "completed" was never a real value here.
+      if (tq.trips?.status === "delivered" || tq.delivered_at) cur.completed = true;
       trips[qid] = cur;
     });
     setTripAgg(trips);
