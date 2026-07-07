@@ -13,12 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { QuotationItemMediaStack } from "@/components/admin/QuotationItemMediaStack";
 import { ContactPicker } from "@/components/admin/ContactPicker";
-import { SketchField } from "@/components/admin/SketchField";
-import { CollapsibleField } from "@/components/admin/CollapsibleField";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
@@ -278,9 +275,6 @@ const AdminQuotationEditor = () => {
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
-  // When set, the next product picked replaces the fields of this existing row
-  // instead of appending a new line. Cleared after use or when picker closes.
-  const [pickerTargetItemId, setPickerTargetItemId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
@@ -602,41 +596,11 @@ const AdminQuotationEditor = () => {
     setPickerMainId(null);
     setPickerSubId(null);
     setProductSearch("");
-    setPickerTargetItemId(null);
-    setPickerTab("products");
-    setProductPickerOpen(true);
-  };
-
-  // Open the same catalog picker, but bind the next pick to a specific
-  // existing row — so the admin can fill in catalog details per-row while
-  // building a long quotation, instead of adding a brand-new line.
-  const openPickerForItem = async (itemId: string) => {
-    await loadProducts();
-    setPickerMainId(null);
-    setPickerSubId(null);
-    setProductSearch("");
-    setPickerTargetItemId(itemId);
     setPickerTab("products");
     setProductPickerOpen(true);
   };
 
   const addFromProduct = (p: Product) => {
-    // If the picker was opened from a row's "Pick from catalog" button,
-    // patch THAT row instead of appending a new one.
-    if (pickerTargetItemId) {
-      const patch: Partial<QItem> = {
-        description: `${p.product_name} (${p.product_code})`,
-        item_image_url: p.product_images?.[0]?.image_url ?? null,
-        catalog_text: p.product_code ?? null,
-        product_id: p.id,
-      };
-      if (canEditPrice) patch.unit_price = Number(p.offer_price ?? p.mrp ?? 0);
-      updateItem(pickerTargetItemId, patch);
-      setPickerTargetItemId(null);
-      setProductPickerOpen(false);
-      toast({ title: "Item updated from catalog" });
-      return;
-    }
     const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
       id: tmpId,
@@ -674,21 +638,6 @@ const AdminQuotationEditor = () => {
 
   const addFromBundle = (b: Bundle) => {
     const price = Number(b.offer_price ?? b.mrp ?? 0);
-    if (pickerTargetItemId) {
-      const patch: Partial<QItem> = {
-        description: b.name,
-        item_image_url: b.main_image_url ?? null,
-        catalog_text: b.bundle_code ?? null,
-        product_id: null,
-        bundle_id: b.id,
-      };
-      if (canEditPrice) patch.unit_price = price;
-      updateItem(pickerTargetItemId, patch);
-      setPickerTargetItemId(null);
-      setProductPickerOpen(false);
-      toast({ title: "Bundle added to item" });
-      return;
-    }
     const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
       id: tmpId,
@@ -722,8 +671,7 @@ const AdminQuotationEditor = () => {
   };
 
   // Drag-and-drop (or click) add from the split-view catalog panel. Always
-  // appends a new line — unlike the picker dialog it never targets an
-  // existing row, so it's safe to use independently of pickerTargetItemId.
+  // appends a new line.
   const addFromCatalogViewProduct = (p: CatalogProduct) => {
     const price = Number(p.offer_price ?? p.mrp ?? 0);
     const tmpId = `tmp-${crypto.randomUUID()}`;
@@ -2176,103 +2124,6 @@ const AdminQuotationEditor = () => {
                 </div>
               )}
 
-              <div className="space-y-4 p-3 sm:p-4">
-                {/* SECTION 1: Model photo */}
-                <section className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Model Photo</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs font-medium">Item photo</Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
-                        onClick={() => openPickerForItem(it.id)}
-                      >
-                        <Search className="mr-1 h-3 w-3" />
-                        Pick from catalog
-                      </Button>
-                    </div>
-                    <MultiImagePicker
-                      value={it.item_image_url}
-                      onChange={(v) => updateItem(it.id, { item_image_url: v })}
-                      folder="items"
-                      label="Item photos (multiple allowed)"
-                    />
-                  </div>
-                </section>
-
-                {/* SECTION 2: Measurement */}
-                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Measurement</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Dimensions</Label>
-                    <Textarea
-                      rows={2}
-                      value={it.measurement ?? ""}
-                      onChange={(e) => updateItem(it.id, { measurement: e.target.value })}
-                      placeholder="W x H x D"
-                    />
-                  </div>
-                  <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
-                    <MultiImagePicker
-                      value={it.measurement_image_url}
-                      onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
-                      folder="measurements"
-                      label="Measurement photos"
-                    />
-                  </CollapsibleField>
-                </section>
-
-                {/* SECTION 3: Cloth & Catalog */}
-                <section className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cloth &amp; Catalog</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Catalog name / code</Label>
-                    <Input
-                      className="h-11"
-                      value={it.catalog_text ?? ""}
-                      onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
-                      placeholder="e.g. SKU-1234"
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      spellCheck={false}
-                      style={{ textTransform: "uppercase" }}
-                    />
-                  </div>
-                  <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
-                    <MultiImagePicker
-                      value={it.catalog_image_url}
-                      onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
-                      folder="catalog"
-                      label="Catalog / cloth photos"
-                    />
-                  </CollapsibleField>
-                </section>
-
-                {/* SECTION 4: Sketch */}
-                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sketch</h3>
-                  </div>
-                  <SketchField
-                    value={it.sketch_url}
-                    onChange={(v) => updateItem(it.id, { sketch_url: v })}
-                    label="Hand-drawn sketch"
-                  />
-                </section>
-              </div>
               </>
               )}
             </div>
@@ -2571,10 +2422,7 @@ const AdminQuotationEditor = () => {
       {/* Product picker */}
       <Dialog
         open={productPickerOpen}
-        onOpenChange={(o) => {
-          setProductPickerOpen(o);
-          if (!o) setPickerTargetItemId(null);
-        }}
+        onOpenChange={setProductPickerOpen}
       >
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
