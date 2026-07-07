@@ -13,12 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { QuotationItemMediaStack } from "@/components/admin/QuotationItemMediaStack";
 import { ContactPicker } from "@/components/admin/ContactPicker";
-import { SketchField } from "@/components/admin/SketchField";
-import { CollapsibleField } from "@/components/admin/CollapsibleField";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
@@ -60,6 +57,7 @@ import { QuotationFlowLinks } from "@/components/admin/QuotationFlowLinks";
 type QItem = {
   id: string;
   description: string;
+  item_notes: string | null;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
@@ -277,9 +275,6 @@ const AdminQuotationEditor = () => {
 
   // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
-  // When set, the next product picked replaces the fields of this existing row
-  // instead of appending a new line. Cleared after use or when picker closes.
-  const [pickerTargetItemId, setPickerTargetItemId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
@@ -442,6 +437,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: "",
+      item_notes: null,
       item_image_url: null,
       measurement: null,
       measurement_image_url: null,
@@ -600,46 +596,17 @@ const AdminQuotationEditor = () => {
     setPickerMainId(null);
     setPickerSubId(null);
     setProductSearch("");
-    setPickerTargetItemId(null);
-    setPickerTab("products");
-    setProductPickerOpen(true);
-  };
-
-  // Open the same catalog picker, but bind the next pick to a specific
-  // existing row — so the admin can fill in catalog details per-row while
-  // building a long quotation, instead of adding a brand-new line.
-  const openPickerForItem = async (itemId: string) => {
-    await loadProducts();
-    setPickerMainId(null);
-    setPickerSubId(null);
-    setProductSearch("");
-    setPickerTargetItemId(itemId);
     setPickerTab("products");
     setProductPickerOpen(true);
   };
 
   const addFromProduct = (p: Product) => {
-    // If the picker was opened from a row's "Pick from catalog" button,
-    // patch THAT row instead of appending a new one.
-    if (pickerTargetItemId) {
-      const patch: Partial<QItem> = {
-        description: `${p.product_name} (${p.product_code})`,
-        item_image_url: p.product_images?.[0]?.image_url ?? null,
-        catalog_text: p.product_code ?? null,
-        product_id: p.id,
-      };
-      if (canEditPrice) patch.unit_price = Number(p.offer_price ?? p.mrp ?? 0);
-      updateItem(pickerTargetItemId, patch);
-      setPickerTargetItemId(null);
-      setProductPickerOpen(false);
-      toast({ title: "Item updated from catalog" });
-      return;
-    }
     const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
+      item_notes: null,
       item_image_url: p.product_images?.[0]?.image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -671,26 +638,12 @@ const AdminQuotationEditor = () => {
 
   const addFromBundle = (b: Bundle) => {
     const price = Number(b.offer_price ?? b.mrp ?? 0);
-    if (pickerTargetItemId) {
-      const patch: Partial<QItem> = {
-        description: b.name,
-        item_image_url: b.main_image_url ?? null,
-        catalog_text: b.bundle_code ?? null,
-        product_id: null,
-        bundle_id: b.id,
-      };
-      if (canEditPrice) patch.unit_price = price;
-      updateItem(pickerTargetItemId, patch);
-      setPickerTargetItemId(null);
-      setProductPickerOpen(false);
-      toast({ title: "Bundle added to item" });
-      return;
-    }
     const tmpId = `tmp-${crypto.randomUUID()}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
       description: b.name,
+      item_notes: null,
       item_image_url: b.main_image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -718,8 +671,7 @@ const AdminQuotationEditor = () => {
   };
 
   // Drag-and-drop (or click) add from the split-view catalog panel. Always
-  // appends a new line — unlike the picker dialog it never targets an
-  // existing row, so it's safe to use independently of pickerTargetItemId.
+  // appends a new line.
   const addFromCatalogViewProduct = (p: CatalogProduct) => {
     const price = Number(p.offer_price ?? p.mrp ?? 0);
     const tmpId = `tmp-${crypto.randomUUID()}`;
@@ -727,6 +679,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
+      item_notes: null,
       item_image_url: p.primary_image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -783,6 +736,7 @@ const AdminQuotationEditor = () => {
     const saveItems = itemsRef.current;
     const itemFingerprint = (it: QItem) => JSON.stringify([
       it.description,
+      it.item_notes,
       it.item_image_url,
       it.measurement,
       it.measurement_image_url,
@@ -816,7 +770,11 @@ const AdminQuotationEditor = () => {
       h.delivery_place,
       h.delivery_route_id,
     ]) : "";
-    const itemSnapshots = new Map(saveItems.map((it) => [it.id, itemFingerprint(it)]));
+    // Keyed by _clientKey, not `id` — `id` flips from `tmp-...` to a real
+    // uuid mid-save for new rows, but _clientKey never changes for the life
+    // of the row, so it's the one identity a late-resolving save can trust
+    // to still find the right item even if the user has moved on.
+    const itemSnapshots = new Map(saveItems.map((it) => [it._clientKey, itemFingerprint(it)]));
     const headerSnapshot = headerFingerprint(saveQ);
     savingRef.current = true;
     setSaving(true);
@@ -858,6 +816,7 @@ const AdminQuotationEditor = () => {
       // empty description, so their work appeared lost on reopen.
       const hasAnyContent =
         it.description.trim() ||
+        it.item_notes?.trim() ||
         it.item_image_url ||
         it.measurement ||
         it.measurement_image_url ||
@@ -879,6 +838,7 @@ const AdminQuotationEditor = () => {
         payload: {
           quotation_id: saveQ.id,
           description: safeDescription,
+          item_notes: it.item_notes,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
@@ -928,19 +888,21 @@ const AdminQuotationEditor = () => {
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
+    // Reconcile by _clientKey: if the user kept editing a row while its save
+    // was in flight, `latest` (current state) wins over `saved` (the value
+    // this save actually wrote) and stays `_dirty` so the next autosave pass
+    // picks up the edit — a late-resolving save can never clobber newer typing.
     const latestItems = itemsRef.current;
     const merged = updated.map((saved) => {
-      const originalId = Object.entries(idMap).find(([, newId]) => newId === saved.id)?.[0] ?? saved.id;
-      const latest = latestItems.find((it) => it.id === originalId) ?? latestItems.find((it) => it.id === saved.id);
-      if (latest && itemFingerprint(latest) !== itemSnapshots.get(originalId)) {
+      const latest = latestItems.find((it) => it._clientKey === saved._clientKey);
+      if (latest && itemFingerprint(latest) !== itemSnapshots.get(saved._clientKey)) {
         return { ...latest, id: saved.id, _isNew: false, _dirty: true };
       }
       return saved;
     });
     latestItems.forEach((latest) => {
-      const resolvedId = tmpIdMapRef.current[latest.id] ?? latest.id;
-      if (!merged.some((it) => it.id === resolvedId) && !updated.some((it) => it.id === resolvedId)) {
-        merged.push({ ...latest, id: resolvedId });
+      if (!merged.some((it) => it._clientKey === latest._clientKey)) {
+        merged.push(latest);
       }
     });
     itemsRef.current = merged;
@@ -1059,6 +1021,7 @@ const AdminQuotationEditor = () => {
       [
         it.id,
         it.description ?? "",
+        it.item_notes ?? "",
         it.quantity ?? "",
         it.unit_price ?? "",
         it.measurement ?? "",
@@ -1087,6 +1050,7 @@ const AdminQuotationEditor = () => {
       (it) =>
         it._dirty &&
         (it.description.trim() ||
+          it.item_notes?.trim() ||
           it.item_image_url ||
           it.measurement ||
           it.measurement_image_url ||
@@ -1104,6 +1068,12 @@ const AdminQuotationEditor = () => {
     // until some unrelated later edit happened to fire the effect again.
     // Re-running when `saving` flips back to false catches it immediately.
     if (!hasPending || saving) return;
+    // 700ms: fires per-field, after the user pauses. Safe to run this short
+    // now — the two things that used to make a fast debounce interrupt
+    // typing (an unstable list `key`, and save-reconciliation matching by a
+    // mutable `id`) are both fixed (_clientKey), so a save resolving while
+    // the user has moved to the next field can no longer steal focus or
+    // clobber what they just typed there.
     const t = setTimeout(async () => {
       const result = await saveAll({ silent: true });
       if (result) {
@@ -1117,7 +1087,7 @@ const AdminQuotationEditor = () => {
           });
         }
       }
-    }, 1200);
+    }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFingerprint, loading, saving]);
@@ -1887,6 +1857,13 @@ const AdminQuotationEditor = () => {
                       });
                     }}
                   />
+                  <Textarea
+                    rows={2}
+                    className="min-h-[52px] text-sm"
+                    value={it.item_notes ?? ""}
+                    onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
+                    placeholder="Description — specs, customer notes, etc. (optional)"
+                  />
                   {/* Status / customization chips */}
                   <div className="flex flex-wrap items-center gap-1 text-[10px]">
                     <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
@@ -2147,103 +2124,6 @@ const AdminQuotationEditor = () => {
                 </div>
               )}
 
-              <div className="space-y-4 p-3 sm:p-4">
-                {/* SECTION 1: Model photo */}
-                <section className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Model Photo</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs font-medium">Item photo</Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-[11px] text-primary hover:bg-primary/10"
-                        onClick={() => openPickerForItem(it.id)}
-                      >
-                        <Search className="mr-1 h-3 w-3" />
-                        Pick from catalog
-                      </Button>
-                    </div>
-                    <MultiImagePicker
-                      value={it.item_image_url}
-                      onChange={(v) => updateItem(it.id, { item_image_url: v })}
-                      folder="items"
-                      label="Item photos (multiple allowed)"
-                    />
-                  </div>
-                </section>
-
-                {/* SECTION 2: Measurement */}
-                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Measurement</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Dimensions</Label>
-                    <Textarea
-                      rows={2}
-                      value={it.measurement ?? ""}
-                      onChange={(e) => updateItem(it.id, { measurement: e.target.value })}
-                      placeholder="W x H x D"
-                    />
-                  </div>
-                  <CollapsibleField label="Measurement photos" hasValue={!!it.measurement_image_url}>
-                    <MultiImagePicker
-                      value={it.measurement_image_url}
-                      onChange={(v) => updateItem(it.id, { measurement_image_url: v })}
-                      folder="measurements"
-                      label="Measurement photos"
-                    />
-                  </CollapsibleField>
-                </section>
-
-                {/* SECTION 3: Cloth & Catalog */}
-                <section className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cloth &amp; Catalog</h3>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Catalog name / code</Label>
-                    <Input
-                      className="h-11"
-                      value={it.catalog_text ?? ""}
-                      onChange={(e) => updateItem(it.id, { catalog_text: e.target.value.toUpperCase() })}
-                      placeholder="e.g. SKU-1234"
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      spellCheck={false}
-                      style={{ textTransform: "uppercase" }}
-                    />
-                  </div>
-                  <CollapsibleField label="Catalog / cloth photos" hasValue={!!it.catalog_image_url}>
-                    <MultiImagePicker
-                      value={it.catalog_image_url}
-                      onChange={(v) => updateItem(it.id, { catalog_image_url: v })}
-                      folder="catalog"
-                      label="Catalog / cloth photos"
-                    />
-                  </CollapsibleField>
-                </section>
-
-                {/* SECTION 4: Sketch */}
-                <section className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sketch</h3>
-                  </div>
-                  <SketchField
-                    value={it.sketch_url}
-                    onChange={(v) => updateItem(it.id, { sketch_url: v })}
-                    label="Hand-drawn sketch"
-                  />
-                </section>
-              </div>
               </>
               )}
             </div>
@@ -2542,10 +2422,7 @@ const AdminQuotationEditor = () => {
       {/* Product picker */}
       <Dialog
         open={productPickerOpen}
-        onOpenChange={(o) => {
-          setProductPickerOpen(o);
-          if (!o) setPickerTargetItemId(null);
-        }}
+        onOpenChange={setProductPickerOpen}
       >
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">

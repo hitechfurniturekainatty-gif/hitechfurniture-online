@@ -7,7 +7,6 @@ import {
   Image as ImageIcon,
   Ruler,
   MapPin,
-  BookOpen,
   Pencil,
   Hash,
   Plus,
@@ -69,20 +68,21 @@ const splitUrls = (v: string | null | undefined): string[] =>
     .filter(Boolean);
 const joinUrls = (xs: string[]): string | null => (xs.length ? xs.join("\n") : null);
 
-type MultiKey = "item_image_url" | "measurement_image_url" | "site_photos" | "catalog_image_url";
+type MultiKey = "item_image_url" | "measurement_image_url" | "site_photos";
 type Category =
   | { kind: "multi"; key: MultiKey; label: string; icon: typeof ImageIcon; folder: string }
-  | { kind: "text"; key: "catalog_text"; label: string; icon: typeof ImageIcon; placeholder: string }
+  // Catalog # is one merged entry — a catalog number PLUS its own image
+  // upload, opened/closed and cleared together as a single attachment.
+  | { kind: "catalog"; key: "catalog_text"; label: string; icon: typeof ImageIcon; placeholder: string; folder: string }
   | { kind: "textarea"; key: "measurement"; label: string; icon: typeof ImageIcon; placeholder: string }
   | { kind: "sketch"; key: "sketch_url"; label: string; icon: typeof ImageIcon };
 
 const CATEGORIES: Category[] = [
-  { kind: "multi", key: "item_image_url", label: "Photos", icon: ImageIcon, folder: "items" },
-  { kind: "text", key: "catalog_text", label: "Catalog #", icon: Hash, placeholder: "e.g. SOFA-1023" },
+  { kind: "multi", key: "item_image_url", label: "Model Image", icon: ImageIcon, folder: "items" },
+  { kind: "catalog", key: "catalog_text", label: "Catalog #", icon: Hash, placeholder: "e.g. SOFA-1023", folder: "cloth" },
   { kind: "textarea", key: "measurement", label: "Dimensions", icon: Ruler, placeholder: "e.g. 72 W x 36 D x 30 H inches" },
   { kind: "multi", key: "measurement_image_url", label: "Measurement pics", icon: Ruler, folder: "measurements" },
   { kind: "multi", key: "site_photos", label: "Site pics", icon: MapPin, folder: "site" },
-  { kind: "multi", key: "catalog_image_url", label: "Cloth / Catalog pics", icon: BookOpen, folder: "cloth" },
   { kind: "sketch", key: "sketch_url", label: "Sketch", icon: Pencil },
 ];
 
@@ -95,10 +95,11 @@ export const QuotationItemMediaStack = ({ item, onChange, disabled }: Props) => 
   // Lightbox state
   const [preview, setPreview] = useState<{ urls: string[]; idx: number; label: string } | null>(null);
 
-  const isFilled = (c: Category): boolean => {
-    const v = (item as Record<string, string | null>)[c.key];
-    return !!(v && v.trim());
-  };
+  const hasText = (v: string | null | undefined) => !!(v && v.trim());
+  const isFilled = (c: Category): boolean =>
+    c.kind === "catalog"
+      ? hasText(item.catalog_text) || hasText(item.catalog_image_url)
+      : hasText((item as Record<string, string | null>)[c.key]);
 
   const filled = CATEGORIES.filter(isFilled);
   const missing = CATEGORIES.filter((c) => !isFilled(c));
@@ -218,7 +219,11 @@ const CategoryRow = ({
   const Icon = category.icon;
 
   const clear = () => {
-    onChange({ [category.key]: null } as ItemPatch);
+    if (category.kind === "catalog") {
+      onChange({ catalog_text: null, catalog_image_url: null });
+    } else {
+      onChange({ [category.key]: null } as ItemPatch);
+    }
     onClose?.();
   };
 
@@ -245,18 +250,29 @@ const CategoryRow = ({
     <div className="rounded-md border border-border bg-background/40 p-2">
       {Header}
       <div className="mt-1.5">
-        {category.kind === "text" && (
-          <Input
-            autoFocus={forceOpen}
-            className="h-9 text-sm"
-            value={(item.catalog_text ?? "") as string}
-            placeholder={category.placeholder}
-            disabled={disabled}
-            onChange={(e) => onChange({ catalog_text: e.target.value })}
-            onBlur={(e) =>
-              onChange({ catalog_text: e.target.value.toUpperCase().trim() || null })
-            }
-          />
+        {category.kind === "catalog" && (
+          <div className="space-y-2">
+            {/* "Add Image" — a photo of the catalog page/swatch */}
+            <MultiInline
+              value={item.catalog_image_url}
+              onChange={(v) => onChange({ catalog_image_url: v })}
+              folder={category.folder}
+              label="Catalog image"
+              disabled={disabled}
+              onPreview={onPreview}
+            />
+            <Input
+              autoFocus={forceOpen}
+              className="h-9 text-sm"
+              value={(item.catalog_text ?? "") as string}
+              placeholder={category.placeholder}
+              disabled={disabled}
+              onChange={(e) => onChange({ catalog_text: e.target.value })}
+              onBlur={(e) =>
+                onChange({ catalog_text: e.target.value.toUpperCase().trim() || null })
+              }
+            />
+          </div>
         )}
         {category.kind === "textarea" && (
           <Textarea
