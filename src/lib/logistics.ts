@@ -148,3 +148,21 @@ export const tripStatusVariant = (s: string): "default" | "secondary" | "destruc
       return "outline";
   }
 };
+
+// Fixed order + solid hex per trip status, shared by every trip-status
+// chart in the app (Overview's Delivery Status Split, Delivery's own
+// dashboard) so the same status always reads as the same color.
+export const TRIP_STATUS_ORDER = ["planned", "in_transit", "delivered", "cancelled"] as const;
+export const TRIP_STATUS_COLORS: Record<string, string> = {
+  planned: "#64748b",
+  in_transit: "#f59e0b",
+  delivered: "#10b981",
+  cancelled: "#f43f5e",
+};
+
+export const tripStatusDonutData = (counts: Record<string, number>) =>
+  TRIP_STATUS_ORDER.filter((s) => (counts[s] ?? 0) > 0).map((s) => ({
+    name: tripStatusLabel(s),
+    value: counts[s] ?? 0,
+    color: TRIP_STATUS_COLORS[s],
+  }));

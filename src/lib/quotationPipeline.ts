@@ -113,3 +113,16 @@ export const stageToneClasses = (tone: StageInfo["tone"]) => {
     case "emerald": return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   }
 };
+
+// Solid hex per tone — same fixed order as stageToneClasses, for chart
+// fills (recharts needs a literal color, not a Tailwind class).
+export const stageToneHex = (tone: StageInfo["tone"]): string => {
+  switch (tone) {
+    case "rose":    return "#f43f5e";
+    case "amber":   return "#f59e0b";
+    case "sky":     return "#0ea5e9";
+    case "violet":  return "#8b5cf6";
+    case "indigo":  return "#6366f1";
+    case "emerald": return "#10b981";
+  }
+};

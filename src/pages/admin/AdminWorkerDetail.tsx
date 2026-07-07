@@ -78,6 +78,17 @@ export const jobStatusLabel = (s: string) =>
 export const jobStatusTone = (s: string) =>
   JOB_STATUSES.find((j) => j.value === s)?.tone ?? "secondary";
 
+// Solid hex per job status, same fixed order as JOB_STATUSES, for charts
+// (recharts/CSS fills need a literal color, not a badge variant).
+const JOB_STATUS_HEX: Record<string, string> = {
+  assigned: "#64748b",
+  started: "#f59e0b",
+  in_progress: "#0ea5e9",
+  ready: "#8b5cf6",
+  delivered: "#10b981",
+};
+export const jobStatusHex = (s: string) => JOB_STATUS_HEX[s] ?? "#64748b";
+
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
