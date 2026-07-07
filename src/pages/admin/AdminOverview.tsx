@@ -22,7 +22,7 @@ import { isJobFinished } from "./AdminWorkerDetail";
 const QUOTATION_STATUSES = ["drafted", "finalized", "delivered", "rejected"] as const;
 
 const AdminOverview = () => {
-  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     products: 0, categories: 0, lowStock: 0,
     quotations: 0, drafts: 0, myTasks: 0, workers: 0,
@@ -51,6 +51,7 @@ const AdminOverview = () => {
     tripStatusCounts: Record<string, number>;
   }>({ quotByDay: [], tripsByDay: [], statusTotals: {}, outForDelivery: 0, tripsActive: 0, tripsCompleted: 0, tripStatusCounts: {} });
   const [lowStockList, setLowStockList] = useState<LowStockProduct[]>([]);
+  const [productionBacklog, setProductionBacklog] = useState(0);
   // Fulfillment split metrics (Ready Stock vs Custom Production)
   const [fulfillment, setFulfillment] = useState({
     quotsReadyOnly: 0,
@@ -217,11 +218,16 @@ const AdminOverview = () => {
         const counts: Record<PipelineStage, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
         let quotsReadyOnly = 0, quotsCustomOnly = 0, quotsMixed = 0;
         let itemsReadyInWarehouse = 0, itemsInProduction = 0;
-        let jobsInWarehouse = 0, jobsDispatched = 0;
+        let jobsInWarehouse = 0, jobsDispatched = 0, jobsOpen = 0;
         Object.values(jobsByQ).forEach((j) => {
           jobsInWarehouse += j.warehouse;
           jobsDispatched += j.dispatched;
+          // "Open" = assigned but not yet ready/delivered — the actual
+          // production backlog, distinct from headcount (workers) and from
+          // jobs that have already finished production and moved on.
+          jobsOpen += j.total - j.done;
         });
+        setProductionBacklog(jobsOpen);
         ((qP.data ?? []) as any[]).forEach((q) => {
           const j = jobsByQ[q.id];
           const t = tripsByQ[q.id];
@@ -312,6 +318,16 @@ const AdminOverview = () => {
   if (!authLoading && user && isDelivery && !isOfficeStaff && !isMeasurementStaff) {
     return <Navigate to="/admin/my-trips" replace />;
   }
+  // Warehouse-only users: this page has nothing gated to just them (their
+  // dashboard lives on /admin/warehouse) — without this they'd land on a
+  // near-blank Overview if they ever hit /admin directly.
+  if (!authLoading && user && isWarehouse && !isOfficeStaff && !isMeasurementStaff && !isDelivery) {
+    return <Navigate to="/admin/warehouse" replace />;
+  }
+
+  // Rolling 7-day window off the already-fetched trip trend series — no
+  // extra query needed, just re-slicing data already on screen elsewhere.
+  const deliveriesThisWeek = trends.tripsByDay.slice(-7).reduce((a, b) => a + b, 0);
 
   const salesCards: StatCard[] = [
     isMeasurementStaff && { label: "My pending tasks", value: stats.myTasks, icon: Clock, to: "/admin/measurement-tasks" },
@@ -319,6 +335,10 @@ const AdminOverview = () => {
     isOfficeStaff && { label: "Stage 1 · Client Hub", value: pipelineCounts[1], icon: Ruler, to: "/admin/quotations?status=stage1" },
     isOfficeStaff && { label: "Stage 3 · OPS", value: pipelineCounts[3], icon: FileText, to: "/admin/quotations?status=stage3" },
     isOfficeStaff && { label: "Stage 4 · Production", value: pipelineCounts[4], icon: HardHat, to: "/admin/quotations?status=stage4" },
+    // Distinct from the stage-4 quotation count above: this is job-level
+    // (a quotation with 3 jobs, 1 finished, still counts 2 here) — the
+    // actual work queue a worker would need to clear.
+    isOfficeStaff && { label: "Production Backlog", value: productionBacklog, icon: HardHat, to: "/admin/production" },
     isOfficeStaff && { label: "Stage 5 · Warehouse", value: pipelineCounts[5], icon: Warehouse, to: "/admin/quotations?status=stage5" },
     isOfficeStaff && { label: "Partially Ready", value: fulfillment.quotsMixed, icon: Layers, to: "/admin/quotations" },
     isOfficeStaff && { label: "Open services", value: stats.openServices, icon: Wrench, to: "/admin/services?tab=service" },
@@ -329,6 +349,7 @@ const AdminOverview = () => {
   const logisticsCards: StatCard[] = isOfficeStaff
     ? [
         { label: "Stage 6 · Out for Delivery", value: pipelineCounts[6], icon: Truck, to: "/admin/quotations?status=stage6" },
+        { label: "Deliveries This Week", value: deliveriesThisWeek, icon: CalendarClock, to: "/admin/trips" },
         { label: "Logistics Mapping", value: pipelineCounts[6], icon: Map, to: "/admin/logistics" },
         // Trips / Route Manager — these are management screens, not metrics.
         // value=null renders an "Open" link button instead of a fake "0".
