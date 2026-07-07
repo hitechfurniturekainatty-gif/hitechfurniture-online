@@ -60,6 +60,7 @@ import { QuotationFlowLinks } from "@/components/admin/QuotationFlowLinks";
 type QItem = {
   id: string;
   description: string;
+  item_notes: string | null;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
@@ -442,6 +443,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: "",
+      item_notes: null,
       item_image_url: null,
       measurement: null,
       measurement_image_url: null,
@@ -640,6 +642,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
+      item_notes: null,
       item_image_url: p.product_images?.[0]?.image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -691,6 +694,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: b.name,
+      item_notes: null,
       item_image_url: b.main_image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -727,6 +731,7 @@ const AdminQuotationEditor = () => {
       id: tmpId,
       _clientKey: tmpId,
       description: `${p.product_name} (${p.product_code})`,
+      item_notes: null,
       item_image_url: p.primary_image_url ?? null,
       measurement: null,
       measurement_image_url: null,
@@ -783,6 +788,7 @@ const AdminQuotationEditor = () => {
     const saveItems = itemsRef.current;
     const itemFingerprint = (it: QItem) => JSON.stringify([
       it.description,
+      it.item_notes,
       it.item_image_url,
       it.measurement,
       it.measurement_image_url,
@@ -816,7 +822,11 @@ const AdminQuotationEditor = () => {
       h.delivery_place,
       h.delivery_route_id,
     ]) : "";
-    const itemSnapshots = new Map(saveItems.map((it) => [it.id, itemFingerprint(it)]));
+    // Keyed by _clientKey, not `id` — `id` flips from `tmp-...` to a real
+    // uuid mid-save for new rows, but _clientKey never changes for the life
+    // of the row, so it's the one identity a late-resolving save can trust
+    // to still find the right item even if the user has moved on.
+    const itemSnapshots = new Map(saveItems.map((it) => [it._clientKey, itemFingerprint(it)]));
     const headerSnapshot = headerFingerprint(saveQ);
     savingRef.current = true;
     setSaving(true);
@@ -858,6 +868,7 @@ const AdminQuotationEditor = () => {
       // empty description, so their work appeared lost on reopen.
       const hasAnyContent =
         it.description.trim() ||
+        it.item_notes?.trim() ||
         it.item_image_url ||
         it.measurement ||
         it.measurement_image_url ||
@@ -879,6 +890,7 @@ const AdminQuotationEditor = () => {
         payload: {
           quotation_id: saveQ.id,
           description: safeDescription,
+          item_notes: it.item_notes,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
@@ -928,19 +940,21 @@ const AdminQuotationEditor = () => {
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
+    // Reconcile by _clientKey: if the user kept editing a row while its save
+    // was in flight, `latest` (current state) wins over `saved` (the value
+    // this save actually wrote) and stays `_dirty` so the next autosave pass
+    // picks up the edit — a late-resolving save can never clobber newer typing.
     const latestItems = itemsRef.current;
     const merged = updated.map((saved) => {
-      const originalId = Object.entries(idMap).find(([, newId]) => newId === saved.id)?.[0] ?? saved.id;
-      const latest = latestItems.find((it) => it.id === originalId) ?? latestItems.find((it) => it.id === saved.id);
-      if (latest && itemFingerprint(latest) !== itemSnapshots.get(originalId)) {
+      const latest = latestItems.find((it) => it._clientKey === saved._clientKey);
+      if (latest && itemFingerprint(latest) !== itemSnapshots.get(saved._clientKey)) {
         return { ...latest, id: saved.id, _isNew: false, _dirty: true };
       }
       return saved;
     });
     latestItems.forEach((latest) => {
-      const resolvedId = tmpIdMapRef.current[latest.id] ?? latest.id;
-      if (!merged.some((it) => it.id === resolvedId) && !updated.some((it) => it.id === resolvedId)) {
-        merged.push({ ...latest, id: resolvedId });
+      if (!merged.some((it) => it._clientKey === latest._clientKey)) {
+        merged.push(latest);
       }
     });
     itemsRef.current = merged;
@@ -1059,6 +1073,7 @@ const AdminQuotationEditor = () => {
       [
         it.id,
         it.description ?? "",
+        it.item_notes ?? "",
         it.quantity ?? "",
         it.unit_price ?? "",
         it.measurement ?? "",
@@ -1087,6 +1102,7 @@ const AdminQuotationEditor = () => {
       (it) =>
         it._dirty &&
         (it.description.trim() ||
+          it.item_notes?.trim() ||
           it.item_image_url ||
           it.measurement ||
           it.measurement_image_url ||
@@ -1104,6 +1120,12 @@ const AdminQuotationEditor = () => {
     // until some unrelated later edit happened to fire the effect again.
     // Re-running when `saving` flips back to false catches it immediately.
     if (!hasPending || saving) return;
+    // 700ms: fires per-field, after the user pauses. Safe to run this short
+    // now — the two things that used to make a fast debounce interrupt
+    // typing (an unstable list `key`, and save-reconciliation matching by a
+    // mutable `id`) are both fixed (_clientKey), so a save resolving while
+    // the user has moved to the next field can no longer steal focus or
+    // clobber what they just typed there.
     const t = setTimeout(async () => {
       const result = await saveAll({ silent: true });
       if (result) {
@@ -1117,7 +1139,7 @@ const AdminQuotationEditor = () => {
           });
         }
       }
-    }, 1200);
+    }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFingerprint, loading, saving]);
@@ -1886,6 +1908,13 @@ const AdminQuotationEditor = () => {
                         product_id: p.id,
                       });
                     }}
+                  />
+                  <Textarea
+                    rows={2}
+                    className="min-h-[52px] text-sm"
+                    value={it.item_notes ?? ""}
+                    onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
+                    placeholder="Description — specs, customer notes, etc. (optional)"
                   />
                   {/* Status / customization chips */}
                   <div className="flex flex-wrap items-center gap-1 text-[10px]">

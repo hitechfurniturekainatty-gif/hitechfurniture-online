@@ -1310,6 +1310,7 @@ export type Database = {
           fulfillment_route: string
           id: string
           item_image_url: string | null
+          item_notes: string | null
           measurement: string | null
           measurement_image_url: string | null
           product_id: string | null
@@ -1332,6 +1333,7 @@ export type Database = {
           fulfillment_route?: string
           id?: string
           item_image_url?: string | null
+          item_notes?: string | null
           measurement?: string | null
           measurement_image_url?: string | null
           product_id?: string | null
@@ -1354,6 +1356,7 @@ export type Database = {
           fulfillment_route?: string
           id?: string
           item_image_url?: string | null
+          item_notes?: string | null
           measurement?: string | null
           measurement_image_url?: string | null
           product_id?: string | null
