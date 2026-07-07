@@ -1,0 +1,42 @@
+name: Daily rebuild trigger
+
+# Why this exists: sitemap.xml and the AI-crawler snapshot pages (see
+# scripts/generate-sitemap.mjs and scripts/generate-crawler-snapshots.mjs)
+# are generated at BUILD time from live Supabase data. Adding/editing a
+# product in the staff admin panel only changes the database — it does not
+# rebuild or redeploy the site. Without this workflow, a new product would
+# never appear in the sitemap or get an AI-crawler snapshot until someone
+# happens to push a code change.
+#
+# This workflow makes a small no-op commit once a day, which pushes to
+# `main` and triggers Hostinger's Git auto-deploy webhook exactly like a
+# real code change would — so the build (and therefore the sitemap +
+# snapshot generation) reruns daily against whatever is in Supabase then.
+
+on:
+  schedule:
+    # 21:30 UTC = 03:00 AM IST
+    - cron: "30 21 * * *"
+  workflow_dispatch: {} # allows manually running it from the Actions tab too
+
+permissions:
+  contents: write
+
+jobs:
+  touch-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record rebuild timestamp
+        run: |
+          mkdir -p .rebuild
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .rebuild/last-scheduled-rebuild.txt
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "hitech-scheduled-rebuild"
+          git config user.email "actions@users.noreply.github.com"
+          git add .rebuild/last-scheduled-rebuild.txt
+          git diff --cached --quiet || git commit -m "chore: scheduled daily rebuild trigger [skip ci]"
+          git push
