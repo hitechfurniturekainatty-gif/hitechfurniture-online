@@ -50,6 +50,11 @@ type StatusUpdate = {
   created_by: string | null;
 };
 
+// Canonical job_work_orders.status vocabulary — this is the ONLY set of
+// values anything should read or write to that column. Workers set these
+// directly via the status picker below; nothing else (Production Board's
+// Kanban included) should invent its own values, or pages that expect this
+// vocabulary silently stop matching (see JOB_FINISHED_STATUSES).
 export const JOB_STATUSES = [
   { value: "assigned", label: "Job Assigned", tone: "secondary" as const },
   { value: "started", label: "Work Started", tone: "outline" as const },
@@ -57,6 +62,16 @@ export const JOB_STATUSES = [
   { value: "ready", label: "Ready for Delivery", tone: "default" as const },
   { value: "delivered", label: "Delivered", tone: "outline" as const },
 ];
+
+// The subset of JOB_STATUSES that means "the production work itself is
+// done" — i.e. the point at which a job should hand off to the warehouse.
+// There is no separate "completed"/"done" status; "ready" (production
+// finished, awaiting dispatch) already covers Production Board's old
+// "Completed" column, and "delivered" covers a job that reached the
+// customer without ever passing through that board.
+export const JOB_FINISHED_STATUSES = ["ready", "delivered"] as const;
+export const isJobFinished = (status: string): boolean =>
+  (JOB_FINISHED_STATUSES as readonly string[]).includes(status);
 
 export const jobStatusLabel = (s: string) =>
   JOB_STATUSES.find((j) => j.value === s)?.label ?? s;

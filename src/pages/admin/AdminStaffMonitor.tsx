@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Search, Ruler, FileText, HardHat, Truck, ArrowRight, CheckCircle2, Clock, Sparkles, Layers, Warehouse, Link2, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { isJobFinished } from "./AdminWorkerDetail";
 
 type StaffUser = {
   user_id: string;
@@ -102,17 +103,25 @@ const AdminStaffMonitor = () => {
       const j = empty();
       const wid = workerByUser[s.user_id];
       if (wid) {
+        // job_work_orders.status is assigned/started/in_progress/ready/
+        // delivered — "completed"/"done" were never real values, which put
+        // every finished job in the "pending" bucket below.
         jobs.filter((x) => x.worker_id === wid).forEach((x) => {
-          if (x.status === "completed" || x.status === "done") j.completed++;
+          if (isJobFinished(x.status)) j.completed++;
           else if (x.status === "in_progress" || x.status === "started") j.inProgress++;
           else j.pending++;
         });
       }
 
       const tr = empty();
+      // trips.status is planned/in_transit/delivered/cancelled — this used
+      // to check "completed"/"in_progress", neither of which trips ever
+      // has, so every trip (delivered or cancelled alike) landed in
+      // "pending". Cancelled trips still fall into "pending" here since
+      // Counts has no dedicated bucket for them.
       trips.filter((x) => x.assigned_driver_id === s.user_id).forEach((x) => {
-        if (x.status === "completed") tr.completed++;
-        else if (x.status === "in_progress") tr.inProgress++;
+        if (x.status === "delivered") tr.completed++;
+        else if (x.status === "in_transit") tr.inProgress++;
         else tr.pending++;
       });
 

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { HardHat, Loader2, LogOut, Camera, Clock, FileText, ShoppingCart, Image as ImageIcon, CheckCircle2, Eye } from "lucide-react";
 import { firstUrl } from "@/lib/firstUrl";
-import { JOB_STATUSES, jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
+import { JOB_STATUSES, jobStatusLabel, jobStatusTone, isJobFinished } from "@/pages/admin/AdminWorkerDetail";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { BRAND_NAME } from "@/lib/brand";
 import { compressImage } from "@/lib/imageCompression";
@@ -211,7 +211,10 @@ const WorkerPortal = () => {
         // When the worker finishes a job, automatically push the file into
         // the Warehouse stage by flipping warehouse_status to 'in_warehouse'.
         // The pipeline reads this to move the quotation to Stage 5.
-        const isFinished = nextStatus === "completed" || nextStatus === "done";
+        // (Was checking for "completed"/"done" — values JOB_STATUSES never
+        // produces, so this never fired. "ready"/"delivered" are the real
+        // finished states.)
+        const isFinished = isJobFinished(nextStatus);
         const { error } = await supabase
           .from("job_work_orders")
           .update(

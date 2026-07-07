@@ -46,12 +46,14 @@ const PartyRow = ({ q }: { q: { id: string; party_name: string; party_place: str
 export const HighlightCards = ({
   upcoming,
   needsPricing,
+  needsPricingCount,
   opsStage3,
   stage3Count,
   isOfficeStaff,
 }: {
   upcoming: UpcomingDelivery[];
   needsPricing: AwaitingPricing[];
+  needsPricingCount: number;
   opsStage3: AwaitingPricing[];
   stage3Count: number;
   isOfficeStaff: boolean;
@@ -87,7 +89,7 @@ export const HighlightCards = ({
           <CardTitle className="flex items-center gap-2 font-display text-lg sm:text-xl">
             <Ruler className="h-5 w-5 text-rose-600 dark:text-rose-400" />
             Drafts needing pricing
-            <Badge variant="secondary" className="ml-1">{needsPricing.length}</Badge>
+            <Badge variant="secondary" className="ml-1">{needsPricingCount}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
