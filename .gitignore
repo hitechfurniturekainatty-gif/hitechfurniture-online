@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build-time generated crawler snapshots (regenerated fresh on every build)
+public/_snapshots/
+public/sitemap.xml

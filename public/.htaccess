@@ -3,6 +3,32 @@
   RewriteEngine On
   RewriteBase /
 
+  # --- Dynamic rendering for crawlers that don't execute JavaScript ---
+  # GPTBot/ClaudeBot/PerplexityBot/Google-Extended/CCBot etc. feed AI answer
+  # engines (ChatGPT, Claude, Perplexity, Google AI Overview) but never run the
+  # React app's JS, so they'd otherwise see an empty <div id="root">. Route
+  # them to the pre-generated static snapshots in /_snapshots instead. Real
+  # browsers and JS-executing crawlers (Googlebot, Bingbot) are unaffected.
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{REQUEST_URI} ^/$
+  RewriteRule ^$ /_snapshots/index.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{REQUEST_URI} ^/catalog/?$
+  RewriteRule ^ /_snapshots/catalog.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{REQUEST_URI} ^/about/?$
+  RewriteRule ^ /_snapshots/about.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{REQUEST_URI} ^/product/([0-9a-fA-F-]+)/?$
+  RewriteRule ^ /_snapshots/product/%1.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{REQUEST_URI} ^/bundle/([0-9a-fA-F-]+)/?$
+  RewriteRule ^ /_snapshots/bundle/%1.html [L]
+
   # Don't rewrite real files or directories
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
