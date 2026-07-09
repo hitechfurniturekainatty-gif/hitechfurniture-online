@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -165,6 +165,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const finance: GroupItem = {
     kind: "group", id: "finance", label: "Finance", icon: Calculator,
     children: filt([
+      { to: "/admin/analytics", label: "Analytics", icon: BarChart3, show: isAdmin },
       { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Calculator, show: isOfficeStaff },
       { to: "/admin/backlog", label: "Backlog & Receivables", icon: Archive, show: isAdmin && backlogUnlocked },
     ]),

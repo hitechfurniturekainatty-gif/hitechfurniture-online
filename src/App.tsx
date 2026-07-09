@@ -29,6 +29,7 @@ const Catalog = lazy(() => import("./pages/Catalog.tsx"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
+const AdminAnalyticsDashboard = lazy(() => import("./pages/admin/AdminAnalyticsDashboard.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
 const AdminEnquiriesInbox = lazy(() => import("./pages/admin/AdminEnquiriesInbox.tsx"));
 const AdminWhatsAppInbox = lazy(() => import("./pages/admin/AdminWhatsAppInbox.tsx"));
@@ -130,6 +131,7 @@ const App = () => (
             <Route path="/guide" element={<UserGuide />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminOverview />} />
+            <Route path="/admin/analytics" element={<AdminAnalyticsDashboard />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
             <Route path="/admin/whatsapp" element={<AdminWhatsAppInbox />} />
