@@ -199,6 +199,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/staff", label: "People", icon: UsersRound, show: isAdmin },
       { to: "/admin/staff-monitor", label: "Staff Monitor", icon: Activity, show: isAdmin },
       { to: "/admin/production", label: "Production Board", icon: GitBranch, show: isOfficeStaff },
+      { to: "/admin/production-analytics", label: "Production Analytics", icon: BarChart3, show: isOfficeStaff },
     ]),
   };
   const system: GroupItem = {
