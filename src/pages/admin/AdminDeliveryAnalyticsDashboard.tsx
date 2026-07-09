@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Route as RouteIcon, Truck, CalendarClock } from "lucide-react";
@@ -23,9 +20,6 @@ const startOfWeek = () => {
 };
 
 const AdminDeliveryAnalyticsDashboard = () => {
-  const { loading: authLoading, user, isOfficeStaff, isDelivery } = useAuth();
-  const canAccess = isOfficeStaff || isDelivery;
-
   const [loading, setLoading] = useState(true);
   const [activeRoutes, setActiveRoutes] = useState(0);
   const [vehiclesTotal, setVehiclesTotal] = useState(0);
@@ -109,22 +103,13 @@ const AdminDeliveryAnalyticsDashboard = () => {
     setLoading(false);
   };
 
-  useEffect(() => { if (canAccess) load(); }, [canAccess]);
-
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-  if (!authLoading && !canAccess) {
-    return (
-      <AdminShell>
-        <p className="text-muted-foreground">Delivery, office staff or admin access required.</p>
-      </AdminShell>
-    );
-  }
+  useEffect(() => { load(); }, []);
 
   return (
-    <AdminShell>
+    <section>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Delivery Analytics</h1>
+          <h2 className="font-display text-xl sm:text-2xl">Delivery Analytics</h2>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">Routes, fleet and trip schedule — live from Supabase.</p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
@@ -194,7 +179,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
           </Card>
         </>
       )}
-    </AdminShell>
+    </section>
   );
 };
 

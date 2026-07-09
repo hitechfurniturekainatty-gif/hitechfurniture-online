@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,9 +19,6 @@ type LocationRow = {
 };
 
 const AdminWarehouseAnalyticsDashboard = () => {
-  const { loading: authLoading, user, isOfficeStaff, isWarehouse } = useAuth();
-  const canAccess = isOfficeStaff || isWarehouse;
-
   const [loading, setLoading] = useState(true);
   const [skusTracked, setSkusTracked] = useState(0);
   const [recentMovements, setRecentMovements] = useState(0);
@@ -99,22 +93,13 @@ const AdminWarehouseAnalyticsDashboard = () => {
     setLoading(false);
   };
 
-  useEffect(() => { if (canAccess) load(); }, [canAccess]);
-
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-  if (!authLoading && !canAccess) {
-    return (
-      <AdminShell>
-        <p className="text-muted-foreground">Warehouse, office staff or admin access required.</p>
-      </AdminShell>
-    );
-  }
+  useEffect(() => { load(); }, []);
 
   return (
-    <AdminShell>
+    <section>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Warehouse Analytics</h1>
+          <h2 className="font-display text-xl sm:text-2xl">Warehouse Analytics</h2>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">Stock tracking and location capacity — live from Supabase.</p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
@@ -194,7 +179,7 @@ const AdminWarehouseAnalyticsDashboard = () => {
           </Card>
         </>
       )}
-    </AdminShell>
+    </section>
   );
 };
 

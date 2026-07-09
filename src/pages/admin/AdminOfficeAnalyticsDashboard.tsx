@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
-import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -207,19 +205,18 @@ const AdminOfficeAnalyticsDashboard = () => {
   useEffect(() => { load(); }, []);
 
   return (
-    <OfficeStaffOnly>
-      <AdminShell>
-        <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl">Office Analytics</h1>
-            <p className="mt-1 text-sm text-muted-foreground sm:text-base">Client Hub intake, enquiries and service load — live from Supabase.</p>
-          </div>
-          <Button variant="outline" onClick={load} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Refresh</>}
-          </Button>
+    <section>
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl">Office Analytics</h2>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Client Hub intake, enquiries and service load — live from Supabase.</p>
         </div>
+        <Button variant="outline" onClick={load} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Refresh</>}
+        </Button>
+      </div>
 
-        {loading ? (
+      {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
@@ -303,8 +300,7 @@ const AdminOfficeAnalyticsDashboard = () => {
             </Card>
           </>
         )}
-      </AdminShell>
-    </OfficeStaffOnly>
+    </section>
   );
 };
 
