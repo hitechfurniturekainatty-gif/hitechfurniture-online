@@ -33,6 +33,7 @@ const AdminAnalyticsDashboard = lazy(() => import("./pages/admin/AdminAnalyticsD
 const AdminOfficeAnalyticsDashboard = lazy(() => import("./pages/admin/AdminOfficeAnalyticsDashboard.tsx"));
 const AdminProductionAnalyticsDashboard = lazy(() => import("./pages/admin/AdminProductionAnalyticsDashboard.tsx"));
 const AdminWarehouseAnalyticsDashboard = lazy(() => import("./pages/admin/AdminWarehouseAnalyticsDashboard.tsx"));
+const AdminDeliveryAnalyticsDashboard = lazy(() => import("./pages/admin/AdminDeliveryAnalyticsDashboard.tsx"));
 const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
 const AdminEnquiriesInbox = lazy(() => import("./pages/admin/AdminEnquiriesInbox.tsx"));
 const AdminWhatsAppInbox = lazy(() => import("./pages/admin/AdminWhatsAppInbox.tsx"));
@@ -138,6 +139,7 @@ const App = () => (
             <Route path="/admin/office-analytics" element={<AdminOfficeAnalyticsDashboard />} />
             <Route path="/admin/production-analytics" element={<AdminProductionAnalyticsDashboard />} />
             <Route path="/admin/warehouse-analytics" element={<AdminWarehouseAnalyticsDashboard />} />
+            <Route path="/admin/delivery-analytics" element={<AdminDeliveryAnalyticsDashboard />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
             <Route path="/admin/whatsapp" element={<AdminWhatsAppInbox />} />
