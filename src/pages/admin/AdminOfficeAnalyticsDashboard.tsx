@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
-import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +8,8 @@ import { Loader2, RefreshCw, Ruler, Clock, LifeBuoy, Paperclip, ArrowRight } fro
 import { KpiCard } from "@/components/overview/KpiCard";
 import { AnomalyBadges, type Anomaly } from "@/components/overview/AnomalyBadge";
 import { DailyLineChart } from "@/components/overview/charts/DailyLineChart";
-import { computeStage, stageToneClasses, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
+import { StatusDonut, type DonutSlice } from "@/components/overview/charts/StatusDonut";
+import { computeStage, stageToneClasses, stageToneHex, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
 
 type Q = {
   id: string;
@@ -35,6 +34,7 @@ const AdminOfficeAnalyticsDashboard = () => {
   const [unresolvedComplaints, setUnresolvedComplaints] = useState(0);
   const [enquiryTrend, setEnquiryTrend] = useState<number[]>([]);
   const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
+  const [pendingByStage, setPendingByStage] = useState<DonutSlice[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
 
   const load = async () => {
@@ -154,10 +154,23 @@ const AdminOfficeAnalyticsDashboard = () => {
     }
 
     // ---- Pending-action table (oldest first), with attached-notes count ----
-    const pending = staged
+    const pendingAll = staged
       .filter((q) => q.status !== "delivered" && q.status !== "rejected")
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      .slice(0, 15);
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const pending = pendingAll.slice(0, 15);
+
+    // ---- Pending quotations by stage — reuses the already-computed
+    // `staged`/`pendingAll` data above, no extra query. Uncapped (unlike
+    // the 15-row table) so the breakdown reflects the true total. ----
+    const stageCounts: Record<number, number> = {};
+    pendingAll.forEach((q) => { stageCounts[q.stage] = (stageCounts[q.stage] ?? 0) + 1; });
+    setPendingByStage(
+      Object.entries(stageCounts).map(([stage, count]) => ({
+        name: STAGE_DEFS[Number(stage) as PipelineStage].label,
+        value: count,
+        color: stageToneHex(STAGE_DEFS[Number(stage) as PipelineStage].tone),
+      })),
+    );
     const noteCounts: Record<string, number> = {};
     if (pending.length) {
       const { data: notes } = await supabase
@@ -207,19 +220,18 @@ const AdminOfficeAnalyticsDashboard = () => {
   useEffect(() => { load(); }, []);
 
   return (
-    <OfficeStaffOnly>
-      <AdminShell>
-        <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl">Office Analytics</h1>
-            <p className="mt-1 text-sm text-muted-foreground sm:text-base">Client Hub intake, enquiries and service load — live from Supabase.</p>
-          </div>
-          <Button variant="outline" onClick={load} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Refresh</>}
-          </Button>
+    <section>
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl">Office Analytics</h2>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Client Hub intake, enquiries and service load — live from Supabase.</p>
         </div>
+        <Button variant="outline" onClick={load} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Refresh</>}
+        </Button>
+      </div>
 
-        {loading ? (
+      {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
@@ -236,7 +248,14 @@ const AdminOfficeAnalyticsDashboard = () => {
               <KpiCard label="Unresolved complaints" value={String(unresolvedComplaints)} icon={LifeBuoy} to="/admin/services?tab=complaint" />
             </div>
 
-            <div className="mb-6">
+            <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="font-display text-base sm:text-lg">Pending Quotations by Stage</CardTitle>
+                  <p className="text-xs text-muted-foreground">Everything not yet delivered or rejected</p>
+                </CardHeader>
+                <CardContent><StatusDonut data={pendingByStage} /></CardContent>
+              </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="font-display text-base sm:text-lg">WhatsApp Enquiry Volume</CardTitle>
@@ -303,8 +322,7 @@ const AdminOfficeAnalyticsDashboard = () => {
             </Card>
           </>
         )}
-      </AdminShell>
-    </OfficeStaffOnly>
+    </section>
   );
 };
 

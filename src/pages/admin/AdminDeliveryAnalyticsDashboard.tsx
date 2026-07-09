@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Route as RouteIcon, Truck, CalendarClock } from "lucide-react";
 import { KpiCard } from "@/components/overview/KpiCard";
 import { AnomalyBadges, type Anomaly } from "@/components/overview/AnomalyBadge";
-import { StatusDonut } from "@/components/overview/charts/StatusDonut";
+import { StatusDonut, type DonutSlice } from "@/components/overview/charts/StatusDonut";
 import { tripStatusDonutData } from "@/lib/logistics";
 
 type WaypointRow = { id: string; route_name: string; sequence: number; area: string };
@@ -23,9 +20,6 @@ const startOfWeek = () => {
 };
 
 const AdminDeliveryAnalyticsDashboard = () => {
-  const { loading: authLoading, user, isOfficeStaff, isDelivery } = useAuth();
-  const canAccess = isOfficeStaff || isDelivery;
-
   const [loading, setLoading] = useState(true);
   const [activeRoutes, setActiveRoutes] = useState(0);
   const [vehiclesTotal, setVehiclesTotal] = useState(0);
@@ -33,6 +27,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
   const [tripsThisWeek, setTripsThisWeek] = useState(0);
   const [tripStatusCounts, setTripStatusCounts] = useState<Record<string, number>>({});
   const [tripRowCount, setTripRowCount] = useState(0);
+  const [vehicleDonutData, setVehicleDonutData] = useState<DonutSlice[]>([]);
   const [waypoints, setWaypoints] = useState<WaypointRow[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
 
@@ -58,8 +53,18 @@ const AdminDeliveryAnalyticsDashboard = () => {
     ]);
 
     setActiveRoutes(activeRoutesCount ?? 0);
-    setVehiclesTotal((vehicleRows ?? []).length);
-    setVehiclesActive((vehicleRows ?? []).filter((v: any) => v.is_active).length);
+    const vTotal = (vehicleRows ?? []).length;
+    const vActive = (vehicleRows ?? []).filter((v: any) => v.is_active).length;
+    setVehiclesTotal(vTotal);
+    setVehiclesActive(vActive);
+    // ---- Vehicles active vs idle — reuses the same vehicleRows fetch
+    // above, no extra query. ----
+    setVehicleDonutData(
+      [
+        { name: "Active", value: vActive, color: "#10b981" },
+        { name: "Idle", value: vTotal - vActive, color: "#64748b" },
+      ].filter((d) => d.value > 0),
+    );
 
     const trips = (tripRows ?? []) as { id: string; route_id: string | null; trip_date: string; status: string }[];
     setTripRowCount(trips.length);
@@ -109,22 +114,13 @@ const AdminDeliveryAnalyticsDashboard = () => {
     setLoading(false);
   };
 
-  useEffect(() => { if (canAccess) load(); }, [canAccess]);
-
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-  if (!authLoading && !canAccess) {
-    return (
-      <AdminShell>
-        <p className="text-muted-foreground">Delivery, office staff or admin access required.</p>
-      </AdminShell>
-    );
-  }
+  useEffect(() => { load(); }, []);
 
   return (
-    <AdminShell>
+    <section>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Delivery Analytics</h1>
+          <h2 className="font-display text-xl sm:text-2xl">Delivery Analytics</h2>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">Routes, fleet and trip schedule — live from Supabase.</p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
@@ -144,7 +140,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
             <KpiCard label="Scheduled trips this week" value={String(tripsThisWeek)} icon={CalendarClock} to="/admin/trips" />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-display text-base sm:text-lg">Trip Status Split</CardTitle>
@@ -155,6 +151,19 @@ const AdminDeliveryAnalyticsDashboard = () => {
                   <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No trips logged yet</div>
                 ) : (
                   <StatusDonut data={tripStatusDonutData(tripStatusCounts)} />
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base sm:text-lg">Vehicles: Active vs Idle</CardTitle>
+                <p className="text-xs text-muted-foreground">Fleet availability right now</p>
+              </CardHeader>
+              <CardContent>
+                {vehiclesTotal === 0 ? (
+                  <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No vehicles registered yet</div>
+                ) : (
+                  <StatusDonut data={vehicleDonutData} />
                 )}
               </CardContent>
             </Card>
@@ -194,7 +203,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
           </Card>
         </>
       )}
-    </AdminShell>
+    </section>
   );
 };
 

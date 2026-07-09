@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle, BarChart3 } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -145,7 +145,10 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   const filt = (arr: LinkItem[]) => arr.filter((l) => l.show);
 
-  const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff };
+  // Overview now composes the Warehouse/Delivery dashboard sections too
+  // (see AdminOverview.tsx), so those roles need a way back to it from
+  // elsewhere in the sidebar, not just office staff.
+  const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff || isWarehouse || isDelivery };
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   // Backlog is gated by the triple-tap unlock and only appears inside the
@@ -154,7 +157,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const operations: GroupItem = {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
-      { to: "/admin/office-analytics", label: "Office Analytics", icon: BarChart3, show: isOfficeStaff },
       { to: "/admin/enquiries", label: "Enquiries Inbox", icon: Inbox, show: isOfficeStaff },
       { to: "/admin/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, show: isOfficeStaff },
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
@@ -166,7 +168,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const finance: GroupItem = {
     kind: "group", id: "finance", label: "Finance", icon: Calculator,
     children: filt([
-      { to: "/admin/analytics", label: "Analytics", icon: BarChart3, show: isAdmin },
       { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Calculator, show: isOfficeStaff },
       { to: "/admin/backlog", label: "Backlog & Receivables", icon: Archive, show: isAdmin && backlogUnlocked },
     ]),
@@ -189,8 +190,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     children: filt([
       { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff || isDelivery || isWarehouse },
       { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff || isDelivery || isWarehouse },
-      { to: "/admin/warehouse-analytics", label: "Warehouse Analytics", icon: BarChart3, show: isOfficeStaff || isWarehouse },
-      { to: "/admin/delivery-analytics", label: "Delivery Analytics", icon: BarChart3, show: isOfficeStaff || isDelivery },
       { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
       { to: "/admin/vehicles", label: "Vehicles", icon: Truck, show: isAdmin },
     ]),
@@ -201,7 +200,6 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/staff", label: "People", icon: UsersRound, show: isAdmin },
       { to: "/admin/staff-monitor", label: "Staff Monitor", icon: Activity, show: isAdmin },
       { to: "/admin/production", label: "Production Board", icon: GitBranch, show: isOfficeStaff },
-      { to: "/admin/production-analytics", label: "Production Analytics", icon: BarChart3, show: isOfficeStaff },
     ]),
   };
   const system: GroupItem = {
