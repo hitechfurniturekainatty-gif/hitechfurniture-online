@@ -154,6 +154,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const operations: GroupItem = {
     kind: "group", id: "operations", label: "Operations", icon: Briefcase,
     children: filt([
+      { to: "/admin/office-analytics", label: "Office Analytics", icon: BarChart3, show: isOfficeStaff },
       { to: "/admin/enquiries", label: "Enquiries Inbox", icon: Inbox, show: isOfficeStaff },
       { to: "/admin/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, show: isOfficeStaff },
       { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
