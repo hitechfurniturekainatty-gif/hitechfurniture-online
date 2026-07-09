@@ -190,6 +190,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
       { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff || isDelivery || isWarehouse },
       { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff || isDelivery || isWarehouse },
       { to: "/admin/warehouse-analytics", label: "Warehouse Analytics", icon: BarChart3, show: isOfficeStaff || isWarehouse },
+      { to: "/admin/delivery-analytics", label: "Delivery Analytics", icon: BarChart3, show: isOfficeStaff || isDelivery },
       { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
       { to: "/admin/vehicles", label: "Vehicles", icon: Truck, show: isAdmin },
     ]),
