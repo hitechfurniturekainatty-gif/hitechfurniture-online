@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Route as RouteIcon, Truck, CalendarClock } from "lucide-react";
 import { KpiCard } from "@/components/overview/KpiCard";
 import { AnomalyBadges, type Anomaly } from "@/components/overview/AnomalyBadge";
-import { StatusDonut } from "@/components/overview/charts/StatusDonut";
+import { StatusDonut, type DonutSlice } from "@/components/overview/charts/StatusDonut";
 import { tripStatusDonutData } from "@/lib/logistics";
 
 type WaypointRow = { id: string; route_name: string; sequence: number; area: string };
@@ -27,6 +27,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
   const [tripsThisWeek, setTripsThisWeek] = useState(0);
   const [tripStatusCounts, setTripStatusCounts] = useState<Record<string, number>>({});
   const [tripRowCount, setTripRowCount] = useState(0);
+  const [vehicleDonutData, setVehicleDonutData] = useState<DonutSlice[]>([]);
   const [waypoints, setWaypoints] = useState<WaypointRow[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
 
@@ -52,8 +53,18 @@ const AdminDeliveryAnalyticsDashboard = () => {
     ]);
 
     setActiveRoutes(activeRoutesCount ?? 0);
-    setVehiclesTotal((vehicleRows ?? []).length);
-    setVehiclesActive((vehicleRows ?? []).filter((v: any) => v.is_active).length);
+    const vTotal = (vehicleRows ?? []).length;
+    const vActive = (vehicleRows ?? []).filter((v: any) => v.is_active).length;
+    setVehiclesTotal(vTotal);
+    setVehiclesActive(vActive);
+    // ---- Vehicles active vs idle — reuses the same vehicleRows fetch
+    // above, no extra query. ----
+    setVehicleDonutData(
+      [
+        { name: "Active", value: vActive, color: "#10b981" },
+        { name: "Idle", value: vTotal - vActive, color: "#64748b" },
+      ].filter((d) => d.value > 0),
+    );
 
     const trips = (tripRows ?? []) as { id: string; route_id: string | null; trip_date: string; status: string }[];
     setTripRowCount(trips.length);
@@ -129,7 +140,7 @@ const AdminDeliveryAnalyticsDashboard = () => {
             <KpiCard label="Scheduled trips this week" value={String(tripsThisWeek)} icon={CalendarClock} to="/admin/trips" />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-display text-base sm:text-lg">Trip Status Split</CardTitle>
@@ -140,6 +151,19 @@ const AdminDeliveryAnalyticsDashboard = () => {
                   <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No trips logged yet</div>
                 ) : (
                   <StatusDonut data={tripStatusDonutData(tripStatusCounts)} />
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base sm:text-lg">Vehicles: Active vs Idle</CardTitle>
+                <p className="text-xs text-muted-foreground">Fleet availability right now</p>
+              </CardHeader>
+              <CardContent>
+                {vehiclesTotal === 0 ? (
+                  <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No vehicles registered yet</div>
+                ) : (
+                  <StatusDonut data={vehicleDonutData} />
                 )}
               </CardContent>
             </Card>

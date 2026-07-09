@@ -10,9 +10,9 @@ import { AnomalyBadges, type Anomaly } from "@/components/overview/AnomalyBadge"
 import { RevenueTrendChart, type MonthRevenue } from "@/components/overview/charts/RevenueTrendChart";
 import { PipelineStageMonthlyBarChart, type MonthlyStageRow } from "@/components/overview/charts/PipelineStageMonthlyBarChart";
 import { StatusDonut, type DonutSlice } from "@/components/overview/charts/StatusDonut";
-import { ALL_STAGES } from "@/lib/quotationPipeline";
+import { computeStage, stageToneHex, ALL_STAGES, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
 import { statusLabel } from "./AdminQuotationEditor";
-import { isJobFinished } from "./AdminWorkerDetail";
+import { isJobFinished, jobStatusLabel, jobStatusHex } from "./AdminWorkerDetail";
 
 // Revenue counts finalized-or-further quotations (drafts and rejections
 // aren't real sales yet).
@@ -44,6 +44,8 @@ const AdminAnalyticsDashboard = () => {
   const [stageMonthly, setStageMonthly] = useState<MonthlyStageRow[]>([]);
   const [statusDonut, setStatusDonut] = useState<DonutSlice[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [pendingByStage, setPendingByStage] = useState<DonutSlice[]>([]);
+  const [productionByStatus, setProductionByStatus] = useState<DonutSlice[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
 
   const load = async () => {
@@ -58,14 +60,16 @@ const AdminAnalyticsDashboard = () => {
       { data: pnRows },
       { data: itemRows },
       { data: statusHistRows },
+      { data: tqRows },
+      { data: stageItemRows },
     ] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id, status, total, created_at")
+        .select("id, status, total, created_at, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id")
         .is("deleted_at", null)
         .gte("created_at", sixMonthsAgo.toISOString()),
       supabase.from("product_variant_stock").select("id", { count: "exact", head: true }),
-      supabase.from("job_work_orders").select("status").is("deleted_at", null),
+      supabase.from("job_work_orders").select("status, quotation_id, warehouse_status").is("deleted_at", null),
       supabase
         .from("pipeline_notifications")
         .select("stage, created_at")
@@ -77,7 +81,67 @@ const AdminAnalyticsDashboard = () => {
       // real sales ledger.
       supabase.from("quotation_items").select("product_id, quantity, amount").not("product_id", "is", null),
       supabase.from("quotation_status_history").select("quotation_id, status, changed_at").order("changed_at", { ascending: false }),
+      // Trip + item data (below) is only for the "pending quotations by
+      // stage" breakdown chart — mirrors the same computeStage() aggregation
+      // Office/Production already use, added fresh here since Admin's own
+      // quotation_items query above deliberately excludes custom (no
+      // product_id) items and can't double as stage input.
+      supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
+      supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
     ]);
+
+    // ---- Same job/trip/item aggregation computeStage() needs, as used
+    // throughout the rest of the admin app (AdminOverview, AdminPipelineMonitor,
+    // Office/Production dashboards) — powers the "pending quotations by
+    // stage" breakdown below. ----
+    const jobsByQ: Record<string, { total: number; done: number; warehouse: number; dispatched: number }> = {};
+    (jobRows ?? []).forEach((j: any) => {
+      if (!j.quotation_id) return;
+      const cur = jobsByQ[j.quotation_id] ?? { total: 0, done: 0, warehouse: 0, dispatched: 0 };
+      cur.total += 1;
+      if (j.status === "ready" || j.status === "delivered") cur.done += 1;
+      if (j.warehouse_status === "in_warehouse" || j.warehouse_status === "ready_to_pack" || j.warehouse_status === "ready_for_dispatch") cur.warehouse += 1;
+      if (j.warehouse_status === "dispatched") cur.dispatched += 1;
+      jobsByQ[j.quotation_id] = cur;
+    });
+    const tripsByQ: Record<string, { has: boolean; completed: boolean }> = {};
+    (tqRows ?? []).forEach((tq: any) => {
+      const cur = tripsByQ[tq.quotation_id] ?? { has: false, completed: false };
+      cur.has = true;
+      if (tq.trips?.status === "delivered" || tq.delivered_at) cur.completed = true;
+      tripsByQ[tq.quotation_id] = cur;
+    });
+    const itemsByQ: Record<string, { total: number; ready: number; custom: number }> = {};
+    (stageItemRows ?? []).forEach((it: any) => {
+      const qid = it.quotation_id as string;
+      if (!qid) return;
+      const cur = itemsByQ[qid] ?? { total: 0, ready: 0, custom: 0 };
+      cur.total += 1;
+      if (it.fulfillment_route === "custom") cur.custom += 1;
+      else cur.ready += 1;
+      itemsByQ[qid] = cur;
+    });
+    const staged = ((quotRows ?? []) as any[]).map((q) => {
+      const j = jobsByQ[q.id];
+      const t = tripsByQ[q.id];
+      const info = computeStage({
+        status: q.status,
+        advance_amount: q.advance_amount,
+        submitted_for_pricing_at: q.submitted_for_pricing_at,
+        is_direct_order: q.is_direct_order,
+        source_task_id: q.source_task_id,
+        jobs_total: j?.total ?? 0,
+        jobs_completed: j?.done ?? 0,
+        jobs_in_warehouse: j?.warehouse ?? 0,
+        jobs_dispatched: j?.dispatched ?? 0,
+        has_trip: t?.has ?? false,
+        trip_completed: t?.completed ?? false,
+        items_total: itemsByQ[q.id]?.total ?? 0,
+        items_ready_stock: itemsByQ[q.id]?.ready ?? 0,
+        items_custom: itemsByQ[q.id]?.custom ?? 0,
+      });
+      return { ...q, stage: info.stage as PipelineStage };
+    });
 
     // ---- Revenue this month / last month ----
     const thisMonthKey = monthKey(now);
@@ -107,7 +171,20 @@ const AdminAnalyticsDashboard = () => {
     }
 
     // ---- Pending quotations: anything not yet delivered or rejected ----
-    setPendingQuotations((quotRows ?? []).filter((q: any) => q.status !== "delivered" && q.status !== "rejected").length);
+    const pendingQ = staged.filter((q) => q.status !== "delivered" && q.status !== "rejected");
+    setPendingQuotations(pendingQ.length);
+
+    // ---- Pending quotations by stage — reuses the `staged` aggregation
+    // above, no extra query beyond the trip/item fetches. ----
+    const pendingStageCounts: Record<number, number> = {};
+    pendingQ.forEach((q) => { pendingStageCounts[q.stage] = (pendingStageCounts[q.stage] ?? 0) + 1; });
+    setPendingByStage(
+      Object.entries(pendingStageCounts).map(([stage, count]) => ({
+        name: STAGE_DEFS[Number(stage) as PipelineStage].label,
+        value: count,
+        color: stageToneHex(STAGE_DEFS[Number(stage) as PipelineStage].tone),
+      })),
+    );
 
     // ---- Order status donut (all quotations in the fetched window) ----
     const statusCounts: Record<string, number> = {};
@@ -125,13 +202,27 @@ const AdminAnalyticsDashboard = () => {
     }
 
     // ---- Stock (product_variant_stock is currently unpopulated storewide —
-    // report that honestly instead of a fabricated "0 low stock" claim) ----
+    // report that honestly instead of a fabricated "0 low stock" claim).
+    // No breakdown chart here: with tracking empty there are no categories
+    // to split by yet, so a chart would just be a styled zero. ----
     setSkusTracked(variantStockCount ?? 0);
     setLowStockSkus(0);
 
     // ---- Orders in production ----
-    const openJobs = (jobRows ?? []).filter((j: any) => !isJobFinished(j.status)).length;
-    setOrdersInProduction(openJobs);
+    const openJobRows = (jobRows ?? []).filter((j: any) => !isJobFinished(j.status));
+    setOrdersInProduction(openJobRows.length);
+
+    // ---- Orders in production, by job status — reuses the same jobRows
+    // fetch above, no extra query. ----
+    const jobStatusCounts: Record<string, number> = {};
+    openJobRows.forEach((j: any) => { jobStatusCounts[j.status] = (jobStatusCounts[j.status] ?? 0) + 1; });
+    setProductionByStatus(
+      Object.entries(jobStatusCounts).map(([status, count]) => ({
+        name: jobStatusLabel(status),
+        value: count,
+        color: jobStatusHex(status),
+      })),
+    );
 
     // ---- Pipeline stage activity per month (pipeline_notifications) ----
     const stageByMonth: Record<string, Record<number, number>> = {};
@@ -248,6 +339,37 @@ const AdminAnalyticsDashboard = () => {
                 sub={skusTracked === 0 ? "Stock tracking not yet populated" : `${skusTracked} SKUs tracked`}
               />
               <KpiCard label="Orders in production" value={String(ordersInProduction)} icon={HardHat} to="/admin/production" />
+            </div>
+
+            {/* Breakdown donuts — pending quotations by pipeline stage, and
+                orders in production by job status */}
+            <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="font-display text-base sm:text-lg">Pending Quotations by Stage</CardTitle>
+                  <p className="text-xs text-muted-foreground">Not yet delivered or rejected</p>
+                </CardHeader>
+                <CardContent>
+                  {pendingQuotations === 0 ? (
+                    <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No pending quotations</div>
+                  ) : (
+                    <StatusDonut data={pendingByStage} />
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="font-display text-base sm:text-lg">Orders in Production by Status</CardTitle>
+                  <p className="text-xs text-muted-foreground">Open job work orders, by current stage</p>
+                </CardHeader>
+                <CardContent>
+                  {ordersInProduction === 0 ? (
+                    <div className="flex h-36 items-center justify-center text-xs text-muted-foreground">No open production jobs</div>
+                  ) : (
+                    <StatusDonut data={productionByStatus} />
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             {/* Chart grid */}

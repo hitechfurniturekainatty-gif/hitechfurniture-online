@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Boxes, Activity, MapPin } from "lucide-react";
+import { Loader2, RefreshCw, Boxes, Activity, MapPin, ArrowRight } from "lucide-react";
 import { KpiCard } from "@/components/overview/KpiCard";
 import { AnomalyBadges, type Anomaly } from "@/components/overview/AnomalyBadge";
 import { CategoryStockBarChart, type CategoryStock } from "@/components/overview/charts/CategoryStockBarChart";
@@ -25,6 +26,7 @@ const AdminWarehouseAnalyticsDashboard = () => {
   const [locationsCount, setLocationsCount] = useState(0);
   const [activeLocationsCount, setActiveLocationsCount] = useState(0);
   const [categoryStock, setCategoryStock] = useState<CategoryStock[]>([]);
+  const [locationsByBuilding, setLocationsByBuilding] = useState<CategoryStock[]>([]);
   const [locations, setLocations] = useState<LocationRow[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
 
@@ -43,6 +45,15 @@ const AdminWarehouseAnalyticsDashboard = () => {
     setLocations((locRows ?? []) as LocationRow[]);
     setLocationsCount((locRows ?? []).length);
     setActiveLocationsCount((locRows ?? []).filter((l: any) => l.is_active).length);
+
+    // ---- Locations by building — reuses the same locRows fetch above,
+    // no extra query. ----
+    const buildingCounts: Record<string, number> = {};
+    (locRows ?? []).forEach((l: any) => {
+      const name = l.building || "Unassigned";
+      buildingCounts[name] = (buildingCounts[name] ?? 0) + 1;
+    });
+    setLocationsByBuilding(Object.entries(buildingCounts).map(([category, quantity]) => ({ category, quantity })));
 
     // ---- Stock by category: product_variant_stock -> product_variants ->
     // products -> main_categories. Done as separate lookups (not a nested
@@ -124,7 +135,7 @@ const AdminWarehouseAnalyticsDashboard = () => {
             <KpiCard label="Storage locations" value={String(locationsCount)} icon={MapPin} sub={`${activeLocationsCount} active`} />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-display text-base sm:text-lg">Stock by Category</CardTitle>
@@ -137,12 +148,27 @@ const AdminWarehouseAnalyticsDashboard = () => {
                 />
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-base sm:text-lg">Locations by Building</CardTitle>
+                <p className="text-xs text-muted-foreground">Storage locations grouped by building</p>
+              </CardHeader>
+              <CardContent>
+                <CategoryStockBarChart
+                  data={locationsByBuilding}
+                  emptyMessage="No storage locations set up yet"
+                />
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-lg">Storage Locations</CardTitle>
-              <p className="text-xs text-muted-foreground">Interim view — the location directory, until per-SKU stock levels are populated</p>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="font-display text-lg">Storage Locations</CardTitle>
+                <p className="text-xs text-muted-foreground">Interim view — the location directory, until per-SKU stock levels are populated</p>
+              </div>
+              <Button asChild variant="ghost" size="sm"><Link to="/admin/warehouse">View warehouse <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link></Button>
             </CardHeader>
             <CardContent>
               {locations.length === 0 ? (
