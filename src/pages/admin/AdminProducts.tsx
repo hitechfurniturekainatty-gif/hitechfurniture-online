@@ -154,6 +154,11 @@ const AdminProducts = () => {
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [showDraftsOnly, setShowDraftsOnly] = useState(false);
+  const [filterMainCat, setFilterMainCat] = useState<string>("__all__");
+  const [filterSubCat, setFilterSubCat] = useState<string>("__all__");
+  const [filterColor, setFilterColor] = useState<string>("__all__");
+  const [filterPriceMin, setFilterPriceMin] = useState<string>("");
+  const [filterPriceMax, setFilterPriceMax] = useState<string>("");
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
     return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "list";
@@ -228,10 +233,52 @@ const AdminProducts = () => {
     if (showDraftsOnly) {
       list = list.filter((p) => !p.is_published);
     }
+    if (filterMainCat !== "__all__") {
+      list = list.filter((p) => p.main_category_id === filterMainCat);
+    }
+    if (filterSubCat !== "__all__") {
+      list = list.filter((p) => p.sub_category_id === filterSubCat);
+    }
+    if (filterColor !== "__all__") {
+      list = list.filter((p) => (p.available_colors ?? []).some((c) => c.toLowerCase() === filterColor.toLowerCase()));
+    }
+    const min = filterPriceMin ? Number(filterPriceMin) : null;
+    const max = filterPriceMax ? Number(filterPriceMax) : null;
+    if (min !== null || max !== null) {
+      list = list.filter((p) => {
+        const price = p.offer_price ?? p.mrp;
+        if (min !== null && price < min) return false;
+        if (max !== null && price > max) return false;
+        return true;
+      });
+    }
     if (!search) return list;
     const q = search.toLowerCase();
     return list.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
-  }, [products, search, showLowStockOnly, showDraftsOnly]);
+  }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax]);
+
+  // Unique colors seen across all products, for the color filter dropdown
+  const allColors = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => (p.available_colors ?? []).forEach((c) => c && set.add(c)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
+  const subCatsForFilter = useMemo(
+    () => (filterMainCat === "__all__" ? subCats : subCats.filter((s) => s.main_category_id === filterMainCat)),
+    [filterMainCat, subCats],
+  );
+
+  const hasActiveFilters =
+    !!search || showLowStockOnly || showDraftsOnly ||
+    filterMainCat !== "__all__" || filterSubCat !== "__all__" || filterColor !== "__all__" ||
+    !!filterPriceMin || !!filterPriceMax;
+
+  const clearAllFilters = () => {
+    setSearch(""); setShowLowStockOnly(false); setShowDraftsOnly(false);
+    setFilterMainCat("__all__"); setFilterSubCat("__all__"); setFilterColor("__all__");
+    setFilterPriceMin(""); setFilterPriceMax("");
+  };
 
   const lowStockCount = useMemo(
     () => products.filter((p) => p.stock_quantity <= (p.reorder_level ?? 5)).length,
@@ -817,7 +864,7 @@ const AdminProducts = () => {
                 header never disagrees with the rendered rows. When a search
                 or low-stock filter is active, also show the total in brackets. */}
             {filtered.length} {filtered.length === 1 ? "item" : "items"}
-            {(search || showLowStockOnly) && filtered.length !== products.length && (
+            {hasActiveFilters && filtered.length !== products.length && (
               <span className="text-muted-foreground/70"> of {products.length}</span>
             )}
             {" "}in your catalog
@@ -940,6 +987,55 @@ const AdminProducts = () => {
           <EyeOff className="h-3.5 w-3.5" />
           Drafts {draftCount > 0 && `(${draftCount})`}
         </Button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="w-40">
+          <SearchableSelect
+            value={filterMainCat}
+            onChange={(v) => { setFilterMainCat(v); setFilterSubCat("__all__"); }}
+            options={[{ value: "__all__", label: "All main categories" }, ...mainCats.map((c) => ({ value: c.id, label: toTitleCase(c.name) }))]}
+            placeholder="Main category"
+          />
+        </div>
+        <div className="w-40">
+          <SearchableSelect
+            value={filterSubCat}
+            onChange={(v) => setFilterSubCat(v)}
+            options={[{ value: "__all__", label: "All sub-categories" }, ...subCatsForFilter.map((s) => ({ value: s.id, label: toTitleCase(s.name) }))]}
+            placeholder="Sub-category"
+            disabled={filterMainCat === "__all__" && subCatsForFilter.length === 0}
+          />
+        </div>
+        <div className="w-36">
+          <SearchableSelect
+            value={filterColor}
+            onChange={(v) => setFilterColor(v)}
+            options={[{ value: "__all__", label: "All colors" }, ...allColors.map((c) => ({ value: c, label: c }))]}
+            placeholder="Color"
+          />
+        </div>
+        <Input
+          type="number"
+          min={0}
+          value={filterPriceMin}
+          onChange={(e) => setFilterPriceMin(e.target.value)}
+          placeholder="Min price ₹"
+          className="w-28"
+        />
+        <Input
+          type="number"
+          min={0}
+          value={filterPriceMax}
+          onChange={(e) => setFilterPriceMax(e.target.value)}
+          placeholder="Max price ₹"
+          className="w-28"
+        />
+        {hasActiveFilters && (
+          <Button type="button" variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5">
+            <X className="h-3.5 w-3.5" /> Clear filters
+          </Button>
+        )}
         <div className="ml-auto inline-flex rounded-md border bg-background p-0.5">
           <Button
             type="button"
