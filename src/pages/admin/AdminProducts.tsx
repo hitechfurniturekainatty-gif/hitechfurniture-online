@@ -116,7 +116,7 @@ const emptyForm: FormState = {
   available_colors: "", material: "", dimensions: "",
   stock_quantity: "0",
   reorder_level: "5",
-  is_featured: false, is_published: false,
+  is_featured: true, is_published: false,
   main_category_id: "", sub_category_id: "",
   location_id: "", location_section: "",
   stock_status: "in_stock",
@@ -125,7 +125,7 @@ const emptyForm: FormState = {
   hsn_code: "", gst_rate: "", primary_material: "",
   secondary_material: "", dim_height: "", dim_width: "", dim_depth: "",
   color_finish: "", warranty_period: "", delivery_condition: "",
-  publish_immediately: false,
+  publish_immediately: true,
 };
 
 const AdminProducts = () => {
