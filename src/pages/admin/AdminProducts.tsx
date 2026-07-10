@@ -136,7 +136,8 @@ const AdminProducts = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [filterProductName, setFilterProductName] = useState<string>("__all__");
+  const [filterProductCode, setFilterProductCode] = useState<string>("__all__");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -252,10 +253,26 @@ const AdminProducts = () => {
         return true;
       });
     }
-    if (!search) return list;
-    const q = search.toLowerCase();
-    return list.filter((p) => p.product_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q));
-  }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax]);
+    if (filterProductName !== "__all__") {
+      list = list.filter((p) => p.product_name === filterProductName);
+    }
+    if (filterProductCode !== "__all__") {
+      list = list.filter((p) => p.product_code === filterProductCode);
+    }
+    return list;
+  }, [products, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode]);
+
+  // Unique product names/codes, for the dropdown filters
+  const allProductNames = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => p.product_name && set.add(p.product_name));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+  const allProductCodes = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => p.product_code && set.add(p.product_code));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
 
   // Unique colors seen across all products, for the color filter dropdown
   const allColors = useMemo(() => {
@@ -270,13 +287,15 @@ const AdminProducts = () => {
   );
 
   const hasActiveFilters =
-    !!search || showLowStockOnly || showDraftsOnly ||
+    showLowStockOnly || showDraftsOnly ||
     filterMainCat !== "__all__" || filterSubCat !== "__all__" || filterColor !== "__all__" ||
+    filterProductName !== "__all__" || filterProductCode !== "__all__" ||
     !!filterPriceMin || !!filterPriceMax;
 
   const clearAllFilters = () => {
-    setSearch(""); setShowLowStockOnly(false); setShowDraftsOnly(false);
+    setShowLowStockOnly(false); setShowDraftsOnly(false);
     setFilterMainCat("__all__"); setFilterSubCat("__all__"); setFilterColor("__all__");
+    setFilterProductName("__all__"); setFilterProductCode("__all__");
     setFilterPriceMin(""); setFilterPriceMax("");
   };
 
@@ -963,9 +982,21 @@ const AdminProducts = () => {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or code…" className="pl-9" />
+        <div className="w-44">
+          <SearchableSelect
+            value={filterProductName}
+            onChange={(v) => setFilterProductName(v)}
+            options={[{ value: "__all__", label: "All product names" }, ...allProductNames.map((n) => ({ value: n, label: n }))]}
+            placeholder="Product name"
+          />
+        </div>
+        <div className="w-40">
+          <SearchableSelect
+            value={filterProductCode}
+            onChange={(v) => setFilterProductCode(v)}
+            options={[{ value: "__all__", label: "All product codes" }, ...allProductCodes.map((c) => ({ value: c, label: c }))]}
+            placeholder="Product code"
+          />
         </div>
         <Button
           type="button"
