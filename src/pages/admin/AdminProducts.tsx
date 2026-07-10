@@ -136,6 +136,7 @@ const AdminProducts = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsDialogOpen, setLocationsDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [filterProductName, setFilterProductName] = useState<string>("__all__");
   const [filterProductCode, setFilterProductCode] = useState<string>("__all__");
   const [open, setOpen] = useState(false);
@@ -259,8 +260,18 @@ const AdminProducts = () => {
     if (filterProductCode !== "__all__") {
       list = list.filter((p) => p.product_code === filterProductCode);
     }
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((p) =>
+        p.product_name.toLowerCase().includes(q) ||
+        p.product_code.toLowerCase().includes(q) ||
+        (p.material ?? "").toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q) ||
+        (p.available_colors ?? []).some((c) => c.toLowerCase().includes(q))
+      );
+    }
     return list;
-  }, [products, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode]);
+  }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode]);
 
   // Unique product names/codes, for the dropdown filters
   const allProductNames = useMemo(() => {
@@ -287,12 +298,13 @@ const AdminProducts = () => {
   );
 
   const hasActiveFilters =
-    showLowStockOnly || showDraftsOnly ||
+    !!search || showLowStockOnly || showDraftsOnly ||
     filterMainCat !== "__all__" || filterSubCat !== "__all__" || filterColor !== "__all__" ||
     filterProductName !== "__all__" || filterProductCode !== "__all__" ||
     !!filterPriceMin || !!filterPriceMax;
 
   const clearAllFilters = () => {
+    setSearch("");
     setShowLowStockOnly(false); setShowDraftsOnly(false);
     setFilterMainCat("__all__"); setFilterSubCat("__all__"); setFilterColor("__all__");
     setFilterProductName("__all__"); setFilterProductCode("__all__");
@@ -982,6 +994,10 @@ const AdminProducts = () => {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search anything: name, code, material, color, description…" className="pl-9" />
+        </div>
         <div className="w-44">
           <SearchableSelect
             value={filterProductName}
