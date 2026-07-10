@@ -1359,6 +1359,8 @@ const AdminProducts = () => {
             className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 sm:grid-cols-2 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
+            {/* ── 1. Identity ─────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Identity</div>
             <Field label="Product name *">
               <AutoSuggestInput
                 value={form.product_name}
@@ -1427,6 +1429,15 @@ const AdminProducts = () => {
                 disabled={!form.main_category_id}
               />
             </Field>
+            <Field label="Description" wide>
+              <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </Field>
+            <Field label="Images *" wide>
+              <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
+            </Field>
+
+            {/* ── 2. Pricing & tax ────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Pricing &amp; tax</div>
             <Field label="MRP (₹)">
               <Input type="number" min={0} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
             </Field>
@@ -1450,12 +1461,37 @@ const AdminProducts = () => {
                 </p>
               </Field>
             )}
+            {isOfficeStaff && (
+              <Field label="HSN code">
+                <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} placeholder="e.g. 94036000" />
+              </Field>
+            )}
+            {isOfficeStaff && (
+              <Field label="GST rate (%)">
+                <Input type="number" min={0} max={100} value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} placeholder="e.g. 12" />
+              </Field>
+            )}
+
+            {/* ── 3. Stock ────────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Stock</div>
             <Field label="Stock quantity">
               <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
+            </Field>
+            <Field label="Stock status">
+              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Reorder level (low-stock alert)">
               <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
             </Field>
+
+            {/* ── 4. Location ─────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Location</div>
             <Field label="Building" >
               <SearchableSelect
                 value={formBuilding || "__none"}
@@ -1506,21 +1542,57 @@ const AdminProducts = () => {
                 )}
               </div>
             </Field>
-            <Field label="Stock status">
-              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+
+            {/* ── 5. Physical details ─────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Physical details</div>
+            <Field label="Primary material">
+              <Select value={form.primary_material || "__none"} onValueChange={(v) => setForm({ ...form, primary_material: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select material…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
+                  <SelectItem value="__none">— None —</SelectItem>
+                  {["Teak", "Mahogany", "Sheesham", "Engineered Wood", "Metal", "Plastic", "Fabric", "Leather", "Glass", "Bamboo", "Rattan"].map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Material">
+            <Field label="Secondary material">
+              <Input value={form.secondary_material} onChange={(e) => setForm({ ...form, secondary_material: e.target.value })} placeholder="e.g. Fabric, Steel" />
+            </Field>
+            <Field label="Material (free text)">
               <Input value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} placeholder="e.g. Solid wood, fabric" />
             </Field>
-            <Field label="Dimensions">
+            <Field label="Color / finish">
+              <Input value={form.color_finish} onChange={(e) => setForm({ ...form, color_finish: e.target.value })} placeholder="e.g. Walnut, Matte Black" />
+            </Field>
+            <Field label="Dimensions (free text)">
               <Input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder='e.g. 84" x 36" x 32"' />
             </Field>
+            <Field label="Height (inches)">
+              <Input type="number" min={0} step={0.1} value={form.dim_height} onChange={(e) => setForm({ ...form, dim_height: e.target.value })} placeholder="e.g. 36" />
+            </Field>
+            <Field label="Width (inches)">
+              <Input type="number" min={0} step={0.1} value={form.dim_width} onChange={(e) => setForm({ ...form, dim_width: e.target.value })} placeholder="e.g. 72" />
+            </Field>
+            <Field label="Depth (inches)">
+              <Input type="number" min={0} step={0.1} value={form.dim_depth} onChange={(e) => setForm({ ...form, dim_depth: e.target.value })} placeholder="e.g. 30" />
+            </Field>
+            <Field label="Warranty period">
+              <Input value={form.warranty_period} onChange={(e) => setForm({ ...form, warranty_period: e.target.value })} placeholder="e.g. 1 year, 6 months" />
+            </Field>
+            <Field label="Delivery condition">
+              <Select value={form.delivery_condition || "__none"} onValueChange={(v) => setForm({ ...form, delivery_condition: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Not specified —</SelectItem>
+                  <SelectItem value="pre_assembled">Pre-assembled</SelectItem>
+                  <SelectItem value="assembly_required">Assembly Required</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {/* ── 6. Variants ─────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Color variants</div>
             <Field label="Color variants & per-color stock" wide>
               <ProductVariantsEditor
                 variants={form.variants}
@@ -1532,74 +1604,9 @@ const AdminProducts = () => {
                 Tip: each color shows as a swatch in the catalog. Click a swatch to switch the photo. Set a per-color location to track which floor that color is physically displayed on.
               </p>
             </Field>
-            <Field label="Description" wide>
-              <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            </Field>
 
-            {/* ── Advanced details (collapsible) ─────────────────────────── */}
-            <div className="sm:col-span-2">
-              <details className="group rounded-lg border border-border">
-                <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none hover:bg-accent/30">
-                  <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                  Advanced details (optional)
-                </summary>
-                <div className="grid gap-4 px-4 pb-4 pt-2 sm:grid-cols-2">
-                  <Field label="Primary material">
-                    <Select value={form.primary_material || "__none"} onValueChange={(v) => setForm({ ...form, primary_material: v === "__none" ? "" : v })}>
-                      <SelectTrigger><SelectValue placeholder="Select material…" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">— None —</SelectItem>
-                        {["Teak", "Mahogany", "Sheesham", "Engineered Wood", "Metal", "Plastic", "Fabric", "Leather", "Glass", "Bamboo", "Rattan"].map((m) => (
-                          <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Secondary material">
-                    <Input value={form.secondary_material} onChange={(e) => setForm({ ...form, secondary_material: e.target.value })} placeholder="e.g. Fabric, Steel" />
-                  </Field>
-                  <Field label="Height (inches)">
-                    <Input type="number" min={0} step={0.1} value={form.dim_height} onChange={(e) => setForm({ ...form, dim_height: e.target.value })} placeholder="e.g. 36" />
-                  </Field>
-                  <Field label="Width (inches)">
-                    <Input type="number" min={0} step={0.1} value={form.dim_width} onChange={(e) => setForm({ ...form, dim_width: e.target.value })} placeholder="e.g. 72" />
-                  </Field>
-                  <Field label="Depth (inches)">
-                    <Input type="number" min={0} step={0.1} value={form.dim_depth} onChange={(e) => setForm({ ...form, dim_depth: e.target.value })} placeholder="e.g. 30" />
-                  </Field>
-                  <Field label="Color / finish">
-                    <Input value={form.color_finish} onChange={(e) => setForm({ ...form, color_finish: e.target.value })} placeholder="e.g. Walnut, Matte Black" />
-                  </Field>
-                  <Field label="Warranty period">
-                    <Input value={form.warranty_period} onChange={(e) => setForm({ ...form, warranty_period: e.target.value })} placeholder="e.g. 1 year, 6 months" />
-                  </Field>
-                  <Field label="Delivery condition">
-                    <Select value={form.delivery_condition || "__none"} onValueChange={(v) => setForm({ ...form, delivery_condition: v === "__none" ? "" : v })}>
-                      <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">— Not specified —</SelectItem>
-                        <SelectItem value="pre_assembled">Pre-assembled</SelectItem>
-                        <SelectItem value="assembly_required">Assembly Required</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  {isOfficeStaff && (
-                    <>
-                      <Field label="HSN code">
-                        <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} placeholder="e.g. 94036000" />
-                      </Field>
-                      <Field label="GST rate (%)">
-                        <Input type="number" min={0} max={100} value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} placeholder="e.g. 12" />
-                      </Field>
-                    </>
-                  )}
-                </div>
-              </details>
-            </div>
-
-            <Field label="Images *" wide>
-              <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
-            </Field>
+            {/* ── 7. Visibility ───────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Visibility</div>
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
                 <p className="text-sm font-medium">Featured on homepage</p>
