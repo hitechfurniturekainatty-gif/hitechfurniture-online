@@ -3,7 +3,7 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
@@ -150,6 +150,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   // elsewhere in the sidebar, not just office staff.
   const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff || isWarehouse || isDelivery };
   const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
+  const commandCenter: SoloItem = { kind: "solo", to: "/admin/command-center", label: "Command Center", icon: Radar, show: isAdmin };
   const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
   // Backlog is gated by the triple-tap unlock and only appears inside the
   // Finance group while currently unlocked (see `finance` below).
@@ -214,6 +215,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   const navEntries: NavEntry[] = [
     overview,
+    commandCenter,
     myWork,
     myTrips,
     operations,
