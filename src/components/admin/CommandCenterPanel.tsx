@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Loader2,
@@ -19,18 +18,17 @@ import { Button } from "@/components/ui/button";
 import { ALL_STAGES, STAGE_DEFS, stageToneHex } from "@/lib/quotationPipeline";
 
 /**
- * Command Center — single unified overview tab (no sub-tabs by design).
- *
- * Reads from `public.command_center_snapshot`, a security-invoker view
+ * Command Center — composed as a SECTION of Overview, not a separate sidebar
+ * tab. Reads from `public.command_center_snapshot`, a security-invoker view
  * (no RLS bypass — returns only what the logged-in admin's own policies
  * already allow) that aggregates catalog, WhatsApp, pipeline, inventory
  * and operations signals into one row.
  *
- * Intentionally kept as ONE page instead of splitting into tabs: everything
- * important should be visible on load, with "Quick Links" at the bottom to
- * jump straight into the relevant admin section when action is needed.
- * When new agents/signals come online, add a column to the view and a
- * card here — do not add a new tab.
+ * Kept as ONE section instead of splitting into tabs: everything important
+ * should be visible on load, with "Quick Links" at the bottom to jump
+ * straight into the relevant admin page when action is needed. When new
+ * agents/signals come online, add a column to the view and a card here —
+ * do not add a new tab or a new sidebar entry.
  */
 
 type Snapshot = {
@@ -87,23 +85,15 @@ function StatCard({
   );
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SubHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground first:mt-0">
+    <h3 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground first:mt-0">
       {children}
-    </h2>
+    </h3>
   );
 }
 
-function QuickLink({
-  to,
-  label,
-  icon: Icon,
-}: {
-  to: string;
-  label: string;
-  icon: any;
-}) {
+function QuickLink({ to, label, icon: Icon }: { to: string; label: string; icon: any }) {
   return (
     <Link
       to={to}
@@ -116,7 +106,7 @@ function QuickLink({
   );
 }
 
-const AdminCommandCenter = () => {
+export const CommandCenterPanel = () => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,12 +135,12 @@ const AdminCommandCenter = () => {
   const maxStageCount = Math.max(1, ...ALL_STAGES.map((s) => stageCounts[String(s)] ?? 0));
 
   return (
-    <AdminShell>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Command Center</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            Business-nte ella key signals — catalog, WhatsApp, pipeline, inventory, operations — ഒറ്റ പേജിൽ.
+          <h2 className="font-display text-xl sm:text-2xl">Command Center</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Catalog, WhatsApp, pipeline, inventory, operations — ഒറ്റ നോട്ടത്തിൽ.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -179,8 +169,7 @@ const AdminCommandCenter = () => {
 
       {snapshot && (
         <>
-          {/* Needs attention — the things that actually need someone to act today */}
-          <SectionHeading>Needs Attention</SectionHeading>
+          <SubHeading>Needs Attention</SubHeading>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Catalog — Pending Review"
@@ -216,8 +205,7 @@ const AdminCommandCenter = () => {
             />
           </div>
 
-          {/* Pipeline & quotations */}
-          <SectionHeading>Pipeline &amp; Quotations</SectionHeading>
+          <SubHeading>Pipeline &amp; Quotations</SubHeading>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <StatCard
               label="Active Quotations"
@@ -276,8 +264,7 @@ const AdminCommandCenter = () => {
             </CardContent>
           </Card>
 
-          {/* Operations & communications */}
-          <SectionHeading>Operations &amp; Communications</SectionHeading>
+          <SubHeading>Operations &amp; Communications</SubHeading>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="WhatsApp — Last 24h"
@@ -306,8 +293,7 @@ const AdminCommandCenter = () => {
             />
           </div>
 
-          {/* Quick links — jump straight to the relevant section instead of hunting the sidebar */}
-          <SectionHeading>Quick Links</SectionHeading>
+          <SubHeading>Quick Links</SubHeading>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <QuickLink to="/admin/quotations" label="Quotations" icon={FileText} />
             <QuickLink to="/admin/whatsapp" label="WhatsApp Inbox" icon={MessageCircle} />
@@ -318,13 +304,8 @@ const AdminCommandCenter = () => {
           </div>
         </>
       )}
-
-      <p className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
-        Read-only aggregation · security-invoker view (no RLS bypass) · extend{" "}
-        <code>command_center_snapshot</code> with more columns as more agents come online — one page, no new tabs.
-      </p>
-    </AdminShell>
+    </div>
   );
 };
 
-export default AdminCommandCenter;
+export default CommandCenterPanel;
