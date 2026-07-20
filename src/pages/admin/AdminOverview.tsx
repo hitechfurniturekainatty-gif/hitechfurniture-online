@@ -1,17 +1,21 @@
 import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
+import { CommandCenterPanel } from "@/components/admin/CommandCenterPanel";
 import AdminAnalyticsDashboard from "./AdminAnalyticsDashboard";
 import AdminOfficeAnalyticsDashboard from "./AdminOfficeAnalyticsDashboard";
 import AdminProductionAnalyticsDashboard from "./AdminProductionAnalyticsDashboard";
 import AdminWarehouseAnalyticsDashboard from "./AdminWarehouseAnalyticsDashboard";
 import AdminDeliveryAnalyticsDashboard from "./AdminDeliveryAnalyticsDashboard";
 
-// Single post-login landing page. Composes the 5 role dashboards as
-// stacked sections — each gated by the exact same role condition that
-// used to gate its own standalone route, so nobody sees more (or less)
-// than they already could. Admin sees all 5; a single-role staff member
-// (pure warehouse, pure delivery) sees only their own section.
+// Single post-login landing page. Composes the Command Center + 5 role
+// dashboards as stacked sections — each gated by the exact same role
+// condition that used to gate its own standalone route/tab, so nobody sees
+// more (or less) than they already could. Admin sees Command Center first,
+// then all 5; a single-role staff member (pure warehouse, pure delivery)
+// sees only their own section. Command Center used to be its own sidebar
+// tab (/admin/command-center) — moved here so "Overview" stays the one
+// place admins land, per direction to stop adding tabs.
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
 
@@ -27,6 +31,7 @@ const AdminOverview = () => {
   const showWarehouse = isOfficeStaff || isWarehouse;
   const showDelivery = isOfficeStaff || isDelivery;
   const sections: { key: string; node: JSX.Element }[] = [
+    showAdmin && { key: "command-center", node: <CommandCenterPanel /> },
     showAdmin && { key: "admin", node: <AdminAnalyticsDashboard /> },
     showOffice && { key: "office", node: <AdminOfficeAnalyticsDashboard /> },
     showProduction && { key: "production", node: <AdminProductionAnalyticsDashboard /> },

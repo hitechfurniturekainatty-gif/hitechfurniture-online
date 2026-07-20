@@ -67,7 +67,6 @@ const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx")
 const AdminBacklog = lazy(() => import("./pages/admin/AdminBacklog.tsx"));
 const AdminStaffMonitor = lazy(() => import("./pages/admin/AdminStaffMonitor.tsx"));
 const AdminPipelineMonitor = lazy(() => import("./pages/admin/AdminPipelineMonitor.tsx"));
-const AdminCommandCenter = lazy(() => import("./pages/admin/AdminCommandCenter.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
@@ -150,7 +149,7 @@ const App = () => (
             <Route path="/admin/people" element={<Navigate to="/admin/staff" replace />} />
             <Route path="/admin/staff-monitor" element={<AdminOnly><AdminStaffMonitor /></AdminOnly>} />
             <Route path="/admin/pipeline" element={<AdminOnly><AdminPipelineMonitor /></AdminOnly>} />
-            <Route path="/admin/command-center" element={<AdminOnly><AdminCommandCenter /></AdminOnly>} />
+            <Route path="/admin/command-center" element={<Navigate to="/admin" replace />} />
             <Route path="/admin/workers" element={<AdminOnly><AdminWorkers /></AdminOnly>} />
             <Route path="/admin/workers/:id" element={<AdminOnly><AdminWorkerDetail /></AdminOnly>} />
             <Route path="/admin/production" element={<OfficeStaffOnly><AdminProductionBoard /></OfficeStaffOnly>} />
