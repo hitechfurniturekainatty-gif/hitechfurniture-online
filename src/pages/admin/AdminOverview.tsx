@@ -7,6 +7,7 @@ import AdminOfficeAnalyticsDashboard from "./AdminOfficeAnalyticsDashboard";
 import AdminProductionAnalyticsDashboard from "./AdminProductionAnalyticsDashboard";
 import AdminWarehouseAnalyticsDashboard from "./AdminWarehouseAnalyticsDashboard";
 import AdminDeliveryAnalyticsDashboard from "./AdminDeliveryAnalyticsDashboard";
+import { AdminSeoHealthDashboard } from "./AdminSeoHealthDashboard";
 
 // Single post-login landing page. Composes the Command Center + 5 role
 // dashboards as stacked sections — each gated by the exact same role
@@ -33,6 +34,7 @@ const AdminOverview = () => {
   const sections: { key: string; node: JSX.Element }[] = [
     showAdmin && { key: "command-center", node: <CommandCenterPanel /> },
     showAdmin && { key: "admin", node: <AdminAnalyticsDashboard /> },
+    showAdmin && { key: "seo-health", node: <AdminSeoHealthDashboard /> },
     showOffice && { key: "office", node: <AdminOfficeAnalyticsDashboard /> },
     showProduction && { key: "production", node: <AdminProductionAnalyticsDashboard /> },
     showWarehouse && { key: "warehouse", node: <AdminWarehouseAnalyticsDashboard /> },
