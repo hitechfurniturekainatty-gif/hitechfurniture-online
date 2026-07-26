@@ -3,6 +3,15 @@
   RewriteEngine On
   RewriteBase /
 
+  # --- Canonical domain redirect ---
+  # hitechfurniture.me is an addon domain on the same hosting account and was
+  # serving identical content to hitechfurniture.online (duplicate content —
+  # confirmed the same crawler snapshot HTML was reachable at both). This
+  # forces a real 301 to the canonical domain so search/AI engines stop
+  # treating them as two separate sites. Must run before every other rule.
+  RewriteCond %{HTTP_HOST} ^(www\.)?hitechfurniture\.me$ [NC]
+  RewriteRule ^(.*)$ https://hitechfurniture.online/$1 [R=301,L]
+
   # --- Dynamic rendering for crawlers that don't execute JavaScript ---
   # GPTBot/ClaudeBot/PerplexityBot/Google-Extended/CCBot etc. feed AI answer
   # engines (ChatGPT, Claude, Perplexity, Google AI Overview) but never run the
