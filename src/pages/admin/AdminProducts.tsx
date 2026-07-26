@@ -92,6 +92,8 @@ type FormState = {
   main_category_id: string;
   sub_category_id: string;
   location_id: string;
+  location_building: string;
+  location_floor: string;
   location_section: string;
   stock_status: "in_stock" | "out_of_stock";
   images: UploadedImage[];
@@ -118,7 +120,7 @@ const emptyForm: FormState = {
   reorder_level: "5",
   is_featured: true, is_published: false,
   main_category_id: "", sub_category_id: "",
-  location_id: "", location_section: "",
+  location_id: "", location_building: "", location_floor: "", location_section: "",
   stock_status: "in_stock",
   images: [],
   variants: [],
@@ -360,8 +362,8 @@ const AdminProducts = () => {
 
   // Derive Building / Floor / Section from the selected location_id (or stored strings)
   const selectedLocation = locations.find((l) => l.id === form.location_id) || null;
-  const formBuilding = selectedLocation?.building ?? "";
-  const formFloor = selectedLocation?.floor ?? "";
+  const formBuilding = selectedLocation?.building ?? form.location_building ?? "";
+  const formFloor = selectedLocation?.floor ?? form.location_floor ?? "";
   const formSection = selectedLocation?.section ?? form.location_section ?? "";
   const buildingOptions = useMemo(
     () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
@@ -383,10 +385,10 @@ const AdminProducts = () => {
   );
 
   const pickBuilding = (b: string) => {
-    setForm({ ...form, location_id: "", location_section: "" });
+    setForm({ ...form, location_building: b, location_floor: "", location_id: "", location_section: "" });
   };
   const pickFloor = (b: string, f: string) => {
-    setForm({ ...form, location_id: "", location_section: "" });
+    setForm({ ...form, location_building: b, location_floor: f, location_id: "", location_section: "" });
   };
   const pickSection = (sectionName: string) => {
     // Store section name; auto-pick location_id if there's exactly one part row
@@ -459,6 +461,8 @@ const AdminProducts = () => {
       main_category_id: p.main_category_id,
       sub_category_id: p.sub_category_id ?? "",
       location_id: p.location_id ?? "",
+      location_building: loc?.building ?? "",
+      location_floor: loc?.floor ?? "",
       location_section: loc?.section ?? "",
       stock_status: p.stock_status ?? "in_stock",
       images: p.product_images
@@ -1638,7 +1642,7 @@ const AdminProducts = () => {
             <Field label="Building" >
               <SearchableSelect
                 value={formBuilding || "__none"}
-                onChange={(v) => v === "__none" ? setForm({ ...form, location_id: "", location_section: "" }) : pickBuilding(v)}
+                onChange={(v) => v === "__none" ? setForm({ ...form, location_id: "", location_building: "", location_floor: "", location_section: "" }) : pickBuilding(v)}
                 options={[{ value: "__none", label: "— Not assigned —" }, ...buildingOptions.map((b) => ({ value: b, label: b }))]}
                 placeholder="Choose building…"
               />

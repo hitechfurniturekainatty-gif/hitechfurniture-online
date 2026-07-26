@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatINR } from "@/lib/brand";
-import { Loader2, Lock, Unlock, ArrowLeft, Search, ArrowUpDown, GripVertical, ShieldCheck } from "lucide-react";
+import { Loader2, Lock, Unlock, ArrowLeft, Search, ArrowUpDown, GripVertical, ShieldCheck, MapPin, Pencil } from "lucide-react";
 import { FloorReorderDialog, type ReorderItem } from "@/components/admin/FloorReorderDialog";
 import { VariantSwatches } from "@/components/VariantSwatches";
 import { useAuth } from "@/hooks/useAuth";
@@ -412,6 +413,33 @@ const StaffCatalog = () => {
     setProducts((data ?? []) as Product[]);
   };
 
+  // ----- Change Building/Floor/Part for a single card -----
+  const [locEditFor, setLocEditFor] = useState<FloorEntry | null>(null);
+  const [savingLocEdit, setSavingLocEdit] = useState(false);
+
+  const changeEntryLocation = async (entry: FloorEntry, newLocationId: string) => {
+    setSavingLocEdit(true);
+    try {
+      let res;
+      if (entry.kind === "variant_stock") {
+        res = await supabase.from("product_variant_stock").update({ location_id: newLocationId }).eq("id", entry.refId);
+      } else if (entry.is_bundle) {
+        res = await (supabase as any).from("product_bundles").update({ location_id: newLocationId }).eq("id", entry.refId);
+      } else {
+        res = await supabase.from("products").update({ location_id: newLocationId }).eq("id", entry.refId);
+      }
+      if (res.error) throw res.error;
+      toast({ title: "Location updated" });
+      await reloadProducts();
+      setLocEditFor(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not update location";
+      toast({ title: "Failed to update location", description: msg, variant: "destructive" });
+    } finally {
+      setSavingLocEdit(false);
+    }
+  };
+
   // Drop the local order whenever the filter set changes (different keys),
   // so we don't show a stale order after switching floor / search.
   const filteredKeySig = filtered.map((e) => e.key).join("|");
@@ -759,6 +787,7 @@ const StaffCatalog = () => {
                         entry={entry}
                         loc={loc}
                         editMode={editMode}
+                        onEditLocation={() => setLocEditFor(entry)}
                       />
                     );
                   })}
@@ -780,6 +809,13 @@ const StaffCatalog = () => {
         allLocations={locations.filter((l) => l.is_active).map((l) => ({ id: l.id, building: l.building, floor: l.floor, section: l.section }))}
       />
       <SnapSearchDialog open={snapOpen} onOpenChange={setSnapOpen} catalogPin={verifiedPin} />
+      <ChangeLocationDialog
+        entry={locEditFor}
+        locations={locations}
+        saving={savingLocEdit}
+        onClose={() => setLocEditFor(null)}
+        onSave={(locId) => locEditFor && changeEntryLocation(locEditFor, locId)}
+      />
       {/* Admin PIN gate to enable drag-and-drop */}
       {adminPinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur" onClick={() => setAdminPinOpen(false)}>
@@ -820,15 +856,112 @@ const StaffCatalog = () => {
 
 export default StaffCatalog;
 
+// ----- Change Location dialog: cascading Building → Floor → Part picker -----
+const ChangeLocationDialog = ({
+  entry,
+  locations,
+  saving,
+  onClose,
+  onSave,
+}: {
+  entry: FloorEntry | null;
+  locations: Location[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (locationId: string) => void;
+}) => {
+  const [b, setB] = useState<string>("__pick");
+  const [f, setF] = useState<string>("__pick");
+  const [locId, setLocId] = useState<string>("");
+
+  useEffect(() => {
+    if (!entry) return;
+    const current = locations.find((l) => l.id === entry.location_id);
+    setB(current?.building ?? "__pick");
+    setF(current?.floor ?? "__pick");
+    setLocId(entry.location_id ?? "");
+  }, [entry, locations]);
+
+  const buildings = useMemo(() => Array.from(new Set(locations.map((l) => l.building))), [locations]);
+  const floors = useMemo(
+    () => Array.from(new Set(locations.filter((l) => l.building === b).map((l) => l.floor))).sort(floorCompare),
+    [locations, b],
+  );
+  const parts = useMemo(
+    () => locations.filter((l) => l.building === b && l.floor === f),
+    [locations, b, f],
+  );
+
+  if (!entry) return null;
+
+  return (
+    <Dialog open={!!entry} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" /> Change Location
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {toTitleCase(entry.product.product_name)}
+          {entry.variant ? ` · ${entry.variant.color_name}` : ""}
+        </p>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Building</Label>
+            <Select value={b} onValueChange={(v) => { setB(v); setF("__pick"); setLocId(""); }}>
+              <SelectTrigger><SelectValue placeholder="Select building" /></SelectTrigger>
+              <SelectContent>
+                {buildings.map((bd) => <SelectItem key={bd} value={bd}>{bd}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Floor</Label>
+            <Select value={f} onValueChange={(v) => { setF(v); setLocId(""); }} disabled={b === "__pick"}>
+              <SelectTrigger><SelectValue placeholder="Select floor" /></SelectTrigger>
+              <SelectContent>
+                {floors.map((fl) => <SelectItem key={fl} value={fl}>{fl}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Part / Section</Label>
+            <Select value={locId} onValueChange={setLocId} disabled={f === "__pick" || parts.length === 0}>
+              <SelectTrigger><SelectValue placeholder={parts.length === 0 ? "No parts set" : "Select part"} /></SelectTrigger>
+              <SelectContent>
+                {parts.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {[p.section, p.part].filter(Boolean).join(" · ") || "General"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={() => onSave(locId)} disabled={saving || !locId}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ----- Sortable wrapper: long-press to pick up a card and drop in a new spot -----
 const SortableStaffCard = ({
   entry,
   loc,
   editMode,
+  onEditLocation,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
   editMode: boolean;
+  onEditLocation: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.key,
@@ -858,7 +991,7 @@ const SortableStaffCard = ({
           <GripVertical className="h-3 w-3" /> Drag
         </div>
       )}
-      <StaffProductCard entry={entry} loc={loc} />
+      <StaffProductCard entry={entry} loc={loc} onEditLocation={onEditLocation} />
     </div>
   );
 };
@@ -867,9 +1000,11 @@ const SortableStaffCard = ({
 const StaffProductCard = ({
   entry,
   loc,
+  onEditLocation,
 }: {
   entry: FloorEntry;
   loc: Location | undefined;
+  onEditLocation: () => void;
 }) => {
   const p = entry.product;
   const allVariants = (p.product_variants ?? []).slice().sort((a, b) => a.display_order - b.display_order);
@@ -946,14 +1081,23 @@ const StaffProductCard = ({
         ) : (
           <p className="font-display text-base font-semibold text-primary">{formatINR(p.mrp)}</p>
         )}
-        {loc && (
-          <p className="text-[11px] text-muted-foreground truncate">
-            📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}{loc.part ? ` · ${loc.part}` : ""}
-          </p>
-        )}
-        {!loc && (
-          <p className="text-[11px] text-muted-foreground italic">📍 No location set</p>
-        )}
+        <div className="flex items-center justify-between gap-1">
+          {loc ? (
+            <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+              📍 {loc.building} · {loc.floor}{loc.section ? ` · ${loc.section}` : ""}{loc.part ? ` · ${loc.part}` : ""}
+            </p>
+          ) : (
+            <p className="min-w-0 flex-1 truncate text-[11px] italic text-muted-foreground">📍 No location set</p>
+          )}
+          <button
+            type="button"
+            onClick={onEditLocation}
+            className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-primary"
+            title="Change building / floor / part"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        </div>
         {p.cost_price != null && (
           <p className="text-[11px] font-medium text-orange-600">Cost: {formatINR(p.cost_price)}</p>
         )}
