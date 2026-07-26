@@ -11,7 +11,7 @@ import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, MessageCircle, Loader2, Package } from "lucide-react";
 import { Seo } from "@/components/Seo";
-import { BRAND_NAME } from "@/lib/localBusinessSchema";
+import { SEO_BRAND_NAME } from "@/lib/localBusinessSchema";
 
 type B = {
   id: string; bundle_code: string; name: string; description: string | null;
@@ -100,10 +100,10 @@ const BundleDetail = () => {
   return (
     <>
       <Seo
-        title={`${b.name} Bundle | ${BRAND_NAME}`}
+        title={`${b.name} Bundle | ${SEO_BRAND_NAME}`}
         description={
           b.description?.slice(0, 155) ||
-          `${b.name} furniture bundle by ${BRAND_NAME}, Wayanad. Enquire on WhatsApp for price and delivery.`
+          `${b.name} furniture bundle by ${SEO_BRAND_NAME}, Wayanad. Enquire on WhatsApp for price and delivery.`
         }
         image={b.main_image_url ?? undefined}
         jsonLd={{
@@ -112,7 +112,7 @@ const BundleDetail = () => {
           name: b.name,
           description: b.description ?? undefined,
           image: b.main_image_url ?? undefined,
-          brand: { "@type": "Brand", name: BRAND_NAME },
+          brand: { "@type": "Brand", name: SEO_BRAND_NAME },
           material: b.material ?? undefined,
           offers: {
             "@type": "Offer",

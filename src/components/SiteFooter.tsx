@@ -152,6 +152,9 @@ export const SiteFooter = () => {
           <Link to="/about" className="inline-flex items-center gap-1 hover:text-primary">
             <Info className="h-3.5 w-3.5" /> About
           </Link>
+          <Link to="/faq" className="inline-flex items-center gap-1 hover:text-primary">
+            <Info className="h-3.5 w-3.5" /> FAQ
+          </Link>
           <Link to="/guide" className="inline-flex items-center gap-1 hover:text-primary">
             <BookOpen className="h-3.5 w-3.5" /> User Guide
           </Link>

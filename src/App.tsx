@@ -26,6 +26,7 @@ const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
 // - Public visitors never download admin code
 // - Each route becomes its own chunk → faster first paint, better caching
 const Catalog = lazy(() => import("./pages/Catalog.tsx"));
+const Faq = lazy(() => import("./pages/Faq.tsx"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
@@ -124,6 +125,7 @@ const App = () => (
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
+            <Route path="/faq" element={<Faq />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enquiry" element={<EnquiryLink />} />
             <Route path="/enquiry/:productId" element={<EnquiryLink />} />

@@ -66,8 +66,9 @@ const LOCAL_BUSINESS_JSONLD = {
   sameAs: ["https://www.instagram.com/hitech_furniture_wayanad"],
 };
 
-// General FAQ — only facts we can actually stand behind. Deliberately does not
-// invent warranty/EMI specifics that aren't confirmed in the product data yet.
+// General FAQ — only facts we can actually stand behind (confirmed business
+// policy). Does not invent per-product/per-SKU warranty or delivery specifics
+// that aren't in the product data yet — kept in sync with src/pages/Faq.tsx.
 const GENERAL_FAQ = [
   {
     q: "Where is Hitech Furniture & Interiors located?",
@@ -84,6 +85,14 @@ const GENERAL_FAQ = [
   {
     q: "How long has Hitech Furniture & Interiors been operating?",
     a: "Hitech Furniture & Interiors has been operating in Wayanad, Kerala for over 14 years.",
+  },
+  {
+    q: "Is EMI available?",
+    a: "Yes, EMI is available through Bajaj Finserv on eligible purchases. Ask in-store or on WhatsApp for current terms.",
+  },
+  {
+    q: "Is there a warranty on furniture?",
+    a: "Locally manufactured wooden furniture carries a 10-year warranty against termite and wood-borer damage (original bill required; does not cover physical damage). Ask about the specific item's warranty before purchase.",
   },
 ];
 
@@ -177,6 +186,18 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
       canonical: `${SITE_URL}/about`,
       jsonLd: LOCAL_BUSINESS_JSONLD,
       bodyHtml: `<p>${BRAND} has served customers in Kalpetta, Wayanad, Kerala for over 14 years, offering furniture retail, wholesale and interior design services.</p>`,
+    })
+  );
+
+  // ---- FAQ ----
+  writeFileSync(
+    "public/_snapshots/faq.html",
+    page({
+      title: `Frequently Asked Questions — ${BRAND}`,
+      description: "Answers about location, product range, pricing, EMI and warranty for Hitech Furniture & Interiors, Kalpetta, Wayanad.",
+      canonical: `${SITE_URL}/faq`,
+      jsonLd: faqJsonLd(GENERAL_FAQ),
+      bodyHtml: faqBlockHtml(GENERAL_FAQ),
     })
   );
 
