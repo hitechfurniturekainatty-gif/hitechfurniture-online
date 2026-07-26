@@ -134,6 +134,17 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Service area — genuine, single section (not separate per-town pages,
+          which Google treats as doorway-page spam for a single-location business). */}
+      <section className="container-page pb-4">
+        <p className="mx-auto max-w-3xl text-center text-sm text-muted-foreground">
+          Serving customers across <strong>Kalpetta</strong>, <strong>Sulthan Bathery</strong>,{" "}
+          <strong>Mananthavady</strong>, <strong>Vythiri</strong>, <strong>Meppadi</strong>,{" "}
+          <strong>Pulpally</strong> and the wider Wayanad district — visit our Edappetty showroom
+          or enquire on WhatsApp for delivery to your area.
+        </p>
+      </section>
+
       {/* Categories */}
       <section className="container-page py-16 md:py-20">
         <div className="mb-10 flex items-end justify-between gap-6">

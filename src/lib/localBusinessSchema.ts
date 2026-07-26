@@ -23,4 +23,13 @@ export const LOCAL_BUSINESS_JSONLD = {
   },
   url: typeof window !== "undefined" ? window.location.origin : "https://hitechfurniture.online",
   sameAs: ["https://www.instagram.com/hitech_furniture_wayanad"],
+  areaServed: [
+    { "@type": "City", name: "Kalpetta" },
+    { "@type": "City", name: "Sulthan Bathery" },
+    { "@type": "City", name: "Mananthavady" },
+    { "@type": "City", name: "Vythiri" },
+    { "@type": "City", name: "Meppadi" },
+    { "@type": "City", name: "Pulpally" },
+    { "@type": "AdministrativeArea", name: "Wayanad" },
+  ],
 } as const;

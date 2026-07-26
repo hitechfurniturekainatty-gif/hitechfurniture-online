@@ -64,6 +64,15 @@ const LOCAL_BUSINESS_JSONLD = {
   },
   url: SITE_URL,
   sameAs: ["https://www.instagram.com/hitech_furniture_wayanad"],
+  areaServed: [
+    { "@type": "City", name: "Kalpetta" },
+    { "@type": "City", name: "Sulthan Bathery" },
+    { "@type": "City", name: "Mananthavady" },
+    { "@type": "City", name: "Vythiri" },
+    { "@type": "City", name: "Meppadi" },
+    { "@type": "City", name: "Pulpally" },
+    { "@type": "AdministrativeArea", name: "Wayanad" },
+  ],
 };
 
 // General FAQ — only facts we can actually stand behind (confirmed business
@@ -153,6 +162,7 @@ async function main() {
       jsonLd: [LOCAL_BUSINESS_JSONLD, faqJsonLd(GENERAL_FAQ)],
       bodyHtml: `
 <p>Hitech Furniture &amp; Interiors is a furniture retailer, wholesaler and interior design business in Edappetty, Kalpetta, Wayanad, Kerala, operating for over 14 years. Browse the full catalog at <a href="${SITE_URL}/catalog">hitechfurniture.online/catalog</a>.</p>
+<p>Serving customers across Kalpetta, Sulthan Bathery, Mananthavady, Vythiri, Meppadi, Pulpally and the wider Wayanad district.</p>
 ${faqBlockHtml(GENERAL_FAQ)}`,
     })
   );
