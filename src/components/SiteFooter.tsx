@@ -155,6 +155,14 @@ export const SiteFooter = () => {
           <Link to="/faq" className="inline-flex items-center gap-1 hover:text-primary">
             <Info className="h-3.5 w-3.5" /> FAQ
           </Link>
+          <a
+            href="https://www.justdial.com/Wayanad/Hitech-Furniture-Interiors-Near-Royal-Crown-Restaurant-Kalpetta-North/9999P4936-4936-190920163739-H6H4_BZDET"
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1 hover:text-primary"
+          >
+            Reviews on Justdial
+          </a>
           <Link to="/guide" className="inline-flex items-center gap-1 hover:text-primary">
             <BookOpen className="h-3.5 w-3.5" /> User Guide
           </Link>
