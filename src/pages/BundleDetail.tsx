@@ -11,6 +11,7 @@ import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, MessageCircle, Loader2, Package } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { BRAND_NAME } from "@/lib/localBusinessSchema";
 
 type B = {
   id: string; bundle_code: string; name: string; description: string | null;
@@ -98,7 +99,30 @@ const BundleDetail = () => {
 
   return (
     <>
-      <Seo title={`${b.name} · Bundle`} description={b.description ?? `Combo set: ${b.name}`} />
+      <Seo
+        title={`${b.name} Bundle | ${BRAND_NAME}`}
+        description={
+          b.description?.slice(0, 155) ||
+          `${b.name} furniture bundle by ${BRAND_NAME}, Wayanad. Enquire on WhatsApp for price and delivery.`
+        }
+        image={b.main_image_url ?? undefined}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ProductGroup",
+          name: b.name,
+          description: b.description ?? undefined,
+          image: b.main_image_url ?? undefined,
+          brand: { "@type": "Brand", name: BRAND_NAME },
+          material: b.material ?? undefined,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: Number(b.offer_price ?? b.mrp),
+            availability: b.stock_status === "in_stock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: `${window.location.origin}/bundle/${b.id}`,
+          },
+        }}
+      />
       <SiteHeader />
       <main className="container-page py-6">
         <Link to="/catalog" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">

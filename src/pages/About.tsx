@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Seo } from "@/components/Seo";
+import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
 import { ABOUT, APP_VERSION, GUIDE_LAST_UPDATED } from "@/lib/guideContent";
 import { BookOpen, Sparkles } from "lucide-react";
 
@@ -12,6 +13,7 @@ const About = () => (
     <Seo
       title={`About ${ABOUT.appName} — ${ABOUT.tagline}`}
       description={ABOUT.summary.slice(0, 155)}
+      jsonLd={LOCAL_BUSINESS_JSONLD}
     />
     <SiteHeader />
     <main className="container-page py-12 md:py-16">

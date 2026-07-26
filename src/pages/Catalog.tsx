@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Search, X, ArrowLeft, SlidersHorizontal, FileDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
+import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -253,6 +254,7 @@ const Catalog = () => {
             ? `Browse ${activeCat.name.toLowerCase()} from Hitech Furniture & Interiors, Wayanad. Filter by price, material and stock. Download PDF or enquire on WhatsApp.`
             : "Live furniture catalog — sofas, beds, wardrobes, dining and more from Hitech Furniture & Interiors, Wayanad. Filter, browse and enquire instantly on WhatsApp."
         }
+        jsonLd={LOCAL_BUSINESS_JSONLD}
       />
       <SiteHeader />
 

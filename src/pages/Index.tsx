@@ -10,6 +10,7 @@ import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 
 import { Seo } from "@/components/Seo";
+import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
 import {
   alignClass,
   fetchHomepageData,
@@ -103,18 +104,8 @@ const Index = () => {
         title="Hitech Furniture & Interiors — Custom Sofas, Beds & Wardrobes in Wayanad"
         description="14+ years of crafting custom furniture and interiors in Kalpetta, Wayanad. Browse our live catalog of sofas, beds, wardrobes and more — enquire on WhatsApp."
         jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "FurnitureStore",
-          name: "Hitech Furniture & Interiors",
-          description: "Custom furniture manufacturer and interior designer in Kalpetta, Wayanad. Retail and wholesale.",
-          telephone: settings?.contact_phone ?? "+91 98951 34482",
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: "Kalpetta",
-            addressRegion: "Kerala",
-            addressCountry: "IN",
-          },
-          url: typeof window !== "undefined" ? window.location.origin : undefined,
+          ...LOCAL_BUSINESS_JSONLD,
+          telephone: settings?.contact_phone ?? LOCAL_BUSINESS_JSONLD.telephone,
         }}
       />
       <SiteHeader />
