@@ -557,7 +557,7 @@ const Catalog = () => {
 
             {/* Main cat chips — keep so users can quickly switch */}
             <div className="mb-3 flex flex-wrap gap-2">
-              <Chip active={!activeCatSlug} onClick={() => setCat(null)}>All</Chip>
+              <Chip active={!activeCatSlug || activeCatSlug === "__all__"} onClick={() => setCat("__all__")}>All</Chip>
               {mainCats.map((c) => (
                 <Chip key={c.id} active={activeCatSlug === c.slug} onClick={() => setCat(c.slug)}>
                   {toTitleCase(c.name)}

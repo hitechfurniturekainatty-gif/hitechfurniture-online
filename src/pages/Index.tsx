@@ -152,7 +152,7 @@ const Index = () => {
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Browse</p>
             <h2 className="font-display text-3xl text-foreground md:text-4xl">Shop by category</h2>
           </div>
-          <Link to="/catalog" className="text-sm font-medium text-primary hover:underline">
+          <Link to="/catalog?cat=__all__" className="text-sm font-medium text-primary hover:underline">
             View all →
           </Link>
         </div>
