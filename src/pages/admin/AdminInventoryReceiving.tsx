@@ -131,7 +131,7 @@ const AdminInventoryReceiving = () => {
       if (canPublish && !resolved.is_published) updates.is_published = true;
 
       if (Object.keys(updates).length > 0) {
-        const { error: upErr } = await supabase.from("products").update(updates).eq("id", resolved.id);
+        const { error: upErr } = await supabase.from("products").update(updates as any).eq("id", resolved.id);
         if (upErr) {
           toast({ title: "Failed to update product", description: upErr.message, variant: "destructive" });
           setSubmitting(false);

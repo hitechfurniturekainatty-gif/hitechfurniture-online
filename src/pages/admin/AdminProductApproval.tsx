@@ -60,7 +60,7 @@ const AdminProductApproval = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: prods }, { data: pending }] = await Promise.all([
-      supabase
+      (supabase as any)
         .from("products")
         .select("id, product_name, primary_image_url, mrp, offer_price, cost_price, creation_method, submitted_by, created_at, main_category_id, sub_category_id, review_status, notes")
         .eq("review_status", "pending_supervision")

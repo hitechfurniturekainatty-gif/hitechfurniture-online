@@ -42,7 +42,7 @@ const AdminWarehouseAnalyticsDashboard = () => {
 
     setSkusTracked((vsRows ?? []).length);
     setRecentMovements(movementsCount ?? 0);
-    setLocations((locRows ?? []) as LocationRow[]);
+    setLocations((locRows ?? []) as unknown as LocationRow[]);
     setLocationsCount((locRows ?? []).length);
     setActiveLocationsCount((locRows ?? []).filter((l: any) => l.is_active).length);
 

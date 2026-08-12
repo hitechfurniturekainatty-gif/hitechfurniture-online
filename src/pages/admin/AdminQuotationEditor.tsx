@@ -338,7 +338,7 @@ const AdminQuotationEditor = () => {
     // real uuid) so a realtime/silent reload never changes a row's React
     // key out from under an in-progress edit. Only genuinely new-to-us
     // rows (from another user) get a fresh key, seeded from their DB id.
-    const nextItems = ((lines ?? []) as Omit<QItem, "_clientKey">[]).map((x) => {
+    const nextItems = ((lines ?? []) as unknown as Omit<QItem, "_clientKey">[]).map((x) => {
       const existing = itemsRef.current.find((it) => it.id === x.id);
       return { ...x, _clientKey: existing?._clientKey ?? x.id } as QItem;
     });

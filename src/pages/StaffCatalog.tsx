@@ -185,7 +185,7 @@ const StaffCatalog = () => {
         .is("deleted_at", null),
     ])
       .then(([loc, pr, mc, sc, bn]) => {
-        setLocations((loc.data ?? []) as Location[]);
+        setLocations((loc.data ?? []) as unknown as Location[]);
         const bundleAsProducts: Product[] = ((bn.data ?? []) as any[]).map((b) => ({
           id: b.id,
           product_name: b.name,
@@ -208,7 +208,7 @@ const StaffCatalog = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           __isBundle: true as any,
         }) as unknown as Product);
-        setProducts([...((pr.data ?? []) as Product[]), ...bundleAsProducts]);
+        setProducts([...((pr.data ?? []) as unknown as Product[]), ...bundleAsProducts]);
         setMainCats((mc.data ?? []) as MainCat[]);
         setSubCats((sc.data ?? []) as SubCat[]);
       })

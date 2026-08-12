@@ -252,7 +252,7 @@ const AdminAnalyticsDashboard = () => {
     const topIds = Object.entries(byProduct).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 10).map(([id]) => id);
     let top: TopProduct[] = [];
     if (topIds.length) {
-      const { data: prodRows } = await supabase
+      const { data: prodRows } = await (supabase as any)
         .from("products_safe_search")
         .select("id, product_name, product_code")
         .in("id", topIds);

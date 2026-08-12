@@ -64,8 +64,8 @@ const AdminOfficeAnalyticsDashboard = () => {
       supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
       supabase.from("quotation_status_history").select("quotation_id, status, changed_at").order("changed_at", { ascending: true }),
       supabase.from("customer_complaints").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(resolved,cancelled)"),
-      supabase.from("whatsapp_inbound_log").select("phone, created_at").gte("created_at", thirtyDaysAgo.toISOString()),
-      supabase.from("whatsapp_followups_sent").select("phone, last_inbound_at, sent_at"),
+      (supabase as any).from("whatsapp_inbound_log").select("phone, created_at").gte("created_at", thirtyDaysAgo.toISOString()),
+      (supabase as any).from("whatsapp_followups_sent").select("phone, last_inbound_at, sent_at"),
     ]);
 
     // ---- Same job/trip/item aggregation computeStage() needs, as used
