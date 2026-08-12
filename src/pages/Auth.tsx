@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,15 @@ const phoneToEmail = (phone: string) => `${phone.replace(/\D+/g, "")}@workers.lo
 const pinToPassword = (pin: string) => `wkr_${pin.replace(/\D+/g, "")}_pin`;
 const isPhoneLike = (s: string) => /^[\d\s+\-()]+$/.test(s.trim()) && s.replace(/\D+/g, "").length >= 8;
 
+// Only same-origin relative paths may be used as a post-login redirect. Used by
+// the MCP OAuth consent screen so approving a client returns there, not to "/".
+const safeNext = (raw: string | null) =>
+  raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +36,7 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const redirectUrl = `${window.location.origin}/admin`;
+        const redirectUrl = `${window.location.origin}${next ?? "/admin"}`;
         const { error } = await supabase.auth.signUp({
           email: identifier,
           password,
@@ -46,6 +53,10 @@ const Auth = () => {
           : { email: identifier, password };
         const { error } = await supabase.auth.signInWithPassword(creds);
         if (error) throw error;
+        if (next) {
+          window.location.href = next;
+          return;
+        }
         // Role-aware redirect: fetch user's roles and route accordingly
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id;
