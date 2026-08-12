@@ -6,7 +6,12 @@ import getQuotationTool from "./tools/get-quotation";
 import listOpenEnquiriesTool from "./tools/list-open-enquiries";
 import resolveEnquiryTool from "./tools/resolve-enquiry";
 
-const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
+// The OAuth issuer must be the direct supabase.co host of the project that
+// mints tokens. Both values are inlined by Vite at build time (import-safe).
+const projectRef =
+  (import.meta.env.VITE_SUPABASE_URL ?? "").match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ??
+  import.meta.env.VITE_SUPABASE_PROJECT_ID ??
+  "project-ref-unset";
 
 export default defineMcp({
   name: "my-hitech",
