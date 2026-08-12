@@ -256,7 +256,7 @@ const AdminAnalyticsDashboard = () => {
         .from("products_safe_search")
         .select("id, product_name, product_code")
         .in("id", topIds);
-      const byId = new Map((prodRows ?? []).map((p: any) => [p.id, p]));
+      const byId = new Map<string, any>((prodRows ?? []).map((p: any) => [p.id, p]));
       top = topIds
         .map((id) => {
           const p = byId.get(id);
