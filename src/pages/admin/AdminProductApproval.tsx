@@ -118,7 +118,7 @@ const AdminProductApproval = () => {
 
     try {
       if (item.source === "products") {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("products")
           .update({
             review_status: "approved",
