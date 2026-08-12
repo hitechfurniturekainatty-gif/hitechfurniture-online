@@ -226,7 +226,7 @@ const AdminProducts = () => {
       .from("product_locations")
       .select("*")
       .order("display_order");
-    setLocations((data ?? []) as Location[]);
+    setLocations((data ?? []) as unknown as Location[]);
   };
 
   const filtered = useMemo(() => {
@@ -408,7 +408,7 @@ const AdminProducts = () => {
       return toast({ title: "Pick Building & Floor first", variant: "destructive" });
     }
     setAddingSection(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("product_locations")
       .insert({
         building: formBuilding,
@@ -423,7 +423,7 @@ const AdminProducts = () => {
     if (error || !data) return toast({ title: "Failed", description: error?.message, variant: "destructive" });
     setNewSection("");
     await loadLocations();
-    setForm((f) => ({ ...f, location_id: (data as Location).id, location_section: (data as Location).section ?? "" }));
+    setForm((f) => ({ ...f, location_id: (data as unknown as Location).id, location_section: (data as unknown as Location).section ?? "" }));
     toast({ title: "Part added" });
   };
 
