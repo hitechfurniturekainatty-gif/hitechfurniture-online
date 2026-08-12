@@ -82,6 +82,7 @@ const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
 const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
 const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
 const AdminVault = lazy(() => import("./pages/admin/AdminVault.tsx"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
 
 // React Query tuned for many concurrent users:
 // - staleTime 60s avoids hammering the DB on every navigation
@@ -131,6 +132,8 @@ const App = () => (
             <Route path="/enquiry/:productId" element={<EnquiryLink />} />
             <Route path="/guide" element={<UserGuide />} />
             <Route path="/auth" element={<Auth />} />
+            {/* MCP / agent-integration OAuth consent screen */}
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
