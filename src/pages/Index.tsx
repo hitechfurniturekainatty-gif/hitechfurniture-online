@@ -15,7 +15,6 @@ import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
 import {
   alignClass,
   fetchHomepageData,
-  HeroSlide,
   HomepageSection,
   HomepageSettings,
   presetClasses,
@@ -34,7 +33,6 @@ type Cat = { id: string; name: string; slug: string; image_url: string | null };
 const Index = () => {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
 
@@ -62,7 +60,6 @@ const Index = () => {
     ]).then(([_cats, prods, hp]) => {
       if (cancelled) return;
       setFeatured((prods.data ?? []) as ProductCardData[]);
-      setSlides(hp.slides);
       setSections(hp.sections);
       setSettings(hp.settings);
     }).catch(() => { /* page still renders if optional homepage data fails */ });
