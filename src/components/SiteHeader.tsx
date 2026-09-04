@@ -27,6 +27,8 @@ export const SiteHeader = () => {
   const headerRef = useRef<HTMLDivElement>(null);
 
   const catalogVisible = settings?.show_public_catalog !== false;
+  const staffDestination = isStaff || user ? "/admin" : "/auth";
+  const staffLabel = isStaff || user ? "Staff Dashboard" : "Staff Login";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,7 +48,7 @@ export const SiteHeader = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-      <div ref={headerRef} className="container-page relative flex min-h-[72px] items-center justify-between gap-4 py-2.5 md:min-h-[82px]">
+      <div ref={headerRef} className="container-page relative flex min-h-[72px] items-center justify-between gap-3 py-2.5 md:min-h-[82px]">
         <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex min-w-0 items-center gap-3">
           <Logo className="h-11 w-11 shrink-0 sm:h-12 sm:w-12 md:h-14 md:w-14" />
           <div className="hidden min-w-0 sm:block">
@@ -66,6 +68,15 @@ export const SiteHeader = () => {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <Link
+            to={staffDestination}
+            aria-label={staffLabel}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#0f5156]/25 bg-[#0f5156]/5 px-3 text-xs font-bold text-[#0f5156] transition hover:border-[#0f5156]/40 hover:bg-[#0f5156]/10 sm:h-11 sm:px-3.5 sm:text-sm"
+          >
+            {isStaff || user ? <LayoutDashboard className="h-4 w-4" /> : <User className="h-4 w-4" />}
+            <span className="hidden xs:inline sm:inline">{staffLabel}</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => openEnquiryForm()}
@@ -123,12 +134,12 @@ export const SiteHeader = () => {
 
             <div className="mt-3 border-t border-slate-100 pt-3">
               <Link
-                to={isStaff || user ? "/admin" : "/auth"}
+                to={staffDestination}
                 onClick={() => setOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#0f5156]/20 bg-[#0f5156]/5 px-3 py-2.5 text-sm font-bold text-[#0f5156] transition hover:bg-[#0f5156]/10"
               >
-                {isStaff || user ? <LayoutDashboard className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-                {isStaff || user ? "Open Staff Dashboard" : "Staff Login"}
+                {isStaff || user ? <LayoutDashboard className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                {staffLabel}
               </Link>
             </div>
           </div>
