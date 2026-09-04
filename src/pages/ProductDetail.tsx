@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, ClipboardList, ShieldCheck, Truck, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, ClipboardList, ShieldCheck, MapPin, Sparkles } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { formatINR } from "@/lib/brand";
 import { openEnquiryForm } from "@/lib/enquiryForm";
@@ -153,14 +153,7 @@ const ProductDetail = () => {
                     {images.map((img, i) => (
                       <div key={i} className="min-w-0 flex-[0_0_100%]">
                         <div className="aspect-square bg-muted/20 p-4 sm:p-7">
-                          <img
-                            src={img.image_url}
-                            alt={`${product.product_name} — view ${i + 1}`}
-                            loading={i === 0 ? "eager" : "lazy"}
-                            {...({ fetchpriority: i === 0 ? "high" : "low" } as Record<string, string>)}
-                            decoding="async"
-                            className="h-full w-full object-contain object-center"
-                          />
+                          <img src={img.image_url} alt={`${product.product_name} — view ${i + 1}`} loading={i === 0 ? "eager" : "lazy"} {...({ fetchpriority: i === 0 ? "high" : "low" } as Record<string, string>)} decoding="async" className="h-full w-full object-contain object-center" />
                         </div>
                       </div>
                     ))}
@@ -169,15 +162,9 @@ const ProductDetail = () => {
 
                 {images.length > 1 && (
                   <>
-                    <button type="button" onClick={() => scrollTo(Math.max(0, activeImg - 1))} disabled={activeImg === 0} aria-label="Previous image" className="absolute left-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/95 p-2.5 text-slate-900 shadow-lg transition hover:scale-105 disabled:opacity-30 sm:block">
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button type="button" onClick={() => scrollTo(Math.min(images.length - 1, activeImg + 1))} disabled={activeImg === images.length - 1} aria-label="Next image" className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/95 p-2.5 text-slate-900 shadow-lg transition hover:scale-105 disabled:opacity-30 sm:block">
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
-                      {images.map((_, i) => <span key={i} className={`h-1.5 rounded-full transition-all ${activeImg === i ? "w-7 bg-primary" : "w-1.5 bg-foreground/25"}`} />)}
-                    </div>
+                    <button type="button" onClick={() => scrollTo(Math.max(0, activeImg - 1))} disabled={activeImg === 0} aria-label="Previous image" className="absolute left-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/95 p-2.5 text-slate-900 shadow-lg transition hover:scale-105 disabled:opacity-30 sm:block"><ChevronLeft className="h-5 w-5" /></button>
+                    <button type="button" onClick={() => scrollTo(Math.min(images.length - 1, activeImg + 1))} disabled={activeImg === images.length - 1} aria-label="Next image" className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/95 p-2.5 text-slate-900 shadow-lg transition hover:scale-105 disabled:opacity-30 sm:block"><ChevronRight className="h-5 w-5" /></button>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center gap-1.5">{images.map((_, i) => <span key={i} className={`h-1.5 rounded-full transition-all ${activeImg === i ? "w-7 bg-primary" : "w-1.5 bg-foreground/25"}`} />)}</div>
                   </>
                 )}
               </div>
@@ -186,44 +173,25 @@ const ProductDetail = () => {
             {images.length > 1 && (
               <div className="mt-4 grid grid-cols-5 gap-2 sm:gap-3">
                 {images.slice(0, 10).map((img, i) => (
-                  <button key={i} onClick={() => scrollTo(i)} className={`aspect-square overflow-hidden rounded-xl bg-muted/20 p-1 transition ${activeImg === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border border-border hover:border-primary/40"}`} aria-label={`Show image ${i + 1}`}>
-                    <img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
-                  </button>
+                  <button key={i} onClick={() => scrollTo(i)} className={`aspect-square overflow-hidden rounded-xl bg-muted/20 p-1 transition ${activeImg === i ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border border-border hover:border-primary/40"}`} aria-label={`Show image ${i + 1}`}><img src={img.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" /></button>
                 ))}
               </div>
             )}
           </div>
 
           <div className="lg:sticky lg:top-28 lg:self-start">
-            {product.main_categories && (
-              <Link to={`/catalog?cat=${product.main_categories.slug}`} className="text-xs font-bold uppercase tracking-[0.24em] text-accent hover:underline">
-                {toTitleCase(product.main_categories.name)}
-              </Link>
-            )}
-
+            {product.main_categories && <Link to={`/catalog?cat=${product.main_categories.slug}`} className="text-xs font-bold uppercase tracking-[0.24em] text-accent hover:underline">{toTitleCase(product.main_categories.name)}</Link>}
             <h1 className="mt-3 max-w-xl font-display text-3xl leading-tight text-foreground sm:text-4xl md:text-5xl">{toTitleCase(product.product_name)}</h1>
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Product code · {product.product_code}</p>
 
             {!hidePrices && (
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                {onOffer ? (
-                  <>
-                    <span className="font-display text-3xl font-semibold text-primary sm:text-4xl">{formatINR(product.offer_price!)}</span>
-                    <span className="text-base text-muted-foreground line-through">{formatINR(product.mrp)}</span>
-                    <Badge className="rounded-full bg-accent px-3 py-1 text-accent-foreground">Special price</Badge>
-                  </>
-                ) : (
-                  <span className="font-display text-3xl font-semibold text-primary sm:text-4xl">{formatINR(product.mrp)}</span>
-                )}
+                {onOffer ? <><span className="font-display text-3xl font-semibold text-primary sm:text-4xl">{formatINR(product.offer_price!)}</span><span className="text-base text-muted-foreground line-through">{formatINR(product.mrp)}</span><Badge className="rounded-full bg-accent px-3 py-1 text-accent-foreground">Special price</Badge></> : <span className="font-display text-3xl font-semibold text-primary sm:text-4xl">{formatINR(product.mrp)}</span>}
               </div>
             )}
 
             <div className="mt-4">
-              {inStock ? (
-                <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/5 px-3 py-1 text-primary">Available now · {product.stock_quantity} in stock</Badge>
-              ) : (
-                <Badge variant="secondary" className="rounded-full px-3 py-1">Made to order / enquire for availability</Badge>
-              )}
+              {inStock ? <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/5 px-3 py-1 text-primary">Available now</Badge> : <Badge variant="secondary" className="rounded-full px-3 py-1">Enquire for availability</Badge>}
             </div>
 
             {product.description && <p className="mt-7 max-w-xl text-sm leading-7 text-foreground/75 md:text-base">{product.description}</p>}
@@ -235,29 +203,19 @@ const ProductDetail = () => {
                 {product.dimensions && <DetailRow label="Dimensions" value={product.dimensions} />}
                 {product.color_finish && <DetailRow label="Color / Finish" value={product.color_finish} />}
               </dl>
-
-              {product.available_colors && product.available_colors.length > 0 && (
-                <div className="border-t border-border pt-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available colors</p>
-                  <div className="flex flex-wrap gap-2">
-                    {product.available_colors.map((c) => <span key={c} className="rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium">{c}</span>)}
-                  </div>
-                </div>
-              )}
+              {product.available_colors && product.available_colors.length > 0 && <div className="border-t border-border pt-4"><p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available colors</p><div className="flex flex-wrap gap-2">{product.available_colors.map((c) => <span key={c} className="rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium">{c}</span>)}</div></div>}
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <TrustPoint icon={ShieldCheck} label="Trusted" text="14+ years" />
               <TrustPoint icon={Sparkles} label="Custom" text="Options available" />
-              <TrustPoint icon={Truck} label="Wayanad" text="Local delivery" />
+              <TrustPoint icon={MapPin} label="Wayanad" text="Local support" />
             </div>
 
             <div className="mt-7 rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg sm:p-6">
               <p className="text-sm font-bold">Interested in this product?</p>
-              <p className="mt-1 text-xs leading-5 text-primary-foreground/75">Send the product directly with your enquiry and our team can assist with availability, options and delivery.</p>
-              <Button size="lg" variant="secondary" className="mt-5 w-full font-bold" onClick={() => openEnquiryForm({ productName: product.product_name, productId: product.id })}>
-                <ClipboardList className="mr-2 h-5 w-5" /> Enquire about this product
-              </Button>
+              <p className="mt-1 text-xs leading-5 text-primary-foreground/75">Send the product directly with your enquiry and our team can assist with availability, options and delivery details.</p>
+              <Button size="lg" variant="secondary" className="mt-5 w-full font-bold" onClick={() => openEnquiryForm({ productName: product.product_name, productId: product.id })}><ClipboardList className="mr-2 h-5 w-5" /> Enquire about this product</Button>
             </div>
           </div>
         </div>
@@ -268,19 +226,7 @@ const ProductDetail = () => {
   );
 };
 
-const DetailRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="grid grid-cols-[110px_1fr] gap-4 py-3 text-sm">
-    <dt className="text-muted-foreground">{label}</dt>
-    <dd className="font-semibold text-foreground">{value}</dd>
-  </div>
-);
-
-const TrustPoint = ({ icon: Icon, label, text }: { icon: typeof ShieldCheck; label: string; text: string }) => (
-  <div className="rounded-xl border border-border bg-card p-3">
-    <Icon className="h-4 w-4 text-primary" />
-    <p className="mt-2 text-xs font-bold text-foreground">{label}</p>
-    <p className="mt-0.5 text-[10px] text-muted-foreground">{text}</p>
-  </div>
-);
+const DetailRow = ({ label, value }: { label: string; value: string }) => <div className="grid grid-cols-[110px_1fr] gap-4 py-3 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="font-semibold text-foreground">{value}</dd></div>;
+const TrustPoint = ({ icon: Icon, label, text }: { icon: typeof ShieldCheck; label: string; text: string }) => <div className="rounded-xl border border-border bg-card p-3"><Icon className="h-4 w-4 text-primary" /><p className="mt-2 text-xs font-bold text-foreground">{label}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{text}</p></div>;
 
 export default ProductDetail;
