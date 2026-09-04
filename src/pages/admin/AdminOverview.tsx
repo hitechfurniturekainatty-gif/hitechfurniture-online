@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { CommandCenterPanel } from "@/components/admin/CommandCenterPanel";
+import { SalesFollowupPanel } from "@/components/admin/SalesFollowupPanel";
 import AdminAnalyticsDashboard from "./AdminAnalyticsDashboard";
 import AdminOfficeAnalyticsDashboard from "./AdminOfficeAnalyticsDashboard";
 import AdminProductionAnalyticsDashboard from "./AdminProductionAnalyticsDashboard";
@@ -9,19 +10,13 @@ import AdminWarehouseAnalyticsDashboard from "./AdminWarehouseAnalyticsDashboard
 import AdminDeliveryAnalyticsDashboard from "./AdminDeliveryAnalyticsDashboard";
 import { AdminSeoHealthDashboard } from "./AdminSeoHealthDashboard";
 
-// Single post-login landing page. Composes the Command Center + 5 role
-// dashboards as stacked sections — each gated by the exact same role
-// condition that used to gate its own standalone route/tab, so nobody sees
-// more (or less) than they already could. Admin sees Command Center first,
-// then all 5; a single-role staff member (pure warehouse, pure delivery)
-// sees only their own section. Command Center used to be its own sidebar
-// tab (/admin/command-center) — moved here so "Overview" stays the one
-// place admins land, per direction to stop adding tabs.
+// Single post-login landing page. Composes the Command Center + role dashboards
+// as stacked sections. Admin sees the full business picture; office staff see
+// the action-oriented sales/operations sections relevant to daily work.
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
 
-  // Measurement staff have their own dedicated page (assigned tasks) —
-  // Measurement was never one of the 5 dashboards composed below.
+  // Measurement staff have their own dedicated page (assigned tasks).
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) {
     return <Navigate to="/admin/my-work" replace />;
   }
@@ -31,8 +26,10 @@ const AdminOverview = () => {
   const showProduction = isOfficeStaff;
   const showWarehouse = isOfficeStaff || isWarehouse;
   const showDelivery = isOfficeStaff || isDelivery;
+
   const sections: { key: string; node: JSX.Element }[] = [
     showAdmin && { key: "command-center", node: <CommandCenterPanel /> },
+    (showAdmin || showOffice) && { key: "sales-followups", node: <SalesFollowupPanel /> },
     showAdmin && { key: "admin", node: <AdminAnalyticsDashboard /> },
     showAdmin && { key: "seo-health", node: <AdminSeoHealthDashboard /> },
     showOffice && { key: "office", node: <AdminOfficeAnalyticsDashboard /> },
@@ -45,7 +42,7 @@ const AdminOverview = () => {
     <AdminShell>
       <div className="mb-6 sm:mb-8">
         <h1 className="font-display text-2xl sm:text-3xl">Overview</h1>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">Live snapshot of your business.</p>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">Live snapshot of your business and today's action list.</p>
       </div>
 
       {sections.length === 0 ? (
@@ -53,7 +50,7 @@ const AdminOverview = () => {
       ) : (
         <div>
           {sections.map((s) => (
-            <div key={s.key} className="border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+            <div key={s.key} className="border-t border-border/60 py-8 first:border-t-0 first:pt-0">
               {s.node}
             </div>
           ))}
