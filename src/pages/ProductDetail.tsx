@@ -105,6 +105,16 @@ const ProductDetail = () => {
   const onOffer = !!product.offer_price && product.offer_price < product.mrp;
   const inStock = product.stock_quantity > 0;
   const productUrl = `${window.location.origin}/product/${product.id}`;
+  const openProductEnquiry = () => openEnquiryForm({
+    productName: product.product_name,
+    productId: product.id,
+    catalogProducts: [{
+      productName: product.product_name,
+      productId: product.id,
+      productCode: product.product_code,
+      productImageUrl: cover,
+    }],
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,7 +225,7 @@ const ProductDetail = () => {
             <div className="mt-7 rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg sm:p-6">
               <p className="text-sm font-bold">Interested in this product?</p>
               <p className="mt-1 text-xs leading-5 text-primary-foreground/75">Send the product directly with your enquiry and our team can assist with availability, options and delivery details.</p>
-              <Button size="lg" variant="secondary" className="mt-5 w-full font-bold" onClick={() => openEnquiryForm({ productName: product.product_name, productId: product.id })}><ClipboardList className="mr-2 h-5 w-5" /> Enquire about this product</Button>
+              <Button size="lg" variant="secondary" className="mt-5 w-full font-bold" onClick={openProductEnquiry}><ClipboardList className="mr-2 h-5 w-5" /> Enquire about this product</Button>
             </div>
           </div>
         </div>
