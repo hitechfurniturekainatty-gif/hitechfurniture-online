@@ -136,6 +136,7 @@ export const LuxuryScrollHero = () => {
               const depthShift = reduceMotion ? 0 : (scene.index - activeIndex) * 24 - scene.reveal * 18;
               const slowZoom = reduceMotion ? 1 : 1.04 + scene.reveal * 0.07;
               const parallaxY = reduceMotion ? 0 : 4 - scene.reveal * 16;
+              const shouldRenderImage = reduceMotion || Math.abs(scene.index - activeIndex) <= 1;
 
               return (
                 <div
@@ -145,23 +146,25 @@ export const LuxuryScrollHero = () => {
                     opacity: scene.index === activeIndex ? Math.max(scene.opacity, 0.82) : scene.opacity,
                     transform: `translate3d(0, ${depthShift}px, 0)`,
                     transition: reduceMotion ? "opacity 280ms ease" : undefined,
-                    willChange: "opacity, transform",
+                    willChange: scene.index === activeIndex ? "opacity, transform" : undefined,
                   }}
                   aria-hidden={!scene.active}
                 >
-                  <img
-                    src={scene.imageUrl}
-                    alt={scene.alt}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    loading={scene.index === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                    {...({ fetchpriority: scene.index === 0 ? "high" : "auto" } as Record<string, string>)}
-                    style={{
-                      transform: `scale(${slowZoom}) translate3d(0, ${parallaxY}px, 0)`,
-                      transformOrigin: "center center",
-                      willChange: "transform",
-                    }}
-                  />
+                  {shouldRenderImage && (
+                    <img
+                      src={scene.imageUrl}
+                      alt={scene.alt}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading={scene.index === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      {...({ fetchpriority: scene.index === 0 ? "high" : "low" } as Record<string, string>)}
+                      style={{
+                        transform: `scale(${slowZoom}) translate3d(0, ${parallaxY}px, 0)`,
+                        transformOrigin: "center center",
+                        willChange: scene.index === activeIndex ? "transform" : undefined,
+                      }}
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/60" />
                 </div>
