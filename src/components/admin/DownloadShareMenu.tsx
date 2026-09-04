@@ -1,61 +1,22 @@
 import { useState } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Download, FileText, Image as ImageIcon, Link2, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Download, FileText, Image as ImageIcon, Link2, Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * Unified Download/Share control.
- *
- * Renders a single "Download / Share" button. Tapping it reveals two small,
- * distinct icons:
- *   • PDF (red)   — full multi-page professional PDF, ideal for customers.
- *   • JPG (teal)  — page-by-page high-clarity images, ideal for workers /
- *                   WhatsApp.
- *
- * The component is purely presentational — the parent decides what each format
- * should produce (e.g. customer copy vs. worker-safe copy that omits prices).
- */
 export type DownloadShareMenuProps = {
-  /** Called when the user picks the PDF action. */
   onPdf: () => unknown | Promise<unknown>;
-  /** Called when the user picks the JPG action. */
   onJpg: () => unknown | Promise<unknown>;
-  /**
-   * Optional — called when the user picks the live mobile-link action.
-   * When omitted the third icon is hidden (back-compat for places where a
-   * shareable URL doesn't make sense, e.g. the catalog product card).
-   */
   onShareLink?: () => unknown | Promise<unknown>;
-  /** Disables both actions while a generation is in progress. */
   busy?: boolean;
-  /** Optional override for the trigger label. */
   label?: string;
-  /** Visual variant of the trigger button. */
   triggerVariant?: ButtonProps["variant"];
-  /** Size of the trigger button. */
   triggerSize?: ButtonProps["size"];
-  /** Extra classes for the trigger button. */
   triggerClassName?: string;
-  /** Override tooltip text on the PDF icon. */
   pdfTooltip?: string;
-  /** Override tooltip text on the JPG icon. */
   jpgTooltip?: string;
-  /** Override tooltip text on the Link icon. */
   linkTooltip?: string;
-  /** Hide trigger label so only the icon shows (useful in dense bars). */
   iconOnly?: boolean;
-  /** Disable the entire trigger. */
   disabled?: boolean;
 };
 
@@ -64,13 +25,13 @@ export function DownloadShareMenu({
   onJpg,
   onShareLink,
   busy = false,
-  label = "Download / Share",
+  label = "Share / Export",
   triggerVariant = "outline",
   triggerSize,
   triggerClassName,
-  pdfTooltip = "PDF — full document for customer",
-  jpgTooltip = "JPG — high-res images for WhatsApp / worker",
-  linkTooltip = "Share Link — live, zoomable mobile view (always up-to-date)",
+  pdfTooltip = "Professional PDF document",
+  jpgTooltip = "High-quality image pages",
+  linkTooltip = "Live mobile preview link",
   iconOnly = false,
   disabled = false,
 }: DownloadShareMenuProps) {
@@ -81,86 +42,61 @@ export function DownloadShareMenu({
     await fn();
   };
 
+  const optionClass = "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={triggerVariant}
           size={triggerSize}
-          className={cn(triggerClassName)}
+          className={cn("justify-center", triggerClassName)}
           disabled={disabled || busy}
+          aria-label={label}
         >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {!iconOnly && <span className="ml-1.5">{label}</span>}
+          {!iconOnly && !busy && <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-60" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={6}
-        className="w-auto rounded-full border-border/70 bg-popover p-1.5 shadow-lg"
-      >
-        <TooltipProvider delayDuration={150}>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => handlePick(onPdf)}
-                  disabled={busy}
-                  aria-label="Download as PDF"
-                >
-                  <FileText className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{pdfTooltip}</TooltipContent>
-            </Tooltip>
 
-            <span className="h-6 w-px bg-border" aria-hidden />
+      <PopoverContent align="end" sideOffset={8} className="w-[min(92vw,320px)] p-2 shadow-xl">
+        <div className="px-2 pb-2 pt-1">
+          <p className="text-sm font-semibold">Choose format</p>
+          <p className="text-xs text-muted-foreground">Download, share on WhatsApp, or open a live preview.</p>
+        </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-primary hover:bg-primary/10 hover:text-primary"
-                  onClick={() => handlePick(onJpg)}
-                  disabled={busy}
-                  aria-label="Download as JPG"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{jpgTooltip}</TooltipContent>
-            </Tooltip>
+        <button type="button" className={optionClass} onClick={() => handlePick(onPdf)} disabled={busy}>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <FileText className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">PDF Document</span>
+            <span className="block text-xs text-muted-foreground">{pdfTooltip}</span>
+          </span>
+        </button>
 
-            {onShareLink && (
-              <>
-                <span className="h-6 w-px bg-border" aria-hidden />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
-                      onClick={() => handlePick(onShareLink)}
-                      disabled={busy}
-                      aria-label="Share live mobile link"
-                    >
-                      <Link2 className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">{linkTooltip}</TooltipContent>
-                </Tooltip>
-              </>
-            )}
-          </div>
-        </TooltipProvider>
+        <button type="button" className={optionClass} onClick={() => handlePick(onJpg)} disabled={busy}>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <ImageIcon className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">Image Pages (JPG)</span>
+            <span className="block text-xs text-muted-foreground">{jpgTooltip}</span>
+          </span>
+        </button>
+
+        {onShareLink && (
+          <button type="button" className={optionClass} onClick={() => handlePick(onShareLink)} disabled={busy}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Link2 className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Live Preview Link</span>
+              <span className="block text-xs text-muted-foreground">{linkTooltip}</span>
+            </span>
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );
