@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Copy, Check, QrCode, Star } from "lucide-react";
+import { ArrowRight, Copy, Check, QrCode, Star, MapPin, Phone, ClipboardList, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 
 import { Seo } from "@/components/Seo";
 import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
@@ -259,6 +260,61 @@ const Index = () => {
         </div>
       )}
 
+      <section id="contact" className="container-page pb-16 pt-4 md:pb-20">
+        <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="bg-primary p-8 text-primary-foreground sm:p-10 lg:p-12">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/65">Visit our showroom</p>
+            <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">See the furniture. Feel the finish. Plan your space.</h2>
+            <p className="mt-5 max-w-md text-sm leading-7 text-primary-foreground/75">
+              Visit Hitech Furniture & Interiors in the Kalpetta area to explore furniture, discuss custom requirements and plan complete interior solutions with our team.
+            </p>
+
+            <div className="mt-8 space-y-4">
+              <div className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold">Kalpetta · Wayanad</p>
+                  <p className="mt-1 text-xs text-primary-foreground/65">Furniture showroom & interior consultation</p>
+                </div>
+              </div>
+              {settings?.contact_phone && (
+                <a href={`tel:${settings.contact_phone}`} className="flex items-start gap-3 transition hover:opacity-80">
+                  <Phone className="mt-0.5 h-5 w-5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold">{settings.contact_phone}</p>
+                    <p className="mt-1 text-xs text-primary-foreground/65">Call our showroom team</p>
+                  </div>
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent">
+              <Sparkles className="h-3.5 w-3.5" /> Furniture & Interiors
+            </div>
+            <h3 className="mt-5 max-w-xl font-display text-3xl leading-tight text-foreground md:text-4xl">Have a room, project or furniture idea in mind?</h3>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+              Tell us what you need. Share your room details, preferred style or product requirement and our team can guide you with suitable options.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}>
+                <ClipboardList className="mr-2 h-5 w-5" /> Start an enquiry
+              </Button>
+              <Button asChild size="lg" variant="outline" className="rounded-xl">
+                <Link to="/catalog">Browse furniture <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <MiniTrust title="14+ Years" text="Local experience" />
+              <MiniTrust title="Custom Made" text="Built for your space" />
+              <MiniTrust title="Interiors" text="Design to install" />
+              <MiniTrust title="Wayanad" text="Local support" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {settings?.show_google_review !== false && <GoogleReviewCta />}
 
       <Suspense fallback={null}>
@@ -270,6 +326,13 @@ const Index = () => {
 };
 
 export default Index;
+
+const MiniTrust = ({ title, text }: { title: string; text: string }) => (
+  <div className="rounded-xl border border-border bg-muted/25 p-3">
+    <p className="text-xs font-bold text-foreground">{title}</p>
+    <p className="mt-1 text-[10px] leading-4 text-muted-foreground">{text}</p>
+  </div>
+);
 
 const GOOGLE_REVIEW_URL =
   "https://search.google.com/local/writereview?placeid=ChIJh4fFy6kMpjsR9mGrdWARwXo";
