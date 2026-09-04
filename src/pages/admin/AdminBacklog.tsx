@@ -1,4 +1,5 @@
 import { BacklogGate } from "@/components/admin/BacklogGate";
+import ReceivableFollowupCRM from "@/components/admin/ReceivableFollowupCRM";
 import OrderReceivablesPanel from "@/components/admin/OrderReceivablesPanel";
 import AdminReceivables from "./AdminReceivables";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +15,21 @@ export default function AdminBacklog() {
     <BacklogGate>
       <div className="space-y-8">
         <section className="space-y-3">
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold">Receivable Follow-up & Promise Dates</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add a customer manually, save phone/email/place/balance, then set the date they promised to pay. Due and overdue calls are highlighted and also sent to the pipeline notification system.
+              </p>
+            </CardContent>
+          </Card>
+          <ReceivableFollowupCRM />
+        </section>
+
+        <section className="space-y-3 border-t border-border pt-8">
           <Card className="border-emerald-500/30 bg-emerald-500/5">
             <CardContent className="p-4">
-              <p className="text-sm font-semibold">Customer → Hitech Receivables</p>
+              <p className="text-sm font-semibold">Quotation / Order → Hitech Receivables</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Delivered orders with money still to receive. Use Receive Payment for full or partial collections.
               </p>
