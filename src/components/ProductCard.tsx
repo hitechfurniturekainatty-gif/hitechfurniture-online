@@ -97,7 +97,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
           </Badge>
         )}
         {totalStock <= 0 && (
-          <Badge variant="secondary" className="absolute right-3 top-3 z-10 rounded-full">Made to order</Badge>
+          <Badge variant="secondary" className="absolute right-3 top-3 z-10 rounded-full">Enquire availability</Badge>
         )}
 
         <button
@@ -162,7 +162,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
         )}
 
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-          <span className={cn("text-[11px] font-medium", totalStock > 0 ? "text-primary" : "text-muted-foreground")}> 
+          <span className={cn("text-[11px] font-medium", totalStock > 0 ? "text-primary" : "text-muted-foreground")}>
             {totalStock > 0 ? "Available now" : "Enquire for availability"}
           </span>
           <span className="text-[11px] font-semibold text-muted-foreground transition group-hover:text-primary">View details</span>
