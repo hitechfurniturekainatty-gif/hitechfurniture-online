@@ -48,7 +48,9 @@ const ProductDetail = () => {
     const onSelect = () => setActiveImg(emblaApi.selectedScrollSnap());
     emblaApi.on("select", onSelect);
     onSelect();
-    return () => emblaApi.off("select", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
   }, [emblaApi]);
 
   const scrollTo = useCallback((i: number) => {
