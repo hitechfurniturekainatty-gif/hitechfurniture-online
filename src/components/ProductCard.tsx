@@ -66,7 +66,16 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
   const openEnquiry = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    openEnquiryForm({ productName: product.product_name, productId: product.id });
+    openEnquiryForm({
+      productName: product.product_name,
+      productId: product.id,
+      catalogProducts: [{
+        productName: product.product_name,
+        productId: product.id,
+        productCode: product.product_code,
+        productImageUrl: activeVariant?.image_url || baseCover,
+      }],
+    });
   };
 
   return (
