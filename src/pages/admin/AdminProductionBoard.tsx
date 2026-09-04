@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, HardHat, FileText, LifeBuoy, Wrench } from "lucide-react";
+import { Loader2, AlertTriangle, HardHat, FileText, LifeBuoy, Wrench, CalendarClock, Clock3 } from "lucide-react";
 import { isJobFinished } from "./AdminWorkerDetail";
 
 type JobRow = {
@@ -27,6 +27,9 @@ type JobRow = {
   source_service_id: string | null;
   created_at: string;
   status_updated_at: string;
+  due_at: string | null;
+  last_worker_update_at: string | null;
+  worker_update_note: string | null;
   worker_name: string | null;
   source_code: string | null;
   party_name: string | null;
@@ -43,10 +46,6 @@ const COLUMNS: { key: ColumnKey; label: string }[] = [
 
 const columnFor = (j: JobRow): ColumnKey => {
   if (j.warehouse_status === "dispatched") return "dispatched";
-  // "Completed" means the canonical job_work_orders.status has reached a
-  // finished state — "ready" (production done, awaiting dispatch) or
-  // "delivered" (a worker marked it delivered directly). There's no
-  // separate "completed"/"done" status value; see JOB_FINISHED_STATUSES.
   if (isJobFinished(j.status)) return "completed";
   if (j.status === "started" || j.status === "in_progress") return "in_progress";
   return "assigned";
@@ -68,6 +67,12 @@ const jobTypeMeta = (t: string | null) => {
   return { label: "Production", icon: HardHat, variant: "outline" as const };
 };
 
+const isOpenJob = (j: JobRow) => !isJobFinished(j.status) && j.warehouse_status !== "dispatched";
+const isOverdue = (j: JobRow) => !!j.due_at && isOpenJob(j) && new Date(j.due_at).getTime() < Date.now();
+const lastActivityAt = (j: JobRow) => j.last_worker_update_at || j.status_updated_at || j.created_at;
+const needsFollowup = (j: JobRow) => isOpenJob(j) && Date.now() - new Date(lastActivityAt(j)).getTime() > 24 * 60 * 60 * 1000;
+const dateInputValue = (iso: string | null) => iso ? new Date(iso).toISOString().slice(0, 10) : "";
+
 const Inner = () => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobRow[]>([]);
@@ -75,13 +80,14 @@ const Inner = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [workerFilter, setWorkerFilter] = useState<string>("all");
   const [urgentOnly, setUrgentOnly] = useState(false);
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("job_work_orders")
-      .select("id,status,warehouse_status,job_type,is_urgent,worker_id,quotation_id,source_complaint_id,source_service_id,created_at,status_updated_at")
+      .select("id,status,warehouse_status,job_type,is_urgent,worker_id,quotation_id,source_complaint_id,source_service_id,created_at,status_updated_at,due_at,last_worker_update_at,worker_update_note")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) {
@@ -149,16 +155,23 @@ const Inner = () => {
     return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [jobs]);
 
+  const summary = useMemo(() => ({
+    open: jobs.filter(isOpenJob).length,
+    overdue: jobs.filter(isOverdue).length,
+    followup: jobs.filter(needsFollowup).length,
+    unassigned: jobs.filter((j) => isOpenJob(j) && !j.worker_id).length,
+  }), [jobs]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return jobs.filter((j) => {
-      // Hide dispatched + delivered older noise: keep all but allow filter view.
       if (workerFilter !== "all" && j.worker_id !== workerFilter) return false;
       if (urgentOnly && !j.is_urgent) return false;
+      if (overdueOnly && !isOverdue(j)) return false;
       if (q && !(j.source_code ?? "").toLowerCase().includes(q) && !(j.party_name ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [jobs, workerFilter, urgentOnly, search]);
+  }, [jobs, workerFilter, urgentOnly, overdueOnly, search]);
 
   const byColumn = useMemo(() => {
     const g: Record<ColumnKey, JobRow[]> = { assigned: [], in_progress: [], completed: [], dispatched: [] };
@@ -169,14 +182,10 @@ const Inner = () => {
   const moveTo = async (job: JobRow, target: ColumnKey) => {
     if (columnFor(job) === target) return;
     setSavingId(job.id);
-    // "Completed" and "Dispatched" both mean the job itself is done — they
-    // only differ in warehouse_status. Write "ready" (not "completed",
-    // which Worker Portal and the warehouse handoff logic don't recognize)
-    // so a job dragged here shows correctly if a worker later opens it.
-    const patch: { status: string; warehouse_status?: string } =
+    const patch: { status: string; warehouse_status?: string; last_worker_update_at?: string } =
       target === "assigned" ? { status: "assigned" }
-        : target === "in_progress" ? { status: "in_progress" }
-        : target === "completed" ? { status: "ready", warehouse_status: "in_warehouse" }
+        : target === "in_progress" ? { status: "in_progress", last_worker_update_at: new Date().toISOString() }
+        : target === "completed" ? { status: "ready", warehouse_status: "in_warehouse", last_worker_update_at: new Date().toISOString() }
         : { status: "ready", warehouse_status: "dispatched" };
 
     const { error } = await supabase.from("job_work_orders").update(patch as any).eq("id", job.id);
@@ -187,6 +196,19 @@ const Inner = () => {
     }
     toast({ title: "Status updated", description: `Moved to ${target.replace("_", " ")}` });
     setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, ...patch, status_updated_at: new Date().toISOString() } : j)));
+  };
+
+  const updateDueDate = async (job: JobRow, value: string) => {
+    setSavingId(job.id);
+    const dueAt = value ? new Date(`${value}T18:00:00+05:30`).toISOString() : null;
+    const { error } = await supabase.from("job_work_orders").update({ due_at: dueAt } as any).eq("id", job.id);
+    setSavingId(null);
+    if (error) {
+      toast({ title: "Due date update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, due_at: dueAt } : j));
+    toast({ title: value ? "Due date updated" : "Due date cleared" });
   };
 
   const openJob = (j: JobRow) => {
@@ -201,8 +223,15 @@ const Inner = () => {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl md:text-3xl">Production Board</h1>
-            <p className="text-sm text-muted-foreground">All open job work orders across the workshop.</p>
+            <p className="text-sm text-muted-foreground">Worker jobs, deadlines and follow-up — one place.</p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Card className="p-3"><p className="text-[11px] uppercase text-muted-foreground">Open Jobs</p><p className="mt-1 text-2xl font-bold">{summary.open}</p></Card>
+          <Card className={summary.overdue ? "border-destructive/50 bg-destructive/5 p-3" : "p-3"}><p className="text-[11px] uppercase text-muted-foreground">Overdue</p><p className="mt-1 text-2xl font-bold">{summary.overdue}</p></Card>
+          <Card className={summary.followup ? "border-amber-400/60 bg-amber-50 p-3" : "p-3"}><p className="text-[11px] uppercase text-muted-foreground">No Update 24h+</p><p className="mt-1 text-2xl font-bold">{summary.followup}</p></Card>
+          <Card className={summary.unassigned ? "border-amber-400/60 bg-amber-50 p-3" : "p-3"}><p className="text-[11px] uppercase text-muted-foreground">Unassigned</p><p className="mt-1 text-2xl font-bold">{summary.unassigned}</p></Card>
         </div>
 
         <Card className="flex flex-wrap items-end gap-3 p-3">
@@ -230,6 +259,10 @@ const Inner = () => {
             <Switch id="urgent" checked={urgentOnly} onCheckedChange={setUrgentOnly} />
             <Label htmlFor="urgent" className="cursor-pointer text-sm">Urgent only</Label>
           </div>
+          <div className="flex items-center gap-2 pb-2">
+            <Switch id="overdue" checked={overdueOnly} onCheckedChange={setOverdueOnly} />
+            <Label htmlFor="overdue" className="cursor-pointer text-sm">Overdue only</Label>
+          </div>
         </Card>
 
         {loading ? (
@@ -239,67 +272,53 @@ const Inner = () => {
         ) : (
           <div className="-mx-2 flex gap-3 overflow-x-auto px-2 pb-4 md:mx-0 md:px-0">
             {COLUMNS.map((col) => {
-              const items = byColumn[col.key];
+              const columnItems = byColumn[col.key];
               return (
-                <div key={col.key} className="w-[280px] shrink-0 md:w-[300px]">
+                <div key={col.key} className="w-[290px] shrink-0 md:w-[310px]">
                   <div className="mb-2 flex items-center justify-between px-1">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      {col.label}
-                    </h2>
-                    <Badge variant="secondary">{items.length}</Badge>
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{col.label}</h2>
+                    <Badge variant="secondary">{columnItems.length}</Badge>
                   </div>
-                  <div className="space-y-2 rounded-lg bg-muted/40 p-2 min-h-[120px]">
-                    {items.length === 0 && (
-                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">No jobs</p>
-                    )}
-                    {items.map((j) => {
+                  <div className="min-h-[120px] space-y-2 rounded-lg bg-muted/40 p-2">
+                    {columnItems.length === 0 && <p className="px-2 py-6 text-center text-xs text-muted-foreground">No jobs</p>}
+                    {columnItems.map((j) => {
                       const meta = jobTypeMeta(j.job_type);
                       const Icon = meta.icon;
+                      const overdue = isOverdue(j);
+                      const followup = needsFollowup(j);
                       return (
-                        <Card
-                          key={j.id}
-                          className={`p-3 transition hover:shadow-md ${j.is_urgent ? "border-destructive/60" : ""}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openJob(j)}
-                            className="block w-full text-left"
-                          >
+                        <Card key={j.id} className={`p-3 transition hover:shadow-md ${j.is_urgent || overdue ? "border-destructive/60" : followup ? "border-amber-400/60" : ""}`}>
+                          <button type="button" onClick={() => openJob(j)} className="block w-full text-left">
                             <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                              <Badge variant={meta.variant} className="gap-1">
-                                <Icon className="h-3 w-3" /> {meta.label}
-                              </Badge>
-                              {j.is_urgent && (
-                                <Badge variant="destructive" className="gap-1">
-                                  <AlertTriangle className="h-3 w-3" /> URGENT
-                                </Badge>
-                              )}
+                              <Badge variant={meta.variant} className="gap-1"><Icon className="h-3 w-3" /> {meta.label}</Badge>
+                              {j.is_urgent && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> URGENT</Badge>}
+                              {overdue && <Badge variant="destructive" className="gap-1"><CalendarClock className="h-3 w-3" /> OVERDUE</Badge>}
+                              {!overdue && followup && <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700"><Clock3 className="h-3 w-3" /> FOLLOW UP</Badge>}
                             </div>
-                            <div className="flex items-center gap-1.5 text-sm font-medium">
-                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="truncate">{j.source_code ?? "—"}</span>
-                            </div>
-                            {j.party_name && (
-                              <p className="truncate text-xs text-muted-foreground">{j.party_name}</p>
-                            )}
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {j.worker_name ?? "Unassigned"} · {timeAgo(j.created_at)}
-                            </p>
+                            <div className="flex items-center gap-1.5 text-sm font-medium"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><span className="truncate">{j.source_code ?? "—"}</span></div>
+                            {j.party_name && <p className="truncate text-xs text-muted-foreground">{j.party_name}</p>}
+                            <p className="mt-1 text-xs text-muted-foreground">{j.worker_name ?? "Unassigned"} · assigned {timeAgo(j.created_at)}</p>
+                            {isOpenJob(j) && <p className={`mt-1 text-xs ${followup ? "font-medium text-amber-700" : "text-muted-foreground"}`}>Last activity: {timeAgo(lastActivityAt(j))}</p>}
+                            {j.worker_update_note && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">Update: {j.worker_update_note}</p>}
                           </button>
+
+                          {isOpenJob(j) && (
+                            <div className="mt-2 rounded-md border bg-background/70 p-2">
+                              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Production due date</Label>
+                              <Input
+                                type="date"
+                                className={`mt-1 h-8 text-xs ${overdue ? "border-destructive" : ""}`}
+                                value={dateInputValue(j.due_at)}
+                                onChange={(e) => updateDueDate(j, e.target.value)}
+                                disabled={savingId === j.id}
+                              />
+                            </div>
+                          )}
+
                           <div className="mt-2">
-                            <Select
-                              value={columnFor(j)}
-                              onValueChange={(v) => moveTo(j, v as ColumnKey)}
-                              disabled={savingId === j.id}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {COLUMNS.map((c) => (
-                                  <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                                ))}
-                              </SelectContent>
+                            <Select value={columnFor(j)} onValueChange={(v) => moveTo(j, v as ColumnKey)} disabled={savingId === j.id}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>{COLUMNS.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                         </Card>
