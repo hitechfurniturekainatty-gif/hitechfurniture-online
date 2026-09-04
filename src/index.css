@@ -102,8 +102,14 @@
   * { @apply border-border; }
   /* `overflow-x: clip` prevents horizontal scroll without creating a
      scroll container — critical so `position: sticky` keeps working
-     on descendants like the homepage hero. */
-  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: clip; }
+     on descendants like the homepage hero. `scroll-padding-top` keeps
+     hash targets visible below the sticky public header. */
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
+    scroll-padding-top: 6rem;
+  }
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "ss01", "cv11";
