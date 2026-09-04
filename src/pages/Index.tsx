@@ -159,7 +159,7 @@ const Index = () => {
               Browse our live collection and find pieces for every room, style and requirement.
             </p>
           </div>
-          <Link to="/catalog?cat=__all__" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
+          <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
             View all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -208,7 +208,7 @@ const Index = () => {
           </div>
         )}
 
-        <Link to="/catalog?cat=__all__" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
+        <Link to="/catalog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
           View full catalog <ArrowRight className="h-4 w-4" />
         </Link>
       </section>
@@ -246,6 +246,71 @@ const Index = () => {
           <Link to="/catalog" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
             Shop all furniture <ArrowRight className="h-4 w-4" />
           </Link>
+        </div>
+      </section>
+
+      <section className="container-page py-16 md:py-24">
+        <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-2">
+          <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-14">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">Custom furniture</p>
+            <h2 className="mt-4 max-w-xl font-display text-3xl leading-tight text-foreground md:text-5xl">Made for your space, not just any space.</h2>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+              Choose the size, layout, finish, material and comfort that suit your home. From sofas and dining sets to beds, wardrobes and storage, our team helps shape furniture around the way you live.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}>
+                <ClipboardList className="mr-2 h-5 w-5" /> Start a custom order
+              </Button>
+              <Button asChild size="lg" variant="outline" className="rounded-xl">
+                <Link to="/catalog">Explore furniture <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-px bg-border">
+            <PremiumFeature number="01" title="Designed to fit" text="Furniture planned around your room dimensions and practical needs." />
+            <PremiumFeature number="02" title="Your finish" text="Select materials, colours and finishes that match your interior style." />
+            <PremiumFeature number="03" title="Comfort first" text="Choose proportions and configurations that work for everyday living." />
+            <PremiumFeature number="04" title="Local support" text="Discuss, customise and follow up with our Wayanad-based team." />
+          </div>
+        </div>
+      </section>
+
+      <section id="interiors" className="border-y border-border bg-primary text-primary-foreground">
+        <div className="container-page py-16 md:py-24">
+          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/60">Complete interiors</p>
+              <h2 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-5xl">From an empty room to a finished home.</h2>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-primary-foreground/72 md:text-base">
+                Hitech brings furniture and interiors together under one roof — helping you plan spaces, customise storage and furniture, coordinate finishes and complete installation with a more seamless experience.
+              </p>
+              <Button size="lg" variant="secondary" className="mt-8 rounded-xl" onClick={() => openEnquiryForm()}>
+                Discuss your interior project <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InteriorStep number="01" title="Plan" text="Understand the room, requirement, style and practical priorities." />
+              <InteriorStep number="02" title="Design" text="Develop furniture, storage and finish choices around the space." />
+              <InteriorStep number="03" title="Build" text="Coordinate custom furniture and interior elements with attention to detail." />
+              <InteriorStep number="04" title="Install" text="Bring the pieces together on site for a finished, usable space." />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page py-16 md:py-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">Why Hitech</p>
+          <h2 className="mt-4 font-display text-3xl leading-tight text-foreground md:text-5xl">Premium choices, with a local team you can reach.</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+            More than a catalog — we combine product choice, customisation, interior guidance and local after-sales support for homes and businesses across Wayanad.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <WhyCard title="14+ Years" text="Experience serving furniture and interior customers across Wayanad." />
+          <WhyCard title="Custom Made" text="Furniture can be tailored around space, finish and usage requirements." />
+          <WhyCard title="Furniture + Interiors" text="A simpler journey from individual products to complete room solutions." />
+          <WhyCard title="Local Support" text="A Kalpetta-area team for showroom visits, enquiries and follow-up." />
         </div>
       </section>
 
@@ -323,6 +388,30 @@ const Index = () => {
 };
 
 export default Index;
+
+const PremiumFeature = ({ number, title, text }: { number: string; title: string; text: string }) => (
+  <div className="min-h-44 bg-background p-6 sm:p-8">
+    <p className="text-[11px] font-bold tracking-[0.24em] text-accent">{number}</p>
+    <h3 className="mt-5 font-display text-xl text-foreground">{title}</h3>
+    <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+  </div>
+);
+
+const InteriorStep = ({ number, title, text }: { number: string; title: string; text: string }) => (
+  <div className="rounded-2xl border border-primary-foreground/15 bg-primary-foreground/[0.06] p-6 backdrop-blur-sm">
+    <p className="text-xs font-bold tracking-[0.24em] text-accent">{number}</p>
+    <h3 className="mt-4 font-display text-2xl">{title}</h3>
+    <p className="mt-2 text-sm leading-6 text-primary-foreground/68">{text}</p>
+  </div>
+);
+
+const WhyCard = ({ title, text }: { title: string; text: string }) => (
+  <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
+    <div className="mb-5 h-px w-10 bg-accent" />
+    <h3 className="font-display text-xl text-foreground">{title}</h3>
+    <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
+  </div>
+);
 
 const MiniTrust = ({ title, text }: { title: string; text: string }) => (
   <div className="rounded-xl border border-border bg-muted/25 p-3">
