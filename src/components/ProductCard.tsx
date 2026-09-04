@@ -40,8 +40,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
   const activeVariant = variants.find((v) => v.id === activeVariantId) ?? null;
 
   const baseCover = useMemo(
-    () =>
-      product.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url
+    () => product.product_images?.slice().sort((a, b) => a.display_order - b.display_order)[0]?.image_url
       ?? product.primary_image_url
       ?? undefined,
     [product.product_images, product.primary_image_url],
@@ -53,7 +52,7 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
     if (raw.includes("/storage/v1/object/public/")) {
       return raw.replace("/object/public/", "/render/image/public/")
         + (raw.includes("?") ? "&" : "?")
-        + "width=560&quality=76&resize=contain";
+        + "width=640&quality=80&resize=contain";
     }
     return raw;
   }, [activeVariant, baseCover]);
@@ -81,46 +80,46 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
   return (
     <Link
       to={`/${linkPrefix}/${product.id}`}
-      className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product"
+      className="group block overflow-hidden rounded-[1.4rem] border border-border/80 bg-card shadow-[0_8px_28px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-1.5 hover:border-primary/20 hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)]"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted/25">
+      <div className="relative aspect-[4/5] overflow-hidden bg-gradient-to-b from-muted/25 to-background">
         {cover ? (
           <img
             src={cover}
             alt={product.product_name}
             loading="lazy"
             decoding="async"
-            width={480}
-            height={600}
-            className="h-full w-full object-contain object-center p-3 transition duration-500 group-hover:scale-[1.035]"
+            width={520}
+            height={650}
+            className="h-full w-full object-contain object-center p-4 transition duration-700 ease-out group-hover:scale-[1.045]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Image coming soon</div>
+          <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs text-muted-foreground">Image coming soon</div>
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/10 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/10 via-black/[0.03] to-transparent" />
 
         {onOffer && (
-          <Badge className="absolute left-3 top-3 z-10 rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
+          <Badge className="absolute left-3 top-3 z-10 rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-accent-foreground shadow-sm">
             Special price
           </Badge>
         )}
         {totalStock <= 0 && (
-          <Badge variant="secondary" className="absolute right-3 top-3 z-10 rounded-full">Enquire availability</Badge>
+          <Badge variant="secondary" className="absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-semibold">Enquire availability</Badge>
         )}
 
         <button
           type="button"
           onClick={openEnquiry}
           aria-label={`Enquire about ${product.product_name}`}
-          className="absolute bottom-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition hover:scale-105 hover:bg-primary hover:text-primary-foreground"
+          className="absolute bottom-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-900 shadow-lg backdrop-blur transition hover:scale-105 hover:bg-primary hover:text-primary-foreground"
         >
           <ClipboardList className="h-4 w-4" />
         </button>
       </div>
 
       {variants.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-4 sm:px-5">
           {variants.slice(0, 6).map((v) => {
             const active = v.id === (activeVariantId ?? variants[0]?.id);
             return (
@@ -149,12 +148,12 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
       <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Code {product.product_code}</p>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Code {product.product_code}</p>
             <h3 className="line-clamp-2 font-display text-base leading-snug text-foreground sm:text-lg">
               {toTitleCase(product.product_name)}
             </h3>
           </div>
-          <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+          <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
 
         {!hidePrice && (
@@ -170,8 +169,8 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-          <span className={cn("text-[11px] font-medium", totalStock > 0 ? "text-primary" : "text-muted-foreground")}>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3.5">
+          <span className={cn("text-[11px] font-semibold", totalStock > 0 ? "text-primary" : "text-muted-foreground")}>
             {totalStock > 0 ? "Available now" : "Enquire for availability"}
           </span>
           <span className="text-[11px] font-semibold text-muted-foreground transition group-hover:text-primary">View details</span>
