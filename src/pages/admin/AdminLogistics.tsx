@@ -23,6 +23,7 @@ type PendingQ = {
   delivery_route_id: string | null;
   delivery_place: string | null;
   status: string;
+  commercial_status?: string | null;
   total: number;
   advance_amount: number;
   expected_delivery_date: string | null;
@@ -58,8 +59,8 @@ const AdminLogistics = () => {
       supabase.from("route_waypoints").select("*").order("display_order"),
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, total, advance_amount, expected_delivery_date")
-        .eq("status", "finalized")
+        .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, commercial_status, total, advance_amount, expected_delivery_date")
+        .or("status.eq.finalized,commercial_status.eq.confirmed")
         .not("expected_delivery_date", "is", null),
       supabase
         .from("trip_quotations")
@@ -152,8 +153,6 @@ const AdminLogistics = () => {
         const items = eligible.filter((x) => x.delivery_route_id === r.id);
         const overdue = items.filter((x) => dayKey(x.expected_delivery_date) < new Date().setHours(0, 0, 0, 0)).length;
         const dueTomorrow = items.filter((x) => dayKey(x.expected_delivery_date) <= Date.now() + 86400000).length;
-        // Urgency first, then fuller route load. This avoids sending a tiny low-priority
-        // trip while another route has overdue/today deliveries waiting.
         return { id: r.id, items, score: overdue * 1000 + dueTomorrow * 100 + items.length * 10 };
       }).filter((x) => x.items.length > 0).sort((a, b) => b.score - a.score);
       targetRouteId = routeScores[0]?.id ?? null;
@@ -170,8 +169,6 @@ const AdminLogistics = () => {
         return balanceB - balanceA;
       });
 
-    // Keep the suggestion to a practical first batch. Staff can add/remove orders
-    // on the trip planner after opening it.
     const batch = items.slice(0, 8);
     const qids = batch.map((x) => x.id).join(",");
     navigate(`/admin/trips?new=1&route=${targetRouteId}&qs=${qids}`);
