@@ -1,20 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
-import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Menu, 
-  X, 
-  ClipboardList, 
-  Home, 
-  BookOpen, 
-  LayoutDashboard, 
-  User, 
-  Phone, 
+import {
+  BookOpen,
+  ClipboardList,
+  Home,
   Info,
-  ChevronDown
+  LayoutDashboard,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Phone,
+  User,
+  X,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openEnquiryForm } from "@/lib/enquiryForm";
@@ -23,152 +23,113 @@ export const SiteHeader = () => {
   const { user, isStaff } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [showOthers, setShowOthers] = useState(false);
   const settings = useHomepageSettings();
   const headerRef = useRef<HTMLDivElement>(null);
 
   const catalogVisible = settings?.show_public_catalog !== false;
 
-  const nav = [
-    { to: "/", label: "Home", icon: Home },
-    ...(catalogVisible || isStaff ? [{ to: "/catalog", label: "Catalog", icon: BookOpen }] : []),
-  ];
-
-  // ക്ലിക്ക് ഔട്ട്സൈഡ് ക്ലോസ്
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     };
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // പേജ് മാറുമ്പോൾ ക്ലോസ് ആവാൻ
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
 
+  const desktopLink = "text-sm font-semibold text-slate-700 transition-colors hover:text-[#0f5156]";
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-md">
-      <div className="container-page relative flex items-center justify-between py-3 md:py-4" ref={headerRef}>
-        
-        {/* Brand Logo (Left) */}
-        <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex items-center gap-3">
-          <Logo className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14" />
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+      <div ref={headerRef} className="container-page relative flex min-h-[72px] items-center justify-between gap-4 py-2.5 md:min-h-[82px]">
+        <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex min-w-0 items-center gap-3">
+          <Logo className="h-11 w-11 shrink-0 sm:h-12 sm:w-12 md:h-14 md:w-14" />
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-sm font-bold tracking-tight text-slate-900 md:text-base">Hitech Furniture & Interiors</p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">Kalpetta · Wayanad</p>
+          </div>
         </Link>
 
-        {/* Right Section: Enquiry Form + 3-Line Menu */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          
-          {/* 1. Enquiry Form Button (3-ലൈനിന്റെ തൊട്ടിപ്പുറത്ത് സ്ഥിരമായി) */}
-          <Button
+        <nav className="hidden items-center gap-6 lg:flex" aria-label="Main navigation">
+          <Link to="/" className={cn(desktopLink, location.pathname === "/" && "text-[#0f5156]")}>Home</Link>
+          {catalogVisible || isStaff ? (
+            <Link to="/catalog" className={cn(desktopLink, location.pathname.startsWith("/catalog") && "text-[#0f5156]")}>Furniture</Link>
+          ) : null}
+          <a href="/#interiors" className={desktopLink}>Interiors</a>
+          <Link to="/about" className={cn(desktopLink, location.pathname === "/about" && "text-[#0f5156]")}>About</Link>
+          <a href="/#contact" className={desktopLink}>Showroom</a>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <button
             type="button"
-            size="sm"
             onClick={() => openEnquiryForm()}
-            className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#0f5156] hover:bg-[#0b3d41] text-white font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-95"
+            className="hidden min-h-11 items-center gap-2 rounded-xl bg-[#0f5156] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0b3d41] active:scale-[0.98] sm:inline-flex"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Enquire Now
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openEnquiryForm()}
+            aria-label="Open enquiry form"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0f5156] text-white sm:hidden"
           >
             <ClipboardList className="h-4 w-4" />
-            <span>Enquiry Form</span>
-          </Button>
+          </button>
 
-          {/* 2. 3-Line Hamburger Menu Button */}
           <button
-            aria-label="Toggle menu"
+            aria-label="Toggle navigation menu"
             aria-expanded={open}
             className={cn(
-              "inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 transition-all duration-200 hover:bg-slate-100 active:scale-95",
-              open && "bg-slate-100 text-[#0f5156] border-[#0f5156]/40 shadow-sm"
+              "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50 active:scale-95 lg:hidden",
+              open && "border-[#0f5156]/30 bg-slate-50 text-[#0f5156]",
             )}
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen((value) => !value)}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
-        {/* 100% Solid White Floating Card (വ്യക്തമായി കാണുന്ന ഫുൾ വൈറ്റ് ബോക്സ്) */}
         {open && (
-          <div className="absolute right-4 sm:right-6 top-[calc(100%+0.5rem)] w-64 max-w-[calc(100vw-2rem)] rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-150 z-50">
-            
-            {/* Staff Login / Dashboard */}
-            <Link
-              to={isStaff || user ? "/admin" : "/auth"}
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 mb-2 rounded-2xl bg-[#0f5156] hover:bg-[#0b3d41] text-white font-semibold text-sm shadow-sm transition-all"
-            >
-              {isStaff || user ? (
-                <LayoutDashboard className="h-4 w-4" />
-              ) : (
-                <User className="h-4 w-4" />
+          <div className="absolute right-3 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl lg:hidden">
+            <div className="space-y-1">
+              <MobileLink to="/" icon={Home} label="Home" onClick={() => setOpen(false)} active={location.pathname === "/"} />
+              {(catalogVisible || isStaff) && (
+                <MobileLink to="/catalog" icon={BookOpen} label="Furniture Collection" onClick={() => setOpen(false)} active={location.pathname.startsWith("/catalog")} />
               )}
-              <span>{isStaff || user ? "Dashboard" : "Staff Login"}</span>
-            </Link>
+              <MobileAnchor href="/#interiors" icon={Info} label="Interior Solutions" onClick={() => setOpen(false)} />
+              <MobileLink to="/about" icon={Info} label="About Hitech" onClick={() => setOpen(false)} active={location.pathname === "/about"} />
+              <MobileAnchor href="/#contact" icon={MapPin} label="Showroom & Contact" onClick={() => setOpen(false)} />
+            </div>
 
-            {/* Home & Catalog Links (Solid Dark Text) */}
-            <div className="flex flex-col gap-1">
-              {nav.map((n) => {
-                const IconComponent = n.icon;
-                const isActive = location.pathname === n.to;
-                return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition-colors",
-                      isActive 
-                        ? "bg-slate-100 text-[#0f5156]" 
-                        : "text-slate-800 hover:bg-slate-100 hover:text-[#0f5156]"
-                    )}
-                  >
-                    <IconComponent className={cn("h-4 w-4", isActive ? "text-[#0f5156]" : "text-slate-600")} />
-                    <span>{n.label}</span>
-                  </Link>
-                );
-              })}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openEnquiryForm();
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f5156] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0b3d41]"
+            >
+              <Phone className="h-4 w-4" />
+              Send an Enquiry
+            </button>
 
-              {/* Others Submenu */}
-              <div className="border-t border-slate-100 pt-1 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowOthers(!showOthers)}
-                  className="flex w-full items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-slate-800 hover:bg-slate-100 hover:text-[#0f5156] transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Info className="h-4 w-4 text-slate-600" />
-                    <span>Others</span>
-                  </div>
-                  <ChevronDown
-                    className={cn("h-4 w-4 text-slate-600 transition-transform duration-200", showOthers && "rotate-180")}
-                  />
-                </button>
-
-                {showOthers && (
-                  <div className="ml-3 pl-3 border-l-2 border-slate-200 flex flex-col gap-1 py-1 mt-1">
-                    <a
-                      href="#about"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-[#0f5156]"
-                    >
-                      <Info className="h-3.5 w-3.5 text-slate-500" />
-                      <span>About Us</span>
-                    </a>
-                    <a
-                      href="#contact"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-[#0f5156]"
-                    >
-                      <Phone className="h-3.5 w-3.5 text-slate-500" />
-                      <span>Contact & Showroom</span>
-                    </a>
-                  </div>
-                )}
-              </div>
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <Link
+                to={isStaff || user ? "/admin" : "/auth"}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              >
+                {isStaff || user ? <LayoutDashboard className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                {isStaff || user ? "Open Staff Dashboard" : "Staff Login"}
+              </Link>
             </div>
           </div>
         )}
@@ -176,3 +137,45 @@ export const SiteHeader = () => {
     </header>
   );
 };
+
+type IconType = typeof Home;
+
+type MobileLinkProps = {
+  to: string;
+  icon: IconType;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+};
+
+const MobileLink = ({ to, icon: Icon, label, onClick, active = false }: MobileLinkProps) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className={cn(
+      "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-colors",
+      active ? "bg-slate-100 text-[#0f5156]" : "text-slate-800 hover:bg-slate-50 hover:text-[#0f5156]",
+    )}
+  >
+    <Icon className="h-4 w-4" />
+    <span>{label}</span>
+  </Link>
+);
+
+type MobileAnchorProps = {
+  href: string;
+  icon: IconType;
+  label: string;
+  onClick: () => void;
+};
+
+const MobileAnchor = ({ href, icon: Icon, label, onClick }: MobileAnchorProps) => (
+  <a
+    href={href}
+    onClick={onClick}
+    className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 hover:text-[#0f5156]"
+  >
+    <Icon className="h-4 w-4" />
+    <span>{label}</span>
+  </a>
+);
