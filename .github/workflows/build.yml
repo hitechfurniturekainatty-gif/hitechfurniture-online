@@ -1,4 +1,4 @@
-name: Production Build Check
+name: Production Quality Check
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
     branches: [main]
 
 concurrency:
-  group: production-build-${{ github.ref }}
+  group: production-quality-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -27,6 +27,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Lint source
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
 
       - name: Build production site
         run: npm run build
