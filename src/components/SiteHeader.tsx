@@ -68,15 +68,6 @@ export const SiteHeader = () => {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <Link
-            to={staffDestination}
-            aria-label={staffLabel}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#0f5156]/25 bg-[#0f5156]/5 px-3 text-xs font-bold text-[#0f5156] transition hover:border-[#0f5156]/40 hover:bg-[#0f5156]/10 sm:h-11 sm:px-3.5 sm:text-sm"
-          >
-            {isStaff || user ? <LayoutDashboard className="h-4 w-4" /> : <User className="h-4 w-4" />}
-            <span className="hidden xs:inline sm:inline">{staffLabel}</span>
-          </Link>
-
           <button
             type="button"
             onClick={() => openEnquiryForm()}
@@ -99,7 +90,7 @@ export const SiteHeader = () => {
             aria-label="Toggle navigation menu"
             aria-expanded={open}
             className={cn(
-              "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50 active:scale-95 lg:hidden",
+              "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50 active:scale-95 sm:h-11 sm:w-11",
               open && "border-[#0f5156]/30 bg-slate-50 text-[#0f5156]",
             )}
             onClick={() => setOpen((value) => !value)}
@@ -109,7 +100,7 @@ export const SiteHeader = () => {
         </div>
 
         {open && (
-          <div className="absolute right-3 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl lg:hidden">
+          <div className="absolute right-3 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl">
             <div className="space-y-1">
               <MobileLink to="/" icon={Home} label="Home" onClick={() => setOpen(false)} active={location.pathname === "/"} />
               {(catalogVisible || isStaff) && (
