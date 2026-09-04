@@ -120,7 +120,7 @@ export const LuxuryScrollHero = () => {
   }, [progress, reduceMotion]);
 
   const activeIndex = Math.min(Math.floor(progress * SCENES.length), SCENES.length - 1);
-  const introFade = clamp(1 - progress * 2.35);
+  const introFade = clamp(1 - progress * 1.45);
 
   return (
     <>
@@ -165,32 +165,38 @@ export const LuxuryScrollHero = () => {
                       }}
                     />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/60" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-black/10" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/70" />
                 </div>
               );
             })}
           </div>
 
           <div className="absolute inset-0 z-10 flex flex-col justify-between px-5 pb-10 pt-24 sm:px-8 md:px-12 md:pt-28 lg:px-20">
-            <div className="max-w-4xl" style={{ opacity: Math.max(introFade, 0.08) }}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/15 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/90 backdrop-blur-md sm:text-xs">
+            <div className="max-w-4xl" style={{ opacity: Math.max(introFade, 0.42) }}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white backdrop-blur-md sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5" />
                 Hitech Furniture & Interiors
               </div>
 
-              <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.02] text-white drop-shadow-lg sm:text-5xl md:text-6xl lg:text-7xl">
+              <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.02] text-white [text-shadow:0_3px_18px_rgba(0,0,0,0.65)] sm:text-5xl md:text-6xl lg:text-7xl">
                 Furniture crafted for the way you live.
               </h1>
 
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/88 sm:text-base md:text-lg">
+              <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white sm:text-xs">
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Custom Furniture</span>
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Premium Collections</span>
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Complete Interiors</span>
+              </div>
+
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.75)] sm:text-base md:text-lg">
                 Custom furniture, premium collections and complete interior solutions for homes and businesses across Wayanad.
               </p>
 
               <div className="pointer-events-auto mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/catalog"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-white/95"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-slate-100"
                 >
                   Explore Collection
                   <ArrowRight className="h-4 w-4" />
@@ -198,7 +204,7 @@ export const LuxuryScrollHero = () => {
                 <button
                   type="button"
                   onClick={() => openEnquiryForm()}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/20"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/50 bg-black/35 px-6 py-3 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-black/50"
                 >
                   <ClipboardList className="h-4 w-4" />
                   Get Free Consultation
@@ -207,8 +213,8 @@ export const LuxuryScrollHero = () => {
             </div>
 
             <div className="flex items-end justify-between gap-6">
-              <div className="rounded-xl border border-white/20 bg-black/20 px-4 py-3 backdrop-blur-md">
-                <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/65">Explore</p>
+              <div className="rounded-xl border border-white/25 bg-black/40 px-4 py-3 text-white shadow-lg backdrop-blur-md">
+                <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/80">Explore</p>
                 <p className="mt-1 font-display text-xl text-white md:text-2xl">{SCENES[activeIndex]?.label}</p>
               </div>
 
