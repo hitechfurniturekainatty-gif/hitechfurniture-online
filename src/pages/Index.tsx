@@ -21,7 +21,6 @@ import {
 } from "@/lib/homepage";
 import { cn } from "@/lib/utils";
 
-// Below-the-fold — loaded lazily so the home page's initial JS payload is smaller on mobile.
 const SiteFooter = lazy(() =>
   import("@/components/SiteFooter").then((m) => ({ default: m.SiteFooter })),
 );
@@ -39,7 +38,6 @@ const Index = () => {
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
 
   useEffect(() => {
-    // Fire both queries in parallel — saves one full round-trip on mobile.
     let cancelled = false;
     const loadCategories = async () => {
       const { data } = await supabase
@@ -66,10 +64,8 @@ const Index = () => {
       setSlides(hp.slides);
       setSections(hp.sections);
       setSettings(hp.settings);
-    }).catch(() => { /* fail silent — page still renders */ });
+    }).catch(() => { /* page still renders if optional homepage data fails */ });
 
-    // Defer realtime websocket + chunk prefetch to idle time so they
-    // never compete with the LCP image / first paint on slow networks.
     type IdleCb = (cb: () => void, opts?: { timeout: number }) => number;
     const idle = (window as unknown as { requestIdleCallback?: IdleCb }).requestIdleCallback;
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -93,9 +89,7 @@ const Index = () => {
     };
   }, []);
 
-  const heroIntro = sections.find((s) => s.section_key === "hero_intro");
   const brandStory = sections.find((s) => s.section_key === "brand_story");
-  // All sections except hero_intro and brand_story render below the hero. Honour admin display_order.
   const belowSections = sections.filter((s) => s.section_key !== "hero_intro" && s.section_key !== "brand_story");
 
   return (
@@ -109,129 +103,162 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-
       <LuxuryScrollHero />
 
+      <section id="about" className="container-page py-14 md:py-20">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft">
+          <div className="grid md:grid-cols-[0.8fr_1.2fr]">
+            <div className="flex flex-col justify-between bg-primary px-7 py-9 text-primary-foreground md:px-10 md:py-12">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary-foreground/70">
+                  {brandStory?.eyebrow ?? "14+ Years of Craftsmanship"}
+                </p>
+                <p className="mt-5 font-display text-4xl leading-none md:text-5xl">14+</p>
+                <p className="mt-2 max-w-[14rem] text-sm leading-relaxed text-primary-foreground/75">
+                  Years serving homes and businesses across Wayanad.
+                </p>
+              </div>
+              <p className="mt-10 text-xs uppercase tracking-[0.22em] text-primary-foreground/60">Kalpetta · Wayanad</p>
+            </div>
 
+            <div className="p-7 sm:p-9 md:p-12">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">Our story</p>
+              <h2 className="mt-3 max-w-2xl font-display text-3xl leading-tight text-foreground md:text-4xl">
+                {brandStory?.title ?? "Designed for your home. Crafted for your life."}
+              </h2>
+              <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">
+                {brandStory?.body ?? "From custom sofas and solid-wood dining sets to wardrobes and complete interior solutions, Hitech brings together craftsmanship, comfort and thoughtful design. We create furniture around your space, your needs and the way you live — with local support from our Wayanad team."}
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link to="/about" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                  Discover Hitech <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+                  Browse furniture <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-
-      {/* Brand story — shown on every visit. Text editable via admin homepage sections (section_key='brand_story'). */}
-      <section className="container-page py-12 md:py-16">
-        <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-8 text-center shadow-card-soft md:p-12">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-            {brandStory?.eyebrow ?? "14+ Years of Craftsmanship"}
-          </p>
-          <h2 className="font-display text-3xl text-foreground md:text-4xl">
-            {brandStory?.title ? (
-              brandStory.title
-            ) : (
-              <>Welcome to <span className="text-primary">Hitech Furniture &amp; Interiors</span></>
-            )}
-          </h2>
-          <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-base leading-relaxed text-muted-foreground md:text-lg">
-            {brandStory?.body ?? `We are a trusted retail and wholesale furniture shop dedicated to providing high-quality solutions for homes and businesses. Our specialty is complete customization — we manufacture all types of custom furniture tailored exactly to your space, style, and requirements.\n\nWhether you are looking for a single statement piece, exploring functional designs with natural wood textures, or placing a bulk wholesale order, our expert interior design team is here to bring your vision to life.`}
+      <section className="container-page pb-5">
+        <div className="mx-auto max-w-4xl rounded-2xl bg-muted/55 px-5 py-4 text-center">
+          <p className="text-xs leading-6 text-muted-foreground sm:text-sm">
+            Serving <strong className="text-foreground">Kalpetta</strong>, <strong className="text-foreground">Sulthan Bathery</strong>,{" "}
+            <strong className="text-foreground">Mananthavady</strong>, <strong className="text-foreground">Vythiri</strong>,{" "}
+            <strong className="text-foreground">Meppadi</strong>, <strong className="text-foreground">Pulpally</strong> and the wider Wayanad district.
           </p>
         </div>
       </section>
 
-      {/* Service area — genuine, single section (not separate per-town pages,
-          which Google treats as doorway-page spam for a single-location business). */}
-      <section className="container-page pb-4">
-        <p className="mx-auto max-w-3xl text-center text-sm text-muted-foreground">
-          Serving customers across <strong>Kalpetta</strong>, <strong>Sulthan Bathery</strong>,{" "}
-          <strong>Mananthavady</strong>, <strong>Vythiri</strong>, <strong>Meppadi</strong>,{" "}
-          <strong>Pulpally</strong> and the wider Wayanad district — visit our Edappetty showroom
-          or enquire on WhatsApp for delivery to your area.
-        </p>
-      </section>
-
-      {/* Categories */}
-      <section className="container-page py-16 md:py-20">
-        <div className="mb-10 flex items-end justify-between gap-6">
+      <section className="container-page py-14 md:py-20">
+        <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Browse</p>
-            <h2 className="font-display text-3xl text-foreground md:text-4xl">Shop by category</h2>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Furniture collection</p>
+            <h2 className="font-display text-3xl text-foreground md:text-4xl">Explore by category</h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              Browse our live collection and find pieces for every room, style and requirement.
+            </p>
           </div>
-          <Link to="/catalog?cat=__all__" className="text-sm font-medium text-primary hover:underline">
-            View all →
+          <Link to="/catalog?cat=__all__" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
+            View all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         {categories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-            <p className="text-muted-foreground">No categories yet. Sign in to your dashboard to add the first one.</p>
+            <p className="text-muted-foreground">Our furniture categories will appear here.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
             {categories.map((c) => (
               <Link
                 key={c.id}
                 to={`/catalog?cat=${c.slug}`}
-                className="img-frame group relative aspect-square transition-smooth hover:shadow-product"
+                className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product"
               >
-                {c.image_url ? (
-                  <img
-                    src={
-                      c.image_url.includes("/storage/v1/object/public/")
-                        ? c.image_url.replace("/object/public/", "/render/image/public/") +
-                          (c.image_url.includes("?") ? "&" : "?") +
-                          "width=320&quality=72&resize=contain"
-                        : c.image_url
-                    }
-                    alt={c.name}
-                    loading="lazy"
-                    decoding="async"
-                    width={320}
-                    height={320}
-                    className="h-full w-full object-contain p-4 transition-smooth group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
-                    <span className="font-display text-2xl text-primary">{c.name[0]}</span>
-                  </div>
-                )}
-                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-foreground/70 via-foreground/0 to-transparent" />
-                <span className="absolute bottom-3 left-3 right-3 z-10 font-display text-base font-semibold text-background">
-                  {c.name}
-                </span>
+                <div className="relative aspect-[1/0.88] overflow-hidden bg-muted/40">
+                  {c.image_url ? (
+                    <img
+                      src={
+                        c.image_url.includes("/storage/v1/object/public/")
+                          ? c.image_url.replace("/object/public/", "/render/image/public/") +
+                            (c.image_url.includes("?") ? "&" : "?") +
+                            "width=360&quality=76&resize=contain"
+                          : c.image_url
+                      }
+                      alt={c.name}
+                      loading="lazy"
+                      decoding="async"
+                      width={360}
+                      height={320}
+                      className="h-full w-full object-contain p-4 transition duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+                      <span className="font-display text-3xl text-primary">{c.name[0]}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 px-4 py-3.5">
+                  <span className="text-sm font-bold text-foreground">{c.name}</span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                </div>
               </Link>
             ))}
           </div>
         )}
+
+        <Link to="/catalog?cat=__all__" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
+          View full catalog <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
 
-      {/* Featured products */}
-      <section className="container-page py-16 md:py-20">
-        <div className="mb-10">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Featured</p>
-          <h2 className="font-display text-3xl text-foreground md:text-4xl">Hand-picked pieces</h2>
+      <section className="border-y border-border bg-muted/30">
+        <div className="container-page py-14 md:py-20">
+          <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Featured collection</p>
+              <h2 className="font-display text-3xl text-foreground md:text-4xl">Selected pieces for your home</h2>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                A curated selection from our current furniture catalog, chosen to help you start exploring.
+              </p>
+            </div>
+            <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
+              Shop all furniture <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {featured.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
+              <p className="text-muted-foreground">Featured products will appear here.</p>
+              <Button asChild variant="link" className="mt-2">
+                <Link to="/catalog">Browse the catalog →</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+              {featured.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
+
+          <Link to="/catalog" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
+            Shop all furniture <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        {featured.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-            <p className="text-muted-foreground">No featured products yet.</p>
-            <Button asChild variant="link" className="mt-2">
-              <Link to="/catalog">Browse the catalog →</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-            {featured.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        )}
       </section>
 
-      {/* Admin-managed sections (made-to-order, about, find-us, etc.) */}
       {belowSections.length > 0 && (
-        <div className="container-page space-y-16 pb-20 md:space-y-20">
+        <div className="container-page space-y-16 py-16 md:space-y-20 md:py-20">
           {belowSections.map((sec) => (
             <DynamicSection key={sec.id} section={sec} />
           ))}
         </div>
       )}
 
-      {/* Google review CTA — quick 1-tap rating + scannable QR for in-store. */}
       {settings?.show_google_review !== false && <GoogleReviewCta />}
 
       <Suspense fallback={null}>
@@ -243,8 +270,6 @@ const Index = () => {
 };
 
 export default Index;
-
-// ---------- Google review CTA ----------
 
 const GOOGLE_REVIEW_URL =
   "https://search.google.com/local/writereview?placeid=ChIJh4fFy6kMpjsR9mGrdWARwXo";
@@ -277,12 +302,8 @@ const GoogleReviewCta = () => {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 shadow-sm">
             <Star className="h-7 w-7 fill-current" />
           </div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-            Loved your experience?
-          </p>
-          <h2 className="font-display text-3xl text-foreground md:text-4xl">
-            Rate us on Google
-          </h2>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Loved your experience?</p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">Rate us on Google</h2>
           <div className="mt-3 flex items-center justify-center gap-1 text-amber-500">
             {Array.from({ length: 5 }).map((_, i) => (
               <svg key={i} viewBox="0 0 24 24" className="h-6 w-6 fill-current drop-shadow-sm">
@@ -303,23 +324,12 @@ const GoogleReviewCta = () => {
             </Button>
             <Button size="lg" variant="outline" onClick={handleCopy}>
               {copied ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  Link copied
-                </>
+                <><Check className="h-4 w-4 text-emerald-600" />Link copied</>
               ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy review link
-                </>
+                <><Copy className="h-4 w-4" />Copy review link</>
               )}
             </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={() => setShowQr((v) => !v)}
-              aria-expanded={showQr}
-            >
+            <Button size="lg" variant="ghost" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr}>
               <QrCode className="h-4 w-4" />
               {showQr ? "Hide QR code" : "Show QR code"}
             </Button>
@@ -338,9 +348,7 @@ const GoogleReviewCta = () => {
                   className="h-44 w-44"
                 />
               </div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Scan with your phone camera
-              </p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Scan with your phone camera</p>
             </div>
           )}
         </div>
@@ -348,8 +356,6 @@ const GoogleReviewCta = () => {
     </section>
   );
 };
-
-// ---------- helpers ----------
 
 const DynamicSection = ({ section }: { section: HomepageSection }) => {
   const cls = presetClasses(section.style_preset);
@@ -367,25 +373,17 @@ const DynamicSection = ({ section }: { section: HomepageSection }) => {
     )
   ) : null;
 
-  // Featured ("bold") preset uses a dark gradient banner like the old made-to-order card.
   if (section.style_preset === "bold") {
     return (
       <section className={cn("hero-bg relative overflow-hidden rounded-3xl px-6 py-14 text-primary-foreground md:px-16 md:py-20", align)}>
-        {section.eyebrow && (
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-accent">{section.eyebrow}</p>
-        )}
-        {section.title && (
-          <h2 className="mx-auto max-w-2xl font-display text-3xl md:text-5xl">{section.title}</h2>
-        )}
-        {section.body && (
-          <p className="mx-auto mt-4 max-w-xl text-primary-foreground/80 whitespace-pre-line">{section.body}</p>
-        )}
+        {section.eyebrow && <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-accent">{section.eyebrow}</p>}
+        {section.title && <h2 className="mx-auto max-w-2xl font-display text-3xl md:text-5xl">{section.title}</h2>}
+        {section.body && <p className="mx-auto mt-4 max-w-xl whitespace-pre-line text-primary-foreground/80">{section.body}</p>}
         {cta && <div className={cn(section.text_align === "center" ? "flex justify-center" : "")}>{cta}</div>}
       </section>
     );
   }
 
-  // Two-column when an image is supplied; single column otherwise.
   const galleryUrls = (section.image_urls ?? "")
     .split(/\r?\n/)
     .map((s) => s.trim())
