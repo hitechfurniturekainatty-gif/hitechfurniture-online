@@ -13,6 +13,9 @@ const phoneToEmail = (phone: string) => `${phone.replace(/\D+/g, "")}@workers.lo
 const pinToPassword = (pin: string) => `wkr_${pin.replace(/\D+/g, "")}_pin`;
 const isPhoneLike = (s: string) => /^[\d\s+\-()]+$/.test(s.trim()) && s.replace(/\D+/g, "").length >= 8;
 
+const PRODUCTION_ORIGIN = "https://hitechfurniture.online";
+const appOrigin = () => import.meta.env.PROD ? PRODUCTION_ORIGIN : window.location.origin;
+
 const safeNext = (raw: string | null) =>
   raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
 
@@ -46,14 +49,14 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "forgot") {
-        const email = identifier.trim();
+        const email = identifier.trim().toLowerCase();
         if (!email || isPhoneLike(email)) throw new Error("Enter your staff email address.");
-        const redirectTo = `${window.location.origin}/auth`;
+        const redirectTo = `${appOrigin()}/auth?type=recovery`;
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
         toast({
           title: "Reset link sent",
-          description: "Check your email and open the password reset link.",
+          description: "Check Inbox and Spam. The reset link will open the Hitech website, not localhost.",
         });
         return;
       }
@@ -73,9 +76,9 @@ const Auth = () => {
       }
 
       if (mode === "signup") {
-        const redirectUrl = `${window.location.origin}${next ?? "/admin"}`;
+        const redirectUrl = `${appOrigin()}${next ?? "/admin"}`;
         const { error } = await supabase.auth.signUp({
-          email: identifier,
+          email: identifier.trim().toLowerCase(),
           password,
           options: { emailRedirectTo: redirectUrl, data: { display_name: name } },
         });
@@ -86,7 +89,7 @@ const Auth = () => {
         const useWorker = isPhoneLike(identifier);
         const creds = useWorker
           ? { email: phoneToEmail(identifier), password: pinToPassword(password) }
-          : { email: identifier, password };
+          : { email: identifier.trim().toLowerCase(), password };
         const { error } = await supabase.auth.signInWithPassword(creds);
         if (error) throw error;
         if (next) {
