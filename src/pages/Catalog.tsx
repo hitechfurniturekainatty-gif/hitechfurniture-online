@@ -150,7 +150,7 @@ const Catalog = () => {
   }, [products]);
 
   const isLandingView = !activeCatSlug && !deferredSearch.trim();
-  const isSubPickerView = !!activeCatSlug && !activeSubSlug && !deferredSearch.trim() && subsForActive.length > 0;
+  const isSubPickerView = false;
 
   const productCountBySub = useMemo(() => {
     const m: Record<string, number> = {};
@@ -200,10 +200,10 @@ const Catalog = () => {
         <div className="container-page py-12 md:py-16">
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent">Hitech furniture collection</p>
           <h1 className="max-w-3xl font-display text-4xl leading-tight text-foreground md:text-5xl">
-            {isLandingView ? "Furniture for every room, style and space." : isSubPickerView ? toTitleCase(activeCat?.name ?? "") : activeCat ? toTitleCase(activeCat.name) : "Browse our collection"}
+            {isLandingView ? "Explore by category" : activeCat ? toTitleCase(activeCat.name) : "Browse our collection"}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-            {isLandingView ? "Explore our live furniture catalog by category, or search directly by product name or code." : isSubPickerView ? "Choose the collection you want to explore." : "Browse available designs, compare options and open any product for full details and enquiry."}
+            {isLandingView ? "Choose a furniture category below to view the products inside it, or search directly by product name or code." : "Browse available designs, compare options and open any product for full details and enquiry."}
           </p>
         </div>
       </section>
@@ -276,7 +276,7 @@ const Catalog = () => {
             <EmptyState title="No categories yet" text="Furniture categories will appear here once published." />
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {mainCats.filter((c) => (productCountByCat[c.id] ?? 0) > 0).map((c) => (
+              {mainCats.map((c) => (
                 <button key={c.id} type="button" onClick={() => setCat(c.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
                   <div className="aspect-[4/3] overflow-hidden bg-muted/30">{c.image_url ? <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-4xl text-primary">{c.name[0]}</span></div>}</div>
                   <div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg text-foreground">{toTitleCase(c.name)}</p><p className="mt-1 text-xs text-muted-foreground">{productCountByCat[c.id] ?? 0} pieces</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
@@ -296,7 +296,7 @@ const Catalog = () => {
           </>
         ) : (
           <>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-2"><Button variant="ghost" size="sm" onClick={() => { setCat(null); setSearch(""); }}><ArrowLeft className="mr-1.5 h-4 w-4" /> All categories</Button>{activeCat && subsForActive.length > 0 && <Button variant="ghost" size="sm" onClick={() => setSub(null)}><ArrowLeft className="mr-1.5 h-4 w-4" /> {activeCat.name} sub-categories</Button>}</div>{(activeSubSlug || search) && <Button variant="ghost" size="sm" onClick={() => { setSub(null); setSearch(""); }}><X className="mr-1 h-3 w-3" /> Clear</Button>}</div>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-2"><Button variant="ghost" size="sm" onClick={() => { setCat(null); setSearch(""); }}><ArrowLeft className="mr-1.5 h-4 w-4" /> All categories</Button></div>{(activeSubSlug || search) && <Button variant="ghost" size="sm" onClick={() => { setSub(null); setSearch(""); }}><X className="mr-1 h-3 w-3" /> Clear</Button>}</div>
             <div className="mb-3 flex flex-wrap gap-2"><Chip active={!activeCatSlug || activeCatSlug === "__all__"} onClick={() => setCat("__all__")}>All</Chip>{mainCats.map((c) => <Chip key={c.id} active={activeCatSlug === c.slug} onClick={() => setCat(c.slug)}>{toTitleCase(c.name)}</Chip>)}</div>
             {activeCat && subsForActive.length > 0 && <div className="mb-8 flex flex-wrap gap-2"><Chip subtle active={!activeSubSlug || activeSubSlug === "__all__"} onClick={() => setSub("__all__")}>All {toTitleCase(activeCat.name)}</Chip>{subsForActive.map((s) => <Chip subtle key={s.id} active={activeSubSlug === s.slug} onClick={() => setSub(s.slug)}>{toTitleCase(s.name)}</Chip>)}</div>}
           </>
