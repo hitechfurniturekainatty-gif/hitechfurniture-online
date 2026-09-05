@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,10 +33,10 @@ export function InvoiceDialog({ open, invoice, onClose, onSave }: {
     setPaste("");
   }, [invoice, open]);
 
-  if (!invoice) return null;
-
   const totalCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
-  const invalidRows = useMemo(() => rows.filter((r) => !String(r.item || "").trim() || Number(r.qty) <= 0 || Number(r.amountWithTax) < 0), [rows]);
+  const invalidRows = rows.filter((r) => !String(r.item || "").trim() || Number(r.qty) <= 0 || Number(r.amountWithTax) < 0);
+
+  if (!invoice) return null;
 
   const append = (extra: Row[], mode: "append" | "replace") => {
     if (!extra.length) {
