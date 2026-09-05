@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BriefcaseBusiness, FileText, IndianRupee, Inbox, MapPinned, PackageCheck, Ruler, Truck, Warehouse } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type RoleFocusPanelProps = {
   isAdmin: boolean;
@@ -43,6 +44,16 @@ const deliveryActions: Action[] = [
   { label: "Route View", sub: "Route and delivery planning", to: "/admin/logistics", icon: MapPinned },
 ];
 
+function actionTone(label: string) {
+  const l = label.toLowerCase();
+  if (l.includes("receiv") || l.includes("balance")) return "admin-accent-sand";
+  if (l.includes("production")) return "admin-accent-rose";
+  if (l.includes("warehouse") || l.includes("dispatch") || l.includes("pick")) return "admin-accent-blush";
+  if (l.includes("delivery") || l.includes("trip") || l.includes("route")) return "admin-accent-sage";
+  if (l.includes("measure")) return "admin-accent-peach";
+  return "admin-accent-mint";
+}
+
 export function RoleFocusPanel({ isAdmin, isOfficeStaff, isWarehouse, isDelivery }: RoleFocusPanelProps) {
   const actions = isAdmin
     ? adminActions
@@ -62,18 +73,18 @@ export function RoleFocusPanel({ isAdmin, isOfficeStaff, isWarehouse, isDelivery
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <h2 className="font-display text-lg font-semibold sm:text-xl">My Focus</h2>
-        <Badge variant="outline" className="font-normal">{roleLabel}</Badge>
+        <Badge variant="outline" className="font-normal bg-white">{roleLabel}</Badge>
       </div>
       <div className={`grid gap-2 ${actions.length >= 4 ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2"}`}>
         {actions.map((a) => (
           <Link key={a.label} to={a.to} className="group">
-            <Card className="h-full border-border/80 bg-card transition hover:border-primary/30 hover:shadow-sm">
+            <Card className="h-full border-border/80 bg-card transition-colors hover:border-[#cfd7d2]">
               <CardContent className="flex items-start gap-3 p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+                <span className={cn("admin-accent-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", actionTone(a.label))}>
                   <a.icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">{a.label}</p>
+                  <p className="text-sm font-semibold text-[#303a3b]">{a.label}</p>
                   <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{a.sub}</p>
                 </div>
               </CardContent>
