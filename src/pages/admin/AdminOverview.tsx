@@ -50,10 +50,15 @@ const AdminOverview = () => {
 
   return (
     <AdminShell>
-      <div className="mb-6 rounded-2xl border border-border/80 bg-card px-5 py-5 shadow-sm sm:mb-8 sm:px-6">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Hitech Furniture & Interiors</p>
-        <h1 className="mt-1 font-display text-2xl sm:text-3xl">{roleTitle}</h1>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">{roleSub}</p>
+      <div className="admin-page-head mb-6 px-5 py-5 sm:mb-7 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="h-8 w-1 rounded-full bg-[#96aba2]" aria-hidden="true" />
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Hitech Furniture & Interiors</p>
+            <h1 className="mt-1 font-display text-2xl font-semibold text-[#263238] sm:text-3xl">{roleTitle}</h1>
+          </div>
+        </div>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">{roleSub}</p>
       </div>
 
       {sections.length === 0 ? (
@@ -61,7 +66,7 @@ const AdminOverview = () => {
       ) : (
         <div>
           {sections.map((s) => (
-            <div key={s.key} className="border-t border-border/60 py-8 first:border-t-0 first:pt-0">
+            <div key={s.key} className="border-t border-[#e7e9e6] py-7 first:border-t-0 first:pt-0 sm:py-8">
               {s.node}
             </div>
           ))}
