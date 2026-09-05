@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,19 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
   const { kind, config } = scheme;
   const set = (patch: any) => onChange({ ...config, ...patch });
 
+  // Safety rule: family/contains matching is NEVER assumed automatically.
+  // Rules created by the previous UI used family as a default. Unless the user
+  // explicitly selected family matching, convert those implicit rules to exact.
+  useEffect(() => {
+    if (kind !== "bogo" || !Array.isArray(config?.rules)) return;
+    const needsNormalising = config.rules.some((r: any) => r?.matchMode !== "exact" && r?.familyExplicit !== true);
+    if (!needsNormalising) return;
+    onChange({
+      ...config,
+      rules: config.rules.map((r: any) => r?.familyExplicit === true ? r : { ...r, matchMode: "exact", familyExplicit: false }),
+    });
+  }, [kind, config, onChange]);
+
   if (kind === "company") return <div><Label className="text-xs">1 free per N qty</Label><Input type="number" min={1} value={config.everyQty} onChange={(e) => set({ everyQty: Number(e.target.value) || 1 })} className="w-32" /></div>;
   if (kind === "own") return <div><Label className="text-xs">Target margin %</Label><Input type="number" min={0} value={config.targetMargin} onChange={(e) => set({ targetMargin: Number(e.target.value) || 0 })} className="w-32" /></div>;
   if (kind === "slab") {
@@ -19,30 +33,33 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
     const legacy = !Array.isArray(config?.rules);
     const rules: any[] = Array.isArray(config?.rules)
       ? config.rules
-      : [{ purchaseItem: "", matchMode: "family", buyQty: Math.max(1, Number(config?.buyQty) || 10), freeQty: Math.max(0, Number(config?.getQty) || 1), freeItem: "" }];
+      : [{ purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: Math.max(1, Number(config?.buyQty) || 10), freeQty: Math.max(0, Number(config?.getQty) || 1), freeItem: "" }];
     const write = (next: any[]) => onChange({ rules: next });
     const updateRule = (i: number, patch: any) => { const next = rules.slice(); next[i] = { ...next[i], ...patch }; write(next); };
-    const addRule = () => write([...rules, { purchaseItem: "", matchMode: "family", buyQty: 10, freeQty: 1, freeItem: "" }]);
+    const addRule = () => write([...rules, { purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: 10, freeQty: 1, freeItem: "" }]);
     return (
       <div className="space-y-3 rounded-md border bg-muted/20 p-3">
         <div>
           <Label className="text-sm font-semibold">Scheme items</Label>
-          <p className="mt-1 text-xs text-muted-foreground">Only matching invoice items are counted. Other invoice items stay in the invoice but do not affect this scheme.</p>
-          {legacy && <p className="mt-1 text-xs text-amber-700">Old Buy X Get Y rule detected. Add the purchase item name below to convert it to item-based calculation.</p>}
+          <p className="mt-1 text-xs text-muted-foreground">Only the item rules you add are calculated. Exact item matching is the default. Nothing else is grouped automatically.</p>
+          {legacy && <p className="mt-1 text-xs text-amber-700">Old Buy X Get Y rule detected. Add the exact purchase item name below to convert it to item-based calculation.</p>}
         </div>
-        {rules.map((rule, i) => (
-          <div key={i} className="rounded-lg border bg-background p-3 space-y-3">
-            <div className="grid gap-2 md:grid-cols-[2fr_1fr_90px_90px_2fr_40px] items-end">
-              <div><Label className="text-xs">Purchase item / family</Label><Input value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond or Imperio 75x72" /></div>
-              <div><Label className="text-xs">Match</Label><Select value={rule.matchMode === "exact" ? "exact" : "family"} onValueChange={(v) => updateRule(i, { matchMode: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="family">Product family</SelectItem><SelectItem value="exact">Exact item</SelectItem></SelectContent></Select></div>
-              <div><Label className="text-xs">Buy Qty</Label><Input type="number" min={1} value={rule.buyQty ?? 10} onChange={(e) => updateRule(i, { buyQty: Math.max(1, Number(e.target.value) || 1) })} /></div>
-              <div><Label className="text-xs">Free Qty</Label><Input type="number" min={0} value={rule.freeQty ?? 1} onChange={(e) => updateRule(i, { freeQty: Math.max(0, Number(e.target.value) || 0) })} /></div>
-              <div><Label className="text-xs">Free item</Label><Input value={rule.freeItem || ""} onChange={(e) => updateRule(i, { freeItem: e.target.value })} placeholder="Same item or different free item" /></div>
-              <Button size="icon" variant="ghost" onClick={() => write(rules.filter((_, j) => j !== i))} disabled={rules.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+        {rules.map((rule, i) => {
+          const explicitFamily = rule.matchMode === "family" && rule.familyExplicit === true;
+          return (
+            <div key={i} className="rounded-lg border bg-background p-3 space-y-3">
+              <div className="grid gap-2 md:grid-cols-[2fr_1fr_90px_90px_2fr_40px] items-end">
+                <div><Label className="text-xs">Purchase item</Label><Input value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond 75x60" /></div>
+                <div><Label className="text-xs">Match rule</Label><Select value={explicitFamily ? "family" : "exact"} onValueChange={(v) => updateRule(i, { matchMode: v, familyExplicit: v === "family" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="exact">Exact item only</SelectItem><SelectItem value="family">Family / contains — only when I choose</SelectItem></SelectContent></Select></div>
+                <div><Label className="text-xs">Buy Qty</Label><Input type="number" min={1} value={rule.buyQty ?? 10} onChange={(e) => updateRule(i, { buyQty: Math.max(1, Number(e.target.value) || 1) })} /></div>
+                <div><Label className="text-xs">Free Qty</Label><Input type="number" min={0} value={rule.freeQty ?? 1} onChange={(e) => updateRule(i, { freeQty: Math.max(0, Number(e.target.value) || 0) })} /></div>
+                <div><Label className="text-xs">Free item</Label><Input value={rule.freeItem || ""} onChange={(e) => updateRule(i, { freeItem: e.target.value })} placeholder="Same item or different free item" /></div>
+                <Button size="icon" variant="ghost" onClick={() => write(rules.filter((_, j) => j !== i))} disabled={rules.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              </div>
+              {rule.purchaseItem && <div className="text-xs text-muted-foreground">{explicitFamily ? "Only because you selected Family / contains: matching variants will be combined" : "Exact only: no other size, model or similar name will be included"} · Buy {Math.max(1, Number(rule.buyQty) || 1)} → {Math.max(0, Number(rule.freeQty) || 0)} free {rule.freeItem || rule.purchaseItem}</div>}
             </div>
-            {rule.purchaseItem && <div className="text-xs text-muted-foreground">{rule.matchMode === "exact" ? "Exact invoice item" : "All invoice variants containing this family name"} → Buy {Math.max(1, Number(rule.buyQty) || 1)} → {Math.max(0, Number(rule.freeQty) || 0)} free {rule.freeItem || rule.purchaseItem}</div>}
-          </div>
-        ))}
+          );
+        })}
         <Button size="sm" variant="outline" onClick={addRule}><Plus className="h-4 w-4" /> Add Scheme Item</Button>
       </div>
     );
