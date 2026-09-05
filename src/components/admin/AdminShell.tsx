@@ -3,9 +3,9 @@ import { Link, NavLink as RRNavLink, useNavigate, useLocation } from "react-rout
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, Users, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
+import { LayoutDashboard, FolderTree, Package, LogOut, Loader2, ExternalLink, FileText, HardHat, Ruler, UserCircle, Map, Truck, Route, LifeBuoy, Trash2, Home, ChevronDown, Briefcase, Boxes, UsersRound, Archive, Activity, GitBranch, BookOpen, Warehouse, Vault, Inbox, Calculator, Settings, ClipboardList, AlertTriangle, PackagePlus, ClipboardCheck, ArrowRightLeft, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isBacklogUnlocked, isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
+import { isBacklogMenuRevealed, revealBacklogMenu, lockBacklog } from "@/components/admin/BacklogGate";
 import { HelpFab } from "@/components/help/HelpFab";
 import { PipelineNotificationsBell } from "@/components/admin/PipelineNotificationsBell";
 
@@ -13,327 +13,31 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, isWarehouse, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // IMPORTANT: All hooks must run on every render, BEFORE any early returns
-  // below (loading / !user / !isStaff). Otherwise React throws
-  // "Rendered more hooks than during the previous render" when `loading`
-  // flips from true → false.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-
-  // Track Backlog unlock state so the sidebar item disappears the moment the
-  // 15-minute window expires (or the admin signs out). Re-check every 5s.
   const [backlogUnlocked, setBacklogUnlocked] = useState<boolean>(() => isBacklogMenuRevealed());
-  useEffect(() => {
-    const tick = () => setBacklogUnlocked(isBacklogMenuRevealed());
-    tick();
-    const id = window.setInterval(tick, 5000);
-    const onVis = () => tick();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "backlog_unlock_until") tick();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  useEffect(() => { const tick=()=>setBacklogUnlocked(isBacklogMenuRevealed()); tick(); const id=window.setInterval(tick,5000); const onVis=()=>tick(); const onStorage=(e:StorageEvent)=>{if(e.key==="backlog_unlock_until")tick()}; document.addEventListener("visibilitychange",onVis); window.addEventListener("storage",onStorage); return()=>{window.clearInterval(id);document.removeEventListener("visibilitychange",onVis);window.removeEventListener("storage",onStorage)}; },[]);
+  const tapsRef=useRef<number[]>([]),tapTimerRef=useRef<number|null>(null);
+  const handleLogoTap=(e:React.MouseEvent)=>{e.preventDefault();const now=Date.now();tapsRef.current=tapsRef.current.filter(t=>now-t<700);tapsRef.current.push(now);if(tapTimerRef.current){window.clearTimeout(tapTimerRef.current);tapTimerRef.current=null}if(tapsRef.current.length>=3){tapsRef.current=[];revealBacklogMenu();setBacklogUnlocked(true);navigate("/admin");return}tapTimerRef.current=window.setTimeout(()=>{tapsRef.current=[];tapTimerRef.current=null;navigate("/")},350)};
+  const overviewTapsRef=useRef<number[]>([]); const handleOverviewTap=(e:React.MouseEvent)=>{const now=Date.now();overviewTapsRef.current=overviewTapsRef.current.filter(t=>now-t<700);overviewTapsRef.current.push(now);if(overviewTapsRef.current.length>=3){overviewTapsRef.current=[];revealBacklogMenu();setBacklogUnlocked(true)}};
+  useEffect(()=>{const path=location.pathname;const groups:Record<string,string[]>={operations:["/admin/enquiries","/admin/quotations","/admin/measurement-tasks","/admin/services"],finance:["/admin/scheme-calculator","/admin/backlog","/admin/receivables"],inventory:["/admin/categories","/admin/products","/admin/inventory"],logistics:["/admin/logistics","/admin/trips","/admin/routes","/admin/vehicles"],team:["/admin/staff","/admin/workers","/admin/people","/admin/staff-monitor","/admin/production"],system:["/admin/home-page","/admin/vault","/admin/trash","/guide"]};setOpenGroups(prev=>{const next={...prev};for(const[id,paths]of Object.entries(groups))if(paths.some(p=>path===p||path.startsWith(p+"/")))next[id]=true;return next})},[location.pathname]);
+  if(loading)return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
+  if(!user){navigate("/auth",{replace:true});return null}
+  if(isWorker&&!isOfficeStaff&&!isAdmin&&!isMeasurementStaff&&!isDelivery){navigate("/worker",{replace:true});return null}
+  if(!isStaff)return <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center"><h1 className="font-display text-2xl">Access pending</h1><p className="max-w-md text-muted-foreground">Your account doesn't have staff access yet. Ask an admin to assign you a role.</p><Button variant="outline" onClick={()=>signOut().then(()=>navigate("/auth"))}>Sign out</Button></div>;
 
-  // Triple-tap on the admin logo opens the hidden Backlog area.
-  // Works on both desktop (clicks) and mobile (taps) within a ~700ms window.
-  // We always preventDefault on the logo link so the first/second click does
-  // not navigate to "/" before the third tap is registered. A short timer
-  // performs the normal navigation if fewer than 3 taps happen in the window.
-  const tapsRef = useRef<number[]>([]);
-  const tapTimerRef = useRef<number | null>(null);
-  const handleLogoTap = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const now = Date.now();
-    tapsRef.current = tapsRef.current.filter((t) => now - t < 700);
-    tapsRef.current.push(now);
-    if (tapTimerRef.current) {
-      window.clearTimeout(tapTimerRef.current);
-      tapTimerRef.current = null;
-    }
-    if (tapsRef.current.length >= 3) {
-      tapsRef.current = [];
-      // Reveal the Backlog menu in the sidebar but route the user to the
-      // Overview page — safer if anyone is watching the screen. Admin can
-      // then click "Backlog" from the sidebar when ready.
-      revealBacklogMenu();
-      setBacklogUnlocked(true);
-      navigate("/admin");
-      return;
-    }
-    // Fall back to normal "go home" navigation if the user didn't triple-tap.
-    tapTimerRef.current = window.setTimeout(() => {
-      tapsRef.current = [];
-      tapTimerRef.current = null;
-      navigate("/");
-    }, 350);
-  };
-
-  // Triple-tap on the "Overview" sidebar item also reveals the Backlog menu.
-  // This is the primary trigger admins use — easier to hit than the logo.
-  const overviewTapsRef = useRef<number[]>([]);
-  const handleOverviewTap = (e: React.MouseEvent) => {
-    const now = Date.now();
-    overviewTapsRef.current = overviewTapsRef.current.filter((t) => now - t < 700);
-    overviewTapsRef.current.push(now);
-    if (overviewTapsRef.current.length >= 3) {
-      overviewTapsRef.current = [];
-      revealBacklogMenu();
-      setBacklogUnlocked(true);
-    }
-    // Don't preventDefault — normal navigation to /admin still happens.
-  };
-
-  // Auto-open the sidebar group containing the current route. Declared at the
-  // top of the component (before early returns) so hook order stays stable.
-  useEffect(() => {
-    const path = location.pathname;
-    const groups: Record<string, string[]> = {
-      operations: ["/admin/enquiries", "/admin/quotations", "/admin/measurement-tasks", "/admin/services"],
-      finance: ["/admin/scheme-calculator", "/admin/backlog", "/admin/receivables"],
-      inventory: ["/admin/categories", "/admin/products", "/admin/inventory"],
-      logistics: ["/admin/logistics", "/admin/trips", "/admin/routes", "/admin/vehicles"],
-      team: ["/admin/staff", "/admin/workers", "/admin/people", "/admin/staff-monitor", "/admin/production"],
-      system: ["/admin/home-page", "/admin/vault", "/admin/trash", "/guide"],
-    };
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      for (const [id, paths] of Object.entries(groups)) {
-        if (paths.some((p) => path === p || path.startsWith(p + "/"))) next[id] = true;
-      }
-      return next;
-    });
-  }, [location.pathname]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  if (!user) {
-    navigate("/auth", { replace: true });
-    return null;
-  }
-  // Workers must never see the admin dashboard. Their portal is /worker.
-  if (isWorker && !isOfficeStaff && !isAdmin && !isMeasurementStaff && !isDelivery) {
-    navigate("/worker", { replace: true });
-    return null;
-  }
-  if (!isStaff) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="font-display text-2xl">Access pending</h1>
-        <p className="max-w-md text-muted-foreground">
-          Your account doesn't have staff access yet. Ask an admin to assign you a role.
-        </p>
-        <Button variant="outline" onClick={() => signOut().then(() => navigate("/auth"))}>Sign out</Button>
-      </div>
-    );
-  }
-
-  type LinkItem = { to: string; end?: boolean; label: string; icon: any; show: boolean };
-  type GroupItem = { kind: "group"; id: string; label: string; icon: any; children: LinkItem[] };
-  type SoloItem = { kind: "solo" } & LinkItem;
-  type NavEntry = GroupItem | SoloItem;
-
-  const filt = (arr: LinkItem[]) => arr.filter((l) => l.show);
-
-  // Overview now composes the Warehouse/Delivery dashboard sections too
-  // (see AdminOverview.tsx), so those roles need a way back to it from
-  // elsewhere in the sidebar, not just office staff.
-  const overview: SoloItem = { kind: "solo", to: "/admin", end: true, label: "Overview", icon: LayoutDashboard, show: isOfficeStaff || isWarehouse || isDelivery };
-  const myWork: SoloItem = { kind: "solo", to: "/admin/my-work", label: "My Work", icon: UserCircle, show: true };
-  const myTrips: SoloItem = { kind: "solo", to: "/admin/my-trips", label: "My Trips", icon: Truck, show: isDelivery && !isOfficeStaff };
-  // Backlog is gated by the triple-tap unlock and only appears inside the
-  // Finance group while currently unlocked (see `finance` below).
-
-  const operations: GroupItem = {
-    kind: "group", id: "operations", label: "Operations", icon: Briefcase,
-    children: filt([
-      { to: "/admin/enquiries", label: "Enquiries Inbox", icon: Inbox, show: isOfficeStaff },
-      { to: "/admin/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, show: isOfficeStaff },
-      { to: "/admin/quotations", label: "Quotations", icon: FileText, show: isOfficeStaff || isMeasurementStaff },
-      { to: "/admin/quotations?status=stage1&lead=consultation", label: "Client Hub Leads", icon: Activity, show: isOfficeStaff },
-      { to: "/admin/measurement-tasks", label: "Measurement Tasks", icon: Ruler, show: isOfficeStaff || isMeasurementStaff || isWorker },
-      { to: "/admin/services", label: "Service & Complaints", icon: LifeBuoy, show: isOfficeStaff },
-    ]),
-  };
-  const finance: GroupItem = {
-    kind: "group", id: "finance", label: "Finance", icon: Calculator,
-    children: filt([
-      { to: "/admin/scheme-calculator", label: "Scheme Calculator", icon: Calculator, show: isOfficeStaff },
-      { to: "/admin/backlog", label: "Backlog & Receivables", icon: Archive, show: isAdmin && backlogUnlocked },
-    ]),
-  };
-  const inventory: GroupItem = {
-    kind: "group", id: "inventory", label: "Inventory", icon: Boxes,
-    children: filt([
-      { to: "/admin/categories", label: "Categories", icon: FolderTree, show: isOfficeStaff },
-      { to: "/admin/products", label: "Products", icon: Package, show: isOfficeStaff },
-      { to: "/admin/bundles", label: "Bundles / Sets", icon: Boxes, show: isOfficeStaff },
-      { to: "/admin/inventory/reorder", label: "Reorder Report", icon: AlertTriangle, show: isOfficeStaff },
-      { to: "/admin/inventory/ledger", label: "Stock Ledger", icon: ClipboardList, show: isOfficeStaff },
-      { to: "/admin/inventory/receiving", label: "Inbound Receiving", icon: PackagePlus, show: isOfficeStaff },
-      { to: "/admin/inventory/stock-take", label: "Stock-take", icon: ClipboardCheck, show: isOfficeStaff },
-      { to: "/admin/inventory/transfers", label: "Transfers", icon: ArrowRightLeft, show: isOfficeStaff },
-    ]),
-  };
-  const logistics: GroupItem = {
-    kind: "group", id: "logistics", label: "Logistics & Delivery", icon: Map,
-    children: filt([
-      { to: "/admin/logistics", label: "Logistics", icon: Map, show: isOfficeStaff || isDelivery || isWarehouse },
-      { to: "/admin/warehouse", label: "Warehouse", icon: Warehouse, show: isOfficeStaff || isDelivery || isWarehouse },
-      { to: "/admin/routes", label: "Route Manager", icon: Route, show: isAdmin },
-      { to: "/admin/vehicles", label: "Vehicles", icon: Truck, show: isAdmin },
-    ]),
-  };
-  const team: GroupItem = {
-    kind: "group", id: "team", label: "Team Management", icon: UsersRound,
-    children: filt([
-      { to: "/admin/staff", label: "People", icon: UsersRound, show: isAdmin },
-      { to: "/admin/staff-monitor", label: "Staff Monitor", icon: Activity, show: isAdmin },
-      { to: "/admin/production", label: "Production Board", icon: GitBranch, show: isOfficeStaff },
-    ]),
-  };
-  const system: GroupItem = {
-    kind: "group", id: "system", label: "System", icon: Settings,
-    children: filt([
-      { to: "/admin/home-page", label: "Home Page", icon: Home, show: isAdmin },
-      { to: "/admin/vault", label: "Credentials Vault", icon: Vault, show: isAdmin },
-      { to: "/admin/trash", label: "Trash", icon: Trash2, show: isAdmin },
-      { to: "/guide", label: "User Guide", icon: BookOpen, show: true },
-    ]),
-  };
-
-  const navEntries: NavEntry[] = [
-    overview,
-    myWork,
-    myTrips,
-    operations,
-    finance,
-    inventory,
-    logistics,
-    team,
-    system,
-  ].filter((e) => (e.kind === "solo" ? e.show : e.children.length > 0));
-
-  const isActiveTo = (to: string, end?: boolean) =>
-    end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
-
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-secondary/30">
-      <header className="sticky top-0 z-30 border-b border-border bg-card shadow-card-soft">
-        <div className="container-page flex items-center justify-between gap-2 py-3 md:py-4">
-          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={handleLogoTap}>
-            <Logo className="h-11 w-auto sm:h-12 md:h-14" />
-            <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span>
-          </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Button asChild size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="View site">
-              <Link to="/" target="_blank"><ExternalLink className="h-5 w-5" /></Link>
-            </Button>
-            <Button asChild size="default" variant="ghost" className="hidden sm:inline-flex text-base">
-              <Link to="/" target="_blank"><ExternalLink className="mr-1 h-5 w-5" /> View site</Link>
-            </Button>
-            <PipelineNotificationsBell />
-            <Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" aria-label="Sign out" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
-              <LogOut className="h-5 w-5" />
-            </Button>
-            <Button size="default" variant="ghost" className="hidden sm:inline-flex text-base" onClick={() => { lockBacklog(); setBacklogUnlocked(false); signOut().then(() => navigate("/auth")); }}>
-              <LogOut className="mr-1 h-5 w-5" /> Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-      <div className="container-page grid gap-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:py-6">
-        <aside className="min-w-0 md:sticky md:top-20 md:self-start">
-          <nav
-            className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-card p-2 shadow-card-soft md:flex-col [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            aria-label="Admin navigation"
-          >
-            {navEntries.map((entry) => {
-              if (entry.kind === "solo") {
-                return (
-                  <RRNavLink
-                    key={entry.to}
-                    to={entry.to}
-                    end={entry.end}
-                    onClick={(e) => {
-                      if (entry.to === "/admin" && entry.end) handleOverviewTap?.(e as any);
-                      if (entry.to === "/admin/backlog") {
-                        (window as any).__backlogIntent = Date.now();
-                      }
-                    }}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
-                        isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
-                      )
-                    }
-                  >
-                    <entry.icon className="h-4 w-4" /> {entry.label}
-                  </RRNavLink>
-                );
-              }
-              const open = !!openGroups[entry.id];
-              const groupActive = entry.children.some((c) => isActiveTo(c.to, c.end));
-              return (
-                <div key={entry.id} className="shrink-0 md:w-full">
-                  <button
-                    type="button"
-                    onClick={() => setOpenGroups((p) => ({ ...p, [entry.id]: !p[entry.id] }))}
-                    aria-expanded={open}
-                    className={cn(
-                      "flex min-h-[44px] w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
-                      groupActive ? "bg-muted text-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
-                    )}
-                  >
-                    <entry.icon className="h-4 w-4" />
-                    <span className="flex-1 text-left">{entry.label}</span>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-                  </button>
-                  {open && (
-                    <div className="mt-1 flex gap-1 md:ml-3 md:mt-1 md:flex-col md:border-l md:border-border md:pl-2">
-                      {entry.children.map((c) => (
-                        <RRNavLink
-                          key={c.to}
-                          to={c.to}
-                          end={c.end}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-smooth",
-                              isActive ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-muted active:bg-muted"
-                            )
-                          }
-                        >
-                          <c.icon className="h-4 w-4" /> {c.label}
-                        </RRNavLink>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-          <p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">
-            Role: <span className="font-semibold text-foreground">{
-              isAdmin ? "Admin"
-                : isDelivery && !isOfficeStaff && !isMeasurementStaff ? "Delivery"
-                : isMeasurementStaff && !isOfficeStaff ? "Measurement Staff"
-                : "Staff"
-            }</span>
-          </p>
-        </aside>
-        <main className="min-w-0 pb-6">{children}</main>
-      </div>
-      <HelpFab />
-    </div>
-  );
+  type LinkItem={to:string;end?:boolean;label:string;icon:any;show:boolean}; type GroupItem={kind:"group";id:string;label:string;icon:any;children:LinkItem[]}; type SoloItem={kind:"solo"}&LinkItem; type NavEntry=GroupItem|SoloItem; const filt=(a:LinkItem[])=>a.filter(l=>l.show);
+  const overview:SoloItem={kind:"solo",to:"/admin",end:true,label:"Overview",icon:LayoutDashboard,show:isOfficeStaff||isWarehouse||isDelivery}; const myWork:SoloItem={kind:"solo",to:"/admin/my-work",label:"My Work",icon:UserCircle,show:true}; const myTrips:SoloItem={kind:"solo",to:"/admin/my-trips",label:"My Trips",icon:Truck,show:isDelivery&&!isOfficeStaff};
+  const operations:GroupItem={kind:"group",id:"operations",label:"Operations",icon:Briefcase,children:filt([{to:"/admin/enquiries",label:"Enquiries Inbox",icon:Inbox,show:isOfficeStaff},{to:"/admin/whatsapp",label:"WhatsApp Inbox",icon:MessageCircle,show:isOfficeStaff},{to:"/admin/quotations",label:"Quotations",icon:FileText,show:isOfficeStaff||isMeasurementStaff},{to:"/admin/quotations?status=stage1&lead=consultation",label:"Client Hub Leads",icon:Activity,show:isOfficeStaff},{to:"/admin/measurement-tasks",label:"Measurement Tasks",icon:Ruler,show:isOfficeStaff||isMeasurementStaff||isWorker},{to:"/admin/services",label:"Service & Complaints",icon:LifeBuoy,show:isOfficeStaff}])};
+  const finance:GroupItem={kind:"group",id:"finance",label:"Finance",icon:Calculator,children:filt([{to:"/admin/scheme-calculator",label:"Scheme Calculator",icon:Calculator,show:isOfficeStaff},{to:"/admin/backlog",label:"Backlog & Receivables",icon:Archive,show:isAdmin&&backlogUnlocked}])};
+  const inventory:GroupItem={kind:"group",id:"inventory",label:"Inventory",icon:Boxes,children:filt([{to:"/admin/categories",label:"Categories",icon:FolderTree,show:isOfficeStaff},{to:"/admin/products",label:"Products",icon:Package,show:isOfficeStaff},{to:"/admin/bundles",label:"Bundles / Sets",icon:Boxes,show:isOfficeStaff},{to:"/admin/inventory/reorder",label:"Reorder Report",icon:AlertTriangle,show:isOfficeStaff},{to:"/admin/inventory/ledger",label:"Stock Ledger",icon:ClipboardList,show:isOfficeStaff},{to:"/admin/inventory/receiving",label:"Inbound Receiving",icon:PackagePlus,show:isOfficeStaff},{to:"/admin/inventory/stock-take",label:"Stock-take",icon:ClipboardCheck,show:isOfficeStaff},{to:"/admin/inventory/transfers",label:"Transfers",icon:ArrowRightLeft,show:isOfficeStaff}])};
+  const logistics:GroupItem={kind:"group",id:"logistics",label:"Logistics & Delivery",icon:Map,children:filt([{to:"/admin/logistics",label:"Logistics",icon:Map,show:isOfficeStaff||isDelivery||isWarehouse},{to:"/admin/warehouse",label:"Warehouse",icon:Warehouse,show:isOfficeStaff||isDelivery||isWarehouse},{to:"/admin/routes",label:"Route Manager",icon:Route,show:isAdmin},{to:"/admin/vehicles",label:"Vehicles",icon:Truck,show:isAdmin}])};
+  const team:GroupItem={kind:"group",id:"team",label:"Team Management",icon:UsersRound,children:filt([{to:"/admin/staff",label:"People",icon:UsersRound,show:isAdmin},{to:"/admin/staff-monitor",label:"Staff Monitor",icon:Activity,show:isAdmin},{to:"/admin/production",label:"Production Board",icon:GitBranch,show:isOfficeStaff}])};
+  const system:GroupItem={kind:"group",id:"system",label:"System",icon:Settings,children:filt([{to:"/admin/home-page",label:"Home Page",icon:Home,show:isAdmin},{to:"/admin/vault",label:"Credentials Vault",icon:Vault,show:isAdmin},{to:"/admin/trash",label:"Trash",icon:Trash2,show:isAdmin},{to:"/guide",label:"User Guide",icon:BookOpen,show:true}])};
+  const navEntries:NavEntry[]=[overview,myWork,myTrips,operations,finance,inventory,logistics,team,system].filter(e=>e.kind==="solo"?e.show:e.children.length>0); const isActiveTo=(to:string,end?:boolean)=>end?location.pathname===to:location.pathname===to||location.pathname.startsWith(to+"/");
+  const tone=(id:string)=>({operations:"admin-tone-mint",finance:"admin-tone-sand",inventory:"admin-tone-blush",logistics:"admin-tone-sage",team:"admin-tone-rose",system:"admin-tone-neutral"}[id]||"admin-tone-neutral");
+  return <div className="admin-theme min-h-screen overflow-x-hidden">
+    <header className="admin-topbar sticky top-0 z-30 border-b"><div className="container-page flex items-center justify-between gap-2 py-3 md:py-4"><Link to="/" className="flex min-w-0 items-center gap-3" onClick={handleLogoTap}><Logo className="h-11 w-auto sm:h-12 md:h-14"/><span className="hidden text-xs font-semibold uppercase tracking-widest text-muted-foreground sm:inline">Dashboard</span></Link><div className="flex items-center gap-1 sm:gap-2"><Button asChild size="icon" variant="ghost" className="h-11 w-11 sm:hidden"><Link to="/" target="_blank"><ExternalLink className="h-5 w-5"/></Link></Button><Button asChild variant="ghost" className="hidden sm:inline-flex"><Link to="/" target="_blank"><ExternalLink className="mr-1 h-4 w-4"/> View site</Link></Button><PipelineNotificationsBell/><Button size="icon" variant="ghost" className="h-11 w-11 sm:hidden" onClick={()=>{lockBacklog();setBacklogUnlocked(false);signOut().then(()=>navigate("/auth"))}}><LogOut className="h-5 w-5"/></Button><Button variant="ghost" className="hidden sm:inline-flex" onClick={()=>{lockBacklog();setBacklogUnlocked(false);signOut().then(()=>navigate("/auth"))}}><LogOut className="mr-1 h-4 w-4"/> Sign out</Button></div></div></header>
+    <div className="container-page grid gap-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:py-6"><aside className="min-w-0 md:sticky md:top-20 md:self-start"><nav className="admin-nav flex w-full max-w-full gap-1 overflow-x-auto rounded-xl p-2 md:flex-col [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {navEntries.map(entry=>{if(entry.kind==="solo")return <RRNavLink key={entry.to} to={entry.to} end={entry.end} onClick={e=>{if(entry.to==="/admin"&&entry.end)handleOverviewTap(e as any);if(entry.to==="/admin/backlog")(window as any).__backlogIntent=Date.now()}} className={({isActive})=>cn("admin-nav-link flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium",isActive&&"is-active")}><entry.icon className="h-4 w-4"/>{entry.label}</RRNavLink>;const open=!!openGroups[entry.id],groupActive=entry.children.some(c=>isActiveTo(c.to,c.end));return <div key={entry.id} className={cn("shrink-0 md:w-full",tone(entry.id))}><button type="button" onClick={()=>setOpenGroups(p=>({...p,[entry.id]:!p[entry.id]}))} className={cn("admin-nav-group flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium",groupActive&&"is-active")}><span className="admin-icon-chip"><entry.icon className="h-4 w-4"/></span><span className="flex-1 text-left">{entry.label}</span><ChevronDown className={cn("h-4 w-4 transition-transform",open&&"rotate-180")}/></button>{open&&<div className="mt-1 flex gap-1 md:ml-3 md:flex-col md:border-l md:pl-2">{entry.children.map(c=><RRNavLink key={c.to} to={c.to} end={c.end} className={({isActive})=>cn("admin-nav-link flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",isActive&&"is-active")}><c.icon className="h-4 w-4"/>{c.label}</RRNavLink>)}</div>}</div>})}
+    </nav><p className="mt-3 hidden px-2 text-xs text-muted-foreground md:block">Role: <span className="font-semibold text-foreground">{isAdmin?"Admin":isDelivery&&!isOfficeStaff&&!isMeasurementStaff?"Delivery":isMeasurementStaff&&!isOfficeStaff?"Measurement Staff":"Staff"}</span></p></aside><main className="admin-content min-w-0 pb-6">{children}</main></div><HelpFab/></div>;
 };
