@@ -1,0 +1,57 @@
+/* Internal ERP refinement only. Public/customer pages are intentionally unaffected. */
+.admin-theme .admin-content {
+  --erp-success-bg: #e8f1ee;
+  --erp-success-line: #c6d9d2;
+  --erp-success-ink: #55766b;
+  --erp-pending-bg: #f5ecd8;
+  --erp-pending-line: #e3cc9c;
+  --erp-pending-ink: #806a43;
+  --erp-danger-bg: #f5e5e2;
+  --erp-danger-line: #e2c3bd;
+  --erp-danger-ink: #95544e;
+}
+
+/* Keep financial amounts calm and readable. A balance to collect is pending,
+   not a completed/success state, even if an older screen used emerald. */
+.admin-theme .admin-content .border-emerald-500\/40.bg-emerald-500\/10 {
+  background: var(--erp-pending-bg) !important;
+  border-color: var(--erp-pending-line) !important;
+}
+.admin-theme .admin-content .border-emerald-500\/40.bg-emerald-500\/10 .text-emerald-700,
+.admin-theme .admin-content .border-emerald-500\/40.bg-emerald-500\/10 .text-emerald-800,
+.admin-theme .admin-content .border-emerald-500\/40.bg-emerald-500\/10 .text-emerald-600 {
+  color: var(--erp-pending-ink) !important;
+}
+
+/* Status colour is supportive only; labels and numbers retain strong contrast. */
+.admin-theme .admin-content .bg-destructive\/5 {
+  background: var(--erp-danger-bg) !important;
+}
+.admin-theme .admin-content .border-destructive {
+  border-color: var(--erp-danger-line) !important;
+}
+.admin-theme .admin-content .text-destructive {
+  color: var(--erp-danger-ink) !important;
+}
+
+/* Dense ERP dialogs/popovers stay bright, quiet and legible on mobile. */
+.admin-theme [role="dialog"],
+.admin-theme [data-radix-popper-content-wrapper] > div {
+  color: #263238;
+}
+.admin-theme [role="dialog"] input,
+.admin-theme [role="dialog"] textarea,
+.admin-theme [role="dialog"] [role="combobox"] {
+  background: #fff;
+  color: #263238;
+}
+
+/* Preserve hierarchy without heavy colour blocks. */
+.admin-theme .admin-content h1,
+.admin-theme .admin-content h2,
+.admin-theme .admin-content h3 {
+  color: #263238;
+}
+.admin-theme .admin-content button {
+  font-weight: 500;
+}
