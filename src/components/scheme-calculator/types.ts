@@ -1,4 +1,7 @@
 // Shared types for the Vendor Scheme Dashboard.
+export type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
+export type Period = "monthly" | "quarterly" | "yearly";
+
 export type Row = {
   id: string;
   item: string;
@@ -6,6 +9,11 @@ export type Row = {
   price: number;
   amountWithTax: number;
   mrp: number;
+  /** Optional per-item scheme snapshot. If absent, the month scheme is used. */
+  scheme_rule_id?: string;
+  scheme_name?: string;
+  scheme_kind?: SchemeKind;
+  scheme_config?: any;
 };
 
 export type Invoice = {
@@ -15,9 +23,6 @@ export type Invoice = {
   date?: string;
   rows: Row[];
 };
-
-export type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
-export type Period = "monthly" | "quarterly" | "yearly";
 
 export type Party = {
   id: string;
