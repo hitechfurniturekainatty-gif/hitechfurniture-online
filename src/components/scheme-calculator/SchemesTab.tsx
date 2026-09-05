@@ -12,11 +12,22 @@ import { SchemeConfigEditor } from "./SchemeConfigEditor";
 import { SCHEME_LABEL, defaultConfig } from "./utils";
 import type { Period, SchemeKind, SchemeRow } from "./types";
 
+const SIMPLE_KINDS: SchemeKind[] = ["bogo", "percent"];
+const simpleLabel: Partial<Record<SchemeKind, string>> = {
+  bogo: "Quantity — Buy Qty + Free Qty",
+  percent: "Percentage Discount",
+};
+
 export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRow[]; setSchemes: (s: SchemeRow[]) => void; onApply: (s: SchemeRow) => void }) {
   const [form, setForm] = useState<{ name: string; kind: SchemeKind; period: Period; config: any; notes: string }>(
-    { name: "", kind: "company", period: "monthly", config: defaultConfig("company"), notes: "" }
+    { name: "", kind: "bogo", period: "monthly", config: defaultConfig("bogo"), notes: "" }
   );
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setForm({ name: "", kind: "bogo", period: "monthly", config: defaultConfig("bogo"), notes: "" });
+    setEditingId(null);
+  };
 
   const save = async () => {
     if (!form.name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
@@ -29,8 +40,7 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
       if (error) return toast({ title: "Create failed", description: error.message, variant: "destructive" });
       setSchemes([data as any, ...schemes]);
     }
-    setForm({ name: "", kind: "company", period: "monthly", config: defaultConfig("company"), notes: "" });
-    setEditingId(null);
+    resetForm();
     toast({ title: "Saved" });
   };
 
@@ -45,17 +55,22 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
     setSchemes(schemes.filter((s) => s.id !== id));
   };
 
+  const visibleKinds = SIMPLE_KINDS.includes(form.kind) ? SIMPLE_KINDS : [form.kind, ...SIMPLE_KINDS];
+
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
       <div className="rounded-lg border bg-card p-4 space-y-3">
-        <h3 className="font-medium">{editingId ? "Edit scheme" : "New scheme"}</h3>
-        <div><Label className="text-xs">Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Diwali Dealer Slab" /></div>
+        <div>
+          <h3 className="font-medium">{editingId ? "Edit scheme" : "New scheme"}</h3>
+          <p className="text-xs text-muted-foreground mt-1">Default is quantity-wise: enter how many you buy and how many are free.</p>
+        </div>
+        <div><Label className="text-xs">Scheme name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. April Chair Scheme" /></div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-xs">Type</Label>
+            <Label className="text-xs">Scheme type</Label>
             <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v as SchemeKind, config: defaultConfig(v as SchemeKind) })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{(Object.keys(SCHEME_LABEL) as SchemeKind[]).map((k) => (<SelectItem key={k} value={k}>{SCHEME_LABEL[k]}</SelectItem>))}</SelectContent>
+              <SelectContent>{visibleKinds.map((k) => (<SelectItem key={k} value={k}>{simpleLabel[k] || SCHEME_LABEL[k]}</SelectItem>))}</SelectContent>
             </Select>
           </div>
           <div>
@@ -67,10 +82,10 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
           </div>
         </div>
         <SchemeConfigEditor scheme={{ kind: form.kind, config: form.config }} onChange={(config) => setForm({ ...form, config })} />
-        <div><Label className="text-xs">Notes</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        <div><Label className="text-xs">Notes</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional" /></div>
         <div className="flex gap-2">
           <Button onClick={save} className="flex-1"><Save className="h-4 w-4" /> {editingId ? "Update" : "Save scheme"}</Button>
-          {editingId && <Button variant="outline" onClick={() => { setEditingId(null); setForm({ name: "", kind: "company", period: "monthly", config: defaultConfig("company"), notes: "" }); }}>Cancel</Button>}
+          {editingId && <Button variant="outline" onClick={resetForm}>Cancel</Button>}
         </div>
       </div>
       <div className="rounded-lg border bg-card p-4">
@@ -82,7 +97,7 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
             {schemes.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{SCHEME_LABEL[s.kind]}</TableCell>
+                <TableCell>{simpleLabel[s.kind] || SCHEME_LABEL[s.kind]}</TableCell>
                 <TableCell className="capitalize">{s.period}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
