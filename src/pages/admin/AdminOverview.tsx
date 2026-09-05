@@ -25,13 +25,13 @@ const AdminOverview = () => {
 
   const roleTitle = isAdmin ? "Admin Command Center" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
   const roleSub = isAdmin
-    ? "Business control without clutter — today's actions, pipeline health, operations and collections."
+    ? "Business control without clutter — today's actions, pipeline health, operations and receivables."
     : isOfficeStaff
-      ? "Customer follow-ups, quotations, measurements and order progress in one place."
+      ? "Customer follow-ups, quotations, measurements, order progress and receivable follow-up in one place."
       : isWarehouse
         ? "Ready orders, dispatch preparation and delivery handoff."
         : isDelivery
-          ? "Trips, routes, customer deliveries and collection handoff."
+          ? "Trips, routes, customer deliveries and balance collection handoff."
           : "Your assigned work and next actions.";
 
   const sections: { key: string; node: JSX.Element }[] = [
