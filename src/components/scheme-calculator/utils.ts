@@ -104,10 +104,7 @@ export function parseInvoiceText(text: string): Row[] {
   return out;
 }
 
-/**
- * Aggregate purchase rows by item name (case-insensitive). Sums qty &
- * amountWithTax; computes a weighted unit price and qty-weighted MRP.
- */
+/** Aggregate purchase rows by item name, preserving all invoice items. */
 export function aggregateRowsByItem(rows: Row[]): Row[] {
   const map = new Map<string, Row & { _mrpWeighted: number; _mrpQty: number }>();
   for (const r of rows) {
@@ -124,16 +121,7 @@ export function aggregateRowsByItem(rows: Row[]): Row[] {
       existing._mrpWeighted += mrp * qty;
       existing._mrpQty += qty;
     } else {
-      map.set(key, {
-        id: r.id,
-        item: name,
-        qty,
-        price: 0,
-        amountWithTax: amt,
-        mrp,
-        _mrpWeighted: mrp * qty,
-        _mrpQty: qty,
-      });
+      map.set(key, { id: r.id, item: name, qty, price: 0, amountWithTax: amt, mrp, _mrpWeighted: mrp * qty, _mrpQty: qty });
     }
   }
   return Array.from(map.values()).map((r) => {
@@ -143,17 +131,11 @@ export function aggregateRowsByItem(rows: Row[]): Row[] {
   });
 }
 
-export const fmt = (n: number) =>
-  Number.isFinite(n) ? n.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0";
+export const fmt = (n: number) => Number.isFinite(n) ? n.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0";
 
 export const SCHEME_LABEL: Record<SchemeKind, string> = {
-  company: "Company (1 free / N qty)",
-  own: "Own (target margin %)",
-  slab: "Slab (tiered free items)",
-  bogo: "Buy X Get Y",
-  percent: "% Discount on total",
-  cashback: "Cashback on target",
-  custom: "Custom (per-product free qty)",
+  company: "Company (1 free / N qty)", own: "Own (target margin %)", slab: "Slab (tiered free items)",
+  bogo: "Item-wise Quantity Scheme", percent: "% Discount on total", cashback: "Cashback on target", custom: "Custom (per-product free qty)",
 };
 
 export const defaultConfig = (kind: SchemeKind): any => {
@@ -161,12 +143,14 @@ export const defaultConfig = (kind: SchemeKind): any => {
     case "company": return { everyQty: 10 };
     case "own": return { targetMargin: 15 };
     case "slab": return { slabs: [{ minQty: 10, free: 1 }, { minQty: 25, free: 3 }, { minQty: 50, free: 7 }] };
-    case "bogo": return { buyQty: 2, getQty: 1 };
+    case "bogo": return { rules: [{ purchaseItem: "", matchMode: "family", buyQty: 10, freeQty: 1, freeItem: "" }] };
     case "percent": return { percent: 5 };
     case "cashback": return { minAmount: 50000, cashback: 2000 };
     case "custom": return { groups: [{ name: "Group 1", slabs: [{ minQty: 10, free: 2 }], rows: [{ pattern: "", freeProduct: "" }] }] };
   }
 };
+
+const normaliseName = (value: unknown) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
 export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[]) {
   const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
@@ -175,174 +159,87 @@ export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, row
   const live = rows.filter((r) => r.item && r.qty > 0);
   const { kind, config } = scheme;
 
-  type Achieved = { item: string; qty: number; free: number; note: string };
-  type Target = { item: string; have: number; need: number; gap: number; reward: string; note?: string };
+  type Achieved = { item: string; qty: number; free: number; note: string; purchaseItem?: string; freeItem?: string; buyQty?: number; matchMode?: string };
+  type Target = { item: string; have: number; need: number; gap: number; reward: string; note?: string; purchaseItem?: string; freeItem?: string };
 
   if (kind === "company") {
-    const per = Math.max(1, Number(config?.everyQty) || 10);
-    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const free = Math.floor(groupQty / per);
+    const per = Math.max(1, Number(config?.everyQty) || 10); const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0); const free = Math.floor(groupQty / per);
     const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
-    const rep: Achieved[] = [{
-      item: `All products → ${free} free`,
-      qty: groupQty,
-      free,
-      note: `Group total ${groupQty} qty [${matchedNames}] → 1 free per ${per}`,
-    }];
-    const nextThreshold = (Math.floor(groupQty / per) + 1) * per;
-    const gap = nextThreshold - groupQty;
-    const targets: Target[] = gap > 0 ? [{
-      item: "All products (group total)",
-      have: groupQty, need: nextThreshold, gap,
-      reward: `+1 free`, note: `Buy ${gap} more across any item to unlock next free unit`,
-    }] : [];
+    const rep: Achieved[] = [{ item: `All products → ${free} free`, qty: groupQty, free, note: `Group total ${groupQty} qty [${matchedNames}] → 1 free per ${per}` }];
+    const nextThreshold = (Math.floor(groupQty / per) + 1) * per; const gap = nextThreshold - groupQty;
+    const targets: Target[] = gap > 0 ? [{ item: "All products (group total)", have: groupQty, need: nextThreshold, gap, reward: `+1 free`, note: `Buy ${gap} more across any item to unlock next free unit` }] : [];
     return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "own") {
     const target = (totalAmount * (Number(config?.targetMargin) || 0)) / 100;
     const totalMargin = rows.reduce((s, r) => s + Math.max(0, (Number(r.mrp) || 0) * (Number(r.qty) || 0) - (Number(r.amountWithTax) || 0)), 0);
     const budget = Math.max(0, totalMargin - target);
-    const rep: Achieved[] = live.map((r) => {
-      const unit = Number(r.price) || 0;
-      const free = unit > 0 ? Math.floor(budget / unit / Math.max(1, live.length)) : 0;
-      return { item: r.item, qty: r.qty, free, note: `Within ${config?.targetMargin || 0}% target margin` };
-    });
+    const rep: Achieved[] = live.map((r) => { const unit = Number(r.price) || 0; const free = unit > 0 ? Math.floor(budget / unit / Math.max(1, live.length)) : 0; return { item: r.item, qty: r.qty, free, note: `Within ${config?.targetMargin || 0}% target margin` }; });
     return { rep, targets: [], summary: `Free-item budget: ₹${fmt(budget)}` };
   }
   if (kind === "slab") {
-    const slabs = (config?.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
-    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    let free = 0;
-    let matchedSlab: any = null;
-    for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
+    const slabs = (config?.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty)); const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    let free = 0; let matchedSlab: any = null; for (const s of slabs) if (groupQty >= Number(s.minQty)) { free = Number(s.free) || 0; matchedSlab = s; }
     const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
-    const rep: Achieved[] = [{
-      item: `All products → ${free} free`,
-      qty: groupQty,
-      free,
-      note: matchedSlab
-        ? `Group total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free`
-        : `Group total ${groupQty} qty [${matchedNames}] — below first slab`,
-    }];
-    const next = slabs.find((s: any) => groupQty < Number(s.minQty));
-    const targets: Target[] = next ? [{
-      item: "All products (group total)",
-      have: groupQty, need: Number(next.minQty), gap: Number(next.minQty) - groupQty,
-      reward: `${next.free} free`, note: `Buy ${Number(next.minQty) - groupQty} more across any item to unlock`,
-    }] : [];
+    const rep: Achieved[] = [{ item: `All products → ${free} free`, qty: groupQty, free, note: matchedSlab ? `Group total ${groupQty} qty [${matchedNames}] → ≥ ${matchedSlab.minQty} → ${matchedSlab.free} free` : `Group total ${groupQty} qty [${matchedNames}] — below first slab` }];
+    const next = slabs.find((s: any) => groupQty < Number(s.minQty)); const targets: Target[] = next ? [{ item: "All products (group total)", have: groupQty, need: Number(next.minQty), gap: Number(next.minQty) - groupQty, reward: `${next.free} free`, note: `Buy ${Number(next.minQty) - groupQty} more across any item to unlock` }] : [];
     return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "bogo") {
-    const buy = Math.max(1, Number(config?.buyQty) || 1);
-    const get = Math.max(0, Number(config?.getQty) || 0);
-    const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const free = Math.floor(groupQty / buy) * get;
+    const configuredRules: any[] = Array.isArray(config?.rules) ? config.rules : [];
+    const activeRules = configuredRules.filter((rule) => normaliseName(rule?.purchaseItem));
+    if (activeRules.length) {
+      const rep: Achieved[] = []; const targets: Target[] = []; let totalFree = 0;
+      for (const rule of activeRules) {
+        const purchaseItem = String(rule.purchaseItem || "").trim(); const freeItem = String(rule.freeItem || purchaseItem).trim() || purchaseItem;
+        const needle = normaliseName(purchaseItem); const mode = rule.matchMode === "exact" ? "exact" : "family";
+        const matchedRows = live.filter((r) => { const name = normaliseName(r.item); return mode === "exact" ? name === needle : name.includes(needle); });
+        const purchasedQty = matchedRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+        const buyQty = Math.max(1, Number(rule.buyQty) || 1); const freeQty = Math.max(0, Number(rule.freeQty ?? rule.getQty) || 0);
+        const completedSets = Math.floor(purchasedQty / buyQty); const free = completedSets * freeQty; totalFree += free;
+        const nextTarget = (completedSets + 1) * buyQty; const gap = Math.max(0, nextTarget - purchasedQty);
+        const matchedNames = matchedRows.map((r) => `${r.item} (${r.qty})`).join(", ") || "no matching invoice item";
+        rep.push({ item: `${purchaseItem} → ${freeItem}`, purchaseItem, freeItem, buyQty, matchMode: mode, qty: purchasedQty, free, note: `${mode === "exact" ? "Exact item" : "Product family"}: ${purchasedQty} purchased [${matchedNames}] · Buy ${buyQty} → ${freeQty} free ${freeItem}` });
+        targets.push({ item: purchaseItem, purchaseItem, freeItem, have: purchasedQty, need: nextTarget, gap, reward: `+${freeQty} ${freeItem}`, note: `Buy ${gap} more matched quantity for the next free benefit` });
+      }
+      return { rep, targets, summary: `Total eligible free items: ${totalFree}` };
+    }
+
+    // Backward compatibility for older saved Buy X Get Y schemes.
+    const buy = Math.max(1, Number(config?.buyQty) || 1); const get = Math.max(0, Number(config?.getQty) || 0); const groupQty = live.reduce((s, r) => s + (Number(r.qty) || 0), 0); const free = Math.floor(groupQty / buy) * get;
     const matchedNames = live.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items";
-    const rep: Achieved[] = [{
-      item: `All products → ${free} free`,
-      qty: groupQty,
-      free,
-      note: `Group total ${groupQty} qty [${matchedNames}] → Buy ${buy} Get ${get}`,
-    }];
-    const nextThreshold = (Math.floor(groupQty / buy) + 1) * buy;
-    const gap = nextThreshold - groupQty;
-    const targets: Target[] = gap > 0 ? [{
-      item: "All products (group total)",
-      have: groupQty, need: nextThreshold, gap,
-      reward: `+${get} free`, note: `Buy ${gap} more across any item for next freebie`,
-    }] : [];
+    const rep: Achieved[] = [{ item: `Legacy all products → ${free} free`, qty: groupQty, free, note: `Legacy scheme: total ${groupQty} qty [${matchedNames}] → Buy ${buy} Get ${get}` }];
+    const nextThreshold = (Math.floor(groupQty / buy) + 1) * buy; const gap = nextThreshold - groupQty;
+    const targets: Target[] = gap > 0 ? [{ item: "Legacy all products", have: groupQty, need: nextThreshold, gap, reward: `+${get} free`, note: `Buy ${gap} more for next freebie` }] : [];
     return { rep, targets, summary: `Total free items: ${free}` };
   }
   if (kind === "percent") {
-    const pct = Number(config?.percent) || 0;
-    const disc = (totalAmount * pct) / 100;
-    return {
-      rep: [{ item: "All items", qty: totalQty, free: 0, note: `${pct}% off → ₹${fmt(disc)} discount` }],
-      targets: [],
-      summary: `Discount: ₹${fmt(disc)} · Payable: ₹${fmt(totalAmount - disc)}`,
-    };
+    const pct = Number(config?.percent) || 0; const disc = (totalAmount * pct) / 100;
+    return { rep: [{ item: "All items", qty: totalQty, free: 0, note: `${pct}% off → ₹${fmt(disc)} discount` }], targets: [], summary: `Discount: ₹${fmt(disc)} · Payable: ₹${fmt(totalAmount - disc)}` };
   }
   if (kind === "cashback") {
-    const min = Number(config?.minAmount) || 0;
-    const cb = Number(config?.cashback) || 0;
-    const earned = totalAmount >= min ? cb : 0;
-    const targets: Target[] = earned > 0 ? [] : [{
-      item: "Total purchase",
-      have: Math.round(totalAmount),
-      need: min,
-      gap: Math.max(0, min - totalAmount),
-      reward: `₹${fmt(cb)} cashback`,
-      note: `Spend ₹${fmt(min - totalAmount)} more`,
-    }];
-    return {
-      rep: [{ item: "All items", qty: totalQty, free: 0, note: earned > 0 ? `Earned ₹${fmt(cb)} (≥ ₹${fmt(min)})` : `Need ₹${fmt(min - totalAmount)} more for cashback` }],
-      targets,
-      summary: `Cashback: ₹${fmt(earned)}`,
-    };
+    const min = Number(config?.minAmount) || 0; const cb = Number(config?.cashback) || 0; const earned = totalAmount >= min ? cb : 0;
+    const targets: Target[] = earned > 0 ? [] : [{ item: "Total purchase", have: Math.round(totalAmount), need: min, gap: Math.max(0, min - totalAmount), reward: `₹${fmt(cb)} cashback`, note: `Spend ₹${fmt(min - totalAmount)} more` }];
+    return { rep: [{ item: "All items", qty: totalQty, free: 0, note: earned > 0 ? `Earned ₹${fmt(cb)} (≥ ₹${fmt(min)})` : `Need ₹${fmt(min - totalAmount)} more for cashback` }], targets, summary: `Cashback: ₹${fmt(earned)}` };
   }
   if (kind === "custom") {
-    const groups: any[] = config?.groups || [];
-    const rep: Achieved[] = [];
-    const targets: Target[] = [];
-    let totalFree = 0;
+    const groups: any[] = config?.groups || []; const rep: Achieved[] = []; const targets: Target[] = []; let totalFree = 0;
     for (const g of groups) {
-      const legacyPatterns: string[] = String(g.patterns || "")
-        .split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-      const legacyRows = legacyPatterns.length
-        ? legacyPatterns.map((p) => ({ pattern: p, freeProduct: g.freeProduct || "" }))
-        : [];
-      const bundleRows: { pattern: string; freeProduct: string }[] =
-        Array.isArray(g.rows) && g.rows.length ? g.rows : legacyRows;
-      const activeRows = bundleRows
-        .map((r) => ({ pattern: String(r.pattern || "").trim().toLowerCase(), freeProduct: String(r.freeProduct || "").trim() }))
-        .filter((r) => r.pattern);
+      const legacyPatterns: string[] = String(g.patterns || "").split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      const legacyRows = legacyPatterns.length ? legacyPatterns.map((p) => ({ pattern: p, freeProduct: g.freeProduct || "" })) : [];
+      const bundleRows: { pattern: string; freeProduct: string }[] = Array.isArray(g.rows) && g.rows.length ? g.rows : legacyRows;
+      const activeRows = bundleRows.map((r) => ({ pattern: String(r.pattern || "").trim().toLowerCase(), freeProduct: String(r.freeProduct || "").trim() })).filter((r) => r.pattern);
       if (!activeRows.length) continue;
-      const matchedRows = live.filter((r) => {
-        const n = (r.item || "").toLowerCase();
-        return activeRows.some((ar) => n.includes(ar.pattern));
-      });
-      const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-      const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
-      let matchedSlab: any = null;
-      for (const s of slabs) if (groupQty >= Number(s.minQty)) matchedSlab = s;
-      const perUnit = matchedSlab ? Number(matchedSlab.free) || 0 : 0;
-      const perQty = matchedSlab ? Math.max(1, Number(matchedSlab.minQty) || 1) : 0;
-      const free = matchedSlab ? Math.floor(groupQty / perQty) * perUnit : 0;
-      totalFree += free;
-      const freebies = Array.from(new Set(activeRows.map((r) => r.freeProduct).filter(Boolean)));
-      const freeProd = freebies.join(" + ") || g.freeProduct || (matchedRows[0]?.item ?? "—");
+      const matchedRows = live.filter((r) => { const n = (r.item || "").toLowerCase(); return activeRows.some((ar) => n.includes(ar.pattern)); });
+      const groupQty = matchedRows.reduce((s, r) => s + (Number(r.qty) || 0), 0); const slabs = (g.slabs || []).slice().sort((a: any, b: any) => Number(a.minQty) - Number(b.minQty));
+      let matchedSlab: any = null; for (const s of slabs) if (groupQty >= Number(s.minQty)) matchedSlab = s;
+      const perUnit = matchedSlab ? Number(matchedSlab.free) || 0 : 0; const perQty = matchedSlab ? Math.max(1, Number(matchedSlab.minQty) || 1) : 0; const free = matchedSlab ? Math.floor(groupQty / perQty) * perUnit : 0; totalFree += free;
+      const freebies = Array.from(new Set(activeRows.map((r) => r.freeProduct).filter(Boolean))); const freeProd = freebies.join(" + ") || g.freeProduct || (matchedRows[0]?.item ?? "—");
       const matchedNames = matchedRows.map((r) => `${r.item} (${r.qty})`).join(", ") || "no items matched";
-      rep.push({
-        item: `${g.name || "Group"} → ${freeProd}`,
-        qty: groupQty,
-        free,
-        note: matchedSlab
-          ? `Bundle total ${groupQty} qty [${matchedNames}] → every ${matchedSlab.minQty} → ${matchedSlab.free} free ${freeProd} (×${Math.floor(groupQty / perQty)} = ${free})`
-          : `Bundle total ${groupQty} qty [${matchedNames}] — below first slab`,
-      });
+      rep.push({ item: `${g.name || "Group"} → ${freeProd}`, qty: groupQty, free, note: matchedSlab ? `Bundle total ${groupQty} qty [${matchedNames}] → every ${matchedSlab.minQty} → ${matchedSlab.free} free ${freeProd} (×${Math.floor(groupQty / perQty)} = ${free})` : `Bundle total ${groupQty} qty [${matchedNames}] — below first slab` });
       const nextSlab = slabs.find((s: any) => groupQty < Number(s.minQty));
-      if (nextSlab) {
-        const gap = Number(nextSlab.minQty) - groupQty;
-        targets.push({
-          item: `${g.name || "Group"} → ${freeProd}`,
-          have: groupQty,
-          need: Number(nextSlab.minQty),
-          gap,
-          reward: `${nextSlab.free} free ${freeProd}`,
-          note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] to unlock`,
-        });
-      } else if (matchedSlab) {
-        const nextMilestone = (Math.floor(groupQty / perQty) + 1) * perQty;
-        const gap = nextMilestone - groupQty;
-        targets.push({
-          item: `${g.name || "Group"} → ${freeProd}`,
-          have: groupQty,
-          need: nextMilestone,
-          gap,
-          reward: `+${perUnit} free ${freeProd}`,
-          note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] for next +${perUnit} free`,
-        });
-      }
+      if (nextSlab) { const gap = Number(nextSlab.minQty) - groupQty; targets.push({ item: `${g.name || "Group"} → ${freeProd}`, have: groupQty, need: Number(nextSlab.minQty), gap, reward: `${nextSlab.free} free ${freeProd}`, note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] to unlock` }); }
+      else if (matchedSlab) { const nextMilestone = (Math.floor(groupQty / perQty) + 1) * perQty; const gap = nextMilestone - groupQty; targets.push({ item: `${g.name || "Group"} → ${freeProd}`, have: groupQty, need: nextMilestone, gap, reward: `+${perUnit} free ${freeProd}`, note: `Buy ${gap} more across bundle [${activeRows.map((r) => r.pattern).join(", ")}] for next +${perUnit} free` }); }
     }
     return { rep, targets, summary: `Total free items: ${totalFree}` };
   }
@@ -350,38 +247,16 @@ export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, row
   return { rep: [], targets: [], summary: "" };
 }
 
-/**
- * Achievement % for a scheme on the given rows.
- */
-export function computeAchievementPct(
-  scheme: { kind: SchemeKind; config: any },
-  rows: Row[],
-): number {
-  const live = rows.filter((r) => r.item && (Number(r.qty) || 0) > 0);
-  if (!live.length) return 0;
-  const r = computeFreeReport(scheme, rows) as any;
-  const targets = (r.targets || []) as any[];
-  const freeUnits = (r.rep || []).reduce(
-    (s: number, x: any) => s + (Number(x.free) || 0),
-    0,
-  );
+export function computeAchievementPct(scheme: { kind: SchemeKind; config: any }, rows: Row[]): number {
+  const live = rows.filter((r) => r.item && (Number(r.qty) || 0) > 0); if (!live.length) return 0;
+  const r = computeFreeReport(scheme, rows) as any; const targets = (r.targets || []) as any[];
+  const freeUnits = (r.rep || []).reduce((s: number, x: any) => s + (Number(x.free) || 0), 0);
   if (targets.length === 0) return freeUnits > 0 ? 100 : 0;
-  const pcts = targets.map((t: any) =>
-    Number(t.need) > 0
-      ? Math.min(100, (Number(t.have) / Number(t.need)) * 100)
-      : 0,
-  );
-  const avg = pcts.reduce((s, p) => s + p, 0) / pcts.length;
-  return Math.round(avg);
+  const pcts = targets.map((t: any) => Number(t.need) > 0 ? Math.min(100, (Number(t.have) / Number(t.need)) * 100) : 0);
+  const avg = pcts.reduce((s, p) => s + p, 0) / pcts.length; return Math.round(avg);
 }
 
 export const FY_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
 export const MONTH_NAME = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-export function fyCalendarYear(fyYear: number, month: number) {
-  return month >= 4 ? fyYear : fyYear + 1;
-}
-export function currentFy() {
-  const d = new Date();
-  return d.getMonth() + 1 >= 4 ? d.getFullYear() : d.getFullYear() - 1;
-}
+export function fyCalendarYear(fyYear: number, month: number) { return month >= 4 ? fyYear : fyYear + 1; }
+export function currentFy() { const d = new Date(); return d.getMonth() + 1 >= 4 ? d.getFullYear() : d.getFullYear() - 1; }
