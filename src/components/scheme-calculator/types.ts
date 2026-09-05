@@ -48,6 +48,8 @@ export type BenefitReceipt = {
   item?: string;
   qty?: number;
   amount?: number;
+  /** Value per free unit. Used to convert free goods into a financial benefit. */
+  unit_value?: number;
   date?: string;
   reference?: string;
   note?: string;
