@@ -4,7 +4,7 @@ const HEADER_ALIASES = {
   item: ["item", "item name", "description", "particular", "particulars", "product", "product name", "model"],
   qty: ["qty", "quantity", "qnty", "pcs", "nos", "units"],
   price: ["rate", "unit rate", "unit price", "purchase price", "price", "taxable rate"],
-  total: ["total", "amount", "net amount", "taxable value", "taxable amount", "line total", "gross amount", "value"],
+  total: ["total", "total amount", "net amount", "taxable value", "taxable amount", "line total", "gross amount", "amount", "value"],
 };
 
 const SKIP_RE = /^(s\.?\s*no|sr\.?\s*no|sl\.?|item|description|particulars?|product|total|sub[-\s]?total|grand[-\s]?total|gst|igst|cgst|sgst|tax|amount|invoice|date|vendor|party|qty|quantity|rate|price|mrp|unit|hsn|sac|round\s*off|freight|discount)\b/i;
@@ -55,10 +55,16 @@ function splitLine(line: string, delimiter: ReturnType<typeof detectDelimiter>) 
   return cells.map((s) => s.trim()).filter(Boolean);
 }
 
-function headerIndex(cells: string[], aliases: string[]) {
-  return cells.findIndex((c) => {
-    const h = normalizeHeader(c);
-    return aliases.some((a) => h === a || h.includes(a));
+function headerIndex(cells: string[], aliases: string[], kind?: keyof typeof HEADER_ALIASES) {
+  const headers = cells.map(normalizeHeader);
+  for (const alias of aliases) {
+    const exact = headers.findIndex((h) => h === alias);
+    if (exact >= 0) return exact;
+  }
+  return headers.findIndex((h) => {
+    if (kind === "total" && /\b(tax|gst|cgst|sgst|igst|cess|discount)\b/.test(h)) return false;
+    if (kind === "price" && /\b(mrp|tax amount|gst|cgst|sgst|igst)\b/.test(h)) return false;
+    return aliases.some((a) => a.length >= 4 && h.includes(a));
   });
 }
 
@@ -68,10 +74,10 @@ function row(id: string, item: string, qty: number, price: number, total: number
 
 function parseWithHeader(lines: string[], headerLineIndex: number, delimiter: ReturnType<typeof detectDelimiter>): Row[] {
   const header = splitLine(lines[headerLineIndex], delimiter);
-  const itemIdx = headerIndex(header, HEADER_ALIASES.item);
-  const qtyIdx = headerIndex(header, HEADER_ALIASES.qty);
-  const priceIdx = headerIndex(header, HEADER_ALIASES.price);
-  const totalIdx = headerIndex(header, HEADER_ALIASES.total);
+  const itemIdx = headerIndex(header, HEADER_ALIASES.item, "item");
+  const qtyIdx = headerIndex(header, HEADER_ALIASES.qty, "qty");
+  const priceIdx = headerIndex(header, HEADER_ALIASES.price, "price");
+  const totalIdx = headerIndex(header, HEADER_ALIASES.total, "total");
   if (itemIdx < 0 || qtyIdx < 0 || (priceIdx < 0 && totalIdx < 0)) return [];
 
   const out: Row[] = [];
@@ -95,20 +101,17 @@ function parseHeuristicLine(raw: string): Row | null {
   if (cells.length < 2 && delimiter === "spaces") cells = raw.trim().split(/\s+/);
   if (!cells.length) return null;
 
-  // Common invoice software prefixes each line with serial no.; never treat it as quantity.
   if (cells.length >= 4 && /^\d+$/.test(cells[0]) && !isNumber(cells[1])) cells = cells.slice(1);
 
-  const numeric = cells.map((v, i) => ({ i, n: cleanNumber(v), raw: v })).filter((x) => Number.isFinite(x.n));
+  const numeric = cells.map((v, i) => ({ i, n: cleanNumber(v) })).filter((x) => Number.isFinite(x.n));
   if (numeric.length < 2) return null;
   const totalTok = numeric[numeric.length - 1];
 
-  // Quantity normally has at least one money-like number after it. Ignore obvious HSN/SAC codes.
   let qtyTok = numeric.find((x) => x.i > 0 && x.i < totalTok.i && Number.isInteger(x.n) && x.n > 0 && x.n < 100000);
   if (!qtyTok) qtyTok = numeric.find((x) => x.i > 0 && x.i < totalTok.i && x.n > 0 && x.n < 100000);
   if (!qtyTok) return null;
 
   let itemCells = cells.slice(0, qtyTok.i);
-  // Remove serial/HSN-like numeric prefixes but keep model numbers embedded in product names.
   while (itemCells.length > 1 && /^\d{1,10}$/.test(itemCells[0])) itemCells = itemCells.slice(1);
   const item = itemCells.join(" ").trim();
   if (!item || SKIP_RE.test(item) || /^\d+$/.test(item)) return null;
@@ -122,17 +125,15 @@ function parseHeuristicLine(raw: string): Row | null {
   return row(crypto.randomUUID(), item, qty, price, total);
 }
 
-/** Robust invoice parser for copy/paste, CSV/Excel text and software exports. */
 export function parseInvoiceText(text: string): Row[] {
   if (!text?.trim()) return [];
   const lines = text.replace(/\u00a0/g, " ").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-  // Prefer header-aware parsing because exported invoices often contain HSN/GST/discount columns.
   for (let i = 0; i < Math.min(lines.length, 12); i++) {
     const delimiter = detectDelimiter(lines[i]);
     const cells = splitLine(lines[i], delimiter);
-    const hasItem = headerIndex(cells, HEADER_ALIASES.item) >= 0;
-    const hasQty = headerIndex(cells, HEADER_ALIASES.qty) >= 0;
+    const hasItem = headerIndex(cells, HEADER_ALIASES.item, "item") >= 0;
+    const hasQty = headerIndex(cells, HEADER_ALIASES.qty, "qty") >= 0;
     if (hasItem && hasQty) {
       const parsed = parseWithHeader(lines, i, delimiter);
       if (parsed.length) return parsed;
