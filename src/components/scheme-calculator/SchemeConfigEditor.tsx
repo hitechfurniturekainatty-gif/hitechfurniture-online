@@ -10,9 +10,6 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
   const { kind, config } = scheme;
   const set = (patch: any) => onChange({ ...config, ...patch });
 
-  // Safety rule: family/contains matching is NEVER assumed automatically.
-  // Rules created by the previous UI used family as a default. Unless the user
-  // explicitly selected family matching, convert those implicit rules to exact.
   useEffect(() => {
     if (kind !== "bogo" || !Array.isArray(config?.rules)) return;
     const needsNormalising = config.rules.some((r: any) => r?.matchMode !== "exact" && r?.familyExplicit !== true);
@@ -29,6 +26,7 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
     const slabs: any[] = config.slabs || [];
     return <div className="space-y-2"><Label className="text-xs">Slabs (min qty → free items)</Label>{slabs.map((s, i) => <div key={i} className="flex items-center gap-2"><Input type="number" value={s.minQty} onChange={(e) => { const arr = slabs.slice(); arr[i] = { ...s, minQty: Number(e.target.value) || 0 }; set({ slabs: arr }); }} className="w-28" placeholder="Min qty" /><span className="text-muted-foreground">→</span><Input type="number" value={s.free} onChange={(e) => { const arr = slabs.slice(); arr[i] = { ...s, free: Number(e.target.value) || 0 }; set({ slabs: arr }); }} className="w-28" placeholder="Free" /><Button size="icon" variant="ghost" onClick={() => set({ slabs: slabs.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}<Button size="sm" variant="outline" onClick={() => set({ slabs: [...slabs, { minQty: 0, free: 0 }] })}><Plus className="h-4 w-4" /> Add slab</Button></div>;
   }
+
   if (kind === "bogo") {
     const legacy = !Array.isArray(config?.rules);
     const rules: any[] = Array.isArray(config?.rules)
@@ -37,35 +35,60 @@ function SchemeConfigEditorImpl({ scheme, onChange }: { scheme: { kind: SchemeKi
     const write = (next: any[]) => onChange({ rules: next });
     const updateRule = (i: number, patch: any) => { const next = rules.slice(); next[i] = { ...next[i], ...patch }; write(next); };
     const addRule = () => write([...rules, { purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: 10, freeQty: 1, freeItem: "" }]);
+
     return (
-      <div className="space-y-3 rounded-md border bg-muted/20 p-3">
-        <div>
-          <Label className="text-sm font-semibold">Scheme items</Label>
-          <p className="mt-1 text-xs text-muted-foreground">Only the item rules you add are calculated. Exact item matching is the default. Nothing else is grouped automatically.</p>
-          {legacy && <p className="mt-1 text-xs text-amber-700">Old Buy X Get Y rule detected. Add the exact purchase item name below to convert it to item-based calculation.</p>}
+      <div className="space-y-3">
+        <div className="rounded-xl border bg-white px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <Label className="text-sm font-semibold text-[#303a3b]">Scheme items</Label>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Only items you add below are calculated. Exact item matching is the default; nothing else is grouped automatically.</p>
+            </div>
+            <span className="admin-accent-tile admin-accent-mint rounded-lg px-2.5 py-1 text-[11px] font-medium">Exact by default</span>
+          </div>
+          {legacy && <p className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700">Old Buy X Get Y rule detected. Add the exact purchase item below to convert it safely to item-based calculation.</p>}
         </div>
+
         {rules.map((rule, i) => {
           const explicitFamily = rule.matchMode === "family" && rule.familyExplicit === true;
           return (
-            <div key={i} className="rounded-lg border bg-background p-3 space-y-3">
-              <div className="grid gap-2 md:grid-cols-[2fr_1fr_90px_90px_2fr_40px] items-end">
-                <div><Label className="text-xs">Purchase item</Label><Input value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond 75x60" /></div>
-                <div><Label className="text-xs">Match rule</Label><Select value={explicitFamily ? "family" : "exact"} onValueChange={(v) => updateRule(i, { matchMode: v, familyExplicit: v === "family" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="exact">Exact item only</SelectItem><SelectItem value="family">Family / contains — only when I choose</SelectItem></SelectContent></Select></div>
-                <div><Label className="text-xs">Buy Qty</Label><Input type="number" min={1} value={rule.buyQty ?? 10} onChange={(e) => updateRule(i, { buyQty: Math.max(1, Number(e.target.value) || 1) })} /></div>
-                <div><Label className="text-xs">Free Qty</Label><Input type="number" min={0} value={rule.freeQty ?? 1} onChange={(e) => updateRule(i, { freeQty: Math.max(0, Number(e.target.value) || 0) })} /></div>
-                <div><Label className="text-xs">Free item</Label><Input value={rule.freeItem || ""} onChange={(e) => updateRule(i, { freeItem: e.target.value })} placeholder="Same item or different free item" /></div>
-                <Button size="icon" variant="ghost" onClick={() => write(rules.filter((_, j) => j !== i))} disabled={rules.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <div key={i} className="rounded-xl border bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="admin-accent-tile admin-accent-sage flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold">{i + 1}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[#303a3b]">Scheme item rule</div>
+                    <div className="text-[11px] text-muted-foreground">Purchase item → qualification → free item</div>
+                  </div>
+                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => write(rules.filter((_, j) => j !== i))} disabled={rules.length <= 1} aria-label="Remove scheme item"><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
-              {rule.purchaseItem && <div className="text-xs text-muted-foreground">{explicitFamily ? "Only because you selected Family / contains: matching variants will be combined" : "Exact only: no other size, model or similar name will be included"} · Buy {Math.max(1, Number(rule.buyQty) || 1)} → {Math.max(0, Number(rule.freeQty) || 0)} free {rule.freeItem || rule.purchaseItem}</div>}
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.25fr_100px_100px_2fr]">
+                <div><Label className="text-xs">Purchase item</Label><Input className="mt-1" value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond 75x60" /></div>
+                <div><Label className="text-xs">Match rule</Label><Select value={explicitFamily ? "family" : "exact"} onValueChange={(v) => updateRule(i, { matchMode: v, familyExplicit: v === "family" })}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="exact">Exact item only</SelectItem><SelectItem value="family">Family / contains</SelectItem></SelectContent></Select></div>
+                <div><Label className="text-xs">Buy Qty</Label><Input className="mt-1" type="number" min={1} value={rule.buyQty ?? 10} onChange={(e) => updateRule(i, { buyQty: Math.max(1, Number(e.target.value) || 1) })} /></div>
+                <div><Label className="text-xs">Free Qty</Label><Input className="mt-1" type="number" min={0} value={rule.freeQty ?? 1} onChange={(e) => updateRule(i, { freeQty: Math.max(0, Number(e.target.value) || 0) })} /></div>
+                <div><Label className="text-xs">Free item</Label><Input className="mt-1" value={rule.freeItem || ""} onChange={(e) => updateRule(i, { freeItem: e.target.value })} placeholder="Same item or different free item" /></div>
+              </div>
+
+              {rule.purchaseItem && (
+                <div className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-5 ${explicitFamily ? "border-amber-500/20 bg-amber-500/5 text-amber-700" : "border-emerald-500/20 bg-emerald-500/5 text-[#55766b]"}`}>
+                  {explicitFamily ? "Family / contains was explicitly selected, so matching variants can be combined." : "Exact only: other sizes, models or similar names will not be included."} Buy {Math.max(1, Number(rule.buyQty) || 1)} → {Math.max(0, Number(rule.freeQty) || 0)} free {rule.freeItem || rule.purchaseItem}.
+                </div>
+              )}
             </div>
           );
         })}
-        <Button size="sm" variant="outline" onClick={addRule}><Plus className="h-4 w-4" /> Add Scheme Item</Button>
+
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={addRule}><Plus className="h-4 w-4" /> Add Scheme Item</Button>
       </div>
     );
   }
-  if (kind === "percent") return <div className="rounded-md border bg-muted/20 p-3"><Label className="text-xs">Discount percentage</Label><Input type="number" min={0} max={100} value={config.percent} onChange={(e) => set({ percent: Math.max(0, Number(e.target.value) || 0) })} className="w-32 mt-1" placeholder="e.g. 5" /></div>;
+
+  if (kind === "percent") return <div className="rounded-xl border bg-white p-4"><Label className="text-xs">Discount percentage</Label><Input type="number" min={0} max={100} value={config.percent} onChange={(e) => set({ percent: Math.max(0, Number(e.target.value) || 0) })} className="mt-1 w-32" placeholder="e.g. 5" /></div>;
   if (kind === "cashback") return <div className="flex gap-3"><div><Label className="text-xs">Min total ₹</Label><Input type="number" value={config.minAmount} onChange={(e) => set({ minAmount: Number(e.target.value) || 0 })} className="w-32" /></div><div><Label className="text-xs">Cashback ₹</Label><Input type="number" value={config.cashback} onChange={(e) => set({ cashback: Number(e.target.value) || 0 })} className="w-32" /></div></div>;
+
   if (kind === "custom") {
     const groups: any[] = config.groups || [];
     const updateG = (i: number, patch: any) => { const arr = groups.slice(); arr[i] = { ...arr[i], ...patch }; set({ groups: arr }); };
