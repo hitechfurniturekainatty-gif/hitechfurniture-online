@@ -2,6 +2,18 @@
 export type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
 export type Period = "monthly" | "quarterly" | "yearly";
 
+export type SchemeMatchMode = "exact" | "family";
+export type SchemeItemRule = {
+  id?: string;
+  purchaseItem: string;
+  matchMode: SchemeMatchMode;
+  /** Family matching must be an explicit staff choice. */
+  familyExplicit?: boolean;
+  buyQty: number;
+  freeQty: number;
+  freeItem: string;
+};
+
 export type Row = {
   id: string;
   item: string;
@@ -9,7 +21,7 @@ export type Row = {
   price: number;
   amountWithTax: number;
   mrp: number;
-  /** Optional per-item scheme snapshot. If absent, the month scheme is used. */
+  /** Legacy per-item scheme snapshot. New quantity schemes match from month/template item rules. */
   scheme_rule_id?: string;
   scheme_name?: string;
   scheme_kind?: SchemeKind;
@@ -53,6 +65,10 @@ export type BenefitReceipt = {
   item?: string;
   qty?: number;
   amount?: number;
+  /** Stable link for new item-based free receipts; old receipts remain supported by item name. */
+  scheme_rule_key?: string;
+  purchase_item?: string;
+  free_item?: string;
   /** Value per free unit. Used to convert free goods into a financial benefit. */
   unit_value?: number;
   date?: string;
