@@ -2,28 +2,50 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Gift, Plus, Trash2 } from "lucide-react";
-import { computeFreeReport, fmt } from "./utils";
+import { aggregateRowsByItem, computeFreeReport, fmt } from "./utils";
 import type { BenefitReceipt, Row, SchemeKind, VendorMonth } from "./types";
 
 const norm = (v: string | undefined) => String(v || "").trim().toLowerCase();
 
+/**
+ * Calculate eligibility correctly across the whole month.
+ * The same item may appear in multiple invoices; quantity-scheme eligibility
+ * must use the combined quantity, not calculate each invoice row separately.
+ * Rows are first grouped by the applied scheme, then aggregated by item.
+ */
 function eligibleByItem(vm: VendorMonth) {
   const rows: Row[] = vm.invoices?.length ? vm.invoices.flatMap((i) => i.rows) : vm.purchase_rows;
-  const map = new Map<string, { item: string; eligible: number }>();
+  const schemeGroups = new Map<string, { kind: SchemeKind; config: any; rows: Row[] }>();
 
   for (const row of rows) {
     if (!row.item?.trim() || Number(row.qty) <= 0) continue;
     const kind: SchemeKind = row.scheme_kind || vm.scheme_kind;
     const config = row.scheme_config || vm.scheme_config;
-    const report: any = computeFreeReport({ kind, config }, [row]);
-    const eligible = (report.rep || []).reduce((sum: number, x: any) => sum + (Number(x.free) || 0), 0);
-    const key = norm(row.item);
-    const current = map.get(key);
-    if (current) current.eligible += eligible;
-    else map.set(key, { item: row.item.trim(), eligible });
+    const schemeKey = row.scheme_rule_id || `${kind}:${JSON.stringify(config)}`;
+    const existing = schemeGroups.get(schemeKey);
+    if (existing) existing.rows.push(row);
+    else schemeGroups.set(schemeKey, { kind, config, rows: [row] });
   }
 
-  return Array.from(map.values()).filter((x) => x.eligible > 0);
+  const result = new Map<string, { item: string; purchaseQty: number; eligible: number }>();
+
+  for (const group of schemeGroups.values()) {
+    const aggregated = aggregateRowsByItem(group.rows);
+    for (const row of aggregated) {
+      const report: any = computeFreeReport({ kind: group.kind, config: group.config }, [row]);
+      const eligible = (report.rep || []).reduce((sum: number, x: any) => sum + (Number(x.free) || 0), 0);
+      const key = norm(row.item);
+      const current = result.get(key);
+      if (current) {
+        current.purchaseQty += Number(row.qty) || 0;
+        current.eligible += eligible;
+      } else {
+        result.set(key, { item: row.item.trim(), purchaseQty: Number(row.qty) || 0, eligible });
+      }
+    }
+  }
+
+  return Array.from(result.values()).filter((x) => x.eligible > 0);
 }
 
 export function ItemBenefitTracker({ vm, onChange }: {
@@ -76,21 +98,22 @@ export function ItemBenefitTracker({ vm, onChange }: {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2"><Gift className="h-4 w-4 text-primary" /><h4 className="text-sm font-semibold">Item-wise Free Tracking</h4></div>
-          <p className="mt-1 text-xs text-muted-foreground">Eligible is calculated from invoice quantity. Record only what the vendor actually supplied free.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Same item quantities across all invoices are combined automatically before free eligibility is calculated.</p>
         </div>
         {unassigned > 0 && <div className="rounded-md border px-2 py-1 text-xs text-amber-700">{fmt(unassigned)} received free not linked to an item</div>}
       </div>
 
       <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[680px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-muted/40 text-xs">
-            <tr><th className="p-2 text-left">Item</th><th className="p-2 text-right">Eligible</th><th className="p-2 text-right">Received</th><th className="p-2 text-right">Pending</th><th className="p-2 text-left">Record received</th></tr>
+            <tr><th className="p-2 text-left">Item</th><th className="p-2 text-right">Purchased Qty</th><th className="p-2 text-right">Eligible Free</th><th className="p-2 text-right">Received Free</th><th className="p-2 text-right">Pending Free</th><th className="p-2 text-left">Record received</th></tr>
           </thead>
           <tbody>
             {items.map((x) => {
               const key = norm(x.item);
               return <tr key={key} className="border-t">
                 <td className="p-2 font-medium">{x.item}</td>
+                <td className="p-2 text-right">{fmt(x.purchaseQty)}</td>
                 <td className="p-2 text-right font-semibold">{fmt(x.eligible)}</td>
                 <td className="p-2 text-right text-emerald-600">{fmt(x.received)}</td>
                 <td className="p-2 text-right font-semibold">{fmt(x.pending)}</td>
