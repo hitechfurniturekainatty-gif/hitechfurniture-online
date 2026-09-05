@@ -6,8 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Always return 200 with structured body so the supabase-js client
-// can read the error payload (non-2xx responses get swallowed by some SDK paths).
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -38,8 +36,28 @@ Deno.serve(async (req) => {
     const act = action || (role ? 'set_role' : null);
     if (!act) return json({ error: 'action required' });
 
+    const protectLastAdmin = async () => {
+      const { data: targetAdmin, error: targetErr } = await admin
+        .from('user_roles')
+        .select('user_id')
+        .eq('user_id', user_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (targetErr) throw targetErr;
+      if (!targetAdmin) return null;
+
+      const { count, error: countErr } = await admin
+        .from('user_roles')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('role', 'admin');
+      if (countErr) throw countErr;
+      return (count ?? 0) <= 1 ? 'The last admin account cannot be removed or downgraded. Add another admin first.' : null;
+    };
+
     if (act === 'delete') {
       if (user_id === userData.user.id) return json({ error: 'You cannot delete yourself' });
+      const protection = await protectLastAdmin();
+      if (protection) return json({ error: protection });
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error) return json({ error: error.message });
       return json({ ok: true });
@@ -47,6 +65,10 @@ Deno.serve(async (req) => {
 
     if (act === 'set_role') {
       if (!['admin', 'staff', 'measurement_staff', 'delivery', 'warehouse'].includes(role)) return json({ error: 'invalid role' });
+      if (role !== 'admin') {
+        const protection = await protectLastAdmin();
+        if (protection) return json({ error: protection });
+      }
       await admin.from('user_roles').delete().eq('user_id', user_id);
       const { error } = await admin.from('user_roles').insert({ user_id, role });
       if (error) return json({ error: error.message });
