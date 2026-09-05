@@ -30,6 +30,7 @@ const officeActions: Action[] = [
   { label: "Quotations", sub: "Prepare, follow up and confirm", to: "/admin/quotations", icon: FileText },
   { label: "Measurements", sub: "Site visits, dimensions and photos", to: "/admin/measurement-tasks", icon: Ruler },
   { label: "Production", sub: "Custom-order work progress", to: "/admin/production", icon: BriefcaseBusiness },
+  { label: "Receivable Follow-up", sub: "Customer balances, overdue amounts and promise dates", to: "/admin/backlog#receivable-followups", icon: IndianRupee },
 ];
 
 const warehouseActions: Action[] = [
