@@ -63,5 +63,5 @@ export type VendorMonth = {
   purchases_text: string | null;
   purchase_rows: Row[];
   invoices: Invoice[];
-  benefit_receipts: BenefitReceipt[];
+  benefit_receipts?: BenefitReceipt[];
 };
