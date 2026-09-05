@@ -37,7 +37,6 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
   const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
 
   const matchInfo = (row: Row) => {
-    if (row.scheme_rule_id) return { matched: true, label: row.scheme_name || "Legacy item rule" };
     if (fallbackScheme.kind === "percent") return { matched: true, label: "Month percentage scheme" };
     if (fallbackScheme.kind !== "bogo") return { matched: false, label: "No item scheme" };
     const rules: any[] = Array.isArray(fallbackScheme.config?.rules) ? fallbackScheme.config.rules : [];
@@ -69,7 +68,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
       </div>
 
       <div className="border-b bg-background px-4 py-2 text-xs text-muted-foreground">
-        Every invoice item is kept. Only items you added in the month scheme rules are matched; no scheme is applied to the whole invoice automatically.
+        Every invoice item is kept. Scheme matching comes only from the item rules configured for this month; old invoice-level scheme flags are ignored.
       </div>
 
       <div className="overflow-x-auto">
