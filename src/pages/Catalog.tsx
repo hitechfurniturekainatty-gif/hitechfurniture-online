@@ -276,7 +276,7 @@ const Catalog = () => {
             <EmptyState title="No categories yet" text="Furniture categories will appear here once published." />
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {mainCats.filter((c) => (productCountByCat[c.id] ?? 0) > 0).map((c) => (
+              {mainCats.map((c) => (
                 <button key={c.id} type="button" onClick={() => setCat(c.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
                   <div className="aspect-[4/3] overflow-hidden bg-muted/30">{c.image_url ? <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-4xl text-primary">{c.name[0]}</span></div>}</div>
                   <div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg text-foreground">{toTitleCase(c.name)}</p><p className="mt-1 text-xs text-muted-foreground">{productCountByCat[c.id] ?? 0} pieces</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
