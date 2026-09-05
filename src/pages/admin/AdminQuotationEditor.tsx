@@ -113,8 +113,8 @@ type Quotation = {
   is_direct_order?: boolean | null;
 };
 
-const DEFAULT_TERMS = `1. 50% advance payment required to confirm the order. Balance to be paid before/at delivery.
-2. Delivery within 15-30 working days from advance receipt and final design approval.
+const DEFAULT_TERMS = `1. Advance payment, if any, will be adjusted against the order total. Balance to be paid as agreed before/at delivery.
+2. Delivery timeline is subject to final design/specification approval and production/stock availability.
 3. Prices are valid for 15 days from quotation date.
 4. GST as applicable will be charged extra (where shown).
 5. Transportation and installation charges (if any) are extra unless specified.
@@ -237,8 +237,6 @@ const AdminQuotationEditor = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isOfficeStaff, isMeasurementStaff, isWarehouse, isDelivery } = useAuth();
 
-  // Warehouse and delivery staff are read-only — bounce them to the
-  // price-free preview so they can never add, edit, or open the editor.
   useEffect(() => {
     if (!user) return;
     if ((isWarehouse || isDelivery) && !isOfficeStaff && !isAdmin) {
@@ -256,39 +254,20 @@ const AdminQuotationEditor = () => {
   const [headerDirty, setHeaderDirty] = useState(false);
   const savingRef = useRef(false);
   const headerDirtyRef = useRef(false);
-  // Maps temporary client-side ids (e.g. `tmp-xxxx`) to their final DB ids
-  // after the row has been inserted. We use this in `updateItem` so async
-  // callbacks (image uploads, sketch saves) that captured the original tmp
-  // id still land on the correct row even after `saveAll` swapped the id.
   const tmpIdMapRef = useRef<Record<string, string>>({});
-  // Tracks last successful background save timestamp — used by the small
-  // floating "All changes saved" indicator so users know their typing
-  // is being persisted without any disruptive toast/spinner.
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  // Tracks the most recently added blank item so we can scroll/focus it
-  // into view after render. Prevents the "page jumps to top" feel by
-  // anchoring the user's eye to the new row instead.
   const pendingFocusItemRef = useRef<string | null>(null);
-  // Bumped whenever the quotation's status changes so the history card
-  // re-fetches the audit trail.
   const [statusHistoryKey, setStatusHistoryKey] = useState(0);
 
-  // dialogs
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [mainCats, setMainCats] = useState<MainCat[]>([]);
   const [subCats, setSubCats] = useState<SubCat[]>([]);
-  // Catalog picker drill-down: null → main grid; mainId set + subId null → sub grid;
-  // both set → models grid. A search overrides the drill-down and shows results flat.
   const [pickerMainId, setPickerMainId] = useState<string | null>(null);
   const [pickerSubId, setPickerSubId] = useState<string | null>(null);
-  // Catalog picker can browse Products or Bundles
   const [pickerTab, setPickerTab] = useState<"products" | "bundles">("products");
   const [bundles, setBundles] = useState<Bundle[]>([]);
-
-  // Drag-and-drop split view — lets staff drag catalog products straight
-  // into the items list instead of (or alongside) the picker dialog above.
   const [dndOpen, setDndOpen] = useState(false);
   const [dragProduct, setDragProduct] = useState<CatalogProduct | null>(null);
 
@@ -298,24 +277,14 @@ const AdminQuotationEditor = () => {
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
-  // Invoice-style items table: which row's advanced fields panel is expanded,
-  // and whether the quick "Live Preview" dialog is open.
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
-  // "saved" = pick a registered worker (existing flow).
-  // "direct" = skip worker selection and trigger native share sheet so the
-  // admin can send the worker-safe file to ANY contact / WhatsApp group.
   const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
-  // Once measurement staff hits "Submit for pricing", their view goes
-  // read-only and the office staff get the alert to add prices.
   const submittedForPricing = !!q?.submitted_for_pricing_at;
   const fieldReadOnly = isFieldOnly && submittedForPricing;
-  // Document type drives major UI changes: PO mode hides all pricing,
-  // GST, advance, discount, terms, totals, and bank info — POs only
-  // describe the work / materials sent to a worker or supplier.
   const po = isPO(q?.document_type);
   const showPricing = !po;
 
@@ -333,11 +302,6 @@ const AdminQuotationEditor = () => {
     }
     if (e2) toast({ title: "Items load failed", description: e2.message, variant: "destructive" });
     const nextQ = quote as Quotation;
-    // Reuse the existing row's _clientKey when we already have it locally
-    // (e.g. a row we just autosaved, whose id flipped from tmp-... to a
-    // real uuid) so a realtime/silent reload never changes a row's React
-    // key out from under an in-progress edit. Only genuinely new-to-us
-    // rows (from another user) get a fresh key, seeded from their DB id.
     const nextItems = ((lines ?? []) as unknown as Omit<QItem, "_clientKey">[]).map((x) => {
       const existing = itemsRef.current.find((it) => it.id === x.id);
       return { ...x, _clientKey: existing?._clientKey ?? x.id } as QItem;
@@ -353,9 +317,6 @@ const AdminQuotationEditor = () => {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
-  // Measurement staff already submitted this draft for pricing — they can
-  // only view it now. Send them to the read-only preview so they can't
-  // accidentally edit measurements after office staff start pricing.
   useEffect(() => {
     if (!loading && q && fieldReadOnly) {
       navigate(`/admin/quotations/${q.id}/preview`, { replace: true });
@@ -363,29 +324,17 @@ const AdminQuotationEditor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, fieldReadOnly, q?.id]);
 
-  // Preload published products once so the description autosuggest is instant.
   useEffect(() => {
     loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Live sync: when another user edits this quotation, reload silently if the
-  // local form is clean. If the user has unsaved edits, show a soft toast with
-  // a "Reload" action so we never overwrite their work mid-typing.
   useRealtimeQuotation(id, () => {
     const hasUnsavedItems = itemsRef.current.some((it) => it._dirty || it._isNew);
     if (!headerDirtyRef.current && !hasUnsavedItems && !savingRef.current) {
-      // Silent reload — DO NOT toggle the page-level `loading` flag, otherwise
-      // the editor unmounts to a spinner and the browser jumps to the top
-      // mid-typing every time our own auto-save echoes back via realtime.
       load({ silent: true });
       setStatusHistoryKey((k) => k + 1);
     }
-    // Otherwise: user is mid-typing or mid-save. Silently skip — the next
-    // clean realtime tick (after their save settles) will reload. We
-    // intentionally suppress the toast because most realtime events are
-    // self-echoes from our own auto-save and the toast was breaking the
-    // user's typing flow (incl. the Space key on some keyboards).
   });
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);
@@ -395,7 +344,6 @@ const AdminQuotationEditor = () => {
   const grandTotal = taxableBase + gstAmount;
   const advanceAmount = Math.max(0, Number(q?.advance_amount) || 0);
   const balanceDue = Math.max(0, grandTotal - advanceAmount);
-  // Kept for legacy references / WhatsApp message — represents grand total
   const total = grandTotal;
 
   const updateHeader = (patch: Partial<Quotation>) => {
@@ -408,8 +356,6 @@ const AdminQuotationEditor = () => {
     setHeaderDirty(true);
   };
 
-  // Staff display names — used as auto-suggest options for the
-  // "Salesperson / Staff" field on the quotation header.
   const [staffOptions, setStaffOptions] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -418,7 +364,7 @@ const AdminQuotationEditor = () => {
       if (cancelled || error) return;
       const users = (data?.users ?? []) as Array<{ display_name?: string | null; email?: string | null; role?: string | null }>;
       const names = users
-        .filter((u) => u.role && u.role !== "delivery") // sales staff only
+        .filter((u) => u.role && u.role !== "delivery")
         .map((u) => (u.display_name || u.email || "").trim())
         .filter(Boolean);
       setStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
@@ -427,8 +373,6 @@ const AdminQuotationEditor = () => {
   }, []);
 
   const addBlankItem = () => {
-    // Default route by customer category: Custom Project / Consultation
-    // skews to custom production; everything else assumes ready stock.
     const lt = q?.lead_type ?? "lead";
     const defaultRoute: "ready_stock" | "custom" =
       lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
@@ -464,14 +408,7 @@ const AdminQuotationEditor = () => {
   };
 
   const updateItem = (id: string, patch: Partial<QItem>) => {
-    // Resolve a possibly-stale tmp id to its current DB id. This prevents
-    // image uploads that started while a row was still `tmp-...` from being
-    // dropped after autosave assigned the row a real id.
     const resolved = tmpIdMapRef.current[id] ?? id;
-    // Intelligent routing: if the user adds any customization (measurement,
-    // sketch, site photos, dimensions text, custom catalog cloth photo) flip
-    // this row to "custom" automatically — unless the user has explicitly
-    // toggled the route in the same patch.
     const customizationKeys: (keyof QItem)[] = [
       "measurement",
       "measurement_image_url",
@@ -495,9 +432,6 @@ const AdminQuotationEditor = () => {
     });
   };
 
-  // After a new blank item is appended, focus its description field WITHOUT
-  // scrolling. The user explicitly asked for zero-jump UI when clicking
-  // "Add item" — so we skip scrollIntoView and rely on `preventScroll: true`.
   useEffect(() => {
     const pendingId = pendingFocusItemRef.current;
     if (!pendingId) return;
@@ -528,9 +462,6 @@ const AdminQuotationEditor = () => {
     });
   };
 
-  // Per-item dispatch / delivery actions. Persists immediately so warehouse
-  // and logistics dashboards (and the completion trigger) see the change
-  // even before the next autosave fires.
   const setItemFulfillmentTimestamps = async (
     item: QItem,
     patch: { dispatched_at?: string | null; delivered_at?: string | null },
@@ -592,7 +523,6 @@ const AdminQuotationEditor = () => {
 
   const openProductPicker = async () => {
     await loadProducts();
-    // Always open at Step 1 — the "View All" main-category grid.
     setPickerMainId(null);
     setPickerSubId(null);
     setProductSearch("");
@@ -670,8 +600,6 @@ const AdminQuotationEditor = () => {
     toast({ title: "Bundle added" });
   };
 
-  // Drag-and-drop (or click) add from the split-view catalog panel. Always
-  // appends a new line.
   const addFromCatalogViewProduct = (p: CatalogProduct) => {
     const price = Number(p.offer_price ?? p.mrp ?? 0);
     const tmpId = `tmp-${crypto.randomUUID()}`;
@@ -715,8 +643,6 @@ const AdminQuotationEditor = () => {
     setDragProduct((e.active.data.current?.product as CatalogProduct | undefined) ?? null);
   };
 
-  // Escape (or the dragged node unmounting) fires onDragCancel instead of
-  // onDragEnd — clear the overlay here too so it never gets stuck visible.
   const handleCatalogDragCancel = () => setDragProduct(null);
 
   const handleCatalogDragEnd = (e: DragEndEvent) => {
@@ -727,9 +653,6 @@ const AdminQuotationEditor = () => {
     if (product) addFromCatalogViewProduct(product);
   };
 
-  // Returns map of tmp id -> real id (and updated item list) so callers can remap selections.
-  // Pass `{ silent: true }` for background auto-saves so we don't fire a "Saved" toast on
-  // every blur — the small indicator badge in the corner is enough feedback.
   const saveAll = async (opts: { silent?: boolean } = {}): Promise<{ idMap: Record<string, string>; savedItems: QItem[] } | null> => {
     const saveQ = qRef.current ?? q;
     if (!saveQ) return null;
@@ -770,10 +693,6 @@ const AdminQuotationEditor = () => {
       h.delivery_place,
       h.delivery_route_id,
     ]) : "";
-    // Keyed by _clientKey, not `id` — `id` flips from `tmp-...` to a real
-    // uuid mid-save for new rows, but _clientKey never changes for the life
-    // of the row, so it's the one identity a late-resolving save can trust
-    // to still find the right item even if the user has moved on.
     const itemSnapshots = new Map(saveItems.map((it) => [it._clientKey, itemFingerprint(it)]));
     const headerSnapshot = headerFingerprint(saveQ);
     savingRef.current = true;
@@ -804,16 +723,11 @@ const AdminQuotationEditor = () => {
     const idMap: Record<string, string> = {};
     const updated: QItem[] = [...saveItems];
 
-    // Build the work list of dirty rows to insert/update in parallel.
     type Job = { index: number; payload: any; isNew: boolean; tmpId: string; existingId: string };
     const jobs: Job[] = [];
     for (let i = 0; i < updated.length; i++) {
       const it = updated[i];
       if (!it._dirty) continue;
-      // Save the row if it has ANY meaningful content — measurement staff
-      // often attach a measurement photo / item photo first and type the
-      // description later. Previously we silently skipped rows with an
-      // empty description, so their work appeared lost on reopen.
       const hasAnyContent =
         it.description.trim() ||
         it.item_notes?.trim() ||
@@ -859,7 +773,6 @@ const AdminQuotationEditor = () => {
       });
     }
 
-    // Run all row writes concurrently — dramatically faster on quotations with many items.
     const results = await Promise.all(
       jobs.map((j) =>
         j.isNew
@@ -880,18 +793,11 @@ const AdminQuotationEditor = () => {
       const newId = res.data?.id ?? j.existingId;
       if (j.isNew) {
         idMap[j.tmpId] = newId;
-        // Remember the mapping so any in-flight async callbacks (e.g. image
-        // upload that started while the row was still `tmp-...`) can be
-        // re-routed to the now-real row id.
         tmpIdMapRef.current[j.tmpId] = newId;
       }
       updated[j.index] = { ...updated[j.index], id: newId, _isNew: false, _dirty: false };
     }
 
-    // Reconcile by _clientKey: if the user kept editing a row while its save
-    // was in flight, `latest` (current state) wins over `saved` (the value
-    // this save actually wrote) and stays `_dirty` so the next autosave pass
-    // picks up the edit — a late-resolving save can never clobber newer typing.
     const latestItems = itemsRef.current;
     const merged = updated.map((saved) => {
       const latest = latestItems.find((it) => it._clientKey === saved._clientKey);
@@ -912,9 +818,6 @@ const AdminQuotationEditor = () => {
       setHeaderDirty(false);
     }
 
-    // Always recompute and persist header totals from the freshly saved items.
-    // Without this, the quotations list (which reads `total`) shows stale
-    // amounts when items are added/edited without touching header fields.
     {
       const newSubtotal = merged.reduce(
         (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
@@ -951,11 +854,6 @@ const AdminQuotationEditor = () => {
     savingRef.current = false;
     setSaving(false);
 
-    // Status auto-advance: only the advance-amount → finalized rule remains.
-    // It's enforced by a DB trigger (quotations_status_audit), so nothing to
-    // do here. All quotations start as "drafted" and stay there until the
-    // admin moves them manually or an advance is recorded.
-    // We re-read the status from DB after a save in case the trigger flipped it.
     if (canEditPrice) {
       const { data: fresh } = await supabase
         .from("quotations")
@@ -991,17 +889,8 @@ const AdminQuotationEditor = () => {
     return result.savedItems;
   };
 
-  // ---- Silent auto-save (every field) ----
-  // Auto-save 1.2s after the user finishes editing ANY field on an item row
-  // (description, quantity, unit price, measurement notes, image attachments,
-  // sketch, etc.). Debounced so typing is never interrupted; the row simply
-  // persists in the background once the user pauses. Every keystroke resets
-  // this timer (via the imageFingerprint dependency below), so a fast typist
-  // never trips a save mid-word — it only fires after a genuine pause.
   const imageFingerprint = useMemo(
     () => [
-      // Header fields — so blurring out of party name / phone / notes etc.
-      // also triggers the silent background save.
       q?.party_name ?? "",
       q?.party_place ?? "",
       q?.party_phone ?? "",
@@ -1038,14 +927,11 @@ const AdminQuotationEditor = () => {
   );
   const lastSavedFingerprintRef = useRef<string>("");
   useEffect(() => {
-    // Skip first render and while loading
     if (loading) {
       lastSavedFingerprintRef.current = imageFingerprint;
       return;
     }
     if (imageFingerprint === lastSavedFingerprintRef.current) return;
-    // Only auto-save when there's something pending: a savable item OR a
-    // dirty header. Empty blank rows are skipped by saveAll itself.
     const hasSavableItem = items.some(
       (it) =>
         it._dirty &&
@@ -1061,19 +947,7 @@ const AdminQuotationEditor = () => {
           it.product_id),
     );
     const hasPending = hasSavableItem || headerDirty;
-    // Skip while a save is already in flight — but keep `saving` in the
-    // dependency list below. Without it, an edit made *during* that in-flight
-    // save would set a fingerprint the effect never revisits (since only
-    // imageFingerprint/loading were watched), leaving it stuck "unsaved"
-    // until some unrelated later edit happened to fire the effect again.
-    // Re-running when `saving` flips back to false catches it immediately.
     if (!hasPending || saving) return;
-    // 700ms: fires per-field, after the user pauses. Safe to run this short
-    // now — the two things that used to make a fast debounce interrupt
-    // typing (an unstable list `key`, and save-reconciliation matching by a
-    // mutable `id`) are both fixed (_clientKey), so a save resolving while
-    // the user has moved to the next field can no longer steal focus or
-    // clobber what they just typed there.
     const t = setTimeout(async () => {
       const result = await saveAll({ silent: true });
       if (result) {
@@ -1091,8 +965,6 @@ const AdminQuotationEditor = () => {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFingerprint, loading, saving]);
-
-  // ---- PDF & WhatsApp ----
 
   const buildPdfData = () => {
     if (!q) return null;
@@ -1130,13 +1002,8 @@ const AdminQuotationEditor = () => {
     };
   };
 
-  // Aggressive compression for WhatsApp / job-work share: photos display at
-  // 44–88px in the PDF, so 700px / q=0.6 stays sharp while cutting file size ~60%.
   const SHARE_PDF_OPTIONS = { image: { maxSide: 700, jpegQuality: 0.6 } } as const;
 
-  // Build the multi-page JPG sequence (one image per PDF page) at 3× scale.
-  // Each page contains atomic items (no item is split across pages) because
-  // the source PDF uses `wrap={false}` on every row.
   const buildJpgPages = async (
     mode: "download" | "share" = "download"
   ): Promise<{ blobs: Blob[]; baseName: string } | null> => {
@@ -1184,9 +1051,6 @@ const AdminQuotationEditor = () => {
     return true;
   };
 
-  // Generates the *raw* multi-page PDF (no JPG rasterization). Used by the
-  // unified Download/Share menu so admins can pick the format that matches
-  // who they're sending it to (PDF for customers, JPG for workers/WhatsApp).
   const downloadPdf = async (): Promise<boolean> => {
     if (items.length === 0) {
       toast({ title: "Add at least one item", variant: "destructive" });
@@ -1213,21 +1077,14 @@ const AdminQuotationEditor = () => {
     }
   };
 
-  // Save → navigate to the structured digital preview page.
-  // No PDF rendering happens here anymore — the preview is a fast HTML
-  // page that loads instantly on every device. PDF is generated on-demand
-  // from the preview page when the user taps "Share via WhatsApp" or "PDF".
   const saveAndPreview = async () => {
     const result = await saveAll();
     if (!result) return;
     if (result.savedItems.length === 0) return;
-    // Explicit user Save → close the floating internal-notes window.
     notesWindow.close();
     navigate(`/admin/quotations/${q!.id}/preview`);
   };
 
-  // Measurement staff: save current draft AND mark the source measurement
-  // task as completed so office staff get an alert that pricing is needed.
   const submitForPricing = async () => {
     if (!q) return;
     if (items.length === 0 || !items.some((i) => i.description.trim())) {
@@ -1265,13 +1122,8 @@ const AdminQuotationEditor = () => {
     navigate("/admin/measurement-tasks");
   };
 
-  // Persist a status change immediately (used by quick actions and auto-transitions)
   const setStatus = async (newStatus: string, opts: { silent?: boolean } = {}) => {
     if (!q || q.status === newStatus) return;
-    // Trip-bypass guard: marking a quotation delivered should normally happen
-    // via the driver workflow (trip_quotations.delivered_at). If no trip
-    // record exists for this quotation, require an explicit confirmation so
-    // bypassing logistics becomes a deliberate exception, not a habit.
     if (newStatus === "delivered") {
       const { count } = await supabase
         .from("trip_quotations")
@@ -1301,9 +1153,6 @@ const AdminQuotationEditor = () => {
     if (!opts.silent) toast({ title: `Marked ${statusLabel(newStatus)}` });
   };
 
-  // Shared helper: try native share with file(s) (WhatsApp attaches the JPGs
-  // directly). Falls back to downloading every page + opening the chat link
-  // if the device doesn't support multi-file sharing.
   const shareJpgPagesViaWhatsApp = async (
     blobs: Blob[],
     baseName: string,
@@ -1330,7 +1179,6 @@ const AdminQuotationEditor = () => {
       }
     }
 
-    // Fallback: download every page + open WhatsApp chat
     files.forEach((f, idx) => {
       setTimeout(() => downloadBlob(f, f.name), idx * 250);
     });
@@ -1363,13 +1211,8 @@ const AdminQuotationEditor = () => {
         })();
 
     await shareJpgPagesViaWhatsApp(r.blobs, r.baseName, q.party_phone, msg);
-
-    // Note: sharing on WhatsApp no longer changes the status. The 4-status
-    // workflow only moves to "finalized" via Advance Received or admin action.
   };
 
-  // Live mobile-link share — generates a short URL to the always-up-to-date
-  // public mobile view of this quotation, copies it and offers WhatsApp.
   const shareLink = async () => {
     if (!q) return;
     const msg = po
@@ -1384,14 +1227,11 @@ const AdminQuotationEditor = () => {
     });
   };
 
-  // ---- Job Work ----
-
   const openJobDialog = async () => {
     if (selectedItemIds.size === 0) {
       toast({ title: "Select items first", description: "Tick the checkbox next to items to assign.", variant: "destructive" });
       return;
     }
-    // Auto-save any pending changes so newly added items get real IDs
     const saved = await ensureSaved();
     if (!saved) return;
     const { data } = await supabase.from("workers").select("id, name, whatsapp_number, trade").eq("is_active", true).order("name");
@@ -1418,8 +1258,6 @@ const AdminQuotationEditor = () => {
     }
     setGeneratingJob(true);
     try {
-      // Only log a job_work_orders row when assigning to a saved worker.
-      // Direct shares are intentionally not tied to any worker profile.
       if (worker) {
         const { error } = await supabase.from("job_work_orders").insert({
           quotation_id: q.id,
@@ -1433,7 +1271,6 @@ const AdminQuotationEditor = () => {
           return;
         }
       }
-      // generate worker-safe JPG (NO prices, NO bank, NO customer phone)
       const { generateJobWorkPdf } = await loadPdfLib();
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
@@ -1459,7 +1296,6 @@ const AdminQuotationEditor = () => {
       const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
 
       if (isDirect) {
-        // Direct WhatsApp / native share sheet — admin picks any contact.
         if (format === "pdf") {
           await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
         } else {
@@ -1513,10 +1349,6 @@ const AdminQuotationEditor = () => {
     );
   }
 
-  // Admin/Office bypass routing + reject — visible in early stages (Client
-  // Hub / Dimensions / OPS). Hoisted out of the toolbar JSX (instead of an
-  // inline IIFE) so both the desktop/tablet toolbar row and the mobile
-  // sticky bar below can share the exact same visibility rules and handlers.
   const bypassStage = Number((q as any).pipeline_stage ?? 1);
   const bypassStatus = normalizeStatus(q.status);
   const canReject = canEditPrice && bypassStatus !== "rejected" && bypassStatus !== "delivered" && bypassStage <= 3;
@@ -1557,17 +1389,8 @@ const AdminQuotationEditor = () => {
     else if (v === "logistics") pushToStage(6, "Logistics");
   };
 
-  // Editor surface: white background with primary-color text for
-  // comfortable, low-eye-strain reading while building a quotation.
-  // Wraps the whole editor; cards inside inherit the white surface.
   const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
-      {/* Top bar — identity row, then a single flex-wrap actions row.
-          Every button is a shrink-0 sibling in ONE wrapping flex container,
-          so at any width the row reflows onto more lines instead of
-          overflowing/overlapping (the old layout split actions across two
-          non-communicating flex groups, which could visually overlap at
-          tablet widths). */}
       <div className="mb-4 flex flex-col gap-3">
         <div className="flex flex-wrap items-start gap-2 sm:items-center">
           <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
@@ -1581,7 +1404,6 @@ const AdminQuotationEditor = () => {
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
               {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
-            {/* Mobile pipeline stage chip */}
             {(() => {
               const stage = (Number((q as any).pipeline_stage ?? 1) as PipelineStage);
               const def = STAGE_DEFS[stage] ?? STAGE_DEFS[1];
@@ -1598,7 +1420,6 @@ const AdminQuotationEditor = () => {
               );
             })()}
           </div>
-          {/* Desktop pipeline stage chip — replaces old Drafted/Finalized status bar */}
           {(() => {
             const stage = (Number((q as any).pipeline_stage ?? 1) as PipelineStage);
             const def = STAGE_DEFS[stage] ?? STAGE_DEFS[1];
@@ -1621,14 +1442,8 @@ const AdminQuotationEditor = () => {
           )}
         </div>
 
-        {/* Jump straight to production (worker) / delivery (trip) status —
-            only renders once there's something downstream to jump to. */}
         <QuotationFlowLinks quotationId={q.id} />
 
-        {/* Desktop / tablet actions — one wrapping row (hidden on mobile,
-            the dedicated sticky bottom bar below covers the same actions
-            there). Every item is shrink-0 so it keeps its own footprint and
-            wraps onto a new line instead of being squeezed or overlapping. */}
         <div className="hidden flex-wrap items-center gap-2 sm:flex">
           {canBypass && (
             <Select onValueChange={pushToSelectValueChange}>
@@ -1675,7 +1490,6 @@ const AdminQuotationEditor = () => {
         </div>
       </div>
 
-      {/* Banner: this quotation came from a measurement task and is in OPS */}
       {canEditPrice && submittedForPricing && normalizeStatus(q.status) === "drafted" && (
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -1686,7 +1500,6 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      {/* Header form */}
       <Card className="mb-4">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base flex items-center gap-2">
@@ -1752,7 +1565,6 @@ const AdminQuotationEditor = () => {
         </CardContent>
       </Card>
 
-      {/* Items */}
       <ItemsDropZone>
       <Card className="mb-4">
         <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1805,7 +1617,6 @@ const AdminQuotationEditor = () => {
           {items.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
-          {/* Invoice-style header (desktop only) — makes the entry feel like a billing table */}
           {items.length > 0 && (
             <div className="hidden sm:grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] gap-2 rounded-md bg-muted/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <span>#</span>
@@ -1820,7 +1631,6 @@ const AdminQuotationEditor = () => {
           )}
           {items.map((it, idx) => (
             <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
-              {/* Compact invoice row — Description / Qty / Rate / Amount inline */}
               <div className="flex flex-col gap-2 px-2 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] sm:items-center sm:px-3">
                 <div className="flex items-start gap-2 sm:contents">
                 <div className="flex shrink-0 flex-row items-center gap-1 sm:flex-col sm:justify-center">
@@ -1864,7 +1674,6 @@ const AdminQuotationEditor = () => {
                     onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
                     placeholder="Description — specs, customer notes, etc. (optional)"
                   />
-                  {/* Status / customization chips */}
                   <div className="flex flex-wrap items-center gap-1 text-[10px]">
                     <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
                       it.fulfillment_route === "custom"
@@ -1878,9 +1687,6 @@ const AdminQuotationEditor = () => {
                     {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
                   </div>
-                  {/* Structured, preview-style media stack. Mirrors the saved
-                      Quotation Preview one-by-one layout right inside the
-                      editor, with inline X buttons for instant removal. */}
                   <div data-enter-skip className="pt-1">
                     <QuotationItemMediaStack
                       item={it}
@@ -1891,7 +1697,6 @@ const AdminQuotationEditor = () => {
                 </div>
                 </div>
 
-                {/* Mobile-only: Qty / Rate / Amount in one labelled row */}
                 <div className="grid grid-cols-3 gap-2 sm:hidden">
                   <label className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Qty</span>
@@ -1942,7 +1747,6 @@ const AdminQuotationEditor = () => {
                   ) : <span />}
                 </div>
 
-                {/* Mobile-only actions row */}
                 <div className="flex items-center justify-end gap-1 sm:hidden" data-enter-skip>
                   <Button
                     type="button"
@@ -1958,7 +1762,6 @@ const AdminQuotationEditor = () => {
                   </Button>
                 </div>
 
-                {/* Desktop-only cells */}
                 <Input
                   className="hidden h-10 text-right sm:block"
                   type="number"
@@ -2018,10 +1821,8 @@ const AdminQuotationEditor = () => {
                 </div>
               </div>
 
-              {/* Expanded details panel — collapsed by default so the entry table stays clean */}
               {expandedItemId === it.id && (
               <>
-              {/* Row header: SL, badges, delete */}
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
                   {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
@@ -2050,7 +1851,6 @@ const AdminQuotationEditor = () => {
                   >
                     {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
                   </button>
-                  {/* Per-item dispatch / delivery status pill */}
                   {!it._isNew && (it.delivered_at ? (
                     <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                       ✓ Delivered
@@ -2109,9 +1909,6 @@ const AdminQuotationEditor = () => {
                 </div>
               </div>
 
-              {/* Quick-preview thumbnail strip — lets office staff/admin
-                  see every photo, sketch, measurement image and site photo
-                  the measurement staff attached, with one click to enlarge. */}
               {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
                 <div className="border-b bg-muted/20 px-3 py-2">
                   <AttachmentThumbStrip
@@ -2129,7 +1926,6 @@ const AdminQuotationEditor = () => {
             </div>
           ))}
 
-          {/* Mobile-friendly add-more button at bottom of list */}
           {items.length > 0 && (
             <Button type="button" variant="outline" className="h-12 w-full border-dashed" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
               <Plus className="mr-2 h-4 w-4" />Add another item
@@ -2139,7 +1935,6 @@ const AdminQuotationEditor = () => {
       </Card>
       </ItemsDropZone>
 
-      {/* Live Preview dialog — quick read-only invoice render for verification while typing */}
       <Dialog open={livePreviewOpen} onOpenChange={setLivePreviewOpen}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
@@ -2209,7 +2004,6 @@ const AdminQuotationEditor = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Totals */}
       {!po && (
       <Card className="mb-4">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
@@ -2226,7 +2020,7 @@ const AdminQuotationEditor = () => {
                 rows={8}
                 value={q.terms ?? DEFAULT_TERMS}
                 onChange={(e) => updateHeader({ terms: e.target.value })}
-                placeholder="50% advance, delivery timeline, validity, GST, warranty..."
+                placeholder="Advance if any, delivery timeline, validity, GST, warranty..."
                 className="font-mono text-xs"
               />
               <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
@@ -2242,13 +2036,11 @@ const AdminQuotationEditor = () => {
             )}
           </div>
           <div className="order-1 w-full space-y-2 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 md:order-2 md:ml-auto md:max-w-sm">
-            {/* Subtotal — always visible */}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{formatINR(subtotal)}</span>
             </div>
 
-            {/* Discount — input shown to staff so they can enter; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="discount-amt" className="shrink-0 text-sm text-muted-foreground">Discount</Label>
@@ -2270,7 +2062,6 @@ const AdminQuotationEditor = () => {
               </div>
             ) : null}
 
-            {/* GST — only when % > 0 AND amount > 0 */}
             {(q.gst_percent ?? 0) > 0 && gstAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">GST ({q.gst_percent}%)</span>
@@ -2278,7 +2069,6 @@ const AdminQuotationEditor = () => {
               </div>
             )}
 
-            {/* Advance Received — input shown to staff; read-only row only when > 0 */}
             {canEditPrice ? (
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="advance-amt" className="shrink-0 text-sm text-muted-foreground">Advance Received</Label>
@@ -2302,7 +2092,6 @@ const AdminQuotationEditor = () => {
 
             <Separator />
 
-            {/* Grand Total — always visible. Becomes Balance Due if advance was paid. */}
             <div className="flex items-baseline justify-between">
               <span className="font-display text-base">{advanceAmount > 0 ? "Balance Due" : "Grand Total"}</span>
               <span className="font-display text-2xl font-bold text-primary">
@@ -2334,14 +2123,10 @@ const AdminQuotationEditor = () => {
         </p>
       )}
 
-      {/* Audit trail of every status change (admin/staff only — workers don't see this). */}
       {canEditPrice && (
         <QuotationStatusHistory quotationId={q.id} refreshKey={statusHistoryKey} />
       )}
 
-      {/* Duplicate Save button at the bottom — saves a long scroll back to the
-          top after adding many items. Hidden on mobile (sticky bar already
-          provides it). Same handler/styling as the top Save button. */}
       <div className="mt-6 hidden justify-end gap-2 sm:flex">
         <Button onClick={saveAndPreview} disabled={saving} size="lg" className="min-w-[180px]">
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -2349,10 +2134,7 @@ const AdminQuotationEditor = () => {
         </Button>
       </div>
 
-      {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
-        {/* Admin/Office bypass routing + reject — same rules as the desktop
-            toolbar row, surfaced here too so they're reachable on mobile. */}
         {(canBypass || canReject) && (
           <div className="mb-2 flex flex-wrap gap-2">
             {canBypass && (
@@ -2376,8 +2158,6 @@ const AdminQuotationEditor = () => {
             )}
           </div>
         )}
-        {/* Row 1 (top): secondary actions — equal thirds so the Assign button is
-            fully visible on narrow screens (was being clipped to a sliver before). */}
         {canEditPrice && (
           <div className="mb-2 grid grid-cols-3 gap-2">
             <DownloadShareMenu
@@ -2402,7 +2182,6 @@ const AdminQuotationEditor = () => {
             <AttachedNotesButton quotationId={q.id} className="h-11 w-full" />
           </div>
         )}
-        {/* Row 2 (bottom): primary Save action sits closest to thumb. */}
         <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
         </Button>
@@ -2416,10 +2195,8 @@ const AdminQuotationEditor = () => {
           </Button>
         )}
       </div>
-      {/* Spacer so content isn't hidden behind sticky bar on mobile */}
       <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
 
-      {/* Product picker */}
       <Dialog
         open={productPickerOpen}
         onOpenChange={setProductPickerOpen}
@@ -2457,7 +2234,6 @@ const AdminQuotationEditor = () => {
             className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
-            {/* Products / Bundles segmented selector */}
             <div className="mb-3 inline-flex shrink-0 self-start rounded-md border bg-muted p-0.5">
               <button
                 type="button"
@@ -2484,7 +2260,6 @@ const AdminQuotationEditor = () => {
               />
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* BUNDLES TAB — flat grid */}
               {pickerTab === "bundles" ? (
                 (() => {
                   const list = bundles.filter((b) =>
@@ -2532,8 +2307,7 @@ const AdminQuotationEditor = () => {
                     </div>
                   );
                 })()
-              ) : /* SEARCH MODE — flat results across catalog */
-              productSearch ? (
+              ) : productSearch ? (
                 <div className="space-y-2">
                   {products
                     .filter((p) =>
@@ -2555,7 +2329,6 @@ const AdminQuotationEditor = () => {
                   )}
                 </div>
               ) : !pickerMainId ? (
-                /* STEP 1 — Main categories grid (the "View All" landing) */
                 mainCats.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     No categories yet.
@@ -2594,7 +2367,6 @@ const AdminQuotationEditor = () => {
                   </div>
                 )
               ) : !pickerSubId ? (
-                /* STEP 2 — Sub-categories of the chosen main */
                 (() => {
                   const subs = subCats.filter((s) => s.main_category_id === pickerMainId);
                   return (
@@ -2649,7 +2421,6 @@ const AdminQuotationEditor = () => {
                   );
                 })()
               ) : (
-                /* STEP 3 — Models in the chosen sub (or all under main) */
                 (() => {
                   const list = products.filter((p) => {
                     if (p.main_category_id !== pickerMainId) return false;
@@ -2675,7 +2446,6 @@ const AdminQuotationEditor = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Job Work dialog */}
       <Dialog open={jobOpen} onOpenChange={setJobOpen}>
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
@@ -2687,7 +2457,6 @@ const AdminQuotationEditor = () => {
           >
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
 
-            {/* Mode picker — Saved Worker vs Direct WhatsApp / native share */}
             <div className="space-y-2">
               <Label>Send to</Label>
               <RadioGroup
@@ -2755,10 +2524,6 @@ const AdminQuotationEditor = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Floating non-intrusive auto-save indicator. Hidden in PO read-only
-          flows aren't necessary — saving and dirty are the same flags used
-          across the editor. Position is bottom-right but lifted above the
-          mobile sticky action bar (~80px). */}
       <div className="pointer-events-none fixed bottom-24 right-3 z-40 sm:bottom-4 sm:right-4">
         {(() => {
           const dirty = headerDirty || items.some((i) => i._dirty || i._isNew);
