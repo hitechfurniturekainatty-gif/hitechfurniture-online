@@ -50,7 +50,7 @@ const commercialLabel: Record<CommercialStatus, string> = {
   follow_up: "Follow-up",
   confirmed: "Confirmed",
   delivered: "Delivered",
-  payment_pending: "Payment Pending",
+  payment_pending: "Receivable Pending",
   closed: "Closed",
   lost: "Lost",
 };
