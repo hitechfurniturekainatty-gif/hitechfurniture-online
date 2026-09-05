@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck, HardHat } from "lucide-react";
+import { Loader2, UserPlus, ShieldCheck, User as UserIcon, Ruler, Pencil, KeyRound, Trash2, Eye, EyeOff, MessageCircle, Truck, HardHat, Mail } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BacklogPinCard } from "@/components/admin/BacklogPinCard";
 import { PeopleTabs } from "@/components/admin/PeopleTabs";
@@ -47,6 +47,7 @@ const AdminStaff = () => {
   const [rows, setRows] = useState<StaffRow[]>([]);
   const [workerByUserId, setWorkerByUserId] = useState<Record<string, { id: string; name: string }>>({});
   const [loading, setLoading] = useState(true);
+  const adminCount = rows.filter((r) => r.role === "admin").length;
 
   // Create
   const [openCreate, setOpenCreate] = useState(false);
@@ -63,6 +64,7 @@ const AdminStaff = () => {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [showEditPw, setShowEditPw] = useState(false);
+  const editingIsLastAdmin = !!editing && editing.role === "admin" && adminCount <= 1;
 
   // Helper: invoke an edge function and surface the JSON body's `error` even on non-2xx
   const invokeFn = async (name: string, body: unknown) => {
@@ -85,9 +87,9 @@ const AdminStaff = () => {
       supabase.from("workers").select("id, name, user_id").not("user_id", "is", null).is("deleted_at", null),
     ]);
     if (error) {
-      toast({ title: "Failed to load staff", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to load users", description: error.message, variant: "destructive" });
     } else if ((data as any)?.error) {
-      toast({ title: "Staff list error", description: `${(data as any).error}${(data as any).detail ? ` — ${(data as any).detail}` : ""}`, variant: "destructive" });
+      toast({ title: "User list error", description: `${(data as any).error}${(data as any).detail ? ` — ${(data as any).detail}` : ""}`, variant: "destructive" });
       setRows([]);
     } else {
       setRows((data?.users ?? []) as StaffRow[]);
@@ -128,6 +130,21 @@ const AdminStaff = () => {
     load();
   };
 
+  const sendResetLink = async (r: StaffRow) => {
+    if (!r.email) {
+      toast({ title: "No email address", description: "Add an email before sending a reset link.", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(r.email, {
+      redirectTo: "https://hitechfurniture.online/auth?type=recovery",
+    });
+    if (error) {
+      toast({ title: "Reset link failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Reset link sent", description: `Password reset email sent to ${r.email}` });
+  };
+
   const openEdit = (r: StaffRow) => {
     setEditing(r);
     setEditForm({
@@ -144,7 +161,6 @@ const AdminStaff = () => {
     if (!editing) return;
     setSavingEdit(true);
     try {
-      // Profile (name + email + whatsapp)
       if (
         (editForm.display_name ?? "") !== (editing.display_name ?? "") ||
         (editForm.email ?? "") !== (editing.email ?? "") ||
@@ -156,20 +172,18 @@ const AdminStaff = () => {
           whatsapp_number: editForm.whatsapp_number,
         });
       }
-      // Role
       if (editForm.role !== editing.role && editing.user_id !== user?.id) {
         await invokeFn("admin-update-user-role", {
           user_id: editing.user_id, action: "set_role", role: editForm.role,
         });
       }
-      // Password
       if (editForm.password) {
         if (editForm.password.length < 8) throw new Error("Password must be at least 8 characters");
         await invokeFn("admin-update-user-role", {
           user_id: editing.user_id, action: "set_password", password: editForm.password,
         });
       }
-      toast({ title: "Staff updated" });
+      toast({ title: "User updated" });
       setEditing(null);
       load();
     } catch (e: any) {
@@ -192,7 +206,7 @@ const AdminStaff = () => {
   if (!isAdmin) {
     return (
       <AdminShell>
-        <p className="text-muted-foreground">Only admins can manage staff.</p>
+        <p className="text-muted-foreground">Only admins can manage users and roles.</p>
       </AdminShell>
     );
   }
@@ -202,21 +216,19 @@ const AdminStaff = () => {
       <PeopleTabs />
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">Staff Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Create accounts, reset passwords and assign roles.</p>
+          <h1 className="font-display text-2xl sm:text-3xl">Users &amp; Roles</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Add users, make or remove admins, assign roles and reset access.</p>
         </div>
         <Dialog open={openCreate} onOpenChange={setOpenCreate}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto"><UserPlus className="mr-2 h-4 w-4" /> Add staff</Button>
+            <Button className="w-full sm:w-auto"><UserPlus className="mr-2 h-4 w-4" /> Add User</Button>
           </DialogTrigger>
           <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
             <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-              <DialogTitle>Create new staff account</DialogTitle>
+              <DialogTitle>Create new user account</DialogTitle>
+              <DialogDescription>Create an admin or staff account and choose its access role.</DialogDescription>
             </DialogHeader>
-            <div
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
-              onFocusCapture={scrollFocusedIntoView}
-            >
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6" onFocusCapture={scrollFocusedIntoView}>
               <div className="space-y-1.5">
                 <Label>Display name</Label>
                 <Input value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="Full name" />
@@ -228,15 +240,7 @@ const AdminStaff = () => {
               <div className="space-y-1.5">
                 <Label>Temporary password * (min 8 characters)</Label>
                 <div className="relative">
-                  <Input
-                    type={showCreatePw ? "text" : "password"}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="At least 8 characters"
-                    minLength={8}
-                    required
-                    className="pr-10"
-                  />
+                  <Input type={showCreatePw ? "text" : "password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" minLength={8} required className="pr-10" />
                   <button type="button" onClick={() => setShowCreatePw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -244,43 +248,32 @@ const AdminStaff = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>WhatsApp number (with country code, e.g. 919895134482)</Label>
-                <Input
-                  value={form.whatsapp_number}
-                  onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })}
-                  placeholder="91XXXXXXXXXX"
-                  inputMode="tel"
-                />
+                <Input value={form.whatsapp_number} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} placeholder="91XXXXXXXXXX" inputMode="tel" />
                 <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments via WhatsApp.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Role *</Label>
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as Role })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="admin">Admin (full access)</SelectItem>
-                     <SelectItem value="staff">Office Staff</SelectItem>
-                     <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
-                     <SelectItem value="delivery">Delivery Driver (trips only)</SelectItem>
-                     <SelectItem value="warehouse">Warehouse (stock & dispatch)</SelectItem>
-                   </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin (full access)</SelectItem>
+                    <SelectItem value="staff">Office Staff</SelectItem>
+                    <SelectItem value="measurement_staff">Measurement Staff (field)</SelectItem>
+                    <SelectItem value="delivery">Delivery Driver (trips only)</SelectItem>
+                    <SelectItem value="warehouse">Warehouse (stock & dispatch)</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
               <Button variant="outline" onClick={() => setOpenCreate(false)} className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={createUser} disabled={creating} className="w-full sm:w-auto">
-                {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create
-              </Button>
+              <Button onClick={createUser} disabled={creating} className="w-full sm:w-auto">{creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create User</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {isAdmin && (
-        <div className="mb-4">
-          <BacklogPinCard />
-        </div>
-      )}
+      {isAdmin && <div className="mb-4"><BacklogPinCard /></div>}
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -288,60 +281,41 @@ const AdminStaff = () => {
         <div className="grid gap-3">
           {rows.map((r) => {
             const isSelf = r.user_id === user?.id;
+            const isLastAdmin = r.role === "admin" && adminCount <= 1;
             return (
               <Card key={r.user_id}>
                 <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shrink-0">
-                      {r.role === "admin" ? <ShieldCheck className="h-5 w-5 text-primary" /> :
-                        r.role === "measurement_staff" ? <Ruler className="h-5 w-5 text-primary" /> :
-                          r.role === "delivery" ? <Truck className="h-5 w-5 text-primary" /> :
-                            <UserIcon className="h-5 w-5 text-primary" />}
+                      {r.role === "admin" ? <ShieldCheck className="h-5 w-5 text-primary" /> : r.role === "measurement_staff" ? <Ruler className="h-5 w-5 text-primary" /> : r.role === "delivery" ? <Truck className="h-5 w-5 text-primary" /> : <UserIcon className="h-5 w-5 text-primary" />}
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium truncate">{r.display_name || r.email} {isSelf && <span className="text-xs text-muted-foreground">(you)</span>}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.email}</p>
-                      {r.whatsapp_number && (
-                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                          <MessageCircle className="h-3 w-3 text-primary" /> {r.whatsapp_number}
-                        </p>
-                      )}
+                      {r.whatsapp_number && <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5"><MessageCircle className="h-3 w-3 text-primary" /> {r.whatsapp_number}</p>}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className={r.role ? roleColor[r.role] : "bg-muted"}>{r.role ? roleLabel[r.role] : "No role"}</Badge>
+                    {isLastAdmin && <Badge variant="outline">Last admin · protected</Badge>}
                     {workerByUserId[r.user_id] ? (
-                      <Link to={`/admin/workers/${workerByUserId[r.user_id].id}`}>
-                        <Badge variant="outline" className="cursor-pointer gap-1 hover:bg-muted">
-                          <HardHat className="h-3 w-3" /> Worker: {workerByUserId[r.user_id].name}
-                        </Badge>
-                      </Link>
+                      <Link to={`/admin/workers/${workerByUserId[r.user_id].id}`}><Badge variant="outline" className="cursor-pointer gap-1 hover:bg-muted"><HardHat className="h-3 w-3" /> Worker: {workerByUserId[r.user_id].name}</Badge></Link>
                     ) : (
-                      <Badge variant="outline" className="gap-1 text-muted-foreground">
-                        <HardHat className="h-3 w-3" /> No worker profile
-                      </Badge>
+                      <Badge variant="outline" className="gap-1 text-muted-foreground"><HardHat className="h-3 w-3" /> No worker profile</Badge>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => sendResetLink(r)} disabled={!r.email}><Mail className="mr-1.5 h-3.5 w-3.5" /> Reset Access</Button>
+                    <Button size="sm" variant="outline" onClick={() => openEdit(r)}><Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit</Button>
                     {!isSelf && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={isLastAdmin} title={isLastAdmin ? "Add another admin before deleting this account" : "Delete account"}><Trash2 className="h-4 w-4" /></Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete this account?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This permanently removes <span className="font-medium">{r.email}</span> and revokes their access. Their past data (tasks, quotations) is kept.
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>This permanently removes <span className="font-medium">{r.email}</span> and revokes their access. Their past data (tasks, quotations) is kept.</AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteUser(r)}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
+                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteUser(r)}>Delete</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     )}
@@ -350,84 +324,57 @@ const AdminStaff = () => {
               </Card>
             );
           })}
-          {rows.length === 0 && <p className="text-center text-muted-foreground py-8">No staff accounts yet.</p>}
+          {rows.length === 0 && <p className="text-center text-muted-foreground py-8">No user accounts yet.</p>}
         </div>
       )}
 
-      {/* Edit dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-            <DialogTitle>Edit staff account</DialogTitle>
-            <DialogDescription>Update profile, change role, or reset password.</DialogDescription>
+            <DialogTitle>Edit user account</DialogTitle>
+            <DialogDescription>Update profile, make/remove admin, change role, or reset password.</DialogDescription>
           </DialogHeader>
           {editing && (
-            <div
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
-              onFocusCapture={scrollFocusedIntoView}
-            >
-              <div className="space-y-1.5">
-                <Label>Display name</Label>
-                <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
-                <p className="text-[11px] text-muted-foreground">Changing email updates the login email immediately.</p>
-              </div>
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6" onFocusCapture={scrollFocusedIntoView}>
+              <div className="space-y-1.5"><Label>Display name</Label><Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /><p className="text-[11px] text-muted-foreground">Changing email updates the login email immediately.</p></div>
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp number</Label>
-                <Input
-                  value={editForm.whatsapp_number}
-                  onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value })}
-                  placeholder="91XXXXXXXXXX (with country code)"
-                  inputMode="tel"
-                />
+                <Input value={editForm.whatsapp_number} onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value })} placeholder="91XXXXXXXXXX (with country code)" inputMode="tel" />
                 <p className="text-[11px] text-muted-foreground">Used to auto-send job &amp; measurement assignments.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Role</Label>
-                <Select
-                  value={editForm.role}
-                  onValueChange={(v) => setEditForm({ ...editForm, role: v as Role })}
-                  disabled={editing.user_id === user?.id}
-                >
+                <Select value={editForm.role} onValueChange={(v) => setEditForm({ ...editForm, role: v as Role })} disabled={editing.user_id === user?.id || editingIsLastAdmin}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="admin">Admin (full access)</SelectItem>
                     <SelectItem value="staff">Office Staff</SelectItem>
                     <SelectItem value="measurement_staff">Measurement Staff</SelectItem>
                     <SelectItem value="delivery">Delivery Driver</SelectItem>
                     <SelectItem value="warehouse">Warehouse</SelectItem>
                   </SelectContent>
                 </Select>
-                {editing.user_id === user?.id && (
-                  <p className="text-[11px] text-muted-foreground">You can't change your own role.</p>
-                )}
+                {editing.user_id === user?.id && <p className="text-[11px] text-muted-foreground">You can't change your own role.</p>}
+                {editingIsLastAdmin && editing.user_id !== user?.id && <p className="text-[11px] text-muted-foreground">At least one admin is required. Add another admin before removing this admin role.</p>}
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <Button type="button" variant="outline" size="sm" onClick={() => sendResetLink(editing)} disabled={!editing.email}><Mail className="mr-1.5 h-3.5 w-3.5" /> Send Password Reset Link</Button>
+                <p className="mt-2 text-[11px] text-muted-foreground">Recommended: the user sets their own new password from the secure email link.</p>
               </div>
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> New password (optional)</Label>
+                <Label className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> Set new password directly (optional)</Label>
                 <div className="relative">
-                  <Input
-                    type={showEditPw ? "text" : "password"}
-                    value={editForm.password}
-                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                    placeholder="Leave blank to keep current password"
-                    className="pr-10"
-                  />
-                  <button type="button" onClick={() => setShowEditPw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showEditPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <Input type={showEditPw ? "text" : "password"} value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="Leave blank to keep current password" className="pr-10" />
+                  <button type="button" onClick={() => setShowEditPw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showEditPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Min 8 characters. Share the new password with the staff member.</p>
+                <p className="text-[11px] text-muted-foreground">Min 8 characters. Use reset email when possible so admins do not need to know the user's password.</p>
               </div>
             </div>
           )}
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setEditing(null)} className="w-full sm:w-auto">Cancel</Button>
-            <Button onClick={saveEdit} disabled={savingEdit} className="w-full sm:w-auto">
-              {savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes
-            </Button>
+            <Button onClick={saveEdit} disabled={savingEdit} className="w-full sm:w-auto">{savingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
