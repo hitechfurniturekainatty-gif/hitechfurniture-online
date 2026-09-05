@@ -112,7 +112,7 @@ const AdminSchemeCalculator = () => {
         </div></div>
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
           <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} />
-          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={() => persistMonth(m)} />)}</div> : <AggregatedView mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
+          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
         </>}
       </TabsContent>
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>
