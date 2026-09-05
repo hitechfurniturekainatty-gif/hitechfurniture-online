@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Receipt, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Stat } from "./Stat";
-import { fmt, parseInvoiceText } from "./utils";
+import { fmt } from "./utils";
+import { parseInvoiceText } from "./invoiceParser";
 import type { Invoice, Row } from "./types";
 
 export function InvoiceDialog({ open, invoice, onClose, onSave }: {
@@ -39,10 +40,10 @@ export function InvoiceDialog({ open, invoice, onClose, onSave }: {
   const avgDiscount = totalMrpValue > 0 ? ((totalMrpValue - totalCost) / totalMrpValue) * 100 : 0;
 
   const append = (extra: Row[], mode: "append" | "replace") => {
-    if (!extra.length) { toast({ title: "No rows found in pasted text", variant: "destructive" }); return; }
+    if (!extra.length) { toast({ title: "No valid item rows found", description: "Check item, quantity and rate/total columns. Headers, GST totals and summary rows are ignored automatically.", variant: "destructive" }); return; }
     setRows(mode === "replace" ? extra : [...rows, ...extra]);
     setPaste("");
-    toast({ title: `${mode === "replace" ? "Replaced with" : "Added"} ${extra.length} rows` });
+    toast({ title: `${mode === "replace" ? "Replaced with" : "Added"} ${extra.length} valid item rows` });
   };
 
   const parseLocal = (mode: "append" | "replace") => append(parseInvoiceText(paste), mode);
@@ -99,7 +100,7 @@ export function InvoiceDialog({ open, invoice, onClose, onSave }: {
         txt = await file.text();
       }
       setPaste(txt);
-      toast({ title: `Loaded ${file.name}` });
+      toast({ title: `Loaded ${file.name}`, description: "Review the extracted text, then Parse & append/replace." });
     } catch (e: any) {
       toast({ title: "File read failed", description: e?.message || String(e), variant: "destructive" });
     }
@@ -131,98 +132,29 @@ export function InvoiceDialog({ open, invoice, onClose, onSave }: {
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label className="text-xs">Label</Label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Invoice 1" />
-          </div>
-          <div>
-            <Label className="text-xs">Invoice no.</Label>
-            <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="e.g. INV/2025/001" />
-          </div>
-          <div>
-            <Label className="text-xs">Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
+          <div><Label className="text-xs">Label</Label><Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Invoice 1" /></div>
+          <div><Label className="text-xs">Invoice no.</Label><Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="e.g. INV/2025/001" /></div>
+          <div><Label className="text-xs">Date</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
         </div>
 
         <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label className="text-xs font-semibold">
-              Bulk paste — strict 4-column format: <span className="font-mono">Item · Qty · Unit Price · Total Cost (incl. tax)</span>
-            </Label>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs hover:bg-accent">
-              <Upload className="h-3.5 w-3.5" /> Upload .xlsx / .pdf / .csv
-              <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,text/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
-            </label>
+            <Label className="text-xs font-semibold">Copy-paste invoice rows directly. Excel/software headers, HSN/GST columns and summary rows are handled automatically.</Label>
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs hover:bg-accent"><Upload className="h-3.5 w-3.5" /> Upload .xlsx / .pdf / .csv<input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.pdf,text/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] ?? null)} /></label>
           </div>
-          <Textarea rows={5} value={paste} onChange={(e) => setPaste(e.target.value)}
-            placeholder={"Tabs / pipes / commas / spaces all OK. Examples:\nComfobond 75x60x6\t10\t1250\t12500\nComfobond 72x60x6,10,1180,11800"} />
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => parseLocal("append")} disabled={!paste.trim()}>
-              <Plus className="h-3.5 w-3.5" /> Parse & append
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => parseLocal("replace")} disabled={!paste.trim()}>
-              Parse & replace
-            </Button>
-          </div>
+          <Textarea rows={5} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Paste from billing software / Excel. Preferred headers: Item or Description · Qty · Rate/Unit Price · Total/Taxable Value.\nSimple rows also work: Comfobond 75x60x6\t10\t1250\t12500"} />
+          <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => parseLocal("append")} disabled={!paste.trim()}><Plus className="h-3.5 w-3.5" /> Parse & append</Button><Button size="sm" variant="outline" onClick={() => parseLocal("replace")} disabled={!paste.trim()}>Parse & replace</Button></div>
         </div>
 
-        <div className="overflow-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="min-w-[200px]">Item Name</TableHead>
-                <TableHead className="w-20">Qty</TableHead>
-                <TableHead className="w-28">Unit Price</TableHead>
-                <TableHead className="w-32">Total Cost</TableHead>
-                <TableHead className="w-28">MRP / Unit</TableHead>
-                <TableHead className="w-24 text-right">Discount %</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">No rows yet — paste above or add manually.</TableCell></TableRow>
-              )}
-              {rows.map((r) => {
-                const mrpVal = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
-                const disc = mrpVal > 0 ? ((mrpVal - (Number(r.amountWithTax) || 0)) / mrpVal) * 100 : 0;
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell><Input value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-8" /></TableCell>
-                    <TableCell><Input type="number" min={0} value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
-                    <TableCell><Input type="number" min={0} value={r.price} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
-                    <TableCell><Input type="number" min={0} value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} className="h-8" /></TableCell>
-                    <TableCell>
-                      <Input type="number" min={0} value={r.mrp || ""} placeholder="—"
-                        onChange={(e) => updateRow(r.id, { mrp: Number(e.target.value) || 0 })} className="h-8" />
-                    </TableCell>
-                    <TableCell className={`text-right text-sm font-semibold ${r.mrp > 0 ? (disc > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400") : "text-muted-foreground"}`}>
-                      {r.mrp > 0 ? `${disc.toFixed(2)}%` : "—"}
-                    </TableCell>
-                    <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="overflow-auto rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/30"><TableHead className="min-w-[200px]">Item Name</TableHead><TableHead className="w-20">Qty</TableHead><TableHead className="w-28">Unit Price</TableHead><TableHead className="w-32">Total Cost</TableHead><TableHead className="w-28">MRP / Unit</TableHead><TableHead className="w-24 text-right">Discount %</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader><TableBody>
+          {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">No rows yet — paste above or add manually.</TableCell></TableRow>}
+          {rows.map((r) => { const mrpVal=(Number(r.mrp)||0)*(Number(r.qty)||0); const disc=mrpVal>0?((mrpVal-(Number(r.amountWithTax)||0))/mrpVal)*100:0; return <TableRow key={r.id}><TableCell><Input value={r.item} onChange={(e)=>updateRow(r.id,{item:e.target.value})} className="h-8" /></TableCell><TableCell><Input type="number" min={0} value={r.qty} onChange={(e)=>updateRow(r.id,{qty:Number(e.target.value)||0})} className="h-8" /></TableCell><TableCell><Input type="number" min={0} value={r.price} onChange={(e)=>updateRow(r.id,{price:Number(e.target.value)||0})} className="h-8" /></TableCell><TableCell><Input type="number" min={0} value={r.amountWithTax} onChange={(e)=>updateRow(r.id,{amountWithTax:Number(e.target.value)||0})} className="h-8" /></TableCell><TableCell><Input type="number" min={0} value={r.mrp||""} placeholder="—" onChange={(e)=>updateRow(r.id,{mrp:Number(e.target.value)||0})} className="h-8" /></TableCell><TableCell className={`text-right text-sm font-semibold ${r.mrp>0?(disc>0?"text-emerald-600 dark:text-emerald-400":"text-amber-600 dark:text-amber-400"):"text-muted-foreground"}`}>{r.mrp>0?`${disc.toFixed(2)}%`:"—"}</TableCell><TableCell><Button size="icon" variant="ghost" onClick={()=>removeRow(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell></TableRow>; })}
+        </TableBody></Table></div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 p-2 text-xs"><Button size="sm" variant="ghost" onClick={addBlankRow}><Plus className="h-3.5 w-3.5" /> Add row manually</Button><div className="ml-auto flex flex-wrap items-center gap-4"><Stat label="Rows" value={String(rows.length)} /><Stat label="Total Cost" value={`₹${fmt(totalCost)}`} /><Stat label="Total MRP" value={`₹${fmt(totalMrpValue)}`} /><Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} /></div></div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 p-2 text-xs">
-          <Button size="sm" variant="ghost" onClick={addBlankRow}><Plus className="h-3.5 w-3.5" /> Add row manually</Button>
-          <div className="ml-auto flex flex-wrap items-center gap-4">
-            <Stat label="Rows" value={String(rows.length)} />
-            <Stat label="Total Cost" value={`₹${fmt(totalCost)}`} />
-            <Stat label="Total MRP" value={`₹${fmt(totalMrpValue)}`} />
-            <Stat label="Avg Discount" value={`${avgDiscount.toFixed(2)}%`} tone={avgDiscount > 0 ? "success" : undefined} />
-          </div>
-        </div>
-        </div>
-
-        <DialogFooter className="px-4 sm:px-6 py-3 border-t shrink-0 bg-background gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={commit}><Save className="h-4 w-4" /> Save invoice</Button>
-        </DialogFooter>
+        <DialogFooter className="px-4 sm:px-6 py-3 border-t shrink-0 bg-background gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={commit}><Save className="h-4 w-4" /> Save invoice</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
