@@ -34,8 +34,8 @@ const officeActions: Action[] = [
 ];
 
 const warehouseActions: Action[] = [
-  { label: "Warehouse Queue", sub: "Pick, pack and dispatch-ready orders", to: "/admin/warehouse", icon: PackageCheck },
-  { label: "Delivery Planning", sub: "Check route and trip readiness", to: "/admin/logistics", icon: MapPinned },
+  { label: "Pick & Dispatch", sub: "Verify ready items, pack orders and prepare dispatch", to: "/admin/warehouse", icon: PackageCheck },
+  { label: "Delivery Handoff", sub: "Move dispatch-ready orders into route and trip planning", to: "/admin/logistics", icon: Truck },
 ];
 
 const deliveryActions: Action[] = [
