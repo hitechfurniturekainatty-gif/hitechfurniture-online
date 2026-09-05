@@ -34,19 +34,22 @@ export function InvoiceCard({ index, invoice, savedSchemes, fallbackScheme, onCh
   };
   const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
 
-  const applyRowScheme = (row: Row, value: string) => {
-    if (value === "month") {
-      updateRow(row.id, { scheme_rule_id: undefined, scheme_name: undefined, scheme_kind: undefined, scheme_config: undefined });
-      return;
-    }
+  const schemePatch = (value: string): Partial<Row> | null => {
+    if (value === "month") return { scheme_rule_id: undefined, scheme_name: undefined, scheme_kind: undefined, scheme_config: undefined };
     const scheme = savedSchemes.find((s) => s.id === value);
-    if (!scheme) return;
-    updateRow(row.id, {
-      scheme_rule_id: scheme.id,
-      scheme_name: scheme.name,
-      scheme_kind: scheme.kind,
-      scheme_config: scheme.config,
-    });
+    if (!scheme) return null;
+    return { scheme_rule_id: scheme.id, scheme_name: scheme.name, scheme_kind: scheme.kind, scheme_config: scheme.config };
+  };
+
+  const applyRowScheme = (row: Row, value: string) => {
+    const patch = schemePatch(value);
+    if (patch) updateRow(row.id, patch);
+  };
+
+  const applyAll = (value: string) => {
+    const patch = schemePatch(value);
+    if (!patch) return;
+    onChange({ rows: rows.map((r) => ({ ...r, ...patch })) });
   };
 
   const eligibleForRow = (r: Row) => {
@@ -71,11 +74,25 @@ export function InvoiceCard({ index, invoice, savedSchemes, fallbackScheme, onCh
         </div>
       </div>
 
+      {rows.length > 0 && savedSchemes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2">
+          <span className="text-xs font-medium">Quick apply to all items</span>
+          <Select value="" onValueChange={applyAll}>
+            <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Choose scheme…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Use month scheme for all</SelectItem>
+              {savedSchemes.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="text-[10px] text-muted-foreground">You can still change any single item below.</span>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader><TableRow className="bg-muted/20"><TableHead className="min-w-[200px]">Item Name</TableHead><TableHead className="w-20">Qty</TableHead><TableHead className="w-28">Purchase / Unit</TableHead><TableHead className="w-32">Total Cost</TableHead><TableHead className="min-w-[190px]">Scheme</TableHead><TableHead className="w-24 text-right">Eligible Free</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">No rows — paste invoice text above or click “Row” to add manually.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">No rows — add or paste invoice items.</TableCell></TableRow>}
             {rows.map((r) => {
               const eligible = eligibleForRow(r);
               return (
@@ -104,7 +121,7 @@ export function InvoiceCard({ index, invoice, savedSchemes, fallbackScheme, onCh
       </div>
 
       <div className="grid grid-cols-2 gap-2 border-t bg-muted/20 px-4 py-2 text-xs sm:grid-cols-4">
-        <Stat label="Rows" value={String(rows.length)} />
+        <Stat label="Items" value={String(rows.length)} />
         <Stat label="Invoice Cost" value={`₹${fmt(totalCost)}`} />
         <Stat label="Item-wise schemes" value={String(rows.filter((r) => r.scheme_rule_id).length)} />
         <Stat label="Eligible Free" value={fmt(invoiceEligible)} tone="success" />
