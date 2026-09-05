@@ -17,7 +17,7 @@ function cleanNumber(v: string): number {
   let s = String(v ?? "").trim();
   if (!s || /%/.test(s)) return NaN;
   const negative = /^\(.*\)$/.test(s);
-  s = s.replace(/[()₹$€£,\s]/g, "").replace(/[^0-9.\-]/g, "");
+  s = s.replace(/[()₹$€£,\s]/g, "").replace(/[^0-9.-]/g, "");
   if (!s || !/^-?\d+(\.\d+)?$/.test(s)) return NaN;
   const n = Number(s);
   return negative ? -Math.abs(n) : n;
@@ -43,6 +43,9 @@ function splitCsv(line: string): string[] {
 function detectDelimiter(line: string): "tab" | "pipe" | "csv" | "spaces" {
   if (line.includes("\t")) return "tab";
   if (line.includes("|")) return "pipe";
+  // Billing software often formats currency as ₹7,500 with columns separated by spaces.
+  // Prefer visible multi-space columns before interpreting commas as CSV separators.
+  if (/\s{2,}/.test(line)) return "spaces";
   if ((line.match(/,/g) || []).length >= 2) return "csv";
   return "spaces";
 }
@@ -116,7 +119,7 @@ function parseHeuristicLine(raw: string): Row | null {
   const item = itemCells.join(" ").trim();
   if (!item || SKIP_RE.test(item) || /^\d+$/.test(item)) return null;
 
-  const between = numeric.filter((x) => x.i > qtyTok!.i && x.i < totalTok.i);
+  const between = numeric.filter((x) => x.i > qtyTok.i && x.i < totalTok.i);
   const priceTok = between.find((x) => x.n >= 0);
   const qty = qtyTok.n;
   const total = totalTok.n;
