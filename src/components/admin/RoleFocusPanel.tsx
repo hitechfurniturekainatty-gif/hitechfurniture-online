@@ -22,7 +22,7 @@ const adminActions: Action[] = [
   { label: "Production", sub: "Custom jobs and worker follow-up", to: "/admin/production", icon: BriefcaseBusiness },
   { label: "Warehouse", sub: "Ready stock and dispatch queue", to: "/admin/warehouse", icon: Warehouse },
   { label: "Delivery", sub: "Routes, trips and delivery readiness", to: "/admin/logistics", icon: Truck },
-  { label: "Receivables", sub: "Customer balances and promise dates", to: "/admin/backlog", icon: IndianRupee },
+  { label: "Balance to Receive", sub: "Customer balances, overdue amounts and promise dates", to: "/admin/backlog#receivable-followups", icon: IndianRupee },
 ];
 
 const officeActions: Action[] = [
