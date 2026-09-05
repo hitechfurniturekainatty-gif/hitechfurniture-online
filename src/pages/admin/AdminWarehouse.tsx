@@ -425,7 +425,7 @@ const AdminWarehouse = () => {
           <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Ready Items</p><p className="text-2xl font-bold">{summary.readyItems}</p></CardContent></Card>
           <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Custom Ready</p><p className="text-2xl font-bold">{summary.customReady}</p></CardContent></Card>
           <Card><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">In Transit</p><p className="text-2xl font-bold">{summary.transitOrders}</p><p className="text-[10px] text-muted-foreground">{summary.transitItems} items</p></CardContent></Card>
-          <Card className="col-span-2 sm:col-span-1"><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Collection Pending</p><p className="text-lg font-bold">{formatINR(summary.balance)}</p></CardContent></Card>
+          <Card className="col-span-2 sm:col-span-1"><CardContent className="p-3"><p className="text-[10px] uppercase text-muted-foreground">Balance to Collect</p><p className="text-lg font-bold">{formatINR(summary.balance)}</p><p className="text-[10px] text-muted-foreground">Ready + in-transit orders</p></CardContent></Card>
         </div>
 
         <Card><CardContent className="flex flex-wrap gap-2 p-3">
