@@ -11,20 +11,13 @@ import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { GlobalNotesWindow } from "@/components/admin/GlobalNotesWindow";
 import { EnquiryForm } from "@/components/EnquiryForm";
 
-// Eager: home page (LCP-critical, almost always the entry point)
 import Index from "./pages/Index.tsx";
 
-// Legacy /admin/services/:id and /admin/complaints/:id URLs now redirect to
-// the unified Enquiries Inbox detail sheet (canonical screen).
 const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
   const { id } = useParams();
   return <Navigate to={`/admin/enquiries?open=${kind}:${id}`} replace />;
 };
 
-// Lazy-loaded: every other route. Big wins:
-// - PDF library (@react-pdf/renderer ~600kb) only loads when admin opens the editor
-// - Public visitors never download admin code
-// - Each route becomes its own chunk → faster first paint, better caching
 const Catalog = lazy(() => import("./pages/Catalog.tsx"));
 const Faq = lazy(() => import("./pages/Faq.tsx"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
@@ -84,39 +77,21 @@ const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
 const AdminVault = lazy(() => import("./pages/admin/AdminVault.tsx"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
 
-// React Query tuned for many concurrent users:
-// - staleTime 60s avoids hammering the DB on every navigation
-// - refetchOnWindowFocus disabled to cut redundant requests
-// - 1 retry only so slow networks fail fast instead of compounding load
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      gcTime: 5 * 60_000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
+  defaultOptions: { queries: { staleTime: 60_000, gcTime: 5 * 60_000, refetchOnWindowFocus: false, retry: 1 } },
 });
 
 const RouteFallback = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <Loader2 className="h-7 w-7 animate-spin text-primary" />
-  </div>
+  <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
 );
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
+      <Toaster /><Sonner />
       <BrowserRouter>
         <BacklogShortcut />
-        {/* Floating internal-notes window — rendered at root so it persists
-            across image picker, gallery, and other in-page dialogs. */}
         <GlobalNotesWindow />
-        {/* Global customer enquiry dialog — opened via openEnquiryForm() from
-            anywhere (product cards, product detail, header, footer). */}
         <EnquiryForm />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
@@ -132,7 +107,6 @@ const App = () => (
             <Route path="/enquiry/:productId" element={<EnquiryLink />} />
             <Route path="/guide" element={<UserGuide />} />
             <Route path="/auth" element={<Auth />} />
-            {/* MCP / agent-integration OAuth consent screen */}
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
@@ -161,7 +135,7 @@ const App = () => (
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />
             <Route path="/admin/quotations/bulk" element={<AdminQuotationBulkCreate />} />
-            <Route path="/admin/scheme-calculator" element={<AdminOnly><AdminSchemeCalculator /></AdminOnly>} />
+            <Route path="/admin/scheme-calculator" element={<OfficeStaffOnly><AdminSchemeCalculator /></OfficeStaffOnly>} />
             <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
             <Route path="/admin/quotations/:id/preview" element={<AdminQuotationPreview />} />
             <Route path="/admin/routes" element={<AdminOnly><AdminRoutes /></AdminOnly>} />
@@ -171,14 +145,12 @@ const App = () => (
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/my-trips" element={<AdminMyTrips />} />
             <Route path="/admin/services" element={<AdminServices />} />
-            {/* Legacy editor URLs — redirect to the canonical Enquiries Inbox detail sheet. */}
             <Route path="/admin/services/:id" element={<EnquiryRedirect kind="service" />} />
             <Route path="/admin/complaints/:id" element={<EnquiryRedirect kind="complaint" />} />
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
             <Route path="/admin/vault" element={<AdminOnly><AdminVault /></AdminOnly>} />
-            {/* Receivables is part of the Backlog area and requires the PIN */}
             <Route path="/admin/receivables" element={<AdminBacklog />} />
             <Route path="/worker/login" element={<WorkerLogin />} />
             <Route path="/worker" element={<WorkerPortal />} />
