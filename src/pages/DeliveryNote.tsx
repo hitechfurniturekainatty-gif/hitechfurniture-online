@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, Download, IndianRupee, Loader2, MapPin, MessageCircle, Phone, Printer, Route, Share2, Truck } from "lucide-react";
+import { ArrowLeft, Calendar, Download, IndianRupee, Loader2, MapPin, Phone, Printer, Route, Share2, Truck } from "lucide-react";
 import { COMPANY } from "@/lib/companyInfo";
 import { firstUrl } from "@/lib/firstUrl";
 import { formatINR } from "@/lib/brand";
@@ -66,7 +66,6 @@ const DeliveryNote = () => {
   if (!q) return null;
 
   const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
-  const phoneDigits = (q.party_phone ?? "").replace(/\D/g, "");
   const advance = Number(q.advance_amount ?? 0);
   const balance = Math.max(Number(q.total ?? 0) - advance, 0);
   const vehicle = q.dispatch_vehicle === "outside" ? `Outside${q.dispatch_vehicle_number ? ` · ${q.dispatch_vehicle_number}` : ""}` : (q.dispatch_vehicle_number || "Own vehicle");
@@ -88,8 +87,8 @@ const DeliveryNote = () => {
     await shareFilesNative([blob], `Delivery_${q.quotation_id.replace(/[^a-z0-9-]/gi, "_")}`, msg, "pdf");
   };
 
-  return <div className="min-h-screen bg-muted/30 print:bg-white">
-    <div className="sticky top-0 z-30 border-b bg-background/95 px-3 py-2 shadow-sm backdrop-blur print:hidden">
+  return <div className="min-h-screen bg-[#f8faf8] print:bg-white">
+    <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-3 py-2 backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-3xl items-center gap-2">
         <Button size="sm" variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /><span className="ml-1 hidden sm:inline">Back</span></Button>
         <div className="min-w-0 flex-1"><p className="truncate text-xs font-mono font-semibold">{q.quotation_id}</p><p className="truncate text-[11px] text-muted-foreground">Delivery team handoff</p></div>
@@ -101,37 +100,37 @@ const DeliveryNote = () => {
     </div>
 
     <div className="mx-auto max-w-3xl px-3 py-4 sm:px-6 sm:py-6">
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm print:border-0 print:shadow-none">
-        <div className="border-b bg-primary px-4 py-4 text-primary-foreground print:bg-white print:text-foreground">
-          <div className="flex justify-between gap-3"><div><h1 className="font-display text-xl sm:text-2xl">{COMPANY.name}</h1><p className="text-xs opacity-90">{COMPANY.address} · {COMPANY.phone}</p></div><div className="text-right"><p className="text-[10px] uppercase opacity-80">Delivery Handoff</p><p className="font-mono text-sm font-bold">{q.quotation_id}</p></div></div>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:border-0 print:shadow-none">
+        <div className="border-b border-slate-200 bg-[#f4f7f2] px-4 py-4 text-slate-900 print:bg-white">
+          <div className="flex justify-between gap-3"><div><h1 className="font-display text-xl sm:text-2xl">{COMPANY.name}</h1><p className="text-xs text-slate-600">{COMPANY.address} · {COMPANY.phone}</p></div><div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Delivery Handoff</p><p className="font-mono text-sm font-bold">{q.quotation_id}</p></div></div>
         </div>
 
-        <div className="grid gap-4 border-b p-4 sm:grid-cols-2">
+        <div className="grid gap-4 border-b border-slate-200 p-4 sm:grid-cols-2">
           <div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Deliver to</p><p className="mt-1 font-display text-lg">{q.party_name}</p>{q.party_address && <p className="mt-1 flex items-start gap-1 text-sm"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{q.party_address}</p>}<p className="mt-1 text-sm text-muted-foreground">{q.delivery_place || q.party_place}</p>{q.party_phone && <p className="mt-1 text-sm font-medium">{q.party_phone}</p>}</div>
           <div className="space-y-2 sm:text-right">
-            <p className="inline-flex items-center gap-1.5 text-sm"><Calendar className="h-4 w-4 text-primary" />{q.expected_delivery_date ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "Delivery date not set"}</p>
-            <p className="flex items-center gap-1.5 text-sm sm:justify-end"><Route className="h-4 w-4 text-primary" />{routeName || "Route not assigned"}</p>
-            <p className="flex items-center gap-1.5 text-sm sm:justify-end"><Truck className="h-4 w-4 text-primary" />{vehicle}{q.dispatch_driver_name ? ` · ${q.dispatch_driver_name}` : ""}</p>
+            <p className="inline-flex items-center gap-1.5 text-sm"><Calendar className="h-4 w-4 text-slate-500" />{q.expected_delivery_date ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "Delivery date not set"}</p>
+            <p className="flex items-center gap-1.5 text-sm sm:justify-end"><Route className="h-4 w-4 text-slate-500" />{routeName || "Route not assigned"}</p>
+            <p className="flex items-center gap-1.5 text-sm sm:justify-end"><Truck className="h-4 w-4 text-slate-500" />{vehicle}{q.dispatch_driver_name ? ` · ${q.dispatch_driver_name}` : ""}</p>
             {q.dispatch_driver_phone && <p className="text-xs text-muted-foreground">Driver {q.dispatch_driver_phone}</p>}
             <Badge variant="secondary" className="capitalize">{q.status}</Badge>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 border-b bg-muted/20">
-          <div className="border-r p-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Advance Received</p><p className="mt-1 font-display text-xl font-semibold">{formatINR(advance)}</p></div>
-          <div className="p-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Balance to Collect</p><p className="mt-1 flex items-center gap-1 font-display text-2xl font-bold"><IndianRupee className="h-5 w-5" />{new Intl.NumberFormat("en-IN", { maximumFractionDigits:0 }).format(balance)}</p></div>
+        <div className="grid grid-cols-2 border-b border-slate-200 bg-[#fbfcfa]">
+          <div className="border-r border-slate-200 p-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Advance Received</p><p className="mt-1 font-display text-xl font-semibold text-slate-800">{formatINR(advance)}</p></div>
+          <div className="bg-[#fbf6ea] p-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-[#7a6542]">Balance to Collect</p><p className="mt-1 flex items-center gap-1 font-display text-2xl font-bold text-[#5f5038]"><IndianRupee className="h-5 w-5" />{new Intl.NumberFormat("en-IN", { maximumFractionDigits:0 }).format(balance)}</p></div>
         </div>
 
         <div className="p-4">
           <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-base">Load checklist</h2><span className="text-xs text-muted-foreground">{items.length} lines · Total qty {totalQty}</span></div>
           {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No items on this order.</p> : <ol className="space-y-3">{items.map((it, idx) => {
             const img = firstUrl(it.item_image_url) || firstUrl(it.catalog_image_url) || firstUrl(it.measurement_image_url);
-            return <li key={it.id} className="overflow-hidden rounded-lg border bg-background"><div className="flex items-center gap-3 p-3"><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{idx+1}</span>{img && <button type="button" onClick={() => setZoomImage(img)} className="h-20 w-20 shrink-0 overflow-hidden rounded border bg-muted print:h-16 print:w-16"><img src={img} alt={it.description} loading="lazy" className="h-full w-full object-contain p-1" /></button>}<div className="min-w-0 flex-1"><p className="font-medium">{it.description}</p>{it.catalog_text && <p className="font-mono text-[11px] text-muted-foreground">{it.catalog_text}</p>}{it.measurement && <p className="mt-1 whitespace-pre-line rounded bg-muted/50 px-2 py-1 text-xs"><b>Size:</b> {it.measurement}</p>}</div><div className="shrink-0 text-right"><p className="text-[10px] uppercase text-muted-foreground">Qty</p><p className="font-display text-2xl font-semibold">{Number(it.quantity)||0}</p></div></div></li>;
+            return <li key={it.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="flex items-center gap-3 p-3"><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ea] text-xs font-bold text-[#53634b]">{idx+1}</span>{img && <button type="button" onClick={() => setZoomImage(img)} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 print:h-16 print:w-16"><img src={img} alt={it.description} loading="lazy" className="h-full w-full object-contain p-1" /></button>}<div className="min-w-0 flex-1"><p className="font-medium">{it.description}</p>{it.catalog_text && <p className="font-mono text-[11px] text-muted-foreground">{it.catalog_text}</p>}{it.measurement && <p className="mt-1 whitespace-pre-line rounded-md bg-slate-50 px-2 py-1 text-xs"><b>Size:</b> {it.measurement}</p>}</div><div className="shrink-0 text-right"><p className="text-[10px] uppercase text-muted-foreground">Qty</p><p className="font-display text-2xl font-semibold">{Number(it.quantity)||0}</p></div></div></li>;
           })}</ol>}
-          {q.notes && <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-3 text-sm"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-line">{q.notes}</p></div>}
+          {q.notes && <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-line">{q.notes}</p></div>}
         </div>
 
-        <div className="border-t px-4 py-8"><div className="grid gap-8 sm:grid-cols-2"><div><div className="h-12 border-b" /><p className="mt-1 text-[11px] text-muted-foreground">Delivered by / Driver</p></div><div><div className="h-12 border-b" /><p className="mt-1 text-[11px] text-muted-foreground">Customer signature & date</p></div></div></div>
+        <div className="border-t border-slate-200 px-4 py-8"><div className="grid gap-8 sm:grid-cols-2"><div><div className="h-12 border-b border-slate-300" /><p className="mt-1 text-[11px] text-muted-foreground">Delivered by / Driver</p></div><div><div className="h-12 border-b border-slate-300" /><p className="mt-1 text-[11px] text-muted-foreground">Customer signature & date</p></div></div></div>
       </div>
       <p className="mt-3 text-center text-[11px] text-muted-foreground print:hidden">Delivery-team document: item selling prices and cost prices are intentionally omitted.</p>
     </div>
