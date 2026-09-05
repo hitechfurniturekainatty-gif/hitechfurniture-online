@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, TrendingUp, FileText } from "lucide-react";
+import { Loader2, Plus, TrendingUp, FileText, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
@@ -18,6 +18,7 @@ import { MonthBlock } from "@/components/scheme-calculator/MonthBlock";
 import { AggregatedView } from "@/components/scheme-calculator/AggregatedView";
 import { PartiesTab } from "@/components/scheme-calculator/PartiesTab";
 import { SchemesTab } from "@/components/scheme-calculator/SchemesTab";
+import { BenefitReceiptEditor, SchemeBenefitAnalysis } from "@/components/scheme-calculator/BenefitTracker";
 import {
   FY_MONTHS,
   MONTH_NAME,
@@ -44,6 +45,8 @@ const AdminSchemeCalculator = () => {
   const [exporting, setExporting] = useState(false);
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
+  const [receiptMonth, setReceiptMonth] = useState<number>(new Date().getMonth() + 1);
+  const [receiptSaving, setReceiptSaving] = useState(false);
   const [customFys, setCustomFys] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem("scheme_custom_fys") || "[]"); } catch { return []; }
   });
@@ -100,7 +103,11 @@ const AdminSchemeCalculator = () => {
             : (existing.purchase_rows && existing.purchase_rows.length
                 ? [{ id: crypto.randomUUID(), label: "Invoice 1", rows: existing.purchase_rows }]
                 : []);
-          return { ...existing, invoices: invs };
+          return {
+            ...existing,
+            invoices: invs,
+            benefit_receipts: Array.isArray((existing as any).benefit_receipts) ? (existing as any).benefit_receipts : [],
+          };
         }
         return {
           party_id: vendorId,
@@ -111,9 +118,11 @@ const AdminSchemeCalculator = () => {
           purchases_text: "",
           purchase_rows: [],
           invoices: [],
+          benefit_receipts: [],
         };
       });
       setMonths(full);
+      if (!full.some((m) => m.month === receiptMonth)) setReceiptMonth(full[0]?.month || 4);
       setLoading(false);
     })();
   }, [vendorId, fy]);
@@ -229,6 +238,15 @@ const AdminSchemeCalculator = () => {
         });
       });
 
+      lines.push("");
+      lines.push(["Benefit Month", "Type", "Item/Description", "Qty Received", "Amount Received", "Date", "Reference"].join(","));
+      months.forEach((m) => {
+        const mLabel = `${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}`;
+        (m.benefit_receipts || []).forEach((r) => {
+          lines.push([mLabel, r.kind, r.item || "", r.qty || "", r.amount || "", r.date || "", r.reference || ""].map(esc).join(","));
+        });
+      });
+
       const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
       downloadBlob(blob, `${baseFileName()}.csv`);
     } catch (e: any) {
@@ -261,6 +279,7 @@ const AdminSchemeCalculator = () => {
       purchases_text: m.purchases_text,
       purchase_rows: flatRows as any,
       invoices: m.invoices as any,
+      benefit_receipts: (m.benefit_receipts || []) as any,
     };
     const { data, error } = await supabase
       .from("scheme_vendor_months" as any)
@@ -271,6 +290,13 @@ const AdminSchemeCalculator = () => {
     const newId = (data as any).id;
     if (newId && newId !== m.id) updateMonth(m.month, { id: newId });
     toast({ title: `Saved ${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}` });
+  };
+
+  const saveReceiptMonth = async () => {
+    const m = months.find((x) => x.month === receiptMonth);
+    if (!m || receiptSaving) return;
+    setReceiptSaving(true);
+    try { await persistMonth(m); } finally { setReceiptSaving(false); }
   };
 
   const ytd = useMemo(() => {
@@ -297,10 +323,15 @@ const AdminSchemeCalculator = () => {
     return { totalAmount, totalQty, freeUnits, completionPct };
   }, [months]);
 
+  const selectedReceiptMonth = months.find((m) => m.month === receiptMonth) || months[0] || null;
+
   return (
     <AdminShell>
       <div className="space-y-6 pb-28">
-        <h1 className="font-display text-2xl">Vendor Scheme Dashboard</h1>
+        <div>
+          <h1 className="font-display text-2xl">Vendor Scheme Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Paste purchases, apply the month scheme, and instantly see what was earned, received and still pending.</p>
+        </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
@@ -362,14 +393,7 @@ const AdminSchemeCalculator = () => {
                   <div>
                     <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">&nbsp;</Label>
                     <div className="flex items-center gap-1.5">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={exportCsv}
-                        disabled={exporting}
-                        className="gap-1"
-                      >
+                      <Button type="button" variant="outline" size="sm" onClick={exportCsv} disabled={exporting} className="gap-1">
                         <FileText className="h-4 w-4" /> CSV
                       </Button>
                       <DownloadShareMenu
@@ -396,38 +420,65 @@ const AdminSchemeCalculator = () => {
               </div>
             ) : loading ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : mode === "monthly" ? (
-              <div ref={reportRef} className="space-y-4 bg-background p-2">
-                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
-                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
-                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · Monthly</div>
-                </div>
-                {months.map((m) => (
-                  <MonthBlock
-                    key={m.month}
-                    vm={m}
-                    fy={fy}
-                    savedSchemes={savedSchemes}
-                    onChange={(patch) => updateMonth(m.month, patch)}
-                    onSave={() => persistMonth(m)}
-                  />
-                ))}
-              </div>
             ) : (
-              <div ref={reportRef} className="space-y-4 bg-background p-2">
-                <div className="mb-2 flex items-baseline justify-between border-b pb-2">
-                  <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
-                  <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · {mode}</div>
+              <>
+                <div ref={reportRef} className="space-y-4 bg-background p-2">
+                  <div className="mb-2 flex items-baseline justify-between border-b pb-2">
+                    <div className="font-display text-lg">{vendor.name}{vendor.place ? ` — ${vendor.place}` : ""}</div>
+                    <div className="text-xs text-muted-foreground">FY {fy}–{String(fy + 1).slice(-2)} · {mode === "halfyearly" ? "Half-Yearly" : mode}</div>
+                  </div>
+
+                  <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} />
+
+                  {mode === "monthly" ? months.map((m) => (
+                    <MonthBlock
+                      key={m.month}
+                      vm={m}
+                      fy={fy}
+                      savedSchemes={savedSchemes}
+                      onChange={(patch) => updateMonth(m.month, patch)}
+                      onSave={() => persistMonth(m)}
+                    />
+                  )) : (
+                    <AggregatedView
+                      mode={mode}
+                      fy={fy}
+                      months={months}
+                      savedSchemes={savedSchemes}
+                      onChangeMonth={(month, patch) => updateMonth(month, patch)}
+                      onSaveMonth={(m) => persistMonth(m)}
+                    />
+                  )}
                 </div>
-                <AggregatedView
-                  mode={mode}
-                  fy={fy}
-                  months={months}
-                  savedSchemes={savedSchemes}
-                  onChangeMonth={(month, patch) => updateMonth(month, patch)}
-                  onSaveMonth={(m) => persistMonth(m)}
-                />
-              </div>
+
+                <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                  <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <h3 className="font-display text-lg">Record Scheme Benefit Received</h3>
+                      <p className="text-xs text-muted-foreground">When a free bed/item, credit note, cashback or discount is actually received, record it here. The analysis above updates automatically.</p>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <Label className="text-xs">Benefit belongs to month</Label>
+                        <Select value={String(receiptMonth)} onValueChange={(v) => setReceiptMonth(Number(v))}>
+                          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>{months.map((m) => <SelectItem key={m.month} value={String(m.month)}>{MONTH_NAME[m.month]} {fyCalendarYear(fy, m.month)}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={saveReceiptMonth} disabled={receiptSaving || !selectedReceiptMonth} className="gap-1">
+                        {receiptSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save received
+                      </Button>
+                    </div>
+                  </div>
+                  {selectedReceiptMonth && (
+                    <BenefitReceiptEditor
+                      receipts={selectedReceiptMonth.benefit_receipts || []}
+                      onChange={(benefit_receipts) => updateMonth(selectedReceiptMonth.month, { benefit_receipts })}
+                    />
+                  )}
+                </section>
+              </>
             )}
           </TabsContent>
 
