@@ -14,18 +14,23 @@ import type { Period, SchemeKind, SchemeRow } from "./types";
 
 const SIMPLE_KINDS: SchemeKind[] = ["bogo", "percent"];
 const simpleLabel: Partial<Record<SchemeKind, string>> = {
-  bogo: "Quantity — Buy Qty + Free Qty",
+  bogo: "Quantity — Item + Buy Qty + Free Qty",
   percent: "Percentage Discount",
 };
 
+const exactQuantityConfig = () => ({
+  rules: [{ purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: 10, freeQty: 1, freeItem: "" }],
+});
+const freshConfig = (kind: SchemeKind) => kind === "bogo" ? exactQuantityConfig() : defaultConfig(kind);
+
 export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRow[]; setSchemes: (s: SchemeRow[]) => void; onApply: (s: SchemeRow) => void }) {
   const [form, setForm] = useState<{ name: string; kind: SchemeKind; period: Period; config: any; notes: string }>(
-    { name: "", kind: "bogo", period: "monthly", config: defaultConfig("bogo"), notes: "" }
+    { name: "", kind: "bogo", period: "monthly", config: exactQuantityConfig(), notes: "" }
   );
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const resetForm = () => {
-    setForm({ name: "", kind: "bogo", period: "monthly", config: defaultConfig("bogo"), notes: "" });
+    setForm({ name: "", kind: "bogo", period: "monthly", config: exactQuantityConfig(), notes: "" });
     setEditingId(null);
   };
 
@@ -46,7 +51,7 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
 
   const edit = (s: SchemeRow) => {
     setEditingId(s.id);
-    setForm({ name: s.name, kind: s.kind, period: s.period, config: s.config || defaultConfig(s.kind), notes: s.notes || "" });
+    setForm({ name: s.name, kind: s.kind, period: s.period, config: s.config || freshConfig(s.kind), notes: s.notes || "" });
   };
   const remove = async (id: string) => {
     if (!confirm("Delete this scheme?")) return;
@@ -62,13 +67,13 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
       <div className="rounded-lg border bg-card p-4 space-y-3">
         <div>
           <h3 className="font-medium">{editingId ? "Edit scheme" : "New scheme"}</h3>
-          <p className="text-xs text-muted-foreground mt-1">Default is quantity-wise: enter how many you buy and how many are free.</p>
+          <p className="text-xs text-muted-foreground mt-1">Add only the items that actually have a scheme. Exact item match is the default; family matching must be chosen manually.</p>
         </div>
-        <div><Label className="text-xs">Scheme name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. April Chair Scheme" /></div>
+        <div><Label className="text-xs">Scheme name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. April Mattress Scheme" /></div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs">Scheme type</Label>
-            <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v as SchemeKind, config: defaultConfig(v as SchemeKind) })}>
+            <Select value={form.kind} onValueChange={(v) => { const kind = v as SchemeKind; setForm({ ...form, kind, config: freshConfig(kind) }); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{visibleKinds.map((k) => (<SelectItem key={k} value={k}>{simpleLabel[k] || SCHEME_LABEL[k]}</SelectItem>))}</SelectContent>
             </Select>
