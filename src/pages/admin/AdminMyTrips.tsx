@@ -37,8 +37,6 @@ type PricingItem = {
   unit_price: number; amount: number;
 };
 
-// Item details visible to the delivery team (no prices). Used to render the
-// load-checklist under each stop so the driver can verify what's going out.
 type DeliveryItem = {
   id: string;
   quotation_id: string;
@@ -56,6 +54,7 @@ const AdminMyTrips = () => {
   const [quotes, setQuotes] = useState<Q[]>([]);
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
+  const [receivableBalanceByQuote, setReceivableBalanceByQuote] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
@@ -98,25 +97,40 @@ const AdminMyTrips = () => {
       const qids = ((tq ?? []) as TripQ[]).map((x) => x.quotation_id);
       setTripQs((tq ?? []) as TripQ[]);
       if (qids.length) {
-        const { data: qs } = await supabase
-          .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
-          .in("id", qids);
+        const [{ data: qs }, { data: itemRows }, { data: receivableRows }] = await Promise.all([
+          supabase
+            .from("quotations")
+            .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
+            .in("id", qids),
+          supabase
+            .from("quotation_items")
+            .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url")
+            .in("quotation_id", qids)
+            .order("display_order", { ascending: true }),
+          (supabase as any)
+            .from("receivables")
+            .select("quotation_id,pending_amount,source")
+            .in("quotation_id", qids)
+            .eq("source", "quotation"),
+        ]);
         setQuotes((qs ?? []) as Q[]);
-        const { data: itemRows } = await supabase
-          .from("quotation_items")
-          .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url")
-          .in("quotation_id", qids)
-          .order("display_order", { ascending: true });
         setDeliveryItems((itemRows ?? []) as DeliveryItem[]);
+        const balances: Record<string, number> = {};
+        for (const row of (receivableRows ?? []) as any[]) {
+          const value = Number(row.pending_amount);
+          if (row.quotation_id && Number.isFinite(value)) balances[row.quotation_id] = Math.max(value, 0);
+        }
+        setReceivableBalanceByQuote(balances);
       } else {
         setQuotes([]);
         setDeliveryItems([]);
+        setReceivableBalanceByQuote({});
       }
     } else {
       setTripQs([]);
       setQuotes([]);
       setDeliveryItems([]);
+      setReceivableBalanceByQuote({});
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
     setLoading(false);
@@ -137,7 +151,6 @@ const AdminMyTrips = () => {
       return;
     }
     toast({ title: "Marked delivered" });
-    // If all stops on this trip are delivered, mark trip delivered. Else, mark in_transit.
     const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
     const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
     const newStatus = allDelivered ? "delivered" : "in_transit";
@@ -145,8 +158,6 @@ const AdminMyTrips = () => {
     load();
   };
 
-  // Admin/OPS only — flip the per-quotation price visibility for the delivery team.
-  // Delivery role itself is blocked at the RLS layer (quotations_update policy).
   const togglePriceVisibility = async (q: Q, next: boolean) => {
     setSavingToggleId(q.id);
     const { error } = await supabase
@@ -179,10 +190,10 @@ const AdminMyTrips = () => {
     setPricingItems((data ?? []) as PricingItem[]);
   };
 
-  // "Collect from Customer" amount per spec: balance = total − advance
-  // (full total when no advance has been recorded).
   const balanceToCollect = (q: Q | undefined) => {
     if (!q) return 0;
+    const currentReceivable = receivableBalanceByQuote[q.id];
+    if (Number.isFinite(currentReceivable)) return Math.max(currentReceivable, 0);
     const adv = Number(q.advance_amount ?? 0);
     return Math.max(Number(q.total ?? 0) - adv, 0);
   };
@@ -211,9 +222,7 @@ const AdminMyTrips = () => {
     <AdminShell>
       <div className="mb-4">
         <h1 className="font-display text-2xl sm:text-3xl">My Trips</h1>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-          Trips assigned to you, starting from the Hub.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">Trips assigned to you, starting from the Hub.</p>
       </div>
 
       {loading ? (
@@ -222,7 +231,6 @@ const AdminMyTrips = () => {
         <p className="text-center text-muted-foreground py-12">No trips assigned yet.</p>
       ) : (
         <div className="space-y-4">
-          {/* Trip selector tabs */}
           <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {trips.map((t) => {
               const r = routes.find((x) => x.id === t.route_id);
@@ -230,9 +238,7 @@ const AdminMyTrips = () => {
                 <button
                   key={t.id}
                   onClick={() => setActiveTrip(t.id)}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                    activeTrip === t.id ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted"
-                  }`}
+                  className={`shrink-0 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${activeTrip === t.id ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted"}`}
                 >
                   <div className="flex items-center gap-2">
                     <Truck className="h-3.5 w-3.5" />
@@ -249,24 +255,12 @@ const AdminMyTrips = () => {
             <>
               <LeafletMap
                 height={360}
-                fitBounds={
-                  route
-                    ? ([
-                        [HUB.lat, HUB.lng],
-                        ...route.waypoints.map((w) => [w.lat, w.lng] as [number, number]),
-                        [route.destination_lat, route.destination_lng] as [number, number],
-                      ])
-                    : undefined
-                }
+                fitBounds={route ? ([[HUB.lat, HUB.lng], ...route.waypoints.map((w) => [w.lat, w.lng] as [number, number]), [route.destination_lat, route.destination_lng] as [number, number]]) : undefined}
               >
                 {route && (
                   <>
                     <RoutePolyline
-                      stops={[
-                        { lat: HUB.lat, lng: HUB.lng },
-                        ...route.waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
-                        { lat: route.destination_lat, lng: route.destination_lng },
-                      ]}
+                      stops={[{ lat: HUB.lat, lng: HUB.lng }, ...route.waypoints.map((w) => ({ lat: w.lat, lng: w.lng })), { lat: route.destination_lat, lng: route.destination_lng }]}
                       color={route.color}
                       weight={6}
                     />
@@ -282,9 +276,7 @@ const AdminMyTrips = () => {
                 )}
               </LeafletMap>
 
-              {trip.notes && (
-                <p className="rounded-lg border border-border bg-muted/30 p-3 text-sm">{trip.notes}</p>
-              )}
+              {trip.notes && <p className="rounded-lg border border-border bg-muted/30 p-3 text-sm">{trip.notes}</p>}
 
               <div className="space-y-2">
                 <h2 className="font-display text-lg">Stops ({stops.length})</h2>
@@ -292,9 +284,7 @@ const AdminMyTrips = () => {
                   <Card key={s.id}>
                     <CardContent className="flex flex-col gap-2 p-4">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                          {i + 1}
-                        </span>
+                        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{i + 1}</span>
                         <span className="font-mono text-xs font-semibold">{s.q?.quotation_id}</span>
                         {s.delivered_at && <Badge variant="default" className="text-[10px]">Delivered</Badge>}
                       </div>
@@ -304,44 +294,32 @@ const AdminMyTrips = () => {
                         {s.q?.party_address || s.q?.delivery_place || s.q?.party_place}
                       </p>
 
-                      {/* Payment breakdown — always visible to the driver so they can
-                          verify Total / Advance received / Balance with the customer
-                          on the doorstep. Not gated behind show_price_to_delivery. */}
                       {s.q && (
-                        <div className="rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 px-3 py-2">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
                           <div className="flex items-center justify-between gap-2 text-sm">
-                            <span className="text-emerald-900/80 dark:text-emerald-200/80">Total (incl. GST)</span>
-                            <span className="font-semibold text-emerald-900 dark:text-emerald-100">{formatINR(Number(s.q.total ?? 0))}</span>
+                            <span className="text-slate-600">Total (incl. GST)</span>
+                            <span className="font-semibold text-slate-800">{formatINR(Number(s.q.total ?? 0))}</span>
                           </div>
                           <div className="flex items-center justify-between gap-2 text-sm">
-                            <span className="text-emerald-900/80 dark:text-emerald-200/80">Advance received</span>
-                            <span className="font-semibold text-emerald-900 dark:text-emerald-100">{formatINR(Number(s.q.advance_amount ?? 0))}</span>
+                            <span className="text-slate-600">Advance received</span>
+                            <span className="font-semibold text-slate-800">{formatINR(Number(s.q.advance_amount ?? 0))}</span>
                           </div>
-                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-emerald-500/40 pt-1.5">
+                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-amber-200 pt-1.5">
                             <div className="min-w-0">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                                Balance to Collect
-                              </p>
-                              <p className="font-display text-xl font-bold text-emerald-800 dark:text-emerald-200">
-                                {formatINR(balanceToCollect(s.q))}
-                              </p>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Balance to Collect</p>
+                              <p className="font-display text-xl font-bold text-amber-900">{formatINR(balanceToCollect(s.q))}</p>
                             </div>
-                            <IndianRupee className="h-6 w-6 text-emerald-600/70 dark:text-emerald-400/70" />
+                            <IndianRupee className="h-6 w-6 text-amber-600/70" />
                           </div>
                         </div>
                       )}
 
-                      {/* Admin / OPS toggle to allow driver to open the per-line-item
-                          pricing dialog. The three-line summary above is always shown
-                          regardless of this flag. */}
                       {s.q && isOfficeStaff && (
                         <div className="flex items-center justify-between gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold">Show Item-wise Pricing to Driver</p>
                             <p className="text-[11px] text-muted-foreground">
-                              {s.q.show_price_to_delivery
-                                ? "Driver can open ‘View Full Pricing’ for the line-item breakdown."
-                                : "Hidden — driver still sees Total / Advance / Balance, just not per-item rates."}
+                              {s.q.show_price_to_delivery ? "Driver can open ‘View Full Pricing’ for the line-item breakdown." : "Hidden — driver still sees Total / Advance / Balance, just not per-item rates."}
                             </p>
                           </div>
                           <Switch
@@ -353,49 +331,29 @@ const AdminMyTrips = () => {
                         </div>
                       )}
 
-                      {/* Lock indicator for delivery role when item-wise pricing is hidden. */}
                       {s.q && isDelivery && !s.q.show_price_to_delivery && (
-                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Lock className="h-3 w-3" /> Item-wise pricing hidden by office.
-                        </p>
+                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Lock className="h-3 w-3" /> Item-wise pricing hidden by office.</p>
                       )}
 
-                      {/* Load checklist — what the driver is actually delivering.
-                          No prices, just photo + description + qty + measurement so
-                          items can be physically verified against the truck. */}
                       {s.q && (() => {
                         const items = deliveryItems.filter((it) => it.quotation_id === s.q!.id);
                         if (items.length === 0) return null;
                         return (
                           <div className="rounded-md border border-border bg-muted/20 p-2">
-                            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Items to deliver ({items.length})
-                            </p>
+                            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Items to deliver ({items.length})</p>
                             <ul className="space-y-1.5">
                               {items.map((it) => {
                                 const thumb = firstUrl(it.item_image_url) ?? firstUrl(it.sketch_url);
                                 return (
                                   <li key={it.id} className="flex items-start gap-2 rounded border border-border/50 bg-background p-1.5">
                                     {thumb ? (
-                                      <img
-                                        src={thumb}
-                                        alt={it.description}
-                                        loading="lazy"
-                                        className="h-12 w-12 shrink-0 rounded object-cover"
-                                      />
+                                      <img src={thumb} alt={it.description} loading="lazy" className="h-12 w-12 shrink-0 rounded object-cover" />
                                     ) : (
-                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
-                                        No photo
-                                      </div>
+                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">No photo</div>
                                     )}
                                     <div className="min-w-0 flex-1">
                                       <p className="text-xs font-medium leading-tight">{it.description}</p>
-                                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                        Qty: <span className="font-semibold text-foreground">{it.quantity}</span>
-                                        {it.measurement && (
-                                          <> · {it.measurement}</>
-                                        )}
-                                      </p>
+                                      <p className="mt-0.5 text-[11px] text-muted-foreground">Qty: <span className="font-semibold text-foreground">{it.quantity}</span>{it.measurement && <> · {it.measurement}</>}</p>
                                     </div>
                                   </li>
                                 );
@@ -408,32 +366,20 @@ const AdminMyTrips = () => {
                       <div className="flex flex-wrap gap-2">
                         {s.q?.party_phone && (
                           <>
+                            <Button asChild size="sm" variant="outline"><a href={`tel:${s.q.party_phone}`}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a></Button>
                             <Button asChild size="sm" variant="outline">
-                              <a href={`tel:${s.q.party_phone}`}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a>
-                            </Button>
-                            <Button asChild size="sm" variant="outline">
-                              <a href={`https://wa.me/${s.q.party_phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
-                                <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> WhatsApp
-                              </a>
+                              <a href={`https://wa.me/${s.q.party_phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><MessageCircle className="mr-1.5 h-3.5 w-3.5" /> WhatsApp</a>
                             </Button>
                           </>
                         )}
                         {s.q && (
-                          <Button asChild size="sm" variant="secondary">
-                            <Link to={`/delivery-note/${s.q.id}`}>
-                              <FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip
-                            </Link>
-                          </Button>
+                          <Button asChild size="sm" variant="secondary"><Link to={`/delivery-note/${s.q.id}`}><FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip</Link></Button>
                         )}
                         {s.q && s.q.show_price_to_delivery && (
-                          <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}>
-                            <Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing
-                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}><Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing</Button>
                         )}
                         {!s.delivered_at && (
-                          <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto">
-                            <Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered
-                          </Button>
+                          <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto"><Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered</Button>
                         )}
                       </div>
                     </CardContent>
@@ -445,12 +391,9 @@ const AdminMyTrips = () => {
         </div>
       )}
 
-      {/* Item-wise price breakdown — only opens when admin has flipped the toggle. */}
       <Dialog open={!!pricingFor} onOpenChange={(o) => !o && setPricingFor(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Full Pricing — {pricingFor?.quotation_id}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Full Pricing — {pricingFor?.quotation_id}</DialogTitle></DialogHeader>
           {pricingLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : (
@@ -460,22 +403,18 @@ const AdminMyTrips = () => {
                   <div key={it.id} className="flex items-start justify-between gap-2 border-b border-border/60 px-3 py-2 text-sm last:border-b-0">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{it.description}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {it.quantity} × {formatINR(Number(it.unit_price))}
-                      </p>
+                      <p className="text-[11px] text-muted-foreground">{it.quantity} × {formatINR(Number(it.unit_price))}</p>
                     </div>
                     <p className="shrink-0 font-mono text-sm font-semibold">{formatINR(Number(it.amount))}</p>
                   </div>
                 ))}
-                {pricingItems.length === 0 && (
-                  <p className="px-3 py-4 text-center text-xs text-muted-foreground">No line items.</p>
-                )}
+                {pricingItems.length === 0 && <p className="px-3 py-4 text-center text-xs text-muted-foreground">No line items.</p>}
               </div>
               {pricingFor && (
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Total (incl. GST)</span><span className="font-semibold">{formatINR(Number(pricingFor.total ?? 0))}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Advance paid</span><span>{formatINR(Number(pricingFor.advance_amount ?? 0))}</span></div>
-                  <div className="mt-1 flex justify-between border-t border-border pt-1 text-emerald-700 dark:text-emerald-300">
+                  <div className="mt-1 flex justify-between border-t border-amber-200 pt-1 text-amber-800">
                     <span className="font-semibold">Collect from Customer</span>
                     <span className="font-bold">{formatINR(balanceToCollect(pricingFor))}</span>
                   </div>
