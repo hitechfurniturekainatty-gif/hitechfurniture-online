@@ -38,8 +38,7 @@ const warehouseActions: Action[] = [
 ];
 
 const deliveryActions: Action[] = [
-  { label: "My Trips", sub: "Today's assigned deliveries", to: "/admin/my-trips", icon: Truck },
-  { label: "Balance to Collect", sub: "Customer balance due on today's deliveries", to: "/admin/my-trips", icon: IndianRupee },
+  { label: "My Trips", sub: "Today's deliveries, customer details and balance to collect", to: "/admin/my-trips", icon: Truck },
   { label: "Route View", sub: "Route and delivery planning", to: "/admin/logistics", icon: MapPinned },
 ];
 
