@@ -8,13 +8,14 @@ import type { Invoice, Row, SchemeKind, SchemeRow } from "./types";
 
 const norm = (value: unknown) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallbackScheme, onChange, onRemove, onEdit }: {
+export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallbackScheme, onChange, onPersist, onRemove, onEdit }: {
   index: number;
   invoice: Invoice;
   savedSchemes: SchemeRow[];
   fallbackScheme: { kind: SchemeKind; config: any };
   onChange: (patch: Partial<Invoice>) => void;
-  onRemove: () => void;
+  onPersist: () => void | Promise<void>;
+  onRemove: () => void | Promise<void>;
   onEdit: () => void;
 }) {
   const rows = invoice.rows;
@@ -55,23 +56,22 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /> Edit invoice</Button>
-          <Button size="sm" variant="ghost" onClick={onRemove} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+          <Button size="sm" variant="ghost" onClick={() => void onRemove()} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <Table className="min-w-[980px] table-fixed">
+        <Table className="min-w-[900px] table-fixed">
           <TableHeader><TableRow className="bg-muted/15">
             <TableHead className="w-[300px]">Item</TableHead>
             <TableHead className="w-[90px] text-right">Qty</TableHead>
-            <TableHead className="w-[135px] text-right">MRP / Unit</TableHead>
-            <TableHead className="w-[155px] text-right">Amount incl. Tax</TableHead>
-            <TableHead className="w-[135px] text-right">MRP Value</TableHead>
-            <TableHead className="w-[105px] text-right">Discount</TableHead>
-            <TableHead className="w-[170px]">Scheme</TableHead>
+            <TableHead className="w-[140px] text-right">MRP / Unit</TableHead>
+            <TableHead className="w-[165px] text-right">Amount incl. Tax</TableHead>
+            <TableHead className="w-[115px] text-right">Discount</TableHead>
+            <TableHead className="w-[180px]">Scheme</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-xs text-muted-foreground">No invoice items.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">No invoice items.</TableCell></TableRow>}
             {rows.map((r) => {
               const match = matchInfo(r);
               const mrpValue = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
@@ -81,10 +81,9 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
                 <TableCell className="font-medium">{r.item || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(r.qty) || 0)}</TableCell>
                 <TableCell>
-                  <Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} className="ml-auto h-9 w-[120px] border-primary/25 bg-primary/[0.03] text-right font-semibold" placeholder="Enter MRP" aria-label={`MRP for ${r.item}`} />
+                  <Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} onBlur={() => void onPersist()} className="ml-auto h-9 w-[125px] border-primary/30 bg-primary/[0.04] text-right font-semibold" placeholder="Enter MRP" aria-label={`MRP for ${r.item}`} />
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">₹{fmt(cost)}</TableCell>
-                <TableCell className="text-right tabular-nums">₹{fmt(mrpValue)}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{mrpValue > 0 ? `${fmt(disc)}%` : "—"}</TableCell>
                 <TableCell><span className={match.matched ? "inline-flex rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-foreground" : "inline-flex rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground"}>{match.label}</span></TableCell>
               </TableRow>;
