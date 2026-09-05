@@ -42,6 +42,17 @@ export type SchemeRow = {
 
 export type TimelineMode = "monthly" | "quarterly" | "halfyearly" | "yearly";
 
+export type BenefitReceipt = {
+  id: string;
+  kind: "free_item" | "credit_note" | "cashback" | "discount";
+  item?: string;
+  qty?: number;
+  amount?: number;
+  date?: string;
+  reference?: string;
+  note?: string;
+};
+
 export type VendorMonth = {
   id?: string;
   party_id: string;
@@ -52,4 +63,5 @@ export type VendorMonth = {
   purchases_text: string | null;
   purchase_rows: Row[];
   invoices: Invoice[];
+  benefit_receipts: BenefitReceipt[];
 };
