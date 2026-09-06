@@ -55,6 +55,19 @@ export const defaultConfig = (kind: SchemeKind): any => {
 };
 const normaliseName = (value: unknown) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
+/** A row counts once within a combo, even if family selectors overlap. */
+export function matchesSchemeRule(rule: any, item: string): boolean {
+  const selectors = Array.isArray(rule.purchaseItems) ? rule.purchaseItems : [rule.purchaseItem];
+  const name = normaliseName(item);
+  return selectors.some((value: string) => {
+    const needle = normaliseName(value);
+    return needle && (rule.matchMode === "family" && rule.familyExplicit === true ? name.includes(needle) : name === needle);
+  });
+}
+export function hasSchemeRule(rule: any): boolean {
+  return Array.isArray(rule.purchaseItems) ? rule.purchaseItems.some((s: string) => normaliseName(s)) : !!normaliseName(rule.purchaseItem);
+}
+
 export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, rows: Row[]) {
   const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0), totalAmount = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0), totalMrp = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
   const live = rows.filter((r) => r.item && r.qty > 0); const { kind, config } = scheme;
@@ -64,16 +77,16 @@ export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, row
   if (kind === "own") { const target = totalAmount * (Number(config?.targetMargin) || 0) / 100, totalMargin = rows.reduce((s, r) => s + Math.max(0, (Number(r.mrp) || 0) * (Number(r.qty) || 0) - (Number(r.amountWithTax) || 0)), 0), budget = Math.max(0, totalMargin - target); return { rep: live.map((r) => ({ item: r.item, qty: r.qty, free: (Number(r.price) || 0) > 0 ? Math.floor(budget / Number(r.price) / Math.max(1, live.length)) : 0, note: `Within ${config?.targetMargin || 0}% target margin` })), targets: [], summary: `Free-item budget: ₹${fmt(budget)}` }; }
   if (kind === "slab") { const slabs = (config?.slabs || []).slice().sort((a: any,b: any)=>Number(a.minQty)-Number(b.minQty)), groupQty = live.reduce((s,r)=>s+(Number(r.qty)||0),0); let free=0, matched:any=null; for(const s of slabs) if(groupQty>=Number(s.minQty)){free=Number(s.free)||0;matched=s;} const next=slabs.find((s:any)=>groupQty<Number(s.minQty)); return {rep:[{item:`All products → ${free} free`,qty:groupQty,free,note:matched?`Group total ${groupQty} → ≥ ${matched.minQty} → ${matched.free} free`:`Below first slab`}],targets:next?[{item:"All products",have:groupQty,need:Number(next.minQty),gap:Number(next.minQty)-groupQty,reward:`${next.free} free`}]:[],summary:`Total free items: ${free}`}; }
   if (kind === "bogo") {
-    const configuredRules:any[]=Array.isArray(config?.rules)?config.rules:[], activeRules=configuredRules.filter((rule)=>normaliseName(rule?.purchaseItem));
+    const configuredRules:any[]=Array.isArray(config?.rules)?config.rules:[], activeRules=configuredRules.filter(hasSchemeRule);
     if (activeRules.length) { const rep:Achieved[]=[],targets:Target[]=[]; let totalFree=0;
-      for(const rule of activeRules){ const purchaseItem=String(rule.purchaseItem||"").trim(), freeItem=String(rule.freeItem||purchaseItem).trim()||purchaseItem, needle=normaliseName(purchaseItem);
+      for(const rule of activeRules){ const purchaseItem=(Array.isArray(rule.purchaseItems) ? rule.purchaseItems.filter((s: string) => s.trim()).join(" + ") : String(rule.purchaseItem||"").trim()), freeItem=String(rule.freeItem||purchaseItem).trim()||purchaseItem, needle=normaliseName(purchaseItem);
         // Safety rule: family/contains matching is NEVER inferred. It is enabled only
         // when the user explicitly selected Family and the editor saved familyExplicit=true.
-        const familyEnabled=rule.matchMode==="family" && rule.familyExplicit===true; const mode=familyEnabled?"family":"exact";
-        const matchedRows=live.filter((r)=>{const name=normaliseName(r.item);return familyEnabled?name.includes(needle):name===needle;});
+        const familyEnabled=rule.matchMode==="family" && rule.familyExplicit===true; const mode=Array.isArray(rule.purchaseItems)?"combo":familyEnabled?"family":"exact";
+        const matchedRows=live.filter((r)=>matchesSchemeRule(rule, r.item));
         const purchasedQty=matchedRows.reduce((sum,r)=>sum+(Number(r.qty)||0),0),buyQty=Math.max(1,Number(rule.buyQty)||1),freeQty=Math.max(0,Number(rule.freeQty??rule.getQty)||0),completedSets=Math.floor(purchasedQty/buyQty),free=completedSets*freeQty; totalFree+=free; const nextTarget=(completedSets+1)*buyQty,gap=Math.max(0,nextTarget-purchasedQty);
         const matchedNames=matchedRows.map((r)=>`${r.item} (${r.qty})`).join(", ")||"no matching invoice item";
-        rep.push({item:`${purchaseItem} → ${freeItem}`,purchaseItem,freeItem,buyQty,matchMode:mode,qty:purchasedQty,free,note:`${familyEnabled?"Product family (explicit)":"Exact item"}: ${purchasedQty} purchased [${matchedNames}] · Buy ${buyQty} → ${freeQty} free ${freeItem}`});
+        rep.push({item:`${purchaseItem} → ${freeItem}`,purchaseItem,freeItem,buyQty,matchMode:mode,qty:purchasedQty,free,note:`${Array.isArray(rule.purchaseItems)?"Combined items":familyEnabled?"Product family (explicit)":"Exact item"}: ${purchasedQty} purchased [${matchedNames}] · Buy ${buyQty} → ${freeQty} free ${freeItem}`});
         targets.push({item:purchaseItem,purchaseItem,freeItem,have:purchasedQty,need:nextTarget,gap,reward:`+${freeQty} ${freeItem}`,note:`Buy ${gap} more matched quantity for the next free benefit`}); }
       return {rep,targets,summary:`Total eligible free items: ${totalFree}`};
     }
@@ -90,7 +103,20 @@ export function computeFreeReport(scheme: { kind: SchemeKind; config: any }, row
   void totalMrp; return {rep:[],targets:[],summary:""};
 }
 
-export function computeAchievementPct(scheme:{kind:SchemeKind;config:any},rows:Row[]):number{const live=rows.filter((r)=>r.item&&(Number(r.qty)||0)>0);if(!live.length)return 0;const r=computeFreeReport(scheme,rows) as any,targets=(r.targets||[]) as any[],freeUnits=(r.rep||[]).reduce((s:number,x:any)=>s+(Number(x.free)||0),0);if(targets.length===0)return freeUnits>0?100:0;const pcts=targets.map((t:any)=>Number(t.need)>0?Math.min(100,(Number(t.have)/Number(t.need))*100):0);return Math.round(pcts.reduce((s,p)=>s+p,0)/pcts.length);}
+export function computeAchievementPct(scheme: {kind: SchemeKind; config: any}, rows: Row[]): number {
+  if (!rows.some(r => r.item && r.qty > 0)) return 0;
+  const report = computeFreeReport(scheme, rows);
+  if (scheme.kind === "percent") return Number(scheme.config?.percent) > 0 ? 100 : 0;
+  if (scheme.kind === "cashback") {
+    const cost = rows.reduce((sum, row) => sum + (Number(row.amountWithTax) || 0), 0);
+    const target = Number(scheme.config?.minAmount) || 0;
+    return target > 0 ? Math.round(Math.min(100, cost / target * 100)) : 100;
+  }
+  const targets = report.targets || [];
+  if (!targets.length) return report.rep.some(r => r.free > 0) ? 100 : 0;
+  const values = targets.map((target, i) => report.rep[i]?.free > 0 ? 100 : target.need > 0 ? Math.min(100, target.have / target.need * 100) : 0);
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
 export const FY_MONTHS=[4,5,6,7,8,9,10,11,12,1,2,3];
 export const MONTH_NAME=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 export function fyCalendarYear(fyYear:number,month:number){return month>=4?fyYear:fyYear+1;}

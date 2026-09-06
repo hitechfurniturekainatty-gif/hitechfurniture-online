@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { BenefitReceiptEditor, summarizeMonthBenefit } from "./BenefitTracker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MonthBlock } from "./MonthBlock";
 import { SchemeConfigEditor } from "./SchemeConfigEditor";
-import { MONTH_NAME, aggregateRowsByItem, computeAchievementPct, computeFreeReport, fmt } from "./utils";
+import { SCHEME_LABEL, defaultConfig, MONTH_NAME, aggregateRowsByItem, computeAchievementPct, computeFreeReport, fmt } from "./utils";
 import type { Row, SchemeKind, SchemeRow, TimelineMode, VendorMonth } from "./types";
 
 type PeriodRule = {
@@ -48,19 +50,22 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
   months: VendorMonth[];
   savedSchemes: SchemeRow[];
   onChangeMonth: (month: number, patch: Partial<VendorMonth>) => void;
-  onSaveMonth: (m: VendorMonth) => void;
+  onSaveMonth: (m: VendorMonth) => void | Promise<void>;
 }) {
   const partyId = months[0]?.party_id || "";
   const periodType = mode === "quarterly" ? "quarterly" : mode === "halfyearly" ? "halfyearly" : "yearly";
   const buckets = useMemo(() => bucketDefs(mode, fy, months), [mode, fy, months]);
   const [rules, setRules] = useState<Record<string, PeriodRule>>({});
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!partyId || mode === "monthly") return;
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
+    setRules({});
     (async () => {
       const { data, error } = await (supabase as any)
         .from("scheme_period_rules")
@@ -70,6 +75,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
         .eq("period_type", periodType);
       if (cancelled) return;
       if (error) {
+        setLoadError(true);
         toast({ title: "Period scheme load failed", description: error.message, variant: "destructive" });
         setLoading(false);
         return;
@@ -125,6 +131,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
     toast({ title: `${key} scheme saved`, description: "This rule is independent from monthly schemes and will use all invoice quantities inside this period." });
   };
 
+  if (loadError) return <p role="alert" className="rounded-xl border border-destructive p-4">Could not load saved period schemes. Switch period or reload to retry before editing.</p>;
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
   return (
@@ -160,9 +167,10 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
           const targets = (report.targets || []).filter((t: any) => Number(t.gap) > 0);
           const received = (rule.benefit_receipts || []).filter((x: any) => x.kind === "free_item").reduce((s: number, x: any) => s + (Number(x.qty) || 0), 0);
           const pending = Math.max(0, eligible - received);
+          const benefit = summarizeMonthBenefit({ party_id: partyId, fy_year: fy, month: 4, scheme_kind: rule.scheme_kind, scheme_config: rule.scheme_config, purchases_text: "", purchase_rows: allRows.map(({scheme_kind, scheme_config, scheme_rule_id, ...row}) => row), invoices: [], benefit_receipts: rule.benefit_receipts || [] });
 
           return (
-            <section key={b.key} className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+            <section key={b.key} className="scheme-period overflow-hidden rounded-2xl border bg-card shadow-sm">
               <div className="border-b bg-muted/15 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -193,6 +201,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
                       {savingKey === b.key ? "Saving…" : `Save ${b.key} Scheme`}
                     </Button>
                   </div>
+                  <Select value={rule.scheme_kind} onValueChange={(kind: SchemeKind) => updateRule(b.key, { scheme_kind: kind, scheme_config: defaultConfig(kind) })}><SelectTrigger className="mb-3 max-w-sm"><SelectValue /></SelectTrigger><SelectContent>{(["bogo", "percent", "company", "slab", "cashback", "own"] as SchemeKind[]).map((kind) => <SelectItem key={kind} value={kind}>{SCHEME_LABEL[kind]}</SelectItem>)}</SelectContent></Select>
                   <SchemeConfigEditor
                     scheme={{ kind: rule.scheme_kind, config: rule.scheme_config }}
                     onChange={(config) => updateRule(b.key, { scheme_config: config })}
@@ -206,8 +215,11 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
                   <div className="rounded-xl border bg-amber-50/50 p-3"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pending)}</div></div>
                 </div>
 
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h5 className="font-semibold">Total received benefit: {benefit.effectiveBenefitPct.toFixed(2)}% of MRP · ₹{fmt(benefit.effectiveBenefitValue)}</h5><p className="mt-1 text-xs">Base saving + credits received in this period + valued free goods received in this period. Monthly receipts are separate; do not enter the same credit twice.</p></div>
+                <BenefitReceiptEditor receipts={rule.benefit_receipts || []} onChange={(benefit_receipts) => updateRule(b.key, { benefit_receipts })} />
+                <p className="text-xs text-muted-foreground">After recording a receipt, use Save {b.key} Scheme above.</p>
                 <div className="rounded-xl border overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-sm">
+                  <table className="w-full table-fixed text-xs">
                     <thead className="bg-muted/20 text-xs text-muted-foreground"><tr><th className="px-3 py-2 text-left">Scheme Item</th><th className="px-3 py-2 text-right">Purchased</th><th className="px-3 py-2 text-right">Eligible Free</th><th className="px-3 py-2 text-left">Free Item</th><th className="px-3 py-2 text-right">Need More</th></tr></thead>
                     <tbody>
                       {(report.rep || []).length === 0 && targets.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-xs text-muted-foreground">Add an item rule above. Matching quantities from all invoices in this period will appear here.</td></tr>}
@@ -230,7 +242,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
         {buckets.map((b) => (
           <div key={`mb-${b.key}`} className="space-y-3">
             <div className="flex items-center gap-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{b.label}</span><div className="h-px flex-1 bg-border" /></div>
-            {b.months.map((m) => <MonthBlock key={`${b.key}-${m.month}`} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => onChangeMonth(m.month, patch)} onSave={() => onSaveMonth(m)} />)}
+            {b.months.map((m) => <MonthBlock key={`${b.key}-${m.month}`} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => onChangeMonth(m.month, patch)} onSave={(next) => onSaveMonth(next || m)} />)}
           </div>
         ))}
       </div>

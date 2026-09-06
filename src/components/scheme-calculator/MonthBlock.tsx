@@ -9,8 +9,9 @@ import { ProgressRing } from "./ProgressRing";
 import { SchemeConfigEditor } from "./SchemeConfigEditor";
 import { InvoiceCard } from "./InvoiceCard";
 import { InvoiceDialog } from "./InvoiceDialog";
+import { BenefitReceiptEditor, summarizeMonthBenefit } from "./BenefitTracker";
 import { ItemBenefitTracker } from "./ItemBenefitTracker";
-import { MONTH_NAME, SCHEME_LABEL, aggregateRowsByItem, computeAchievementPct, computeFreeReport, defaultConfig, fmt, fyCalendarYear } from "./utils";
+import { hasSchemeRule, MONTH_NAME, SCHEME_LABEL, aggregateRowsByItem, computeAchievementPct, computeFreeReport, defaultConfig, fmt, fyCalendarYear } from "./utils";
 import type { Invoice, Row, SchemeKind, SchemeRow, VendorMonth } from "./types";
 
 const exactQuantityConfig = () => ({ rules: [{ purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: 10, freeQty: 1, freeItem: "" }] });
@@ -29,7 +30,7 @@ function itemAwareReport(rows: Row[], fallback: { kind: SchemeKind; config: any 
   const rep: any[] = [], targets: any[] = [];
   let weightedPct = 0, qtyWeight = 0;
   for (const g of groups.values()) {
-    if (g.kind === "bogo" && Array.isArray(g.config?.rules) && !g.config.rules.some((r: any) => String(r?.purchaseItem || "").trim())) continue;
+    if (g.kind === "bogo" && Array.isArray(g.config?.rules) && !g.config.rules.some(hasSchemeRule)) continue;
     const agg = aggregateRowsByItem(g.rows);
     const report: any = computeFreeReport({ kind: g.kind, config: g.config }, agg);
     rep.push(...(report.rep || []).map((r: any) => ({ ...r, item: `${g.label}: ${r.item}` })));
@@ -85,10 +86,11 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const pendingFree = Math.max(0, free - receivedFree);
   const applySaved = (id: string) => { const s = savedSchemes.find((x) => x.id === id); if (s) onChange({ scheme_kind: s.kind, scheme_config: s.config || freshConfig(s.kind) }); };
   const handleSave = async () => { if (saving) return; setSaving(true); try { await onSave(); } finally { setSaving(false); } };
-  const simpleKinds: SchemeKind[] = ["bogo", "percent"];
+  const simpleKinds: SchemeKind[] = ["bogo", "percent", "company", "slab", "cashback", "own"];
+  const benefit = summarizeMonthBenefit(vm);
   const visibleKinds = simpleKinds.includes(vm.scheme_kind) ? simpleKinds : [vm.scheme_kind, ...simpleKinds];
 
-  return <div className={`rounded-2xl border bg-card shadow-sm ${isCurrent ? "border-primary/50" : "border-border"}`}>
+  return <div className={`scheme-period rounded-2xl border bg-card shadow-sm ${isCurrent ? "border-primary/50" : "border-border"}`}>
     <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-4 px-4 py-3 text-left">
       <div className="admin-accent-tile admin-accent-sage flex h-12 w-12 flex-col items-center justify-center rounded-xl"><span className="text-[9px]">{MONTH_NAME[vm.month]}</span><b className="text-xs">{String(fyCalendarYear(fy, vm.month)).slice(-2)}</b></div>
       <div className="flex-1"><div className="font-display">{label} {isCurrent && <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">CURRENT</span>}</div><div className="text-xs text-muted-foreground">{totalQty} qty · Cost ₹{fmt(totalAmount)} · MRP ₹{fmt(totalMrp)} · {totalMrp > 0 && <span>{fmt(vendorDiscount)}% vendor discount · </span>}<span className="font-medium text-primary">{free} eligible</span> · <span className="text-emerald-700">{receivedFree} received</span> · <span className="font-semibold text-amber-700">{pendingFree} pending</span></div></div>
@@ -109,14 +111,14 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
         </div>
 
         {invoices.length > 0 && <div className="mb-4 overflow-hidden rounded-xl border bg-background">
-          <div className="grid grid-cols-[minmax(180px,1.6fr)_90px_110px_140px_140px] gap-3 border-b bg-muted/20 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+          <div className="grid grid-cols-[minmax(0,1.6fr)_0.5fr_0.5fr_1fr_1fr] gap-3 border-b bg-muted/20 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
             <div>Invoice</div><div className="text-right">Qty</div><div className="text-right">Items</div><div className="text-right">MRP Value</div><div className="text-right">Cost incl. Tax</div>
           </div>
           {invoices.map((inv, i) => {
             const qty = inv.rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
             const mrp = inv.rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
             const cost = inv.rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
-            return <div key={inv.id} className="grid grid-cols-[minmax(180px,1.6fr)_90px_110px_140px_140px] gap-3 border-b px-3 py-2 text-xs last:border-b-0">
+            return <div key={inv.id} className="grid grid-cols-[minmax(0,1.6fr)_0.5fr_0.5fr_1fr_1fr] gap-3 border-b px-3 py-2 text-xs last:border-b-0">
               <div className="min-w-0"><div className="truncate font-medium">{inv.label || `Invoice ${i + 1}`}</div><div className="truncate text-[11px] text-muted-foreground">{inv.invoice_no || "No invoice no."}{inv.date ? ` · ${inv.date}` : ""}</div></div>
               <div className="text-right tabular-nums">{fmt(qty)}</div><div className="text-right tabular-nums">{inv.rows.length}</div><div className="text-right font-medium tabular-nums">₹{fmt(mrp)}</div><div className="text-right font-medium tabular-nums">₹{fmt(cost)}</div>
             </div>;
@@ -136,6 +138,8 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
       <section className="admin-section-card p-4"><h4 className="mb-3 font-semibold">③ Scheme result</h4>{flatRows.length === 0 ? <p className="text-sm text-muted-foreground">Add an invoice to start live scheme analysis.</p> : <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-xl border border-primary/20 bg-primary/5 p-4"><div className="flex gap-3"><ProgressRing pct={completion} size={72} /><div><div className="flex items-center gap-1 text-primary"><CheckCircle2 className="h-4 w-4" /><b>Eligible Free: {free}</b></div><div className="mt-1 text-xs text-muted-foreground">Calculated only from the scheme item rules you entered.</div></div></div></div><div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4"><div className="text-xs text-emerald-700">Received Free</div><div className="mt-1 text-2xl font-semibold text-emerald-700">{fmt(receivedFree)}</div></div><div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pendingFree)}</div></div>{targets.length > 0 && <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 lg:col-span-3"><div className="flex items-center gap-1 text-amber-700"><AlertTriangle className="h-4 w-4" /><b className="text-sm">Next target</b></div><div className="mt-2 grid gap-2 md:grid-cols-2">{targets.slice(0, 6).map((t: any, i: number) => <div key={i} className="rounded-lg border bg-background/70 p-2 text-xs"><b>Buy {fmt(t.gap)} more</b> → {t.reward}<div className="text-muted-foreground">{t.item}</div></div>)}</div></div>}</div>}</section>
 
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h4 className="font-semibold">Total received benefit · {benefit.effectiveBenefitPct.toFixed(2)}% of MRP</h4><p className="text-xs mt-1">Base saving ₹{fmt(benefit.baseSaving)} + received credits ₹{fmt(benefit.amountReceived)} + received free-goods value ₹{fmt(benefit.freeReceivedValue)} = ₹{fmt(benefit.effectiveBenefitValue)}. Enter all item MRPs for a complete percentage.</p></div>
+      <BenefitReceiptEditor receipts={vm.benefit_receipts || []} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <ItemBenefitTracker vm={vm} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <div className="flex justify-end gap-2"><SchemePartyNotesButton partyId={vm.party_id} /><Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? "Saving…" : `Save ${MONTH_NAME[vm.month]}`}</Button></div>
     </div>}

@@ -1,10 +1,12 @@
 // Shared types for the Vendor Scheme Dashboard.
 export type SchemeKind = "company" | "own" | "slab" | "bogo" | "percent" | "cashback" | "custom";
-export type Period = "monthly" | "quarterly" | "yearly";
+export type Period = "monthly" | "quarterly" | "halfyearly" | "yearly";
 
 export type SchemeMatchMode = "exact" | "family";
 export type SchemeItemRule = {
   id?: string;
+  purchaseItems?: string[];
+  /** Explicit list pooled into one quantity target. */
   purchaseItem: string;
   matchMode: SchemeMatchMode;
   /** Family matching must be an explicit staff choice. */

@@ -12,7 +12,7 @@ import { SchemeConfigEditor } from "./SchemeConfigEditor";
 import { SCHEME_LABEL, defaultConfig } from "./utils";
 import type { Period, SchemeKind, SchemeRow } from "./types";
 
-const SIMPLE_KINDS: SchemeKind[] = ["bogo", "percent"];
+const SIMPLE_KINDS: SchemeKind[] = ["bogo", "percent", "company", "slab", "cashback", "own"];
 const simpleLabel: Partial<Record<SchemeKind, string>> = {
   bogo: "Quantity — Item + Buy Qty + Free Qty",
   percent: "Percentage Discount",
@@ -63,7 +63,7 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
   const visibleKinds = SIMPLE_KINDS.includes(form.kind) ? SIMPLE_KINDS : [form.kind, ...SIMPLE_KINDS];
 
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="rounded-lg border bg-card p-4 space-y-3">
         <div>
           <h3 className="font-medium">{editingId ? "Edit scheme" : "New scheme"}</h3>
@@ -82,7 +82,7 @@ export function SchemesTab({ schemes, setSchemes, onApply }: { schemes: SchemeRo
             <Label className="text-xs">Period</Label>
             <Select value={form.period} onValueChange={(v) => setForm({ ...form, period: v as Period })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="halfyearly">Half-Yearly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent>
             </Select>
           </div>
         </div>

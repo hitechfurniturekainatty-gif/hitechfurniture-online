@@ -15,7 +15,7 @@ import { SchemesTab } from "@/components/scheme-calculator/SchemesTab";
 import { SchemeBenefitAnalysis } from "@/components/scheme-calculator/BenefitTracker";
 import { Stat } from "@/components/scheme-calculator/Stat";
 import { ProgressRing } from "@/components/scheme-calculator/ProgressRing";
-import { FY_MONTHS, aggregateRowsByItem, computeAchievementPct, computeFreeReport, currentFy, fmt } from "@/components/scheme-calculator/utils";
+import { FY_MONTHS, hasSchemeRule, aggregateRowsByItem, computeAchievementPct, computeFreeReport, currentFy, fmt } from "@/components/scheme-calculator/utils";
 import type { Invoice, Party, Row, SchemeRow, TimelineMode, VendorMonth } from "@/components/scheme-calculator/types";
 
 const emptyItemScheme = () => ({ rules: [{ purchaseItem: "", matchMode: "exact", familyExplicit: false, buyQty: 10, freeQty: 1, freeItem: "" }] });
@@ -44,9 +44,12 @@ const AdminSchemeCalculator = () => {
 
   useEffect(() => {
     if (!vendorId) { setMonths([]); return; }
+    let cancelled = false;
+    setMonths([]);
     setLoading(true);
     (async () => {
       const { data, error } = await supabase.from("scheme_vendor_months" as any).select("*").eq("party_id", vendorId).eq("fy_year", fy);
+      if (cancelled) return;
       if (error) { toast({ title: "Load failed", description: error.message, variant: "destructive" }); setLoading(false); return; }
       const saved = ((data as any) || []) as VendorMonth[];
       setMonths(FY_MONTHS.map((month) => {
@@ -61,6 +64,7 @@ const AdminSchemeCalculator = () => {
       }));
       setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [vendorId, fy]);
 
   const vendor = parties.find((p) => p.id === vendorId) || null;
@@ -89,7 +93,7 @@ const AdminSchemeCalculator = () => {
       if (!flat.length) return;
       const agg = aggregateRowsByItem(flat);
       const report: any = computeFreeReport({ kind: m.scheme_kind, config: m.scheme_config }, agg);
-      const hasConfiguredItemRule = m.scheme_kind !== "bogo" || (Array.isArray(m.scheme_config?.rules) && m.scheme_config.rules.some((r: any) => String(r?.purchaseItem || "").trim()));
+      const hasConfiguredItemRule = m.scheme_kind !== "bogo" || (Array.isArray(m.scheme_config?.rules) && m.scheme_config.rules.some(hasSchemeRule));
       if (!hasConfiguredItemRule) return;
       freeUnits += (report.rep || []).reduce((s: number, r: any) => s + (Number(r.free) || 0), 0);
       const matchedQty = (report.rep || []).reduce((s: number, r: any) => s + (r.purchaseItem ? Number(r.qty) || 0 : 0), 0);
@@ -100,7 +104,7 @@ const AdminSchemeCalculator = () => {
     return { totalAmount, totalQty, freeUnits, completionPct: schemeQty ? Math.round(weightedPct / schemeQty) : 0 };
   }, [months]);
 
-  return <AdminShell><div className="space-y-6 pb-24">
+  return <AdminShell><div className="scheme-workspace space-y-6 pb-6">
     <div><h1 className="font-display text-2xl">Vendor Scheme Dashboard</h1><p className="mt-1 text-sm text-muted-foreground">Vendor → Month → all invoice items → item-based scheme rules → eligible free → received → pending.</p></div>
     <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
       <TabsList><TabsTrigger value="calc">Vendor Dashboard</TabsTrigger><TabsTrigger value="parties">Vendors ({parties.length})</TabsTrigger><TabsTrigger value="schemes">Scheme Templates ({savedSchemes.length})</TabsTrigger></TabsList>
@@ -111,14 +115,14 @@ const AdminSchemeCalculator = () => {
           <div><Label className="text-xs">Timeline</Label><Select value={mode} onValueChange={(v) => setMode(v as TimelineMode)}><SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="halfyearly">Half-Yearly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent></Select></div>
         </div></div>
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
-          <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} />
+          {mode === "monthly" && <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} />}
           {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
         </>}
       </TabsContent>
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>
       <TabsContent value="schemes" className="pt-4"><SchemesTab schemes={savedSchemes} setSchemes={setSavedSchemes} onApply={() => setTab("calc")} /></TabsContent>
     </Tabs>
-    {vendor && <div className="fixed bottom-3 left-1/2 z-30 w-[min(1050px,95vw)] -translate-x-1/2 rounded-2xl border bg-card/95 px-4 py-3 shadow-2xl backdrop-blur"><div className="flex flex-wrap items-center gap-4 text-xs"><b>FY {fy}–{String(fy+1).slice(-2)} · {vendor.name}</b><div className="ml-auto flex flex-wrap items-center gap-5"><Stat label="Purchases" value={`₹${fmt(ytd.totalAmount)}`} /><Stat label="Total Qty" value={fmt(ytd.totalQty)} /><Stat label="Eligible Free" value={fmt(ytd.freeUnits)} tone="success" /><div className="flex items-center gap-2"><ProgressRing pct={ytd.completionPct} size={42} stroke={5} /><span>{ytd.completionPct}%</span></div></div></div></div>}
+    {vendor && mode === "monthly" && <div className="rounded-2xl border bg-card px-4 py-3"><div className="flex flex-wrap items-center gap-4 text-xs"><b>FY {fy}–{String(fy+1).slice(-2)} · {vendor.name}</b><div className="ml-auto flex flex-wrap items-center gap-5"><Stat label="Purchases" value={`₹${fmt(ytd.totalAmount)}`} /><Stat label="Total Qty" value={fmt(ytd.totalQty)} /><Stat label="Eligible Free" value={fmt(ytd.freeUnits)} tone="success" /><div className="flex items-center gap-2"><ProgressRing pct={ytd.completionPct} size={42} stroke={5} /><span>{ytd.completionPct}%</span></div></div></div></div>}
   </div></AdminShell>;
 };
 

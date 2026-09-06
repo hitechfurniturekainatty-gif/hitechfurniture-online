@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
@@ -35,8 +36,13 @@ export function SchemeConfigEditor({ scheme, onChange }: { scheme: { kind: Schem
             <div><div className="text-sm font-semibold">Scheme item {i + 1}</div><div className="text-[11px] text-muted-foreground">Purchase item → Buy Qty → Free Qty → Free item</div></div>
             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" disabled={rules.length === 1} onClick={() => write(rules.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.25fr_100px_100px_2fr]">
-            <div><Label className="text-xs">Purchase item</Label><Input className="mt-1" value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond 75x60" /></div>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant={!Array.isArray(rule.purchaseItems) ? "default" : "outline"} onClick={() => updateRule(i, { purchaseItems: undefined })}>Individual item</Button>
+            <Button type="button" size="sm" variant={Array.isArray(rule.purchaseItems) ? "default" : "outline"} onClick={() => updateRule(i, { purchaseItems: rule.purchaseItems || [rule.purchaseItem || ""] })}>Combo / pooled quantity</Button>
+          </div>
+          {Array.isArray(rule.purchaseItems) && <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3"><Label>Eligible combo products — one per line</Label><Textarea className="mt-2" value={rule.purchaseItems.join("\n")} onChange={(e) => updateRule(i, { purchaseItems: e.target.value.split("\n") })} placeholder={"Comfobond 75x60\nUltra 75x60\nImperio 78x72"} /><p className="mt-2 text-xs">Quantities from any listed products add up to one target. Choose Family to include all sizes of each listed variant. A matching invoice row is counted once per combo. Separate rules earn independently.</p></div>}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1.25fr_80px_80px_2fr]">
+            <div><Label className="text-xs">{Array.isArray(rule.purchaseItems) ? "Combo name (optional)" : "Purchase item"}</Label><Input className="mt-1" value={rule.purchaseItem || ""} onChange={(e) => updateRule(i, { purchaseItem: e.target.value })} placeholder="e.g. Comfobond 75x60" /></div>
             <div><Label className="text-xs">Match</Label><Select value={family ? "family" : "exact"} onValueChange={(v) => updateRule(i, { matchMode: v, familyExplicit: v === "family" })}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="exact">Exact item only</SelectItem><SelectItem value="family">Family / contains</SelectItem></SelectContent></Select></div>
             <div><Label className="text-xs">Buy Qty</Label><Input className="mt-1" type="number" min={1} value={Math.max(1, Number(rule.buyQty) || 1)} onChange={(e) => updateRule(i, { buyQty: Math.max(1, Number(e.target.value) || 1) })} /></div>
             <div><Label className="text-xs">Free Qty</Label><Input className="mt-1" type="number" min={0} value={Math.max(0, Number(rule.freeQty ?? rule.getQty) || 0)} onChange={(e) => updateRule(i, { freeQty: Math.max(0, Number(e.target.value) || 0) })} /></div>
