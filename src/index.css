@@ -144,3 +144,6 @@
 .admin-theme .overview-section h2 { padding:10px 14px; border-left:3px solid var(--section-accent); border-radius:6px; background:var(--section-tint); color:#33434c; }
 .admin-theme .overview-section > div + div { margin-top:24px; }
 .admin-theme .overview-section h3 { color:#415661; }
+.admin-theme .benefit-entry [role="combobox"] { min-height:42px; height:auto; text-align:left; }
+.admin-theme .benefit-entry [role="combobox"] > span { white-space:normal; overflow-wrap:anywhere; }
+.admin-theme .benefit-entry label { line-height:1.5; }

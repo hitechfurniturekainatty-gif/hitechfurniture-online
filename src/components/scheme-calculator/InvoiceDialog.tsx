@@ -21,7 +21,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave }: {
   invoice: Invoice | null;
   partyId: string;
   onClose: () => void;
-  onSave: (inv: Invoice) => void;
+  onSave: (inv: Invoice) => void | Promise<void>;
 }) {
   const [label, setLabel] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -143,7 +143,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave }: {
   const removeRow = (id: string) => setRows((current) => current.filter((r) => r.id !== id));
 
   const saveVendorMrpMaster = async () => {
-    if (!partyId) return;
+    if (!partyId || invoice.document_kind === "purchase_return") return;
     const payload = rows
       .filter((r) => String(r.item || "").trim() && Number(r.mrp) > 0)
       .map((r) => ({
@@ -165,7 +165,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave }: {
     if (saving) return;
     setSaving(true);
     const savedInvoice = { ...invoice, label: label.trim() || invoice.label, invoice_no: invoiceNo.trim(), date, rows };
-    onSave(savedInvoice);
+    try { await onSave(savedInvoice); } catch (e: any) { setSaving(false); toast({title:"Could not save document",description:e?.message,variant:"destructive"}); return; }
     try {
       await saveVendorMrpMaster();
       toast({ title: "Invoice saved", description: "MRP values are saved and will auto-fill for the same vendor item next time." });
@@ -180,7 +180,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave }: {
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[95vh] w-[calc(100vw-0.75rem)] max-w-7xl flex-col gap-0 p-0 sm:w-[97vw]">
         <DialogHeader className="shrink-0 border-b px-4 pb-3 pt-4 sm:px-6 sm:pt-6">
-          <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> {invoice.rows.length ? "Edit invoice" : "Add invoice"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> {invoice.document_kind === "purchase_return" ? "Debit note · Purchase return / സാധനം തിരികെ നൽകിയത്" : invoice.rows.length ? "Edit invoice" : "Add invoice"}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">

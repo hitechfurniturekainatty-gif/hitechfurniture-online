@@ -51,7 +51,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
       <div className="flex flex-wrap items-center gap-3 border-b bg-muted/20 px-4 py-3">
         <div className="admin-accent-tile admin-accent-mint flex h-9 w-9 items-center justify-center rounded-lg"><Receipt className="h-4 w-4" /></div>
         <div className="min-w-0">
-          <div className="font-semibold">{invoice.label || `Invoice ${index + 1}`}</div>
+          <div className="font-semibold">{invoice.document_kind === "purchase_return" ? "Return / Debit note · " : ""}{invoice.label || `Invoice ${index + 1}`}</div>
           <div className="text-xs text-muted-foreground">{invoice.invoice_no ? `No. ${invoice.invoice_no}` : "No invoice number"}{invoice.date ? ` · ${invoice.date}` : ""}</div>
         </div>
         <div className="ml-auto flex items-center gap-2">

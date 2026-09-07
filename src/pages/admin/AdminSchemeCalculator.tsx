@@ -1,3 +1,4 @@
+import { periodReceiptsForMonths, monthRows, type PeriodBenefitRecord } from "@/components/scheme-calculator/periodBenefits";
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,9 @@ const AdminSchemeCalculator = () => {
   const [vendorQuery, setVendorQuery] = useState("");
   const [fy, setFy] = useState(currentFy());
   const [mode, setMode] = useState<TimelineMode>("monthly");
+  const [periodRecords, setPeriodRecords] = useState<PeriodBenefitRecord[]>([]);
+  const [periodLoading, setPeriodLoading] = useState(false);
+  const [periodError, setPeriodError] = useState(false);
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -67,6 +71,22 @@ const AdminSchemeCalculator = () => {
     return () => { cancelled = true; };
   }, [vendorId, fy]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setPeriodRecords([]); setPeriodError(false);
+    if (!vendorId) {setPeriodLoading(false);return;}
+    setPeriodLoading(true);
+    (async () => {
+      const {data,error} = await supabase.from("scheme_period_rules").select("period_type,period_key,benefit_receipts").eq("party_id",vendorId).eq("fy_year",fy);
+      if (cancelled) return;
+      setPeriodLoading(false);
+      if (error) {setPeriodError(true); return;}
+      setPeriodRecords((data || []) as unknown as PeriodBenefitRecord[]);
+    })();
+    return () => {cancelled=true;};
+  },[vendorId,fy]);
+  const updatePeriodRecord = (record: PeriodBenefitRecord) => setPeriodRecords(prev => [...prev.filter(r => r.period_type !== record.period_type || r.period_key !== record.period_key),record]);
+
   const vendor = parties.find((p) => p.id === vendorId) || null;
   const filteredParties = useMemo(() => {
     const q = vendorQuery.trim().toLowerCase();
@@ -76,7 +96,7 @@ const AdminSchemeCalculator = () => {
 
   const updateMonth = (month: number, patch: Partial<VendorMonth>) => setMonths((arr) => arr.map((m) => m.month === month ? { ...m, ...patch } : m));
   const persistMonth = async (m: VendorMonth) => {
-    const flatRows: Row[] = m.invoices?.length ? m.invoices.flatMap((inv) => inv.rows) : m.purchase_rows;
+    const flatRows: Row[] = monthRows(m);
     const payload = { party_id: m.party_id, fy_year: m.fy_year, month: m.month, scheme_kind: m.scheme_kind, scheme_config: m.scheme_config, purchases_text: m.purchases_text, purchase_rows: flatRows as any, invoices: m.invoices as any, benefit_receipts: (m.benefit_receipts || []) as any };
     const { data, error } = await supabase.from("scheme_vendor_months" as any).upsert(payload, { onConflict: "party_id,fy_year,month" }).select().single();
     if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); throw error; }
@@ -87,7 +107,7 @@ const AdminSchemeCalculator = () => {
   const ytd = useMemo(() => {
     let totalAmount = 0, totalQty = 0, freeUnits = 0, weightedPct = 0, schemeQty = 0;
     months.forEach((m) => {
-      const flat = m.invoices?.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows;
+      const flat = monthRows(m);
       totalAmount += flat.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
       totalQty += flat.reduce((s, r) => s + (Number(r.qty) || 0), 0);
       if (!flat.length) return;
@@ -115,8 +135,8 @@ const AdminSchemeCalculator = () => {
           <div><Label className="text-xs">Timeline</Label><Select value={mode} onValueChange={(v) => setMode(v as TimelineMode)}><SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="halfyearly">Half-Yearly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent></Select></div>
         </div></div>
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
-          {mode === "monthly" && <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} />}
-          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
+          {periodLoading ? <p className="text-muted-foreground">Loading all period benefits…</p> : periodError ? <p role="alert" className="text-destructive">Could not load period benefits. Reload before relying on totals.</p> : <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} periodRecords={periodRecords} />}
+          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
         </>}
       </TabsContent>
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>

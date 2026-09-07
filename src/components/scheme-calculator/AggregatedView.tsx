@@ -1,3 +1,4 @@
+import { periodReceiptsForMonths, type PeriodBenefitRecord, monthRows, invoiceRows } from "./periodBenefits";
 import { settlementRules, settlementTotals } from "./settlements";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,9 @@ const bucketDefs = (mode: TimelineMode, fy: number, months: VendorMonth[]): Buck
   ];
 };
 
-export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, onSaveMonth }: {
+export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, onSaveMonth, periodRecords, onPeriodRecordChange }: {
+  periodRecords: PeriodBenefitRecord[];
+  onPeriodRecordChange: (record: PeriodBenefitRecord) => void;
   mode: TimelineMode;
   fy: number;
   months: VendorMonth[];
@@ -101,7 +104,9 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
   }, [partyId, fy, periodType, mode]);
 
   const updateRule = (key: string, patch: Partial<PeriodRule>) => {
-    setRules((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+    const next = { ...rules[key], ...patch };
+    setRules((prev) => ({ ...prev, [key]: next }));
+    onPeriodRecordChange(next);
   };
 
   const saveRule = async (key: string) => {
@@ -155,7 +160,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
             scheme_config: emptyItemScheme(),
             benefit_receipts: [],
           };
-          const allRows: Row[] = b.months.flatMap((m) => m.invoices?.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows);
+          const allRows: Row[] = b.months.flatMap(monthRows);
           const agg = aggregateRowsByItem(allRows);
           const report: any = computeFreeReport({ kind: rule.scheme_kind, config: rule.scheme_config }, agg);
           const totalQty = allRows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
@@ -168,7 +173,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
           const targets = (report.targets || []).filter((t: any) => Number(t.gap) > 0);
           const received = (rule.benefit_receipts || []).filter((x: any) => x.kind === "free_item").reduce((s: number, x: any) => s + (Number(x.qty) || 0), 0);
           const pending = Math.max(0, eligible - received - settlementTotals(rule.benefit_receipts || []).creditSettledQty);
-          const benefit = summarizeMonthBenefit({ party_id: partyId, fy_year: fy, month: 4, scheme_kind: rule.scheme_kind, scheme_config: rule.scheme_config, purchases_text: "", purchase_rows: allRows.map(({scheme_kind, scheme_config, scheme_rule_id, ...row}) => row), invoices: [], benefit_receipts: rule.benefit_receipts || [] });
+          const benefit = summarizeMonthBenefit({ party_id: partyId, fy_year: fy, month: 4, scheme_kind: rule.scheme_kind, scheme_config: rule.scheme_config, purchases_text: "", purchase_rows: allRows.map(({scheme_kind, scheme_config, scheme_rule_id, ...row}) => row), invoices: [], benefit_receipts: [...b.months.flatMap(m => m.benefit_receipts || []), ...periodReceiptsForMonths(periodRecords, fy, b.months.map(m => m.month))] });
 
           return (
             <section key={b.key} className="scheme-period overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -216,8 +221,8 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
                   <div className="rounded-xl border bg-amber-50/50 p-3"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pending)}</div></div>
                 </div>
 
-                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h5 className="font-semibold">Total received benefit: {benefit.effectiveBenefitPct.toFixed(2)}% of MRP · ₹{fmt(benefit.effectiveBenefitValue)}</h5><p className="mt-1 text-xs">Base saving + credits + free-goods value − additional vendor charges (₹{fmt(benefit.vendorCharges)}). Credit-settled free units: {benefit.creditSettledQty}. Monthly receipts are separate; do not enter the same credit twice.</p></div>
-                <BenefitReceiptEditor rules={settlementRules(report)} receipts={rule.benefit_receipts || []} onChange={(benefit_receipts) => updateRule(b.key, { benefit_receipts })} />
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h5 className="font-semibold">Total received benefit: {benefit.mrpValue > 0 ? `${benefit.effectiveBenefitPct.toFixed(2)}% of MRP` : "—"} · ₹{fmt(benefit.effectiveBenefitValue)}</h5><p className="mt-1 text-xs">Base saving + credits + free-goods value − additional vendor charges (₹{fmt(benefit.vendorCharges)}). Credit-settled free units: {benefit.creditSettledQty}. Includes monthly and dated period benefits. Do not enter the same credit twice.</p></div>
+                <BenefitReceiptEditor allowMonthChoice defaultMonth={`${fy >= 0 && b.months[b.months.length-1]?.month < 4 ? fy + 1 : fy}-${String(b.months[b.months.length-1]?.month || 3).padStart(2,"0")}`} rules={settlementRules(report)} receipts={rule.benefit_receipts || []} onChange={(benefit_receipts) => updateRule(b.key, { benefit_receipts })} />
                 <p className="text-xs text-muted-foreground">After recording a receipt, use Save {b.key} Scheme above.</p>
                 <div className="rounded-xl border overflow-x-auto">
                   <table className="w-full table-fixed text-xs">
@@ -243,7 +248,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
         {buckets.map((b) => (
           <div key={`mb-${b.key}`} className="space-y-3">
             <div className="flex items-center gap-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{b.label}</span><div className="h-px flex-1 bg-border" /></div>
-            {b.months.map((m) => <MonthBlock key={`${b.key}-${m.month}`} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => onChangeMonth(m.month, patch)} onSave={(next) => onSaveMonth(next || m)} />)}
+            {b.months.map((m) => <MonthBlock additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={`${b.key}-${m.month}`} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => onChangeMonth(m.month, patch)} onSave={(next) => onSaveMonth(next || m)} />)}
           </div>
         ))}
       </div>

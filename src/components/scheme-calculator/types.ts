@@ -31,6 +31,7 @@ export type Row = {
 };
 
 export type Invoice = {
+  document_kind?: "purchase" | "purchase_return";
   id: string;
   label: string;
   invoice_no?: string;
@@ -84,6 +85,8 @@ export type BenefitReceipt = {
   date?: string;
   reference?: string;
   note?: string;
+  scheme_label?: string;
+  benefit_month?: string;
 };
 
 export type VendorMonth = {

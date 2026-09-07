@@ -1,3 +1,4 @@
+import { periodReceiptsForMonths, type PeriodBenefitRecord, monthRows, invoiceRows } from "./periodBenefits";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +33,12 @@ function groupedSchemeReports(rows: Row[], fallback: { kind: SchemeKind; config:
 }
 
 export function summarizeMonthBenefit(vm: VendorMonth): MonthBenefitSummary {
-  const rows = vm.invoices?.length ? vm.invoices.flatMap((i) => i.rows) : vm.purchase_rows;
+  const rows = monthRows(vm);
   const grouped = groupedSchemeReports(rows, { kind: vm.scheme_kind, config: vm.scheme_config });
   const purchaseQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
   const purchaseCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
   const mrpValue = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
-  const baseSaving = Math.max(0, mrpValue - purchaseCost);
+  const baseSaving = mrpValue - purchaseCost;
   const baseDiscountPct = mrpValue > 0 ? baseSaving / mrpValue * 100 : 0;
   const freeEarned = grouped.reduce((sum, g) => sum + (g.report.rep || []).reduce((s: number, r: any) => s + (Number(r.free) || 0), 0), 0);
 
@@ -80,19 +81,27 @@ function groupsFor(mode: TimelineMode, months: VendorMonth[], fy: number) {
   return months.map((m) => ({ label: `${MONTH_NAME[m.month]} ${fyCalendarYear(fy, m.month)}`, months: [m] }));
 }
 
-export function SchemeBenefitAnalysis({ months, fy, mode }: { months: VendorMonth[]; fy: number; mode: TimelineMode }) {
-  const groups = useMemo(() => groupsFor(mode, months, fy).map((g) => {
-    const p = g.months.map(summarizeMonthBenefit); const mrp = p.reduce((s,x)=>s+x.mrpValue,0); const base = p.reduce((s,x)=>s+x.baseSaving,0); const effective = p.reduce((s,x)=>s+x.effectiveBenefitValue,0);
-    return { label:g.label, purchaseQty:p.reduce((s,x)=>s+x.purchaseQty,0), purchaseCost:p.reduce((s,x)=>s+x.purchaseCost,0), mrpValue:mrp, baseSaving:base, baseDiscountPct:mrp>0?base/mrp*100:0,
-      freeEarned:p.reduce((s,x)=>s+x.freeEarned,0), freeReceived:p.reduce((s,x)=>s+x.freeReceived,0), freePending:p.reduce((s,x)=>s+x.freePending,0), freeValue:p.reduce((s,x)=>s+x.freeReceivedValue,0),
-      amountEarned:p.reduce((s,x)=>s+x.amountEarned,0), amountReceived:p.reduce((s,x)=>s+x.amountReceived,0), amountPending:p.reduce((s,x)=>s+x.amountPending,0), effectiveBenefitValue:effective, effectiveBenefitPct:mrp>0?effective/mrp*100:0, details:p.flatMap(x=>x.earnedDetails) };
-  }), [months,fy,mode]);
-  const totalMrp=groups.reduce((s,g)=>s+g.mrpValue,0), totalBase=groups.reduce((s,g)=>s+g.baseSaving,0), totalEffective=groups.reduce((s,g)=>s+g.effectiveBenefitValue,0);
-  const totals={ purchaseCost:groups.reduce((s,g)=>s+g.purchaseCost,0), basePct:totalMrp>0?totalBase/totalMrp*100:0, freeEarned:groups.reduce((s,g)=>s+g.freeEarned,0), freeReceived:groups.reduce((s,g)=>s+g.freeReceived,0), freePending:groups.reduce((s,g)=>s+g.freePending,0), freeValue:groups.reduce((s,g)=>s+g.freeValue,0), amountPending:groups.reduce((s,g)=>s+g.amountPending,0), effectivePct:totalMrp>0?totalEffective/totalMrp*100:0, effectiveValue:totalEffective };
-  return <section className="rounded-2xl border bg-card p-4 shadow-sm">
-    <div className="mb-4"><div className="flex items-center gap-2"><ReceiptIndianRupee className="h-5 w-5 text-primary"/><h3 className="font-display text-lg">Scheme Benefit Summary</h3></div><p className="mt-1 text-xs text-muted-foreground">Eligible = calculated from purchases. Received = actually received from vendor. Pending = balance still to receive.</p></div>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">{[["Purchase cost",`₹${fmt(totals.purchaseCost)}`],["Base discount",`${totals.basePct.toFixed(2)}%`],["Eligible Free",fmt(totals.freeEarned)],["Received Free",fmt(totals.freeReceived)],["Pending Free",fmt(totals.freePending)],["Amount Pending",`₹${fmt(totals.amountPending)}`],["Effective Benefit",`${totals.effectivePct.toFixed(2)}%`]].map(([l,v])=><div key={l} className="rounded-xl border bg-background p-3"><div className="text-[10px] uppercase text-muted-foreground">{l}</div><div className="mt-1 font-display text-lg font-semibold">{v}</div></div>)}</div>
-    <div className="mt-4 overflow-x-auto rounded-xl border"><table className="w-full table-fixed text-xs"><thead className="bg-muted/50 text-xs"><tr><th className="p-2 text-left">Period</th><th className="p-2 text-right">Purchase</th><th className="p-2 text-right">Eligible Free</th><th className="p-2 text-right">Received Free</th><th className="p-2 text-right">Pending Free</th><th className="p-2 text-right">Amount Pending</th><th className="p-2 text-right">Effective Benefit</th></tr></thead><tbody>{groups.map(g=><tr key={g.label} className="border-t"><td className="p-2 font-medium">{g.label}</td><td className="p-2 text-right">₹{fmt(g.purchaseCost)}</td><td className="p-2 text-right">{fmt(g.freeEarned)}</td><td className="p-2 text-right text-emerald-600">{fmt(g.freeReceived)}</td><td className="p-2 text-right font-semibold">{fmt(g.freePending)}</td><td className="p-2 text-right">₹{fmt(g.amountPending)}</td><td className="p-2 text-right font-semibold">₹{fmt(g.effectiveBenefitValue)} · {g.effectiveBenefitPct.toFixed(2)}%</td></tr>)}</tbody></table></div>
-    {totals.freePending===0&&totals.amountPending===0&&<div className="mt-3 flex items-center gap-2 text-xs text-emerald-600"><CheckCircle2 className="h-4 w-4"/> No scheme benefit pending in this view.</div>}
+export function summarizePeriodBenefit(months: VendorMonth[], fy: number, periodRecords: PeriodBenefitRecord[] = []) {
+  const summaries = months.map(summarizeMonthBenefit);
+  const extra = settlementTotals(periodReceiptsForMonths(periodRecords, fy, months.map(m => m.month)));
+  const rows = months.flatMap(monthRows);
+  const mrp = summaries.reduce((s,m) => s + m.mrpValue,0);
+  const netCost = summaries.reduce((s,m) => s + m.purchaseCost,0);
+  const base = mrp - netCost;
+  const additional = summaries.reduce((s,m) => s + m.effectiveBenefitValue - m.baseSaving,0) + extra.net;
+  const returns = -rows.filter(r => r.qty < 0).reduce((s,r) => s + r.amountWithTax,0);
+  return { mrp, netCost, base, additional, returns, benefit: base + additional, percent: mrp > 0 ? (base + additional) / mrp * 100 : null, completeMrp: rows.every(r => r.mrp > 0) };
+}
+
+export function SchemeBenefitAnalysis({ months, fy, mode, periodRecords = [] }: { months: VendorMonth[]; fy: number; mode: TimelineMode; periodRecords?: PeriodBenefitRecord[] }) {
+  const groups = groupsFor(mode, months, fy).map(g => ({label:g.label,...summarizePeriodBenefit(g.months,fy,periodRecords)}));
+  const total = summarizePeriodBenefit(months,fy,periodRecords);
+  return <section className="rounded-2xl border border-primary/30 bg-card p-4 shadow-sm">
+    <h3 className="text-lg font-semibold">Total benefit · മൊത്തം ആനുകൂല്യം</h3>
+    <p className="mt-1 text-xs text-muted-foreground">MRP-യിലെ ലാഭം + Onam / Vishu / മറ്റ് അധിക benefits − അധിക vendor charge. Purchase return-ന്റെ MRPയും തുകയും കുറച്ച ശേഷമാണ് ശതമാനം. ഇത് selling profit margin അല്ല.</p>
+    <div className="my-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">{[["Net purchase / വാങ്ങൽ",`₹${fmt(total.netCost)}`],["Returns / തിരികെ നൽകിയത്",`₹${fmt(total.returns)}`],["Net MRP",`₹${fmt(total.mrp)}`],["Additional benefits",`₹${fmt(total.additional)}`],["Total benefit",`₹${fmt(total.benefit)}`],["Total benefit %",total.percent === null ? "—" : `${total.percent.toFixed(2)}%`]].map(([label,value]) => <div key={label} className="rounded-xl border bg-primary/5 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}</div>
+    {!total.completeMrp && <p role="status" className="mb-3 text-xs text-amber-700">ചില items-ൽ MRP ഇല്ല. മുഴുവൻ MRP നൽകിയാൽ മാത്രമേ ശതമാനം കൃത്യമാകൂ.</p>}
+    <p className="mb-2 text-xs text-muted-foreground">FY total above · താഴെ തിരഞ്ഞെടുത്ത {mode} കാലയളവുകളുടെ കണക്ക്. ഓരോ benefit-ഉം ഒരിക്കൽ മാത്രം രേഖപ്പെടുത്തുക; മാസത്തിലെ എൻട്രികൾ quarterly / half-yearly / yearly-ലും സ്വയം ഉൾപ്പെടും.</p>
+    <div className="overflow-x-auto"><table className="w-full table-fixed text-xs"><thead><tr>{["Period","Net purchase","Return","Base saving","Extra benefit","Total benefit","Benefit %"].map(label=><th key={label} className="p-2 text-right first:text-left">{label}</th>)}</tr></thead><tbody>{groups.map(g=><tr key={g.label} className="border-t"><td className="p-2 font-semibold">{g.label}</td>{[g.netCost,g.returns,g.base,g.additional,g.benefit].map((v,i)=><td key={i} className="p-2 text-right">₹{fmt(v)}</td>)}<td className="p-2 text-right font-bold text-primary">{g.percent === null ? "—" : `${g.percent.toFixed(2)}%`}</td></tr>)}</tbody></table></div>
   </section>;
 }

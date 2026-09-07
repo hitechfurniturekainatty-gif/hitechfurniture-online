@@ -1,3 +1,4 @@
+import { monthRows, invoiceRows } from "./periodBenefits";
 import { settledQuantity } from "./settlements";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ export function ItemBenefitTracker({ vm, onChange }: {
 }) {
   const receipts = vm.benefit_receipts || [];
   const [qtyByRule, setQtyByRule] = useState<Record<string, string>>({});
-  const rows: Row[] = vm.invoices?.length ? vm.invoices.flatMap((i) => i.rows) : vm.purchase_rows;
+  const rows: Row[] = monthRows(vm);
 
   const items = useMemo(() => {
     const report: any = computeFreeReport({ kind: vm.scheme_kind, config: vm.scheme_config }, aggregateRowsByItem(rows));
