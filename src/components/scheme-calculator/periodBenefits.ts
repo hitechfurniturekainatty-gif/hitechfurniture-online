@@ -1,5 +1,5 @@
 import type { BenefitReceipt, Invoice, Row, VendorMonth } from './types';
-export type PeriodBenefitRecord = { period_type: string; period_key: string; benefit_receipts?: BenefitReceipt[] };
+export type PeriodBenefitRecord = { fy_year?: number; scheme_kind?: import('./types').SchemeKind; scheme_config?: any; period_type: string; period_key: string; benefit_receipts?: BenefitReceipt[] };
 /** Return documents keep positive editable rows; signs are applied only for calculations. */
 export function invoiceRows(invoices: Invoice[]): Row[] {
   return invoices.flatMap(invoice => {

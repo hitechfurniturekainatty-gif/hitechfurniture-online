@@ -65,7 +65,7 @@ describe('invoice reward accounting and attribution',()=>{
  it('renders the scheme month, receipt month and linked invoice together',()=>{
   const {march,june}=setup();
   render(createElement(InvoiceRewardReport,{months:[march,june]}));
-  expect(screen.getByText('2026-03')).toBeTruthy();
+  expect(screen.getAllByText(/FY 2025–26 · Mar 2026/).length).toBeGreaterThan(0);
   expect(screen.getByText('2026-06 · J-1 · 2 pcs')).toBeTruthy();
  });
  it('reads an unambiguous footer amount but never treats a percentage as rupees',()=>{

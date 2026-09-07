@@ -16,6 +16,8 @@ export type SchemeItemRule = {
   freeItem: string;
 };
 
+export type SchemePeriodRef = { fy: number; type: Period; key: string };
+
 export type Row = {
   id: string;
   item: string;
@@ -24,7 +26,7 @@ export type Row = {
   amountWithTax: number;
   mrp: number;
   /** Reward received on this invoice; never a qualifying purchase. */
-  reward?: { scheme_month: string; scheme_rule_key?: string; scheme_label?: string };
+  reward?: { scheme_period?: SchemePeriodRef; scheme_month: string; scheme_rule_key?: string; scheme_label?: string };
   /** Legacy per-item scheme snapshot. New quantity schemes match from month/template item rules. */
   scheme_rule_id?: string;
   scheme_name?: string;
@@ -67,6 +69,7 @@ export type SchemeRow = {
 export type TimelineMode = "monthly" | "quarterly" | "halfyearly" | "yearly";
 
 export type BenefitReceipt = {
+  scheme_period?: SchemePeriodRef;
   id: string;
   kind: "free_item" | "credit_note" | "cashback" | "discount";
   item?: string;

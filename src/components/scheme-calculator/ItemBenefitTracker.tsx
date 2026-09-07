@@ -10,8 +10,9 @@ import type { BenefitReceipt, Row, VendorMonth } from "./types";
 const norm = (v: string | undefined) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
 const ruleKey = (purchaseItem: string, freeItem: string, matchMode: string) => `${matchMode}:${norm(purchaseItem)}=>${norm(freeItem)}`;
 
-export function ItemBenefitTracker({ vm, onChange, invoiceReceipts = [] }: {
+export function ItemBenefitTracker({ vm, onChange, invoiceReceipts = [], settlementReceipts }: {
   invoiceReceipts?: BenefitReceipt[];
+  settlementReceipts?: BenefitReceipt[];
   vm: VendorMonth;
   onChange: (receipts: BenefitReceipt[]) => void;
 }) {
@@ -32,7 +33,7 @@ export function ItemBenefitTracker({ vm, onChange, invoiceReceipts = [] }: {
       const freeItem = String(r.freeItem || r.purchaseItem);
       const matchMode = r.matchMode === "combo" ? "combo" : r.matchMode === "exact" ? "exact" : "family";
       const key = ruleKey(purchaseItem, freeItem, matchMode);
-      const received = [...receipts,...invoiceReceipts.filter(r=>r.scheme_rule_key)].filter((x) => {
+      const received = (settlementReceipts || [...receipts,...invoiceReceipts.filter(r=>r.scheme_rule_key)]).filter((x) => {
         if (x.kind !== "free_item" && x.kind !== "credit_note") return false;
         if (x.scheme_rule_key) return x.scheme_rule_key === key;
         return !duplicateFreeItems.has(norm(freeItem)) && norm(x.item) === norm(freeItem);
@@ -44,7 +45,7 @@ export function ItemBenefitTracker({ vm, onChange, invoiceReceipts = [] }: {
       const nextTarget = (completedSets + 1) * buyQty;
       return { key, purchaseItem, freeItem, purchased, buyQty, eligible, received, pending: Math.max(0, eligible - received), needMore: Math.max(0, nextTarget - purchased), matchMode };
     });
-  }, [vm.invoices, vm.purchase_rows, vm.scheme_kind, vm.scheme_config, vm.benefit_receipts, invoiceReceipts]);
+  }, [vm.invoices, vm.purchase_rows, vm.scheme_kind, vm.scheme_config, vm.benefit_receipts, invoiceReceipts, settlementReceipts]);
 
   const addReceived = (x: typeof items[number]) => {
     const entered = Math.max(0, Number(qtyByRule[x.key]) || 0);

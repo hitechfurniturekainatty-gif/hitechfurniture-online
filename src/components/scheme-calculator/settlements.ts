@@ -3,7 +3,7 @@ import type { BenefitReceipt } from './types';
 const nonnegative = (n: unknown) => Math.max(0, Number(n) || 0);
 const norm = (v: unknown) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
 export const receiptRuleKey = (purchaseItem: string, freeItem: string, matchMode: string) => `${matchMode}:${norm(purchaseItem)}=>${norm(freeItem)}`;
-export type SettlementRule = { key: string; label: string; freeItem: string; eligible: number };
+export type SettlementRule = { unit?: "pcs" | "₹"; purchased?: number; target?: number; key: string; label: string; freeItem: string; eligible: number };
 export function settlementRules(report: { rep: any[] }): SettlementRule[] {
   return report.rep.filter(r => r.purchaseItem && r.freeItem).map(r => ({
     key: receiptRuleKey(r.purchaseItem, r.freeItem, r.matchMode || 'exact'),

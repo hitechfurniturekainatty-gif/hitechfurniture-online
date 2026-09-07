@@ -1,3 +1,4 @@
+import { refLabel, monthRef } from "./schemeAttribution";
 import { invoiceRows } from "./periodBenefits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
   const updateRow = (id: string, patch: Partial<Row>) => onChange({ rows: rows.map((r) => r.id === id ? { ...r, ...patch } : r) });
 
   const matchInfo = (row: Row) => {
-    if(row.reward) return {matched:false,label:"Received reward · "+row.reward.scheme_month};
+    if(row.reward) return {matched:false,label:"Reward · "+refLabel(row.reward.scheme_period||monthRef(row.reward.scheme_month))};
     if (fallbackScheme.kind === "percent") return { matched: true, label: "Percentage scheme" };
     if (fallbackScheme.kind !== "bogo") return { matched: false, label: "No scheme" };
     const rules: any[] = Array.isArray(fallbackScheme.config?.rules) ? fallbackScheme.config.rules : [];
@@ -63,7 +64,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <details className="p-3"><summary className="cursor-pointer text-xs font-medium">Items / MRP details ({rows.length})</summary><div className="overflow-x-auto">
         <Table className="w-full table-fixed text-xs">
           <TableHeader><TableRow className="bg-muted/15">
             <TableHead className="w-[28%]">Item</TableHead>
@@ -95,7 +96,8 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
         </Table>
       </div>
 
-      {(invoice.discount_amount || rows.some(r=>r.reward)) ? <div className="border-t bg-primary/5 p-3 text-xs space-y-1"><p>Items ₹{fmt(rows.reduce((s,r)=>s+r.amountWithTax,0))} − Invoice discount ₹{fmt(invoice.discount_amount||0)} = Payable ₹{fmt(totalCost)}</p>{rows.filter(r=>r.reward).map(r=><p key={r.id}>{r.item} · {r.qty} free pcs · Scheme {r.reward!.scheme_month} · {r.reward!.scheme_label||"No target linked"}</p>)}<p className="text-muted-foreground">Invoice discount benefit-ൽ ഉൾപ്പെട്ടിട്ടുണ്ട്. Additional benefits-ൽ വീണ്ടും ചേർക്കേണ്ടതില്ല.</p></div> : null}
+      </details>
+      {(invoice.discount_amount || rows.some(r=>r.reward)) ? <div className="border-t bg-primary/5 p-3 text-xs space-y-1"><p>Items ₹{fmt(rows.reduce((s,r)=>s+r.amountWithTax,0))} − Invoice discount ₹{fmt(invoice.discount_amount||0)} = Payable ₹{fmt(totalCost)}</p>{rows.filter(r=>r.reward).map(r=><p key={r.id}>{r.item} · {r.qty} free pcs · Scheme {refLabel(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))} · {r.reward!.scheme_label||"No target linked"}</p>)}<p className="text-muted-foreground">Invoice discount benefit-ൽ ഉൾപ്പെട്ടിട്ടുണ്ട്. Additional benefits-ൽ വീണ്ടും ചേർക്കേണ്ടതില്ല.</p></div> : null}
       <div className="border-t bg-muted/10 p-3">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           <Stat label="Items" value={String(rows.length)} />

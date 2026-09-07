@@ -1,3 +1,4 @@
+import { SchemePeriodAnalysis } from "@/components/scheme-calculator/SchemePeriodAnalysis";
 import { InvoiceRewardReport } from "@/components/scheme-calculator/InvoiceRewardReport";
 import { invoiceRewardReceipts, monthKey } from "@/components/scheme-calculator/invoiceRewards";
 import { periodReceiptsForMonths, monthRows, type PeriodBenefitRecord } from "@/components/scheme-calculator/periodBenefits";
@@ -88,7 +89,14 @@ const AdminSchemeCalculator = () => {
     if (!vendorId) {setPeriodLoading(false);return;}
     setPeriodLoading(true);
     (async () => {
-      const {data,error} = await supabase.from("scheme_period_rules").select("period_type,period_key,benefit_receipts").eq("party_id",vendorId).eq("fy_year",fy);
+      const data: PeriodBenefitRecord[] = [];
+      let error: any = null;
+      for(let from=0;;from+=500){
+        const page=await supabase.from("scheme_period_rules").select("*").eq("party_id",vendorId).order("fy_year").order("period_type").order("period_key").range(from,from+499);
+        if(page.error){error=page.error;break;}
+        data.push(...(page.data as unknown as PeriodBenefitRecord[]||[]));
+        if(!page.data||page.data.length<500)break;
+      }
       if (cancelled) return;
       setPeriodLoading(false);
       if (error) {setPeriodError(true); return;}
@@ -96,7 +104,7 @@ const AdminSchemeCalculator = () => {
     })();
     return () => {cancelled=true;};
   },[vendorId,fy]);
-  const updatePeriodRecord = (record: PeriodBenefitRecord) => setPeriodRecords(prev => [...prev.filter(r => r.period_type !== record.period_type || r.period_key !== record.period_key),record]);
+  const updatePeriodRecord = (record: PeriodBenefitRecord) => setPeriodRecords(prev => [...prev.filter(r => r.fy_year !== (record.fy_year||fy) || r.period_type !== record.period_type || r.period_key !== record.period_key),{...record,fy_year:record.fy_year||fy}]);
 
   const allSchemeMonths = [...historyMonths.filter(m=>m.fy_year!==fy),...months];
   const linkedReceipts = invoiceRewardReceipts(allSchemeMonths);
@@ -148,15 +156,15 @@ const AdminSchemeCalculator = () => {
           <div><Label className="text-xs">Timeline</Label><Select value={mode} onValueChange={(v) => setMode(v as TimelineMode)}><SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="halfyearly">Half-Yearly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent></Select></div>
         </div></div>
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
-          {periodLoading ? <p className="text-muted-foreground">Loading all period benefits…</p> : periodError ? <p role="alert" className="text-destructive">Could not load period benefits. Reload before relying on totals.</p> : <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} periodRecords={periodRecords} />}
-          <InvoiceRewardReport months={allSchemeMonths} />
-          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock schemeMonths={allSchemeMonths} invoiceReceipts={linkedReceipts.filter(r=>r.benefit_month===monthKey(m))} additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
+          {periodLoading ? <p className="text-muted-foreground">Loading all period benefits…</p> : periodError ? <p role="alert" className="text-destructive">Could not load period benefits. Reload before relying on totals.</p> : <><SchemePeriodAnalysis months={allSchemeMonths} records={periodRecords} fy={fy} mode={mode} /><details className="rounded-xl border p-3"><summary className="cursor-pointer text-sm">Received-period totals / ബിൽ രേഖപ്പെടുത്തിയ കാലയളവിന്റെ കണക്ക്</summary><SchemeBenefitAnalysis months={months} fy={fy} mode={mode} periodRecords={periodRecords.filter(p=>p.fy_year===fy)} /></details></>}
+          <InvoiceRewardReport months={allSchemeMonths} records={periodRecords} />
+          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock schemePeriods={periodRecords} schemeMonths={allSchemeMonths} invoiceReceipts={linkedReceipts.filter(r=>r.benefit_month===monthKey(m))} additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView schemeMonths={allSchemeMonths} schemePeriods={periodRecords} onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords.filter(p=>p.fy_year===fy)} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
         </>}
       </TabsContent>
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>
       <TabsContent value="schemes" className="pt-4"><SchemesTab schemes={savedSchemes} setSchemes={setSavedSchemes} onApply={() => setTab("calc")} /></TabsContent>
     </Tabs>
-    {vendor && mode === "monthly" && <div className="rounded-2xl border bg-card px-4 py-3"><div className="flex flex-wrap items-center gap-4 text-xs"><b>FY {fy}–{String(fy+1).slice(-2)} · {vendor.name}</b><div className="ml-auto flex flex-wrap items-center gap-5"><Stat label="Purchases" value={`₹${fmt(ytd.totalAmount)}`} /><Stat label="Total Qty" value={fmt(ytd.totalQty)} /><Stat label="Eligible Free" value={fmt(ytd.freeUnits)} tone="success" /><Stat label="Total benefit" value={periodLoading || periodError ? "—" : (() => { const p = summarizePeriodBenefit(months, fy, periodRecords).percent; return p === null ? "—" : p.toFixed(2) + "%"; })()} /></div></div></div>}
+
   </div></AdminShell>;
 };
 

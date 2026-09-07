@@ -1,3 +1,6 @@
+import { SchemePeriodPicker } from "./SchemePeriodPicker";
+import { monthRef, refId, refEndMonth, targetCatalog } from "./schemeAttribution";
+import type { PeriodBenefitRecord } from "./periodBenefits";
 import { invoiceRows } from "./periodBenefits";
 import { monthKey, rewardRulesForMonth } from "./invoiceRewards";
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +21,8 @@ import type { Invoice, Row, VendorMonth } from "./types";
 type VendorItemMrp = { id: string; item_name: string; mrp: number };
 const norm = (v: unknown) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeMonths = [] }: {
+export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeMonths = [], schemePeriods = [] }: {
+  schemePeriods?: PeriodBenefitRecord[];
   schemeMonths?: VendorMonth[];
   open: boolean;
   invoice: Invoice | null;
@@ -257,10 +261,10 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
             <p className="text-xs text-muted-foreground">അതേ paste / upload ഉപയോഗിച്ച് എല്ലാ items-ഉം മുകളിൽ ചേർക്കുക. Free ആയി കിട്ടിയ rows ഇവിടെ തിരഞ്ഞെടുക്കുക; ഏത് മാസത്തെ scheme ആണെന്ന് നൽകുക. ഭാഗിക quantity ആണെങ്കിൽ മുകളിൽ separate row ആക്കുക. Free quantity പുതിയ purchase target-ൽ കൂട്ടില്ല.</p>
             {rows.map(r=><div key={r.id} className="grid gap-2 rounded-lg border bg-background p-2 sm:grid-cols-3">
               <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!r.reward} onChange={e=>updateRow(r.id,{reward:e.target.checked?{scheme_month:date.slice(0,7)}:undefined})}/>{r.item||"Item"} · {r.qty} pcs</label>
-              {r.reward&&<><div><Label className="text-xs">Scheme month / ഏത് മാസത്തെ scheme</Label><Input aria-label={"Scheme month for "+r.item} type="month" value={r.reward.scheme_month} onChange={e=>updateRow(r.id,{reward:{scheme_month:e.target.value}})}/></div>
-              <div><Label className="text-xs">Scheme target</Label><select aria-label={"Scheme target for "+r.item} className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={r.reward.scheme_rule_key||""} onChange={e=>{const rule=schemeMonths.filter(m=>monthKey(m)===r.reward!.scheme_month).flatMap(rewardRulesForMonth).find(x=>x.key===e.target.value);updateRow(r.id,{reward:{...r.reward!,scheme_rule_key:rule?.key,scheme_label:rule?.label}});}}>
+              {r.reward&&<><div className="sm:col-span-2"><SchemePeriodPicker value={r.reward.scheme_period||monthRef(r.reward.scheme_month||date)} onChange={scheme_period=>updateRow(r.id,{reward:{scheme_period,scheme_month:refEndMonth(scheme_period)}})}/></div>
+              <div><Label className="text-xs">Scheme target</Label><select aria-label={"Scheme target for "+r.item} className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={r.reward.scheme_rule_key||""} onChange={e=>{const rule=targetCatalog(schemeMonths,schemePeriods).filter(g=>refId(g.ref)===refId(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))).flatMap(g=>g.rules).filter(rule=>rule.unit!=="₹").find(x=>x.key===e.target.value);updateRow(r.id,{reward:{...r.reward!,scheme_rule_key:rule?.key,scheme_label:rule?.label}});}}>
                 <option value="">Select target / Record without target</option>
-                {schemeMonths.filter(m=>monthKey(m)===r.reward!.scheme_month).flatMap(rewardRulesForMonth).map(rule=><option key={rule.key} value={rule.key}>{rule.label}</option>)}
+                {targetCatalog(schemeMonths,schemePeriods).filter(g=>refId(g.ref)===refId(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))).flatMap(g=>g.rules).filter(rule=>rule.unit!=="₹").map(rule=><option key={rule.key} value={rule.key}>{rule.label}</option>)}
               </select>{!r.reward.scheme_rule_key&&<p className="text-xs text-muted-foreground">Target തിരഞ്ഞെടുക്കാതെ receipt മാത്രം രേഖപ്പെടുത്തും; pending കുറയില്ല.</p>}</div></>}
             </div>)}
           </section>}
