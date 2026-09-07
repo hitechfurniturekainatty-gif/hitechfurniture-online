@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {monthRows, periodReceiptsForMonths} from './periodBenefits';
-import {summarizePeriodBenefit} from './BenefitTracker';
+import {summarizeMonthBenefit,summarizePeriodBenefit} from './BenefitTracker';
 import {computeFreeReport,aggregateRowsByItem} from './utils';
 import type {VendorMonth,Invoice} from './types';
 const doc=(qty:number,cost:number,returned=false):Invoice=>({id:Math.random().toString(),label:'Doc',document_kind:returned?'purchase_return':'purchase',rows:[{id:'r',item:'Mattress',qty,price:cost/qty,amountWithTax:cost,mrp:10000}]});
@@ -13,4 +13,21 @@ describe('period benefits and debit-note returns',()=>{
  it('uses weighted MRP totals instead of averaging monthly percentages',()=>{expect(summarizePeriodBenefit([month(4,[doc(10,75000)]),month(5,[doc(20,100000)])],2026).percent).toBeCloseTo(41.6666667);});
  it('keeps original return rows positive for editing and applies signs once',()=>{const m=month(4,[doc(2,15000,true)]);expect(monthRows(m)[0].qty).toBe(-2);expect(m.invoices[0].rows[0].qty).toBe(2);});
  it('has no percentage when all purchases are returned',()=>{expect(summarizePeriodBenefit([month(4,[doc(10,75000),doc(10,75000,true)])],2026).percent).toBeNull();});
+});
+
+it('includes unpriced-MRP pillow costs in the same monthly and period benefit',()=>{
+ const invoice=doc(1,138274.54);
+ invoice.rows[0].mrp=227726;
+ invoice.rows.push({id:'pillow',item:'Additional pillows',qty:11,price:0,mrp:0,amountWithTax:3374.8});
+ const june=month(6,[invoice]);
+ const monthly=summarizeMonthBenefit(june);
+ expect(monthly.purchaseCost).toBeCloseTo(141649.34);
+ expect(monthly.effectiveBenefitValue).toBeCloseTo(86076.66);
+ expect(monthly.effectiveBenefitPct.toFixed(2)).toBe('37.80');
+ for(const months of [[june],[month(4,[]),month(5,[]),june],Array.from({length:12},(_,i)=>i===2?june:month((i+3)%12+1,[]))]){
+  expect(summarizePeriodBenefit(months,2026).percent).toBeCloseTo(monthly.effectiveBenefitPct);
+ }
+ june.benefit_receipts=[{id:'extra',kind:'credit_note',amount:5000}];
+ expect(summarizeMonthBenefit(june).effectiveBenefitValue).toBeCloseTo(91076.66);
+ expect(summarizePeriodBenefit([june],2026).percent).toBeCloseTo(91076.66/227726*100);
 });

@@ -13,9 +13,8 @@ import { MonthBlock } from "@/components/scheme-calculator/MonthBlock";
 import { AggregatedView } from "@/components/scheme-calculator/AggregatedView";
 import { PartiesTab } from "@/components/scheme-calculator/PartiesTab";
 import { SchemesTab } from "@/components/scheme-calculator/SchemesTab";
-import { SchemeBenefitAnalysis } from "@/components/scheme-calculator/BenefitTracker";
+import { summarizePeriodBenefit, SchemeBenefitAnalysis } from "@/components/scheme-calculator/BenefitTracker";
 import { Stat } from "@/components/scheme-calculator/Stat";
-import { ProgressRing } from "@/components/scheme-calculator/ProgressRing";
 import { FY_MONTHS, hasSchemeRule, aggregateRowsByItem, computeAchievementPct, computeFreeReport, currentFy, fmt } from "@/components/scheme-calculator/utils";
 import type { Invoice, Party, Row, SchemeRow, TimelineMode, VendorMonth } from "@/components/scheme-calculator/types";
 
@@ -142,7 +141,7 @@ const AdminSchemeCalculator = () => {
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>
       <TabsContent value="schemes" className="pt-4"><SchemesTab schemes={savedSchemes} setSchemes={setSavedSchemes} onApply={() => setTab("calc")} /></TabsContent>
     </Tabs>
-    {vendor && mode === "monthly" && <div className="rounded-2xl border bg-card px-4 py-3"><div className="flex flex-wrap items-center gap-4 text-xs"><b>FY {fy}–{String(fy+1).slice(-2)} · {vendor.name}</b><div className="ml-auto flex flex-wrap items-center gap-5"><Stat label="Purchases" value={`₹${fmt(ytd.totalAmount)}`} /><Stat label="Total Qty" value={fmt(ytd.totalQty)} /><Stat label="Eligible Free" value={fmt(ytd.freeUnits)} tone="success" /><div className="flex items-center gap-2"><ProgressRing pct={ytd.completionPct} size={42} stroke={5} /><span>{ytd.completionPct}%</span></div></div></div></div>}
+    {vendor && mode === "monthly" && <div className="rounded-2xl border bg-card px-4 py-3"><div className="flex flex-wrap items-center gap-4 text-xs"><b>FY {fy}–{String(fy+1).slice(-2)} · {vendor.name}</b><div className="ml-auto flex flex-wrap items-center gap-5"><Stat label="Purchases" value={`₹${fmt(ytd.totalAmount)}`} /><Stat label="Total Qty" value={fmt(ytd.totalQty)} /><Stat label="Eligible Free" value={fmt(ytd.freeUnits)} tone="success" /><Stat label="Total benefit" value={periodLoading || periodError ? "—" : (() => { const p = summarizePeriodBenefit(months, fy, periodRecords).percent; return p === null ? "—" : p.toFixed(2) + "%"; })()} /></div></div></div>}
   </div></AdminShell>;
 };
 

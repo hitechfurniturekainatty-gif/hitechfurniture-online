@@ -215,7 +215,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="rounded-xl border bg-muted/10 p-3"><div className="text-xs text-muted-foreground">Achievement</div><div className="mt-1 text-2xl font-semibold">{fmt(pct)}%</div></div>
+                  <div className="rounded-xl border bg-muted/10 p-3"><div className="text-xs text-muted-foreground">Total benefit</div><div className="mt-1 text-2xl font-semibold">{benefit.mrpValue > 0 ? benefit.effectiveBenefitPct.toFixed(2) + "%" : "—"}</div></div>
                   <div className="rounded-xl border bg-emerald-50/40 p-3"><div className="text-xs text-emerald-700">Eligible Free</div><div className="mt-1 text-2xl font-semibold text-emerald-700">{fmt(eligible)}</div></div>
                   <div className="rounded-xl border bg-muted/10 p-3"><div className="text-xs text-muted-foreground">Received Free</div><div className="mt-1 text-2xl font-semibold">{fmt(received)}</div></div>
                   <div className="rounded-xl border bg-amber-50/50 p-3"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pending)}</div></div>
