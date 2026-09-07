@@ -2,8 +2,21 @@ import type { BenefitReceipt, Invoice, Row, VendorMonth } from './types';
 export type PeriodBenefitRecord = { period_type: string; period_key: string; benefit_receipts?: BenefitReceipt[] };
 /** Return documents keep positive editable rows; signs are applied only for calculations. */
 export function invoiceRows(invoices: Invoice[]): Row[] {
-  return invoices.flatMap(invoice => invoice.rows.map(row => invoice.document_kind === 'purchase_return'
-    ? {...row, qty: -Math.abs(Number(row.qty)||0), amountWithTax: -Math.abs(Number(row.amountWithTax)||0)} : row));
+  return invoices.flatMap(invoice => {
+    const gross = invoice.rows.reduce((s,r) => s + (Number(r.amountWithTax)||0), 0);
+    const rewardGross = invoice.rows.filter(r=>r.reward).reduce((s,r)=>s+(Number(r.amountWithTax)||0),0);
+    const discount = Math.min(gross, Math.max(0, Number(invoice.discount_amount)||0));
+    // Offset billed reward lines first; any remaining footer discount reduces paid items.
+    const rewardDiscount = Math.min(discount,rewardGross);
+    return invoice.rows.map(row => {
+      const cost = Number(row.amountWithTax)||0;
+      const allocated = row.reward ? (rewardGross ? rewardDiscount*cost/rewardGross : 0)
+        : (gross>rewardGross ? (discount-rewardDiscount)*cost/(gross-rewardGross) : 0);
+      const sign = invoice.document_kind === 'purchase_return' ? -1 : 1;
+      return {...row, qty: sign*Math.abs(Number(row.qty)||0), amountWithTax: sign*(cost-allocated),
+        mrp: row.reward && !(row.mrp>0) && row.qty>0 ? cost/row.qty : row.mrp};
+    });
+  });
 }
 export function monthRows(month: Pick<VendorMonth,'invoices'|'purchase_rows'>): Row[] {
   return month.invoices?.length ? invoiceRows(month.invoices) : month.purchase_rows || [];

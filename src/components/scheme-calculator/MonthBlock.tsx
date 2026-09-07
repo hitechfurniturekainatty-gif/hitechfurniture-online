@@ -43,8 +43,10 @@ function itemAwareReport(rows: Row[], fallback: { kind: SchemeKind; config: any 
   return { rep, targets, completion: qtyWeight > 0 ? Math.round(weightedPct / qtyWeight) : 0 };
 }
 
-export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalReceipts = [] }: {
+export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalReceipts = [], invoiceReceipts = [], schemeMonths = [] }: {
   additionalReceipts?: BenefitReceipt[];
+  invoiceReceipts?: BenefitReceipt[];
+  schemeMonths?: VendorMonth[];
   vm: VendorMonth;
   fy: number;
   savedSchemes: SchemeRow[];
@@ -84,7 +86,7 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalR
   const targets = report.targets as any[];
   const completion = report.completion;
   const label = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
-  const receivedFree = (vm.benefit_receipts || []).filter((r) => r.kind === "free_item").reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const receivedFree = [...(vm.benefit_receipts || []),...invoiceReceipts.filter(r=>settlementRules(report).some(rule=>rule.key===r.scheme_rule_key))].filter((r) => r.kind === "free_item").reduce((s, r) => s + (Number(r.qty) || 0), 0);
   const pendingFree = Math.max(0, free - receivedFree - settlementTotals(vm.benefit_receipts || []).creditSettledQty);
   const applySaved = (id: string) => { const s = savedSchemes.find((x) => x.id === id); if (s) onChange({ scheme_kind: s.kind, scheme_config: s.config || freshConfig(s.kind) }); };
   const handleSave = async () => { if (saving) return; setSaving(true); try { await onSave(); } finally { setSaving(false); } };
@@ -133,7 +135,7 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalR
         <div className="mt-3 space-y-4">{invoices.map((inv, i) => <InvoiceCard key={inv.id} index={i} invoice={inv} savedSchemes={savedSchemes} fallbackScheme={{ kind: vm.scheme_kind, config: vm.scheme_config }} onChange={(p) => updateInvoice(inv.id, p)} onPersist={() => onSave(nextMonthWithInvoices(invoices))} onRemove={() => persistInvoices(invoices.filter((x) => x.id !== inv.id))} onEdit={() => { setDialogInvoice(inv); setDialogOpen(true); }} />)}</div>
       </section>
 
-      <InvoiceDialog open={dialogOpen} invoice={dialogInvoice} partyId={vm.party_id} onClose={() => setDialogOpen(false)} onSave={async (inv) => {
+      <InvoiceDialog schemeMonths={schemeMonths} open={dialogOpen} invoice={dialogInvoice} partyId={vm.party_id} onClose={() => setDialogOpen(false)} onSave={async (inv) => {
         const exists = invoices.some((x) => x.id === inv.id);
         const next = exists ? invoices.map((x) => x.id === inv.id ? inv : x) : [...invoices, inv];
         await persistInvoices(next);
@@ -145,7 +147,7 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalR
 
       <BenefitReceiptEditor defaultMonth={`${fyCalendarYear(fy, vm.month)}-${String(vm.month).padStart(2,"0")}`} rules={settlementRules(report)} receipts={vm.benefit_receipts || []} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h4 className="font-semibold">മൊത്തം benefit / Total benefit · {benefit.mrpValue > 0 ? `${benefit.effectiveBenefitPct.toFixed(2)}% of MRP` : "MRP balance ഇല്ല — ശതമാനം ലഭ്യമല്ല"}</h4><p className="text-xs mt-1">Base saving ₹{fmt(benefit.baseSaving)} + received credits ₹{fmt(benefit.amountReceived)} + received free-goods value ₹{fmt(benefit.freeReceivedValue)} − additional vendor charges ₹{fmt(benefit.vendorCharges)} = ₹{fmt(benefit.effectiveBenefitValue)}. നൽകിയ MRP മൊത്തമാണ് ശതമാനത്തിന്റെ അടിസ്ഥാനം. MRP ഇല്ലാത്ത pillow / additional items-ന്റെ ബിൽ തുകയും purchase cost-ൽ ഉൾപ്പെടും.</p></div>
-      <ItemBenefitTracker vm={vm} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
+      <ItemBenefitTracker invoiceReceipts={invoiceReceipts} vm={vm} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <div className="flex justify-end gap-2"><SchemePartyNotesButton partyId={vm.party_id} /><Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? "Saving…" : `Save ${MONTH_NAME[vm.month]}`}</Button></div>
     </div>}
   </div>;

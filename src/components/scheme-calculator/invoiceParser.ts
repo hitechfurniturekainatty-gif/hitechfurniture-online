@@ -7,7 +7,7 @@ const HEADER_ALIASES = {
   total: ["total", "total amount", "net amount", "taxable value", "taxable amount", "line total", "gross amount", "amount", "value"],
 };
 
-const SKIP_RE = /^(s\.?\s*no|sr\.?\s*no|sl\.?|item|description|particulars?|product|total|sub[-\s]?total|grand[-\s]?total|gst|igst|cgst|sgst|tax|amount|invoice|date|vendor|party|qty|quantity|rate|price|mrp|unit|hsn|sac|round\s*off|freight|discount)\b/i;
+const SKIP_RE = /^(s\.?\s*no|sr\.?\s*no|sl\.?|item|description|particulars?|product|total|sub[-\s]?total|grand[-\s]?total|gst|igst|cgst|sgst|tax|amount|invoice|date|vendor|party|qty|quantity|rate|price|mrp|unit|hsn|sac|round\s*off|freight|less|discount)\b/i;
 
 function normalizeHeader(v: string) {
   return v.toLowerCase().replace(/[^a-z0-9%]+/g, " ").trim();
@@ -144,4 +144,12 @@ export function parseInvoiceText(text: string): Row[] {
   }
 
   return lines.map(parseHeuristicLine).filter((r): r is Row => Boolean(r));
+}
+
+/** Only explicit footer amount labels; a percentage needs human confirmation. */
+export function parseInvoiceFooterDiscount(text: string): number | null {
+  const lines=text.split(/\r?\n/).filter(l=>/^\s*(?:total\s+discount|discount\s+allowed|less\s*:?\s*discount|invoice\s+discount)\b/i.test(l));
+  if(lines.length!==1 || lines[0].includes('%')) return null;
+  const amounts=lines[0].match(/\d[\d,]*(?:\.\d+)?/g);
+  return amounts?.length===1 ? Number(amounts[0].replace(/,/g,'')) : null;
 }

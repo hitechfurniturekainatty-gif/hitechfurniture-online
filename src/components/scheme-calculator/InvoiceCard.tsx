@@ -1,3 +1,4 @@
+import { invoiceRows } from "./periodBenefits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,14 +22,16 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
   const rows = invoice.rows;
   void _savedSchemes;
   const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-  const totalCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
-  const totalMrp = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const valuedRows = invoiceRows([{...invoice,document_kind:"purchase"}]);
+  const totalCost = valuedRows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
+  const totalMrp = valuedRows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
   const discountAmount = Math.max(0, totalMrp - totalCost);
   const discountPct = totalMrp > 0 ? (discountAmount / totalMrp) * 100 : 0;
 
   const updateRow = (id: string, patch: Partial<Row>) => onChange({ rows: rows.map((r) => r.id === id ? { ...r, ...patch } : r) });
 
   const matchInfo = (row: Row) => {
+    if(row.reward) return {matched:false,label:"Received reward · "+row.reward.scheme_month};
     if (fallbackScheme.kind === "percent") return { matched: true, label: "Percentage scheme" };
     if (fallbackScheme.kind !== "bogo") return { matched: false, label: "No scheme" };
     const rules: any[] = Array.isArray(fallbackScheme.config?.rules) ? fallbackScheme.config.rules : [];
@@ -92,6 +95,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
         </Table>
       </div>
 
+      {(invoice.discount_amount || rows.some(r=>r.reward)) ? <div className="border-t bg-primary/5 p-3 text-xs space-y-1"><p>Items ₹{fmt(rows.reduce((s,r)=>s+r.amountWithTax,0))} − Invoice discount ₹{fmt(invoice.discount_amount||0)} = Payable ₹{fmt(totalCost)}</p>{rows.filter(r=>r.reward).map(r=><p key={r.id}>{r.item} · {r.qty} free pcs · Scheme {r.reward!.scheme_month} · {r.reward!.scheme_label||"No target linked"}</p>)}<p className="text-muted-foreground">Invoice discount benefit-ൽ ഉൾപ്പെട്ടിട്ടുണ്ട്. Additional benefits-ൽ വീണ്ടും ചേർക്കേണ്ടതില്ല.</p></div> : null}
       <div className="border-t bg-muted/10 p-3">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           <Stat label="Items" value={String(rows.length)} />

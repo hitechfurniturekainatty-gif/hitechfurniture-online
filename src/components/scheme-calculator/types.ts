@@ -23,6 +23,8 @@ export type Row = {
   price: number;
   amountWithTax: number;
   mrp: number;
+  /** Reward received on this invoice; never a qualifying purchase. */
+  reward?: { scheme_month: string; scheme_rule_key?: string; scheme_label?: string };
   /** Legacy per-item scheme snapshot. New quantity schemes match from month/template item rules. */
   scheme_rule_id?: string;
   scheme_name?: string;
@@ -32,6 +34,8 @@ export type Row = {
 
 export type Invoice = {
   document_kind?: "purchase" | "purchase_return";
+  /** Footer discount, including the offset for billed reward items. */
+  discount_amount?: number;
   id: string;
   label: string;
   invoice_no?: string;

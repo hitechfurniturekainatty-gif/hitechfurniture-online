@@ -34,7 +34,7 @@ function groupedSchemeReports(rows: Row[], fallback: { kind: SchemeKind; config:
 
 export function summarizeMonthBenefit(vm: VendorMonth): MonthBenefitSummary {
   const rows = monthRows(vm);
-  const grouped = groupedSchemeReports(rows, { kind: vm.scheme_kind, config: vm.scheme_config });
+  const grouped = groupedSchemeReports(rows.filter(r=>!r.reward), { kind: vm.scheme_kind, config: vm.scheme_config });
   const purchaseQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
   const purchaseCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
   const mrpValue = rows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
@@ -98,7 +98,7 @@ export function SchemeBenefitAnalysis({ months, fy, mode, periodRecords = [] }: 
   const total = summarizePeriodBenefit(months,fy,periodRecords);
   return <section className="rounded-2xl border border-primary/30 bg-card p-4 shadow-sm">
     <h3 className="text-lg font-semibold">Total benefit · മൊത്തം ആനുകൂല്യം</h3>
-    <p className="mt-1 text-xs text-muted-foreground">MRP-യിലെ ലാഭം + Onam / Vishu / മറ്റ് അധിക benefits − അധിക vendor charge. Purchase return-ന്റെ MRPയും തുകയും കുറച്ച ശേഷമാണ് ശതമാനം. ഇത് selling profit margin അല്ല.</p>
+    <p className="mt-1 text-xs text-muted-foreground">MRP-യിലെ ലാഭം + Onam / Vishu / മറ്റ് അധിക benefits − അധിക vendor charge. Purchase return-ന്റെ MRPയും തുകയും കുറച്ച ശേഷമാണ് ശതമാനം. Free item-ൽ MRP ഇല്ലെങ്കിൽ അതിന്റെ invoice value ഉപയോഗിക്കും. ഇത് selling profit margin അല്ല.</p>
     <div className="my-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">{[["Net purchase / വാങ്ങൽ",`₹${fmt(total.netCost)}`],["Returns / തിരികെ നൽകിയത്",`₹${fmt(total.returns)}`],["Net MRP",`₹${fmt(total.mrp)}`],["Additional benefits",`₹${fmt(total.additional)}`],["Total benefit",`₹${fmt(total.benefit)}`],["Total benefit %",total.percent === null ? "—" : `${total.percent.toFixed(2)}%`]].map(([label,value]) => <div key={label} className="rounded-xl border bg-primary/5 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}</div>
     {!total.completeMrp && <p role="status" className="mb-3 text-xs text-muted-foreground">നൽകിയ MRP മൊത്തമാണ് ശതമാനത്തിന്റെ അടിസ്ഥാനം. MRP ഇല്ലാത്ത pillow / additional items-ന്റെ ബിൽ തുകയും purchase cost-ൽ ഉൾപ്പെടുത്തിയിട്ടുണ്ട്.</p>}
     <p className="mb-2 text-xs text-muted-foreground">FY total above · താഴെ തിരഞ്ഞെടുത്ത {mode} കാലയളവുകളുടെ കണക്ക്. ഓരോ benefit-ഉം ഒരിക്കൽ മാത്രം രേഖപ്പെടുത്തുക; മാസത്തിലെ എൻട്രികൾ quarterly / half-yearly / yearly-ലും സ്വയം ഉൾപ്പെടും.</p>

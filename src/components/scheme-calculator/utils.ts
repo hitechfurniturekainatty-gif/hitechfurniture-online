@@ -37,7 +37,7 @@ export function parseInvoiceText(text: string): Row[] {
 
 export function aggregateRowsByItem(rows: Row[]): Row[] {
   const map = new Map<string, Row & { _mrpWeighted: number; _mrpQty: number }>();
-  for (const r of rows) { const name = String(r.item || "").trim(); if (!name) continue; const key = name.toLowerCase(); const qty = Number(r.qty) || 0, amt = Number(r.amountWithTax) || 0, mrp = Number(r.mrp) || 0; const existing = map.get(key);
+  for (const r of rows.filter(r => !r.reward)) { const name = String(r.item || "").trim(); if (!name) continue; const key = name.toLowerCase(); const qty = Number(r.qty) || 0, amt = Number(r.amountWithTax) || 0, mrp = Number(r.mrp) || 0; const existing = map.get(key);
     if (existing) { existing.qty += qty; existing.amountWithTax += amt; existing._mrpWeighted += mrp * qty; existing._mrpQty += qty; }
     else map.set(key, { id: r.id, item: name, qty, price: 0, amountWithTax: amt, mrp, _mrpWeighted: mrp * qty, _mrpQty: qty });
   }

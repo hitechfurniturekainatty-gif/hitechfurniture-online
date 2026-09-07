@@ -1,3 +1,5 @@
+import { InvoiceRewardReport } from "@/components/scheme-calculator/InvoiceRewardReport";
+import { invoiceRewardReceipts, monthKey } from "@/components/scheme-calculator/invoiceRewards";
 import { periodReceiptsForMonths, monthRows, type PeriodBenefitRecord } from "@/components/scheme-calculator/periodBenefits";
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -31,6 +33,7 @@ const AdminSchemeCalculator = () => {
   const [periodRecords, setPeriodRecords] = useState<PeriodBenefitRecord[]>([]);
   const [periodLoading, setPeriodLoading] = useState(false);
   const [periodError, setPeriodError] = useState(false);
+  const [historyMonths, setHistoryMonths] = useState<VendorMonth[]>([]);
   const [months, setMonths] = useState<VendorMonth[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,12 +52,21 @@ const AdminSchemeCalculator = () => {
     if (!vendorId) { setMonths([]); return; }
     let cancelled = false;
     setMonths([]);
+    setHistoryMonths([]);
     setLoading(true);
     (async () => {
-      const { data, error } = await supabase.from("scheme_vendor_months" as any).select("*").eq("party_id", vendorId).eq("fy_year", fy);
+      const data: VendorMonth[] = [];
+      let error: any = null;
+      for (let from=0; ; from+=500) {
+        const page = await supabase.from("scheme_vendor_months" as any).select("*").eq("party_id", vendorId).order("fy_year").order("month").range(from,from+499);
+        if(page.error){error=page.error;break;}
+        data.push(...(page.data as unknown as VendorMonth[] || []));
+        if(!page.data || page.data.length<500)break;
+      }
       if (cancelled) return;
       if (error) { toast({ title: "Load failed", description: error.message, variant: "destructive" }); setLoading(false); return; }
-      const saved = ((data as any) || []) as VendorMonth[];
+      setHistoryMonths(data);
+      const saved = data.filter(m=>m.fy_year===fy);
       setMonths(FY_MONTHS.map((month) => {
         const existing = saved.find((r) => r.month === month);
         if (existing) {
@@ -86,6 +98,8 @@ const AdminSchemeCalculator = () => {
   },[vendorId,fy]);
   const updatePeriodRecord = (record: PeriodBenefitRecord) => setPeriodRecords(prev => [...prev.filter(r => r.period_type !== record.period_type || r.period_key !== record.period_key),record]);
 
+  const allSchemeMonths = [...historyMonths.filter(m=>m.fy_year!==fy),...months];
+  const linkedReceipts = invoiceRewardReceipts(allSchemeMonths);
   const vendor = parties.find((p) => p.id === vendorId) || null;
   const filteredParties = useMemo(() => {
     const q = vendorQuery.trim().toLowerCase();
@@ -135,7 +149,8 @@ const AdminSchemeCalculator = () => {
         </div></div>
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
           {periodLoading ? <p className="text-muted-foreground">Loading all period benefits…</p> : periodError ? <p role="alert" className="text-destructive">Could not load period benefits. Reload before relying on totals.</p> : <SchemeBenefitAnalysis months={months} fy={fy} mode={mode} periodRecords={periodRecords} />}
-          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
+          <InvoiceRewardReport months={allSchemeMonths} />
+          {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock schemeMonths={allSchemeMonths} invoiceReceipts={linkedReceipts.filter(r=>r.benefit_month===monthKey(m))} additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
         </>}
       </TabsContent>
       <TabsContent value="parties" className="pt-4"><PartiesTab parties={parties} setParties={setParties} /></TabsContent>
