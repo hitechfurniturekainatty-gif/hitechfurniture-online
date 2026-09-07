@@ -663,7 +663,7 @@ const AdminQuotations = () => {
         if (s === "rejected") return false;
         if (statusFilter === "active") return s !== "delivered";
         if (statusFilter === "confirmed") {
-          return (s === "finalized" || s === "delivered") && (r.advance_amount ?? 0) > 0;
+          return (s === "finalized" || s === "delivered");
         }
         if (statusFilter.startsWith("stage")) {
           const num = Number(statusFilter.replace("stage", "")) as PipelineStage;
@@ -681,7 +681,7 @@ const AdminQuotations = () => {
       active: nonRejected.filter((r) => normalizeStatus(r.status) !== "delivered").length,
       confirmed: nonRejected.filter((r) => {
         const s = normalizeStatus(r.status);
-        return (s === "finalized" || s === "delivered") && (r.advance_amount ?? 0) > 0;
+        return (s === "finalized" || s === "delivered");
       }).length,
       rejected: docFiltered.filter((r) => normalizeStatus(r.status) === "rejected").length,
       stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0, stage6: 0,

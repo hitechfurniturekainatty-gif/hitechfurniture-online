@@ -73,6 +73,14 @@ export type BenefitReceipt = {
   free_item?: string;
   /** Value per free unit. Used to convert free goods into a financial benefit. */
   unit_value?: number;
+  /** Total amount payable to vendor for this benefit, not per unit. */
+  vendor_charge?: number;
+  /** Benefit value already reflected in entered invoice totals. */
+  included_in_invoice?: boolean;
+  /** Vendor charge already included in entered invoice cost. */
+  charge_in_invoice?: boolean;
+  /** Free units settled by a credit note instead of goods. */
+  replaces_free_qty?: number;
   date?: string;
   reference?: string;
   note?: string;

@@ -134,3 +134,13 @@
   .scheme-results-table td:nth-child(8)::before { content: 'Pending'; }
   .scheme-results-table td:nth-child(9)::before { content: 'Need more'; }
 }
+
+/* Department accents: restrained tinted headings, shared neutral canvas. */
+.overview-section { --section-accent:#598da7; --section-tint:#edf3f8; border-top:3px solid var(--section-accent); background:#fff; }
+.overview-sand { --section-accent:#bd944d; --section-tint:#faf5e9; }
+.overview-violet { --section-accent:#9180ad; --section-tint:#f4f0f8; }
+.overview-sage { --section-accent:#6d9785; --section-tint:#eef5f1; }
+.overview-terracotta { --section-accent:#b87f64; --section-tint:#faf0e9; }
+.admin-theme .overview-section h2 { padding:10px 14px; border-left:3px solid var(--section-accent); border-radius:6px; background:var(--section-tint); color:#33434c; }
+.admin-theme .overview-section > div + div { margin-top:24px; }
+.admin-theme .overview-section h3 { color:#415661; }

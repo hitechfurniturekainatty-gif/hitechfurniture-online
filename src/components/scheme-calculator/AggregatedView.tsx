@@ -1,3 +1,4 @@
+import { settlementRules, settlementTotals } from "./settlements";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
@@ -166,7 +167,7 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
           const pct = computeAchievementPct({ kind: rule.scheme_kind, config: rule.scheme_config }, agg);
           const targets = (report.targets || []).filter((t: any) => Number(t.gap) > 0);
           const received = (rule.benefit_receipts || []).filter((x: any) => x.kind === "free_item").reduce((s: number, x: any) => s + (Number(x.qty) || 0), 0);
-          const pending = Math.max(0, eligible - received);
+          const pending = Math.max(0, eligible - received - settlementTotals(rule.benefit_receipts || []).creditSettledQty);
           const benefit = summarizeMonthBenefit({ party_id: partyId, fy_year: fy, month: 4, scheme_kind: rule.scheme_kind, scheme_config: rule.scheme_config, purchases_text: "", purchase_rows: allRows.map(({scheme_kind, scheme_config, scheme_rule_id, ...row}) => row), invoices: [], benefit_receipts: rule.benefit_receipts || [] });
 
           return (
@@ -215,8 +216,8 @@ export function AggregatedView({ mode, fy, months, savedSchemes, onChangeMonth, 
                   <div className="rounded-xl border bg-amber-50/50 p-3"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pending)}</div></div>
                 </div>
 
-                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h5 className="font-semibold">Total received benefit: {benefit.effectiveBenefitPct.toFixed(2)}% of MRP · ₹{fmt(benefit.effectiveBenefitValue)}</h5><p className="mt-1 text-xs">Base saving + credits received in this period + valued free goods received in this period. Monthly receipts are separate; do not enter the same credit twice.</p></div>
-                <BenefitReceiptEditor receipts={rule.benefit_receipts || []} onChange={(benefit_receipts) => updateRule(b.key, { benefit_receipts })} />
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h5 className="font-semibold">Total received benefit: {benefit.effectiveBenefitPct.toFixed(2)}% of MRP · ₹{fmt(benefit.effectiveBenefitValue)}</h5><p className="mt-1 text-xs">Base saving + credits + free-goods value − additional vendor charges (₹{fmt(benefit.vendorCharges)}). Credit-settled free units: {benefit.creditSettledQty}. Monthly receipts are separate; do not enter the same credit twice.</p></div>
+                <BenefitReceiptEditor rules={settlementRules(report)} receipts={rule.benefit_receipts || []} onChange={(benefit_receipts) => updateRule(b.key, { benefit_receipts })} />
                 <p className="text-xs text-muted-foreground">After recording a receipt, use Save {b.key} Scheme above.</p>
                 <div className="rounded-xl border overflow-x-auto">
                   <table className="w-full table-fixed text-xs">

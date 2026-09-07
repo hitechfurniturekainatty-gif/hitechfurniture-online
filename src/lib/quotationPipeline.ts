@@ -118,11 +118,11 @@ export const stageToneClasses = (tone: StageInfo["tone"]) => {
 // fills (recharts needs a literal color, not a Tailwind class).
 export const stageToneHex = (tone: StageInfo["tone"]): string => {
   switch (tone) {
-    case "rose":    return "#f43f5e";
-    case "amber":   return "#f59e0b";
-    case "sky":     return "#0ea5e9";
-    case "violet":  return "#8b5cf6";
-    case "indigo":  return "#6366f1";
-    case "emerald": return "#10b981";
+    case "rose":    return "#b7747c";
+    case "amber":   return "#bd944d";
+    case "sky":     return "#598da7";
+    case "violet":  return "#9180ad";
+    case "indigo":  return "#71819e";
+    case "emerald": return "#6d9785";
   }
 };

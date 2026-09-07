@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +17,7 @@ import { AdminSeoHealthDashboard } from "./AdminSeoHealthDashboard";
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
+  const [selected, setSelected] = useState("today");
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) return <Navigate to="/admin/my-work" replace />;
 
   const showAdmin = isAdmin;
@@ -34,19 +37,14 @@ const AdminOverview = () => {
           ? "Trips, routes, customer deliveries and balance collection handoff."
           : "Your assigned work and next actions.";
 
-  const sections: { key: string; node: JSX.Element }[] = [
-    { key: "role-focus", node: <RoleFocusPanel isAdmin={isAdmin} isOfficeStaff={isOfficeStaff} isWarehouse={isWarehouse} isDelivery={isDelivery} /> },
-    (showAdmin || showOffice) && { key: "workflow-launcher", node: <FurnitureWorkflowLauncher /> },
-    showAdmin && { key: "receivables-today", node: <ReceivablesTodayPanel /> },
-    showAdmin && { key: "command-center", node: <CommandCenterPanel /> },
-    (showAdmin || showOffice) && { key: "sales-followups", node: <SalesFollowupPanel /> },
-    showAdmin && { key: "admin", node: <AdminAnalyticsDashboard /> },
-    showAdmin && { key: "seo-health", node: <AdminSeoHealthDashboard /> },
-    showOffice && { key: "office", node: <AdminOfficeAnalyticsDashboard /> },
-    showProduction && { key: "production", node: <AdminProductionAnalyticsDashboard /> },
-    showWarehouse && { key: "warehouse", node: <AdminWarehouseAnalyticsDashboard /> },
-    showDelivery && { key: "delivery", node: <AdminDeliveryAnalyticsDashboard /> },
-  ].filter(Boolean) as { key: string; node: JSX.Element }[];
+  const sections = [
+    { key: "today", label: "Today · Action centre", tone: "sand", node: <>{showAdmin ? <CommandCenterPanel compact /> : <RoleFocusPanel isAdmin={isAdmin} isOfficeStaff={isOfficeStaff} isWarehouse={isWarehouse} isDelivery={isDelivery} />}{showAdmin && <div className="mt-5"><ReceivablesTodayPanel /></div>}</> },
+    ...(showOffice ? [{key:"sales",label:"Sales & quotations",tone:"blue",node:<><SalesFollowupPanel /><AdminOfficeAnalyticsDashboard /></>}] : []),
+    ...(showProduction ? [{key:"production",label:"Production",tone:"violet",node:<AdminProductionAnalyticsDashboard />}] : []),
+    ...(showWarehouse ? [{key:"warehouse",label:"Stock & warehouse",tone:"sage",node:<AdminWarehouseAnalyticsDashboard />}] : []),
+    ...(showDelivery ? [{key:"delivery",label:"Delivery",tone:"terracotta",node:<AdminDeliveryAnalyticsDashboard />}] : []),
+    ...(showAdmin ? [{key:"reports",label:"Business reports",tone:"blue",node:<AdminAnalyticsDashboard />},{key:"website",label:"Website health",tone:"sage",node:<AdminSeoHealthDashboard />}] : []),
+  ];
 
   return (
     <AdminShell>
@@ -61,17 +59,10 @@ const AdminOverview = () => {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">{roleSub}</p>
       </div>
 
-      {sections.length === 0 ? (
-        <p className="text-muted-foreground">No dashboard sections are available for your role yet. Ask an admin to check your access.</p>
-      ) : (
-        <div>
-          {sections.map((s) => (
-            <div key={s.key} className="border-t border-[#e7e9e6] py-7 first:border-t-0 first:pt-0 sm:py-8">
-              {s.node}
-            </div>
-          ))}
-        </div>
-      )}
+      <Tabs value={sections.some(s => s.key === selected) ? selected : "today"} onValueChange={setSelected}>
+        <TabsList aria-label="Dashboard departments" className="mb-5 flex h-auto flex-wrap justify-start gap-2">{sections.map(s => <TabsTrigger key={s.key} value={s.key}>{s.label}</TabsTrigger>)}</TabsList>
+        {sections.map(s => <TabsContent key={s.key} value={s.key} className={`overview-section overview-${s.tone} space-y-5 rounded-2xl border p-4 sm:p-5`}>{s.node}</TabsContent>)}
+      </Tabs>
     </AdminShell>
   );
 };

@@ -1,3 +1,4 @@
+import { settlementRules, settlementTotals } from "./settlements";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -83,7 +84,7 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
   const completion = report.completion;
   const label = `${MONTH_NAME[vm.month]} ${fyCalendarYear(fy, vm.month)}`;
   const receivedFree = (vm.benefit_receipts || []).filter((r) => r.kind === "free_item").reduce((s, r) => s + (Number(r.qty) || 0), 0);
-  const pendingFree = Math.max(0, free - receivedFree);
+  const pendingFree = Math.max(0, free - receivedFree - settlementTotals(vm.benefit_receipts || []).creditSettledQty);
   const applySaved = (id: string) => { const s = savedSchemes.find((x) => x.id === id); if (s) onChange({ scheme_kind: s.kind, scheme_config: s.config || freshConfig(s.kind) }); };
   const handleSave = async () => { if (saving) return; setSaving(true); try { await onSave(); } finally { setSaving(false); } };
   const simpleKinds: SchemeKind[] = ["bogo", "percent", "company", "slab", "cashback", "own"];
@@ -138,8 +139,8 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave }: {
 
       <section className="admin-section-card p-4"><h4 className="mb-3 font-semibold">③ Scheme result</h4>{flatRows.length === 0 ? <p className="text-sm text-muted-foreground">Add an invoice to start live scheme analysis.</p> : <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-xl border border-primary/20 bg-primary/5 p-4"><div className="flex gap-3"><ProgressRing pct={completion} size={72} /><div><div className="flex items-center gap-1 text-primary"><CheckCircle2 className="h-4 w-4" /><b>Eligible Free: {free}</b></div><div className="mt-1 text-xs text-muted-foreground">Calculated only from the scheme item rules you entered.</div></div></div></div><div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4"><div className="text-xs text-emerald-700">Received Free</div><div className="mt-1 text-2xl font-semibold text-emerald-700">{fmt(receivedFree)}</div></div><div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><div className="text-xs text-amber-700">Pending Free</div><div className="mt-1 text-2xl font-semibold text-amber-900">{fmt(pendingFree)}</div></div>{targets.length > 0 && <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 lg:col-span-3"><div className="flex items-center gap-1 text-amber-700"><AlertTriangle className="h-4 w-4" /><b className="text-sm">Next target</b></div><div className="mt-2 grid gap-2 md:grid-cols-2">{targets.slice(0, 6).map((t: any, i: number) => <div key={i} className="rounded-lg border bg-background/70 p-2 text-xs"><b>Buy {fmt(t.gap)} more</b> → {t.reward}<div className="text-muted-foreground">{t.item}</div></div>)}</div></div>}</div>}</section>
 
-      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h4 className="font-semibold">Total received benefit · {benefit.effectiveBenefitPct.toFixed(2)}% of MRP</h4><p className="text-xs mt-1">Base saving ₹{fmt(benefit.baseSaving)} + received credits ₹{fmt(benefit.amountReceived)} + received free-goods value ₹{fmt(benefit.freeReceivedValue)} = ₹{fmt(benefit.effectiveBenefitValue)}. Enter all item MRPs for a complete percentage.</p></div>
-      <BenefitReceiptEditor receipts={vm.benefit_receipts || []} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><h4 className="font-semibold">Total received benefit · {benefit.effectiveBenefitPct.toFixed(2)}% of MRP</h4><p className="text-xs mt-1">Base saving ₹{fmt(benefit.baseSaving)} + received credits ₹{fmt(benefit.amountReceived)} + received free-goods value ₹{fmt(benefit.freeReceivedValue)} − additional vendor charges ₹{fmt(benefit.vendorCharges)} = ₹{fmt(benefit.effectiveBenefitValue)}. Enter all item MRPs for a complete percentage.</p></div>
+      <BenefitReceiptEditor rules={settlementRules(report)} receipts={vm.benefit_receipts || []} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <ItemBenefitTracker vm={vm} onChange={(benefit_receipts) => onChange({ benefit_receipts })} />
       <div className="flex justify-end gap-2"><SchemePartyNotesButton partyId={vm.party_id} /><Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? "Saving…" : `Save ${MONTH_NAME[vm.month]}`}</Button></div>
     </div>}

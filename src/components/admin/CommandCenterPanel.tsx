@@ -101,7 +101,7 @@ function QuickLink({ to, label, icon: Icon }: { to: string; label: string; icon:
   );
 }
 
-export const CommandCenterPanel = () => {
+export const CommandCenterPanel = ({ compact = false }: { compact?: boolean }) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -278,6 +278,7 @@ export const CommandCenterPanel = () => {
             </CardContent>
           </Card>
 
+          {!compact && <>
           <SubHeading>Operations &amp; Communications</SubHeading>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="WhatsApp — Last 24h" value={snapshot.whatsapp_messages_24h} hint="Inbound messages logged" icon={MessageCircle} />
@@ -286,6 +287,8 @@ export const CommandCenterPanel = () => {
             <StatCard label="Products — Data Cleanup" value={snapshot.products_deleted_pending} hint="Soft-deleted / pending cleanup" icon={ImageOff} />
           </div>
 
+          </>}
+          {!compact && <>
           <SubHeading>Quick Links</SubHeading>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <QuickLink to="/admin/quotations" label="Quotations & Leads" icon={FileText} />
@@ -294,7 +297,7 @@ export const CommandCenterPanel = () => {
             <QuickLink to="/admin/warehouse" label="Warehouse" icon={Warehouse} />
             <QuickLink to="/admin/logistics" label="Logistics" icon={Truck} />
             <QuickLink to="/admin/inventory/reorder" label="Reorder Report" icon={AlertTriangle} />
-          </div>
+          </div></>}
         </>
       )}
     </div>

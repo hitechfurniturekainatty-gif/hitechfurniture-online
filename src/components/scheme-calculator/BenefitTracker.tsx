@@ -6,13 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Gift, Plus, ReceiptIndianRupee, Trash2 } from "lucide-react";
 import type { BenefitReceipt, Row, SchemeKind, TimelineMode, VendorMonth } from "./types";
+import { settlementTotals } from "./settlements";
+export { BenefitReceiptEditor } from "./BenefitReceiptEditor";
 import { aggregateRowsByItem, computeFreeReport, fmt, fyCalendarYear, MONTH_NAME } from "./utils";
 
 export type MonthBenefitSummary = {
   purchaseQty: number; purchaseCost: number; mrpValue: number; baseSaving: number; baseDiscountPct: number;
   freeEarned: number; amountEarned: number; freeReceived: number; amountReceived: number;
   freeReceivedValue: number; freePending: number; amountPending: number;
-  effectiveBenefitValue: number; effectiveBenefitPct: number;
+  effectiveBenefitValue: number; effectiveBenefitPct: number; vendorCharges: number; creditSettledQty: number;
   earnedDetails: { label: string; qty: number }[];
 };
 
@@ -54,47 +56,22 @@ export function summarizeMonthBenefit(vm: VendorMonth): MonthBenefitSummary {
   }
 
   const receipts = vm.benefit_receipts || [];
-  const freeReceipts = receipts.filter((r) => r.kind === "free_item");
-  const freeReceived = freeReceipts.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-  const freeReceivedValue = freeReceipts.reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.unit_value) || 0), 0);
-  const amountReceived = receipts.filter((r) => r.kind !== "free_item").reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  const effectiveBenefitValue = baseSaving + freeReceivedValue + amountReceived;
+  const settlements = settlementTotals(receipts);
+  const freeReceived = settlements.freeReceived;
+  const freeReceivedValue = settlements.freeValue;
+  const amountReceived = settlements.cashValue;
+  const effectiveBenefitValue = baseSaving + settlements.net;
   const effectiveBenefitPct = mrpValue > 0 ? effectiveBenefitValue / mrpValue * 100 : 0;
 
   return {
     purchaseQty, purchaseCost, mrpValue, baseSaving, baseDiscountPct,
     freeEarned, amountEarned, freeReceived, amountReceived, freeReceivedValue,
-    freePending: Math.max(0, freeEarned - freeReceived), amountPending: Math.max(0, amountEarned - amountReceived),
-    effectiveBenefitValue, effectiveBenefitPct,
+    freePending: Math.max(0, freeEarned - freeReceived - settlements.creditSettledQty), amountPending: Math.max(0, amountEarned - amountReceived),
+    effectiveBenefitValue, effectiveBenefitPct, vendorCharges: settlements.charges, creditSettledQty: settlements.creditSettledQty,
     earnedDetails: grouped.flatMap((g) => (g.report.rep || []).filter((r: any) => (Number(r.free) || 0) > 0).map((r: any) => ({ label: `${g.label}: ${String(r.item || "Free item")}`, qty: Number(r.free) || 0 }))),
   };
 }
 
-export function BenefitReceiptEditor({ receipts, onChange }: { receipts: BenefitReceipt[]; onChange: (receipts: BenefitReceipt[]) => void; }) {
-  const [kind, setKind] = useState<BenefitReceipt["kind"]>("free_item");
-  const [item, setItem] = useState(""); const [qty, setQty] = useState(""); const [amount, setAmount] = useState("");
-  const [unitValue, setUnitValue] = useState(""); const [reference, setReference] = useState("");
-  const add = () => {
-    const next: BenefitReceipt = { id: crypto.randomUUID(), kind, date: new Date().toISOString().slice(0, 10), item: item.trim() || undefined,
-      qty: kind === "free_item" ? Math.max(0, Number(qty) || 0) : undefined,
-      unit_value: kind === "free_item" ? Math.max(0, Number(unitValue) || 0) : undefined,
-      amount: kind !== "free_item" ? Math.max(0, Number(amount) || 0) : undefined, reference: reference.trim() || undefined };
-    if (kind === "free_item" && !next.qty) return; if (kind !== "free_item" && !next.amount) return;
-    onChange([...receipts, next]); setItem(""); setQty(""); setAmount(""); setUnitValue(""); setReference("");
-  };
-  return <div className="space-y-3 rounded-xl border bg-background/60 p-4">
-    <div className="flex items-center gap-2"><Gift className="h-4 w-4 text-primary" /><h5 className="text-sm font-semibold">Received from vendor</h5></div>
-    <div className="grid gap-2 md:grid-cols-6">
-      <div><Label className="text-xs">Type</Label><Select value={kind} onValueChange={(v) => setKind(v as BenefitReceipt["kind"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="free_item">Free item</SelectItem><SelectItem value="credit_note">Credit note</SelectItem><SelectItem value="cashback">Cashback</SelectItem><SelectItem value="discount">Discount settlement</SelectItem></SelectContent></Select></div>
-      <div><Label className="text-xs">{kind === "free_item" ? "Free product" : "Description"}</Label><Input value={item} onChange={(e) => setItem(e.target.value)} placeholder={kind === "free_item" ? "e.g. Ortho Bed" : "Optional"} /></div>
-      <div><Label className="text-xs">{kind === "free_item" ? "Qty received" : "Amount received"}</Label><Input type="number" min="0" value={kind === "free_item" ? qty : amount} onChange={(e) => kind === "free_item" ? setQty(e.target.value) : setAmount(e.target.value)} placeholder="0" /></div>
-      {kind === "free_item" ? <div><Label className="text-xs">Value / free unit</Label><Input type="number" min="0" value={unitValue} onChange={(e) => setUnitValue(e.target.value)} placeholder="Purchase value" /></div> : <div><Label className="text-xs">Benefit value</Label><Input disabled value={amount ? `₹${fmt(Number(amount))}` : "—"} /></div>}
-      <div><Label className="text-xs">Reference</Label><Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="CN no / invoice" /></div>
-      <div className="flex items-end"><Button type="button" onClick={add} className="w-full gap-1"><Plus className="h-4 w-4" /> Add received</Button></div>
-    </div>
-    {receipts.length > 0 && <div className="space-y-1">{receipts.map((r) => <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"><Badge variant="secondary">{r.kind.replace(/_/g, " ")}</Badge><span className="font-medium">{r.item || "Scheme settlement"}</span><span className="text-muted-foreground">{r.kind === "free_item" ? `${r.qty || 0} qty${r.unit_value ? ` · ₹${fmt((r.qty || 0) * r.unit_value)} value` : ""}` : `₹${fmt(Number(r.amount) || 0)}`}</span>{r.reference && <span className="text-muted-foreground">· {r.reference}</span>}<Button type="button" size="icon" variant="ghost" className="ml-auto h-7 w-7" onClick={() => onChange(receipts.filter((x) => x.id !== r.id))}><Trash2 className="h-3.5 w-3.5" /></Button></div>)}</div>}
-  </div>;
-}
 
 function groupsFor(mode: TimelineMode, months: VendorMonth[], fy: number) {
   if (mode === "yearly") return [{ label: `FY ${fy}–${String(fy + 1).slice(-2)}`, months }];
