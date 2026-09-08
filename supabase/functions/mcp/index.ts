@@ -233,7 +233,7 @@ var resolve_enquiry_default = defineTool6({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "https://thwleiywbpyccgtacczv.supabase.co".match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? "thwleiywbpyccgtacczv" ?? "project-ref-unset";
+var projectRef = "https://ejxautrxbcemrncpzjyg.supabase.co".match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? "ejxautrxbcemrncpzjyg" ?? "project-ref-unset";
 var mcp_default = defineMcp({
   name: "my-hitech",
   title: "My Hitech",
