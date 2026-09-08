@@ -1,3 +1,4 @@
+import { authorizeStaff } from '../_shared/authorize.ts';
 // Edge function that turns free-form text (from a PDF/Word doc or pasted
 // content) into a clean JSON array of quotation line items using the Lovable
 // AI Gateway. The client extracts the text first; this function only does the
@@ -46,6 +47,8 @@ Rules:
 - Skip headers and totals. Never invent data.`;
 
 Deno.serve(async (req) => {
+  if (req.method !== 'OPTIONS' && !(await authorizeStaff(req, ['admin','staff','measurement_staff'], false))) return new Response(JSON.stringify({error:'Authorized staff access required'}), {status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const { text, kind } = await req.json();

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -363,7 +363,7 @@ const MultiInline = ({
           toast({ title: "Upload failed", description: error.message, variant: "destructive" });
           return;
         }
-        const { data } = supabase.storage.from("quotations").getPublicUrl(path);
+        const data = { publicUrl: await uploadedMediaUrl("quotations", path) };
         onChangeRef.current(joinUrls([...urlsRef.current, data.publicUrl]));
       } finally {
         URL.revokeObjectURL(previewUrl);

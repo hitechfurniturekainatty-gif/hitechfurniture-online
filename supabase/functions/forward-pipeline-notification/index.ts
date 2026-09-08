@@ -1,3 +1,4 @@
+import { authorizeStaff } from '../_shared/authorize.ts';
 // Forwards every new pipeline_notifications row to an external n8n webhook
 // (URL stored in the N8N_WEBHOOK_URL secret). Called by an AFTER-INSERT
 // trigger on pipeline_notifications via pg_net.
@@ -19,6 +20,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const N8N_WEBHOOK_URL = Deno.env.get("N8N_WEBHOOK_URL") ?? "";
 
 Deno.serve(async (req) => {
+  if (req.method !== 'OPTIONS' && !(await authorizeStaff(req, ['admin','staff'], true))) return new Response(JSON.stringify({error:'Authorized staff access required'}), {status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

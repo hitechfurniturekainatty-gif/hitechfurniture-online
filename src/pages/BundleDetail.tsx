@@ -41,7 +41,7 @@ const BundleDetail = () => {
     if (!id) return;
     (async () => {
       const [b1, b2] = await Promise.all([
-        (supabase as any).from("product_bundles").select("*").eq("id", id).eq("is_published", true).is("deleted_at", null).maybeSingle(),
+        (supabase as any).from("product_bundles").select("id, bundle_code, name, description, main_image_url, mrp, offer_price, available_colors, material, dimensions, stock_status, show_item_prices_public, show_item_prices_staff").eq("id", id).eq("is_published", true).is("deleted_at", null).maybeSingle(),
         (supabase as any).from("bundle_items").select("product_id, quantity").eq("bundle_id", id).order("display_order"),
       ]);
       setB(b1.data as B | null);

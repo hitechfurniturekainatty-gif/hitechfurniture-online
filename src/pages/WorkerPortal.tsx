@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,7 +202,7 @@ const WorkerPortal = () => {
         const path = `worker-updates/${dialogJob.id}/${Date.now()}-${photoFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
         const { error: upErr } = await supabase.storage.from("quotations").upload(path, compressed);
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
+        const pub = { publicUrl: await uploadedMediaUrl("quotations", path) };
         photoUrl = pub.publicUrl;
       }
 

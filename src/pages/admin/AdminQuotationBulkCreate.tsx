@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Upload, FileDown, Image as ImageIcon, Trash2, Sparkles, ClipboardPaste, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { titleCaseTrim } from "@/lib/textCase";
 import { compressProductImage } from "@/lib/imageCompression";
@@ -330,7 +330,7 @@ const AdminQuotationBulkCreate = () => {
             contentType: compressed.type, upsert: false,
           });
           if (upErr) throw upErr;
-          const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
+          const pub = { publicUrl: await uploadedMediaUrl("quotations", path) };
           urls[r.id] = pub.publicUrl;
         } catch (e) {
           console.warn("Image upload failed for", r.description, e);

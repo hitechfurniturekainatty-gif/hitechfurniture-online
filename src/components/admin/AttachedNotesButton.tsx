@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -85,7 +85,7 @@ export const AttachedNotesButton = ({ quotationId, className }: Props) => {
           .from("quotations")
           .upload(path, toUpload, { contentType: isPdf ? "application/pdf" : (toUpload as any).type || "image/jpeg" });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("quotations").getPublicUrl(path);
+        const pub = { publicUrl: await uploadedMediaUrl("quotations", path) };
         const { error: insErr } = await supabase.from("quotation_attached_notes").insert({
           quotation_id: quotationId,
           file_url: pub.publicUrl,

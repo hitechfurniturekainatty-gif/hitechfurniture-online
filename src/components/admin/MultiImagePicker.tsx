@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,7 +82,7 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
           toast({ title: "Upload failed", description: error.message, variant: "destructive" });
           return;
         }
-        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+        const data = { publicUrl: await uploadedMediaUrl(bucket, path) };
         commit([...urlsRef.current, data.publicUrl]);
       } finally {
         URL.revokeObjectURL(previewUrl);

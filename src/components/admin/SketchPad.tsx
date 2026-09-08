@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fabric } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageCompression";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -527,7 +527,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         toast({ title: "Sketch upload failed", description: error.message, variant: "destructive" });
         return;
       }
-      const { data } = supabase.storage.from("quotations").getPublicUrl(path);
+      const data = { publicUrl: await uploadedMediaUrl("quotations", path) };
       onSave(data.publicUrl);
       toast({ title: "Sketch saved" });
       onOpenChange(false);

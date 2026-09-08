@@ -89,7 +89,7 @@ const Auth = () => {
         if (!sessionData.session || !recoveryReady) {
           throw new Error("This reset link is invalid, expired, or was already used. Go back and request one new reset email.");
         }
-        if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+        if (password.length < 8) throw new Error("Password must be at least 8 characters.");
         if (password !== confirmPassword) throw new Error("Passwords do not match.");
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
@@ -107,7 +107,7 @@ const Auth = () => {
         const redirectUrl = `${appOrigin()}${next ?? "/admin"}`;
         const { error } = await supabase.auth.signUp({ email: identifier.trim().toLowerCase(), password, options: { emailRedirectTo: redirectUrl, data: { display_name: name } } });
         if (error) throw error;
-        toast({ title: "Account created", description: "You can now sign in." });
+        toast({ title: "Account created", description: "Ask your administrator to approve staff access before signing in." });
         setMode("login");
       } else {
         const useWorker = isPhoneLike(identifier);
@@ -157,7 +157,7 @@ const Auth = () => {
             <form className="space-y-4" onSubmit={submit}>
               {mode === "signup" && <div className="space-y-1.5"><Label htmlFor="name">Display name</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>}
               {mode !== "reset" && <div className="space-y-1.5"><Label htmlFor="identifier">{mode === "login" ? "Email or phone" : "Email"}</Label><Input id="identifier" type={mode === "login" ? "text" : "email"} inputMode="email" autoComplete={mode === "login" ? "username" : "email"} placeholder={mode === "login" ? "you@example.com or phone" : "you@example.com"} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required /></div>}
-              {(mode === "login" || mode === "signup" || (mode === "reset" && recoveryReady)) && <div className="space-y-1.5"><Label htmlFor="password">{mode === "login" && isPhoneLike(identifier) ? "PIN" : mode === "reset" ? "New password" : "Password"}</Label><div className="relative"><Input id="password" type={showPassword ? "text" : "password"} inputMode={mode === "login" && isPhoneLike(identifier) ? "numeric" : undefined} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "signup" || mode === "reset" ? 6 : undefined} value={password} onChange={(e) => setPassword(e.target.value)} required className="pr-10" /><button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>}
+              {(mode === "login" || mode === "signup" || (mode === "reset" && recoveryReady)) && <div className="space-y-1.5"><Label htmlFor="password">{mode === "login" && isPhoneLike(identifier) ? "PIN" : mode === "reset" ? "New password" : "Password"}</Label><div className="relative"><Input id="password" type={showPassword ? "text" : "password"} inputMode={mode === "login" && isPhoneLike(identifier) ? "numeric" : undefined} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "signup" || mode === "reset" ? 8 : undefined} value={password} onChange={(e) => setPassword(e.target.value)} required className="pr-10" /><button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>}
               {mode === "reset" && recoveryReady && <div className="space-y-1.5"><Label htmlFor="confirmPassword">Confirm new password</Label><Input id="confirmPassword" type="password" autoComplete="new-password" minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>}
               {mode !== "reset" && <Button type="submit" className="w-full" disabled={loading}>{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}</Button>}
               {mode === "reset" && recoveryReady && <Button type="submit" className="w-full" disabled={loading || recoveryChecking}>{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Update password</Button>}
@@ -165,7 +165,7 @@ const Auth = () => {
             {mode === "reset" && !recoveryReady && !recoveryChecking && <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => { setMode("forgot"); setPassword(""); setConfirmPassword(""); window.history.replaceState(null, "", "/auth"); }}>Request a new reset link</Button>}
             {mode === "login" && !isPhoneLike(identifier) && <button type="button" onClick={() => { setMode("forgot"); setPassword(""); }} className="mt-3 w-full text-center text-sm font-medium text-primary hover:underline">Forgot password?</button>}
             {mode === "forgot" && <button type="button" onClick={() => setMode("login")} className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-primary">Back to sign in</button>}
-            {(mode === "login" || mode === "signup") && <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-primary">{mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}</button>}
+            <p className="mt-4 text-center text-sm text-muted-foreground">Staff accounts are created by your administrator.</p>
           </CardContent>
         </Card>
       </main>

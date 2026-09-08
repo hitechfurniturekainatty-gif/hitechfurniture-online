@@ -1,3 +1,4 @@
+import { authorizeStaff } from '../_shared/authorize.ts';
 // SnapSearch — identify catalog products from a photo using Lovable AI vision.
 // Uses google/gemini-2.5-flash (multimodal) via the Lovable AI Gateway.
 // LOVABLE_API_KEY is auto-provisioned; no user-supplied key needed.
@@ -20,6 +21,8 @@ type CatalogItem = {
 };
 
 Deno.serve(async (req) => {
+  if (req.method !== 'OPTIONS' && !(await authorizeStaff(req, ['admin','staff'], false))) return new Response(JSON.stringify({error:'Authorized staff access required'}), {status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
