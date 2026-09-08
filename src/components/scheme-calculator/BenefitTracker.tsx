@@ -56,7 +56,7 @@ export function summarizeMonthBenefit(vm: VendorMonth): MonthBenefitSummary {
     }
   }
 
-  const receipts = vm.benefit_receipts || [];
+  const receipts = [...(vm.benefit_receipts || []),...(vm.invoices||[]).flatMap(i=>i.benefit_receipts||[])];
   const settlements = settlementTotals(receipts);
   const freeReceived = settlements.freeReceived;
   const freeReceivedValue = settlements.freeValue;

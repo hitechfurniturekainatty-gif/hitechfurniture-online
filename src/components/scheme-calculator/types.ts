@@ -35,6 +35,8 @@ export type Row = {
 };
 
 export type Invoice = {
+  /** Credits recorded alongside this invoice, saved in the same operation. */
+  benefit_receipts?: BenefitReceipt[];
   document_kind?: "purchase" | "purchase_return";
   /** Footer discount, including the offset for billed reward items. */
   discount_amount?: number;

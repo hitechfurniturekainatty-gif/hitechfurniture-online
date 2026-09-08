@@ -82,3 +82,17 @@ describe('cross-year source-period benefit and settlement',()=>{
   expect(refId(value)).toBe('2025:yearly:FY');
  });
 });
+
+it('saves invoice credits with the bill, attributes them to the old scheme and prevents embedded double counting',()=>{
+ const {all,periods,later}=setup();
+ later.invoices[0].benefit_receipts=[{id:'inline-credit',kind:'credit_note',amount:1000,date:'2026-06-10',scheme_period:ref,reference:'CN-1'}];
+ const restored=JSON.parse(JSON.stringify(all)) as VendorMonth[];
+ expect(attributedSummary(restored,periods,2025,[4,5,6]).extra).toBe(1000);
+ expect(attributedSummary(restored,periods,2026,[6]).benefit).toBe(2500);
+ later.invoices[0].discount_amount=1000;
+ later.invoices[0].benefit_receipts[0].included_in_invoice=true;
+ expect(attributedSummary(all,periods,2025,[4,5,6]).extra).toBe(1000);
+ expect(attributedSummary(all,periods,2026,[6]).benefit).toBe(2500);
+ later.invoices[0].benefit_receipts=[];
+ expect(attributedSummary(all,periods,2025,[4,5,6]).extra).toBe(0);
+});

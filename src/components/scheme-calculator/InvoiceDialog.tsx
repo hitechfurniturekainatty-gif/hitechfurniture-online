@@ -1,3 +1,5 @@
+import { SchemeTargetSelect } from "./SchemeTargetSelect";
+import { receiptBenefit } from "./settlements";
 import { SchemePeriodPicker } from "./SchemePeriodPicker";
 import { monthRef, refId, refEndMonth, targetCatalog } from "./schemeAttribution";
 import type { PeriodBenefitRecord } from "./periodBenefits";
@@ -16,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Stat } from "./Stat";
 import { fmt } from "./utils";
 import { parseInvoiceText, parseInvoiceFooterDiscount } from "./invoiceParser";
-import type { Invoice, Row, VendorMonth } from "./types";
+import type { BenefitReceipt, Invoice, Row, VendorMonth } from "./types";
 
 type VendorItemMrp = { id: string; item_name: string; mrp: number };
 const norm = (v: unknown) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -30,6 +32,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
   onClose: () => void;
   onSave: (inv: Invoice) => void | Promise<void>;
 }) {
+  const [credits,setCredits]=useState<BenefitReceipt[]>([]);
   const [footerDiscount, setFooterDiscount] = useState(0);
   const [label, setLabel] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -42,6 +45,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
   useEffect(() => {
     if (!invoice) return;
     setFooterDiscount(Number(invoice.discount_amount)||0);
+    setCredits(invoice.benefit_receipts||[]);
     setLabel(invoice.label || "");
     setInvoiceNo(invoice.invoice_no || "");
     setDate(invoice.date || "");
@@ -69,8 +73,10 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
   const grossCost = rows.reduce((s, r) => s + (Number(r.amountWithTax) || 0), 0);
   const totalCost = grossCost-footerDiscount;
   const valuedRows = invoiceRows([{id:invoice?.id||'preview',label:'Preview',rows,discount_amount:footerDiscount}]);
-  const totalMrpValue = valuedRows.reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
-  const discountAmount = Math.max(0, totalMrpValue - totalCost);
+  const totalMrpValue = valuedRows.filter(r=>!r.reward).reduce((s, r) => s + (Number(r.mrp) || 0) * (Number(r.qty) || 0), 0);
+  const rewardValue=valuedRows.filter(r=>r.reward).reduce((s,r)=>s+r.mrp*r.qty,0);
+  const creditBenefit=credits.reduce((s,r)=>s+receiptBenefit(r).net,0);
+  const discountAmount = totalMrpValue + rewardValue - totalCost + creditBenefit;
   const discountPct = totalMrpValue > 0 ? (discountAmount / totalMrpValue) * 100 : 0;
   const invalidRows = rows.filter((r) => !String(r.item || "").trim() || Number(r.qty) <= 0 || Number(r.amountWithTax) < 0 || Number(r.mrp) < 0);
 
@@ -151,6 +157,7 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
       if ((patch.qty !== undefined || patch.price !== undefined) && patch.amountWithTax === undefined) {
         merged.amountWithTax = (Number(merged.qty) || 0) * (Number(merged.price) || 0);
       }
+      if(patch.amountWithTax!==undefined&&merged.qty>0)merged.price=merged.amountWithTax/merged.qty;
       return merged;
     }));
   };
@@ -180,9 +187,11 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
     if (invalidRows.length) return toast({ title: "Check invoice items", description: `${invalidRows.length} row${invalidRows.length === 1 ? "" : "s"} need valid item, quantity and amount.`, variant: "destructive" });
     if (!Number.isFinite(footerDiscount) || footerDiscount<0 || footerDiscount>grossCost) return toast({title:"Discount must be between zero and the invoice item total",variant:"destructive"});
     if (rows.some(r=>r.reward&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(r.reward.scheme_month))) return toast({title:"Choose the scheme month for each reward item",variant:"destructive"});
+    if(credits.some(c=>Number(c.replaces_free_qty)>0&&(!c.scheme_rule_key||!Number.isInteger(Number(c.replaces_free_qty)))))return toast({title:"Choose the scheme and enter a whole free quantity for replacement credits",variant:"destructive"});
+    if(credits.some(c=>!(Number(c.amount)>0)))return toast({title:"Enter the credit note amount or remove the empty entry",variant:"destructive"});
     if (saving) return;
     setSaving(true);
-    const savedInvoice = { ...invoice, label: label.trim() || invoice.label, invoice_no: invoiceNo.trim(), date, rows, discount_amount:footerDiscount };
+    const savedInvoice = { ...invoice, label: label.trim() || invoice.label, invoice_no: invoiceNo.trim(), date, rows, discount_amount:footerDiscount, benefit_receipts:credits };
     try { await onSave(savedInvoice); } catch (e: any) { setSaving(false); toast({title:"Could not save document",description:e?.message,variant:"destructive"}); return; }
     try {
       await saveVendorMrpMaster();
@@ -222,31 +231,30 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
           <div className="rounded-xl border bg-background">
             <div className="border-b px-3 py-2 text-xs font-medium text-foreground">Invoice Items <span className="ml-1 font-normal text-muted-foreground">— MRP is directly editable for every item</span></div>
             <div className="overflow-x-auto">
-              <Table className="min-w-[1120px] table-fixed">
+              <Table className="min-w-[720px] table-fixed">
                 <TableHeader><TableRow className="bg-muted/25">
-                  <TableHead className="w-[300px]">Item</TableHead>
+                  <TableHead className="w-[280px]">Item</TableHead>
                   <TableHead className="w-[90px] text-right">Qty</TableHead>
                   <TableHead className="w-[140px] text-right">MRP / Unit</TableHead>
-                  <TableHead className="w-[140px] text-right">Purchase / Unit</TableHead>
                   <TableHead className="w-[160px] text-right">Amount incl. Tax</TableHead>
-                  <TableHead className="w-[145px] text-right">MRP Value</TableHead>
                   <TableHead className="w-[110px] text-right">Discount</TableHead>
                   <TableHead className="w-[55px]"></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {rows.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-xs text-muted-foreground">No items yet. Paste/upload the invoice or add one manually.</TableCell></TableRow>}
+                  {rows.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">No items yet. Paste/upload the invoice or add one manually.</TableCell></TableRow>}
                   {rows.map((r) => {
                     const mrpValue = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
                     const cost = Number(r.amountWithTax) || 0;
                     const disc = mrpValue > 0 ? ((mrpValue - cost) / mrpValue) * 100 : 0;
                     const invalid = !String(r.item || "").trim() || Number(r.qty) <= 0;
                     return <TableRow key={r.id} className={invalid ? "bg-destructive/5" : undefined}>
-                      <TableCell><Input list="scheme-vendor-items" value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-9" placeholder="Item name" /></TableCell>
+                      <TableCell className="space-y-2"><Input list="scheme-vendor-items" value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-9" placeholder="Item name" />
+                      {invoice.document_kind!=="purchase_return"&&<label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!r.reward} onChange={e=>updateRow(r.id,{reward:e.target.checked?{scheme_month:date.slice(0,7)}:undefined})}/>Free / scheme item</label>}
+                      {r.reward&&<SchemeTargetSelect goodsOnly source={r.reward.scheme_period||monthRef(r.reward.scheme_month||date)} ruleKey={r.reward.scheme_rule_key} months={schemeMonths} periods={schemePeriods} onChange={(scheme_period,scheme_rule_key,scheme_label)=>updateRow(r.id,{reward:{scheme_period,scheme_month:refEndMonth(scheme_period),scheme_rule_key,scheme_label}})}/>}
+                      </TableCell>
                       <TableCell><Input type="number" min={0} value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} className="h-9 text-right" /></TableCell>
                       <TableCell><Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} className="h-9 border-primary/30 bg-primary/[0.03] text-right font-semibold" placeholder="Enter MRP" /></TableCell>
-                      <TableCell><Input type="number" min={0} value={r.price} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) || 0 })} className="h-9 text-right" /></TableCell>
                       <TableCell><Input type="number" min={0} value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} className="h-9 text-right" /></TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">₹{fmt(mrpValue)}</TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">{mrpValue > 0 ? `${fmt(disc)}%` : "—"}</TableCell>
                       <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button></TableCell>
                     </TableRow>;
@@ -256,31 +264,28 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
             </div>
           </div>
 
-          {invoice.document_kind !== "purchase_return" && <section className="rounded-xl border border-primary/25 bg-primary/5 p-3 space-y-3">
-            <h4 className="font-semibold text-sm">Free / scheme items in this invoice · ഈ ബില്ലിൽ ലഭിച്ച reward</h4>
-            <p className="text-xs text-muted-foreground">അതേ paste / upload ഉപയോഗിച്ച് എല്ലാ items-ഉം മുകളിൽ ചേർക്കുക. Free ആയി കിട്ടിയ rows ഇവിടെ തിരഞ്ഞെടുക്കുക; ഏത് മാസത്തെ scheme ആണെന്ന് നൽകുക. ഭാഗിക quantity ആണെങ്കിൽ മുകളിൽ separate row ആക്കുക. Free quantity പുതിയ purchase target-ൽ കൂട്ടില്ല.</p>
-            {rows.map(r=><div key={r.id} className="grid gap-2 rounded-lg border bg-background p-2 sm:grid-cols-3">
-              <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!r.reward} onChange={e=>updateRow(r.id,{reward:e.target.checked?{scheme_month:date.slice(0,7)}:undefined})}/>{r.item||"Item"} · {r.qty} pcs</label>
-              {r.reward&&<><div className="sm:col-span-2"><SchemePeriodPicker value={r.reward.scheme_period||monthRef(r.reward.scheme_month||date)} onChange={scheme_period=>updateRow(r.id,{reward:{scheme_period,scheme_month:refEndMonth(scheme_period)}})}/></div>
-              <div><Label className="text-xs">Scheme target</Label><select aria-label={"Scheme target for "+r.item} className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={r.reward.scheme_rule_key||""} onChange={e=>{const rule=targetCatalog(schemeMonths,schemePeriods).filter(g=>refId(g.ref)===refId(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))).flatMap(g=>g.rules).filter(rule=>rule.unit!=="₹").find(x=>x.key===e.target.value);updateRow(r.id,{reward:{...r.reward!,scheme_rule_key:rule?.key,scheme_label:rule?.label}});}}>
-                <option value="">Select target / Record without target</option>
-                {targetCatalog(schemeMonths,schemePeriods).filter(g=>refId(g.ref)===refId(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))).flatMap(g=>g.rules).filter(rule=>rule.unit!=="₹").map(rule=><option key={rule.key} value={rule.key}>{rule.label}</option>)}
-              </select>{!r.reward.scheme_rule_key&&<p className="text-xs text-muted-foreground">Target തിരഞ്ഞെടുക്കാതെ receipt മാത്രം രേഖപ്പെടുത്തും; pending കുറയില്ല.</p>}</div></>}
-            </div>)}
-          </section>}
           <div className="rounded-xl border p-3 space-y-2">
             <Label>Invoice footer discount / ബില്ലിന്റെ അടിയിലെ മൊത്തം discount ₹</Label>
             <Input aria-label="Invoice footer discount" type="number" min={0} max={grossCost} value={footerDiscount||""} onChange={e=>setFooterDiscount(Number(e.target.value))} placeholder="0"/>
             <p className="text-xs text-muted-foreground">Item amounts-ൽ ഇതിനകം കുറച്ച discount വീണ്ടും ചേർക്കരുത്. Reward items-ന്റെ offset ഉൾപ്പെടെ footer-ലെ discount ഒരിക്കൽ മാത്രം നൽകുക; Additional benefits-ൽ വീണ്ടും ചേർക്കേണ്ടതില്ല. Free item MRP നൽകിയില്ലെങ്കിൽ അതിന്റെ ബിൽ value ആണ് valuation.</p>
-            <p className="font-semibold text-sm">Items ₹{fmt(grossCost)} − Discount ₹{fmt(footerDiscount)} = Payable ₹{fmt(totalCost)}</p>
+            <p className="text-xs text-muted-foreground">ഈ invoice-ൽ ലഭിച്ച benefit ഇവിടെ കാണാം; പഴയ schemes-ന്റെ benefit ബന്ധപ്പെട്ട period report-ലേക്ക് പോകും.</p><p className="font-semibold text-sm">Items ₹{fmt(grossCost)} − Discount ₹{fmt(footerDiscount)} = Payable ₹{fmt(totalCost)}</p>
           </div>
-          <div className="grid gap-2 rounded-xl border bg-muted/15 p-3 sm:grid-cols-3 lg:grid-cols-6">
+          {invoice.document_kind!=="purchase_return"&&<div className="space-y-3">
+            {credits.map(c=><div key={c.id} className="rounded-xl border bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center justify-between"><b className="text-sm">Credit note / തുക കുറച്ചുതന്നത്</b><Button size="icon" variant="ghost" aria-label="Remove invoice credit" onClick={()=>setCredits(cs=>cs.filter(x=>x.id!==c.id))}><Trash2 className="h-4 w-4"/></Button></div>
+              <div className="grid gap-2 sm:grid-cols-3"><Input aria-label="Invoice credit amount" type="number" min={0} placeholder="Amount ₹" value={c.amount||""} onChange={e=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,amount:Number(e.target.value)}:x))}/><Input aria-label="Invoice credit reference" placeholder="Credit note reference" value={c.reference||""} onChange={e=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,reference:e.target.value}:x))}/><Input aria-label="Invoice credit date" type="date" value={c.date||date} onChange={e=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,date:e.target.value}:x))}/></div>
+              <SchemeTargetSelect source={c.scheme_period||monthRef(date)} ruleKey={c.scheme_rule_key} months={schemeMonths} periods={schemePeriods} onChange={(scheme_period,scheme_rule_key,scheme_label)=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,scheme_period,scheme_rule_key,scheme_label}:x))}/>
+              <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!c.included_in_invoice} onChange={e=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,included_in_invoice:e.target.checked}:x))}/>മുകളിലെ invoice discount-ൽ ഈ തുക ഉൾപ്പെട്ടിട്ടുണ്ട്</label>
+              <details><summary className="cursor-pointer text-xs">Free items-ന് പകരമാണോ?</summary><Input aria-label="Invoice credit replaces quantity" type="number" min={0} placeholder="Free quantity settled" value={c.replaces_free_qty||""} onChange={e=>setCredits(cs=>cs.map(x=>x.id===c.id?{...x,replaces_free_qty:Number(e.target.value)}:x))}/></details>
+            </div>)}
+            <Button variant="outline" size="sm" onClick={()=>setCredits(cs=>[...cs,{id:crypto.randomUUID(),kind:"credit_note",date,scheme_period:monthRef(date),amount:0}])}><Plus className="h-4 w-4"/>Add credit note with this invoice</Button>
+          </div>}
+          <div className="grid gap-2 rounded-xl border bg-muted/15 p-3 sm:grid-cols-3 lg:grid-cols-5">
             <div><Button size="sm" variant="outline" onClick={addBlankRow}><Plus className="h-3.5 w-3.5" /> Add item</Button>{invalidRows.length > 0 && <div className="mt-2 flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" /> {invalidRows.length} row needs checking</div>}</div>
-            <Stat label="Items" value={String(rows.length)} />
-            <Stat label="Total Qty" value={fmt(totalQty)} />
-            <Stat label="Total MRP" value={`₹${fmt(totalMrpValue)}`} />
-            <Stat label="Cost incl. Tax" value={`₹${fmt(totalCost)}`} />
-            <Stat label="Vendor Discount" value={totalMrpValue > 0 ? `${fmt(discountPct)}% · ₹${fmt(discountAmount)}` : "Add MRP"} />
+
+            <Stat label="Total purchase MRP" value={`₹${fmt(totalMrpValue)}`} />
+            <Stat label="Invoice payable" value={`₹${fmt(totalCost)}`} />
+            <Stat label="Benefit received ₹" value={`₹${fmt(discountAmount)}`} /><Stat label="Benefit / purchase MRP" value={totalMrpValue>0?discountPct.toFixed(2)+"%":"—"}/>
           </div>
         </div>
 

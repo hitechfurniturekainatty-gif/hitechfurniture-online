@@ -98,16 +98,8 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
 
       </details>
       {(invoice.discount_amount || rows.some(r=>r.reward)) ? <div className="border-t bg-primary/5 p-3 text-xs space-y-1"><p>Items ₹{fmt(rows.reduce((s,r)=>s+r.amountWithTax,0))} − Invoice discount ₹{fmt(invoice.discount_amount||0)} = Payable ₹{fmt(totalCost)}</p>{rows.filter(r=>r.reward).map(r=><p key={r.id}>{r.item} · {r.qty} free pcs · Scheme {refLabel(r.reward!.scheme_period||monthRef(r.reward!.scheme_month))} · {r.reward!.scheme_label||"No target linked"}</p>)}<p className="text-muted-foreground">Invoice discount benefit-ൽ ഉൾപ്പെട്ടിട്ടുണ്ട്. Additional benefits-ൽ വീണ്ടും ചേർക്കേണ്ടതില്ല.</p></div> : null}
-      <div className="border-t bg-muted/10 p-3">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <Stat label="Items" value={String(rows.length)} />
-          <Stat label="Total Qty" value={fmt(totalQty)} />
-          <Stat label="Total MRP" value={`₹${fmt(totalMrp)}`} />
-          <Stat label="Cost incl. Tax" value={`₹${fmt(totalCost)}`} />
-          <Stat label="Vendor Discount" value={totalMrp > 0 ? `${fmt(discountPct)}% · ₹${fmt(discountAmount)}` : "Add MRP"} />
-          <Stat label="Scheme Items" value={String(matchedCount)} />
-        </div>
-      </div>
+      {(invoice.benefit_receipts||[]).map(c=><div key={c.id} className="border-t px-3 py-2 text-xs">Credit note · ₹{fmt(c.amount||0)} · {c.reference||"—"} · {c.scheme_period?refLabel(c.scheme_period):"This month"}{c.included_in_invoice?" · Included in bill discount":""}</div>)}
+      <div className="border-t bg-muted/10 px-3 py-2 text-xs">{fmt(totalQty)} qty · Net payable <b>₹{fmt(totalCost)}</b></div>
     </div>
   );
 }

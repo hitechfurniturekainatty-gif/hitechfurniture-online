@@ -26,6 +26,7 @@ export function allAttributedReceipts(months:VendorMonth[],records:PeriodBenefit
   for(const r of m.benefit_receipts||[])receipts.push({...r,source:r.scheme_period||monthRef(r.benefit_month||date),received_month:r.date?.slice(0,7)||date,accounting_month:date,net:receiptBenefit(r).net+embeddedBenefit(r),embeddedNet:embeddedBenefit(r)});
   for(const i of m.invoices||[]){
    if(i.document_kind==='purchase_return')continue;
+   for(const r of i.benefit_receipts||[])receipts.push({...r,source:r.scheme_period||monthRef(date),received_month:r.date?.slice(0,7)||date,accounting_month:date,net:receiptBenefit(r).net+embeddedBenefit(r),embeddedNet:embeddedBenefit(r)});
    const valued=invoiceRows([i]);
    for(const row of valued.filter(r=>r.reward)){
     const original=i.rows.find(r=>r.id===row.id)!;
