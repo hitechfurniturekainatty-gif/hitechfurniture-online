@@ -19,7 +19,7 @@ Run `supabase/tests/security_access.sql` as the database owner. Its synthetic si
 
 ## Rollout and remaining checks
 
-Deploy the `private-media` Edge Function and the frontend before switching the quotations bucket to private. Existing tabs must refresh to use signed URLs. Product images stay public for the catalogue.
+The `private-media` Edge Function is deployed and the signed-URL frontend is on main with a successful production CI run. The quotations bucket was switched to private in migration `20260908183505`. Existing tabs must refresh to use signed URLs. Product images stay public for the catalogue. The hosting provider's deployed frontend and live upload/share-link flow still need verification.
 
 Supabase leaked-password protection is an Auth dashboard setting and requires separate verification. Security-definer RPC warnings can remain for deliberately privileged, authorized operations; inspect each rather than suppressing the advisor. The `pg_trgm` public-schema advisory requires a separate dependency-aware migration.
 
