@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -8,16 +8,17 @@ import { SalesFollowupPanel } from "@/components/admin/SalesFollowupPanel";
 import { FurnitureWorkflowLauncher } from "@/components/admin/FurnitureWorkflowLauncher";
 import { ReceivablesTodayPanel } from "@/components/admin/ReceivablesTodayPanel";
 import { RoleFocusPanel } from "@/components/admin/RoleFocusPanel";
-import AdminAnalyticsDashboard from "./AdminAnalyticsDashboard";
-import AdminOfficeAnalyticsDashboard from "./AdminOfficeAnalyticsDashboard";
-import AdminProductionAnalyticsDashboard from "./AdminProductionAnalyticsDashboard";
-import AdminWarehouseAnalyticsDashboard from "./AdminWarehouseAnalyticsDashboard";
-import AdminDeliveryAnalyticsDashboard from "./AdminDeliveryAnalyticsDashboard";
-import { AdminSeoHealthDashboard } from "./AdminSeoHealthDashboard";
+const AdminAnalyticsDashboard = lazy(() => import("./AdminAnalyticsDashboard"));
+const AdminOfficeAnalyticsDashboard = lazy(() => import("./AdminOfficeAnalyticsDashboard"));
+const AdminProductionAnalyticsDashboard = lazy(() => import("./AdminProductionAnalyticsDashboard"));
+const AdminWarehouseAnalyticsDashboard = lazy(() => import("./AdminWarehouseAnalyticsDashboard"));
+const AdminDeliveryAnalyticsDashboard = lazy(() => import("./AdminDeliveryAnalyticsDashboard"));
+const AdminSeoHealthDashboard = lazy(() => import("./AdminSeoHealthDashboard"));
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
   const [selected, setSelected] = useState("today");
+  const [visited,setVisited]=useState<string[]>(["today"]);
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) return <Navigate to="/admin/my-work" replace />;
 
   const showAdmin = isAdmin;
@@ -59,9 +60,9 @@ const AdminOverview = () => {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">{roleSub}</p>
       </div>
 
-      <Tabs value={sections.some(s => s.key === selected) ? selected : "today"} onValueChange={setSelected}>
+      <Tabs value={sections.some(s => s.key === selected) ? selected : "today"} onValueChange={key=>{setSelected(key);setVisited(prev=>prev.includes(key)?prev:[...prev,key]);}}>
         <TabsList aria-label="Dashboard departments" className="mb-5 flex h-auto flex-wrap justify-start gap-2">{sections.map(s => <TabsTrigger key={s.key} value={s.key} className={`overview-tab overview-${s.tone}`}><span className="overview-tab-dot" aria-hidden="true"/>{s.label}</TabsTrigger>)}</TabsList>
-        {sections.map(s => <TabsContent key={s.key} value={s.key} className={`overview-section overview-${s.tone} space-y-5 rounded-2xl border p-4 sm:p-5`}>{s.node}</TabsContent>)}
+        {sections.filter(s=>visited.includes(s.key)).map(s => <TabsContent forceMount hidden={s.key!==(sections.some(s=>s.key===selected)?selected:"today")} key={s.key} value={s.key} className={`overview-section overview-${s.tone} space-y-5 rounded-2xl border p-4 sm:p-5`}><Suspense fallback={<div role="status" className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Loading {s.label}…</div>}>{s.node}</Suspense></TabsContent>)}
       </Tabs>
     </AdminShell>
   );

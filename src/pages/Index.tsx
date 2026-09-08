@@ -46,23 +46,20 @@ const Index = () => {
         .order("display_order", { ascending: true });
       if (!cancelled) setCategories(data ?? []);
     };
-    Promise.all([
-      loadCategories(),
-      supabase
-        .from("products")
-        .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
-        .eq("is_published", true)
-        .eq("is_featured", true)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(8),
-      fetchHomepageData(),
-    ]).then(([_cats, prods, hp]) => {
-      if (cancelled) return;
-      setFeatured((prods.data ?? []) as ProductCardData[]);
-      setSections(hp.sections);
-      setSettings(hp.settings);
-    }).catch(() => { /* page still renders if optional homepage data fails */ });
+    void loadCategories().catch(()=>{ /* categories can retry via realtime */ });
+    // Each section can render as soon as its own data arrives.
+    void (async()=>{
+      try{
+        const {data}=await supabase.from("products")
+          .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
+          .eq("is_published",true).eq("is_featured",true).is("deleted_at",null)
+          .order("created_at",{ascending:false}).limit(8);
+        if(!cancelled)setFeatured((data||[]) as ProductCardData[]);
+      }catch{ /* optional featured section */ }
+    })();
+    void fetchHomepageData().then(hp=>{
+      if(!cancelled){setSections(hp.sections);setSettings(hp.settings);}
+    }).catch(()=>{ /* default hero remains available */ });
 
     type IdleCb = (cb: () => void, opts?: { timeout: number }) => number;
     const idle = (window as unknown as { requestIdleCallback?: IdleCb }).requestIdleCallback;

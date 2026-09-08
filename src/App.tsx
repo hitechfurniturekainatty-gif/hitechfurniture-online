@@ -1,3 +1,6 @@
+import { pageLoaders } from "@/lib/routePreload";
+import { RouteIntentPreloader } from "@/components/RouteIntentPreloader";
+import { AuthProvider } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
@@ -18,64 +21,64 @@ const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
   return <Navigate to={`/admin/enquiries?open=${kind}:${id}`} replace />;
 };
 
-const Catalog = lazy(() => import("./pages/Catalog.tsx"));
-const Faq = lazy(() => import("./pages/Faq.tsx"));
-const ProductDetail = lazy(() => import("./pages/ProductDetail.tsx"));
-const Auth = lazy(() => import("./pages/Auth.tsx"));
-const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.tsx"));
-const AdminMyWork = lazy(() => import("./pages/admin/AdminMyWork.tsx"));
-const AdminEnquiriesInbox = lazy(() => import("./pages/admin/AdminEnquiriesInbox.tsx"));
-const AdminWhatsAppInbox = lazy(() => import("./pages/admin/AdminWhatsAppInbox.tsx"));
-const AdminCategories = lazy(() => import("./pages/admin/AdminCategories.tsx"));
-const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
-const AdminProductBulkCreate = lazy(() => import("./pages/admin/AdminProductBulkCreate.tsx"));
-const AdminProductApproval = lazy(() => import("./pages/admin/AdminProductApproval.tsx"));
-const AdminInventoryLedger = lazy(() => import("./pages/admin/AdminInventoryLedger.tsx"));
-const AdminInventoryReorder = lazy(() => import("./pages/admin/AdminInventoryReorder.tsx"));
-const AdminInventoryReceiving = lazy(() => import("./pages/admin/AdminInventoryReceiving.tsx"));
-const AdminInventoryStockTake = lazy(() => import("./pages/admin/AdminInventoryStockTake.tsx"));
-const AdminInventoryTransfers = lazy(() => import("./pages/admin/AdminInventoryTransfers.tsx"));
-const AdminBundles = lazy(() => import("./pages/admin/AdminBundles.tsx"));
-const AdminBundleEditor = lazy(() => import("./pages/admin/AdminBundleEditor.tsx"));
-const AdminBundleBulkCreate = lazy(() => import("./pages/admin/AdminBundleBulkCreate.tsx"));
-const AdminStaff = lazy(() => import("./pages/admin/AdminStaff.tsx"));
-const AdminWorkers = lazy(() => import("./pages/admin/AdminWorkers.tsx"));
-const AdminWorkerDetail = lazy(() => import("./pages/admin/AdminWorkerDetail.tsx"));
-const AdminProductionBoard = lazy(() => import("./pages/admin/AdminProductionBoard.tsx"));
-const AdminMeasurementTasks = lazy(() => import("./pages/admin/AdminMeasurementTasks.tsx"));
-const AdminQuotations = lazy(() => import("./pages/admin/AdminQuotations.tsx"));
-const AdminQuotationEditor = lazy(() => import("./pages/admin/AdminQuotationEditor.tsx"));
-const AdminQuotationPreview = lazy(() => import("./pages/admin/AdminQuotationPreview.tsx"));
-const AdminQuotationBulkCreate = lazy(() => import("./pages/admin/AdminQuotationBulkCreate.tsx"));
-const AdminSchemeCalculator = lazy(() => import("./pages/admin/AdminSchemeCalculator.tsx"));
-const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes.tsx"));
-const AdminVehicles = lazy(() => import("./pages/admin/AdminVehicles.tsx"));
-const AdminLogistics = lazy(() => import("./pages/admin/AdminLogistics.tsx"));
-const AdminWarehouse = lazy(() => import("./pages/admin/AdminWarehouse.tsx"));
-const AdminTrips = lazy(() => import("./pages/admin/AdminTrips.tsx"));
-const AdminMyTrips = lazy(() => import("./pages/admin/AdminMyTrips.tsx"));
-const AdminServices = lazy(() => import("./pages/admin/AdminServices.tsx"));
-const AdminTrash = lazy(() => import("./pages/admin/AdminTrash.tsx"));
-const AdminHomePage = lazy(() => import("./pages/admin/AdminHomePage.tsx"));
-const AdminReceivables = lazy(() => import("./pages/admin/AdminReceivables.tsx"));
-const AdminBacklog = lazy(() => import("./pages/admin/AdminBacklog.tsx"));
-const AdminStaffMonitor = lazy(() => import("./pages/admin/AdminStaffMonitor.tsx"));
-const AdminPipelineMonitor = lazy(() => import("./pages/admin/AdminPipelineMonitor.tsx"));
-const NotFound = lazy(() => import("./pages/NotFound.tsx"));
-const WorkerLogin = lazy(() => import("./pages/WorkerLogin.tsx"));
-const WorkerPortal = lazy(() => import("./pages/WorkerPortal.tsx"));
-const WorkerJobView = lazy(() => import("./pages/WorkerJobView.tsx"));
-const SharedQuotationView = lazy(() => import("./pages/SharedQuotationView.tsx"));
-const SharedJobView = lazy(() => import("./pages/SharedJobView.tsx"));
-const DeliveryNote = lazy(() => import("./pages/DeliveryNote.tsx"));
-const About = lazy(() => import("./pages/About.tsx"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy.tsx"));
-const EnquiryLink = lazy(() => import("./pages/EnquiryLink.tsx"));
-const UserGuide = lazy(() => import("./pages/UserGuide.tsx"));
-const StaffCatalog = lazy(() => import("./pages/StaffCatalog.tsx"));
-const BundleDetail = lazy(() => import("./pages/BundleDetail.tsx"));
-const AdminVault = lazy(() => import("./pages/admin/AdminVault.tsx"));
-const OAuthConsent = lazy(() => import("./pages/OAuthConsent.tsx"));
+const Catalog = lazy(pageLoaders.Catalog);
+const Faq = lazy(pageLoaders.Faq);
+const ProductDetail = lazy(pageLoaders.ProductDetail);
+const Auth = lazy(pageLoaders.Auth);
+const AdminOverview = lazy(pageLoaders.AdminOverview);
+const AdminMyWork = lazy(pageLoaders.AdminMyWork);
+const AdminEnquiriesInbox = lazy(pageLoaders.AdminEnquiriesInbox);
+const AdminWhatsAppInbox = lazy(pageLoaders.AdminWhatsAppInbox);
+const AdminCategories = lazy(pageLoaders.AdminCategories);
+const AdminProducts = lazy(pageLoaders.AdminProducts);
+const AdminProductBulkCreate = lazy(pageLoaders.AdminProductBulkCreate);
+const AdminProductApproval = lazy(pageLoaders.AdminProductApproval);
+const AdminInventoryLedger = lazy(pageLoaders.AdminInventoryLedger);
+const AdminInventoryReorder = lazy(pageLoaders.AdminInventoryReorder);
+const AdminInventoryReceiving = lazy(pageLoaders.AdminInventoryReceiving);
+const AdminInventoryStockTake = lazy(pageLoaders.AdminInventoryStockTake);
+const AdminInventoryTransfers = lazy(pageLoaders.AdminInventoryTransfers);
+const AdminBundles = lazy(pageLoaders.AdminBundles);
+const AdminBundleEditor = lazy(pageLoaders.AdminBundleEditor);
+const AdminBundleBulkCreate = lazy(pageLoaders.AdminBundleBulkCreate);
+const AdminStaff = lazy(pageLoaders.AdminStaff);
+const AdminWorkers = lazy(pageLoaders.AdminWorkers);
+const AdminWorkerDetail = lazy(pageLoaders.AdminWorkerDetail);
+const AdminProductionBoard = lazy(pageLoaders.AdminProductionBoard);
+const AdminMeasurementTasks = lazy(pageLoaders.AdminMeasurementTasks);
+const AdminQuotations = lazy(pageLoaders.AdminQuotations);
+const AdminQuotationEditor = lazy(pageLoaders.AdminQuotationEditor);
+const AdminQuotationPreview = lazy(pageLoaders.AdminQuotationPreview);
+const AdminQuotationBulkCreate = lazy(pageLoaders.AdminQuotationBulkCreate);
+const AdminSchemeCalculator = lazy(pageLoaders.AdminSchemeCalculator);
+const AdminRoutes = lazy(pageLoaders.AdminRoutes);
+const AdminVehicles = lazy(pageLoaders.AdminVehicles);
+const AdminLogistics = lazy(pageLoaders.AdminLogistics);
+const AdminWarehouse = lazy(pageLoaders.AdminWarehouse);
+const AdminTrips = lazy(pageLoaders.AdminTrips);
+const AdminMyTrips = lazy(pageLoaders.AdminMyTrips);
+const AdminServices = lazy(pageLoaders.AdminServices);
+const AdminTrash = lazy(pageLoaders.AdminTrash);
+const AdminHomePage = lazy(pageLoaders.AdminHomePage);
+const AdminReceivables = lazy(pageLoaders.AdminReceivables);
+const AdminBacklog = lazy(pageLoaders.AdminBacklog);
+const AdminStaffMonitor = lazy(pageLoaders.AdminStaffMonitor);
+const AdminPipelineMonitor = lazy(pageLoaders.AdminPipelineMonitor);
+const NotFound = lazy(pageLoaders.NotFound);
+const WorkerLogin = lazy(pageLoaders.WorkerLogin);
+const WorkerPortal = lazy(pageLoaders.WorkerPortal);
+const WorkerJobView = lazy(pageLoaders.WorkerJobView);
+const SharedQuotationView = lazy(pageLoaders.SharedQuotationView);
+const SharedJobView = lazy(pageLoaders.SharedJobView);
+const DeliveryNote = lazy(pageLoaders.DeliveryNote);
+const About = lazy(pageLoaders.About);
+const PrivacyPolicy = lazy(pageLoaders.PrivacyPolicy);
+const EnquiryLink = lazy(pageLoaders.EnquiryLink);
+const UserGuide = lazy(pageLoaders.UserGuide);
+const StaffCatalog = lazy(pageLoaders.StaffCatalog);
+const BundleDetail = lazy(pageLoaders.BundleDetail);
+const AdminVault = lazy(pageLoaders.AdminVault);
+const OAuthConsent = lazy(pageLoaders.OAuthConsent);
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 60_000, gcTime: 5 * 60_000, refetchOnWindowFocus: false, retry: 1 } },
@@ -87,9 +90,10 @@ const RouteFallback = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+    <AuthProvider><TooltipProvider>
       <Toaster /><Sonner />
       <BrowserRouter>
+        <RouteIntentPreloader />
         <BacklogShortcut />
         <GlobalNotesWindow />
         <EnquiryForm />
@@ -163,7 +167,7 @@ const App = () => (
           </Routes>
         </Suspense>
       </BrowserRouter>
-    </TooltipProvider>
+    </TooltipProvider></AuthProvider>
   </QueryClientProvider>
 );
 

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { refLabel, monthRef } from "./schemeAttribution";
 import { invoiceRows } from "./periodBenefits";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
   onRemove: () => void | Promise<void>;
   onEdit: () => void;
 }) {
+  const focusedMrp=useRef<number>(0);
   const rows = invoice.rows;
   void _savedSchemes;
   const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
@@ -84,7 +86,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
               return <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.item || "—"}</TableCell><TableCell><span className={r.reward?"rounded bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900":"text-[11px] text-muted-foreground"}>{r.reward?"Free / scheme":invoice.document_kind==="purchase_return"?"Return":"Purchase"}</span></TableCell>
                 <TableCell>
-                  <Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} onBlur={() => void onPersist()} className="ml-auto h-9 w-full min-w-0 border-primary/30 bg-primary/[0.04] text-right font-semibold" placeholder="Enter MRP" aria-label={`MRP for ${r.item}`} />
+                  <Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} onFocus={()=>{focusedMrp.current=Number(r.mrp)||0;}} onBlur={() => {if(focusedMrp.current!==(Number(r.mrp)||0))void onPersist();}} className="ml-auto h-9 w-full min-w-0 border-primary/30 bg-primary/[0.04] text-right font-semibold" placeholder="Enter MRP" aria-label={`MRP for ${r.item}`} />
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(r.qty) || 0)}</TableCell>
                 <TableCell className="text-right font-medium tabular-nums">₹{fmt(cost)}</TableCell>
