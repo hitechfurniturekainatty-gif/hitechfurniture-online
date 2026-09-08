@@ -24,3 +24,11 @@ The `private-media` Edge Function is deployed and the signed-URL frontend is on 
 Supabase leaked-password protection is an Auth dashboard setting and requires separate verification. Security-definer RPC warnings can remain for deliberately privileged, authorized operations; inspect each rather than suppressing the advisor. The `pg_trgm` public-schema advisory requires a separate dependency-aware migration.
 
 This change is not a full infrastructure penetration test. Review hosting, backups, n8n webhook authentication, and internal column-level price permissions separately; a successful build does not prove those controls.
+
+## Supplier-cost rollout (2026-09-08)
+
+The authorized `get_catalog_costs` RPC and role-masked catalogue views are active. The frontend adapter requests public columns and retrieves supplier costs in bounded batches; PostgreSQL checks Admin/Office membership. Other roles receive no cost values from these endpoints. Price-history RLS already limits reads to office roles.
+
+**Not yet active:** authenticated base-table column revocation. Apply `supabase/hardening/activate_catalog_cost_privileges.sql` through a migration only after verifying that the hosting provider serves the new `catalogCostFetch` client. Applying it before deployment would break old product queries. Until activation, operational roles with existing product row access can still query the base `cost_price` column directly. This is a remaining security limitation, not a completed control.
+
+After activation, verify authenticated `has_column_privilege` is false for both base tables, then run `supabase/tests/catalog_cost_access.sql` and the existing access tests. Test Admin product editing, Staff catalogue, Warehouse inventory and public bundles in the deployed UI. The cost-role SQL test rolls back all synthetic identities and prints no supplier prices.

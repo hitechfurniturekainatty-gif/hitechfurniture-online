@@ -14,12 +14,12 @@ it('loads only selected departments and keeps their data on return',async()=>{
  expect(state.production).toBe(0);expect(state.delivery).toBe(0);
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Production'}),{button:0,ctrlKey:false});
  await screen.findByText('Production loaded data');
- expect(state.production).toBe(1);
+ await waitFor(()=>expect(state.production).toBe(1));
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Delivery'}),{button:0,ctrlKey:false});
  await screen.findByText('Delivery loaded data');
  expect(screen.getByText('Production loaded data').closest('[role="tabpanel"]')).toHaveAttribute('hidden');
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Production'}),{button:0,ctrlKey:false});
  await waitFor(()=>expect(screen.getByText('Production loaded data').closest('[role="tabpanel"]')).not.toHaveAttribute('hidden'));
- expect(state.production).toBe(1);
- expect(state.delivery).toBe(1);
+ await waitFor(()=>expect(state.production).toBe(1));
+ await waitFor(()=>expect(state.delivery).toBe(1));
 });
