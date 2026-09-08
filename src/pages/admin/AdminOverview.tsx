@@ -43,7 +43,7 @@ const AdminOverview = () => {
     ...(showProduction ? [{key:"production",label:"Production",tone:"violet",node:<AdminProductionAnalyticsDashboard />}] : []),
     ...(showWarehouse ? [{key:"warehouse",label:"Stock & warehouse",tone:"sage",node:<AdminWarehouseAnalyticsDashboard />}] : []),
     ...(showDelivery ? [{key:"delivery",label:"Delivery",tone:"terracotta",node:<AdminDeliveryAnalyticsDashboard />}] : []),
-    ...(showAdmin ? [{key:"reports",label:"Business reports",tone:"blue",node:<AdminAnalyticsDashboard />},{key:"website",label:"Website health",tone:"sage",node:<AdminSeoHealthDashboard />}] : []),
+    ...(showAdmin ? [{key:"reports",label:"Business reports",tone:"slate",node:<AdminAnalyticsDashboard />},{key:"website",label:"Website health",tone:"rose",node:<AdminSeoHealthDashboard />}] : []),
   ];
 
   return (
@@ -60,7 +60,7 @@ const AdminOverview = () => {
       </div>
 
       <Tabs value={sections.some(s => s.key === selected) ? selected : "today"} onValueChange={setSelected}>
-        <TabsList aria-label="Dashboard departments" className="mb-5 flex h-auto flex-wrap justify-start gap-2">{sections.map(s => <TabsTrigger key={s.key} value={s.key}>{s.label}</TabsTrigger>)}</TabsList>
+        <TabsList aria-label="Dashboard departments" className="mb-5 flex h-auto flex-wrap justify-start gap-2">{sections.map(s => <TabsTrigger key={s.key} value={s.key} className={`overview-tab overview-${s.tone}`}><span className="overview-tab-dot" aria-hidden="true"/>{s.label}</TabsTrigger>)}</TabsList>
         {sections.map(s => <TabsContent key={s.key} value={s.key} className={`overview-section overview-${s.tone} space-y-5 rounded-2xl border p-4 sm:p-5`}>{s.node}</TabsContent>)}
       </Tabs>
     </AdminShell>

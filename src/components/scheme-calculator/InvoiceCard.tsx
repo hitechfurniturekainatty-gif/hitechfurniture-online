@@ -67,7 +67,7 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
       <details className="p-3"><summary className="cursor-pointer text-xs font-medium">Items / MRP details ({rows.length})</summary><div className="overflow-x-auto">
         <Table className="w-full table-fixed text-xs">
           <TableHeader><TableRow className="bg-muted/15">
-            <TableHead className="w-[28%]">Item</TableHead>
+            <TableHead className="w-[24%]">Item</TableHead><TableHead className="w-[12%]">Type</TableHead>
             <TableHead className="w-[17%] text-right">MRP / Unit</TableHead>
             <TableHead className="w-[7%] text-right">Qty</TableHead>
             <TableHead className="w-[18%] text-right">Amount incl. Tax</TableHead>
@@ -75,14 +75,14 @@ export function InvoiceCard({ index, invoice, savedSchemes: _savedSchemes, fallb
             <TableHead className="w-[18%]">Scheme</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">No invoice items.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-xs text-muted-foreground">No invoice items.</TableCell></TableRow>}
             {rows.map((r) => {
               const match = matchInfo(r);
               const mrpValue = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
               const cost = Number(r.amountWithTax) || 0;
               const disc = mrpValue > 0 ? ((mrpValue - cost) / mrpValue) * 100 : 0;
               return <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.item || "—"}</TableCell>
+                <TableCell className="font-medium">{r.item || "—"}</TableCell><TableCell><span className={r.reward?"rounded bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900":"text-[11px] text-muted-foreground"}>{r.reward?"Free / scheme":invoice.document_kind==="purchase_return"?"Return":"Purchase"}</span></TableCell>
                 <TableCell>
                   <Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} onBlur={() => void onPersist()} className="ml-auto h-9 w-full min-w-0 border-primary/30 bg-primary/[0.04] text-right font-semibold" placeholder="Enter MRP" aria-label={`MRP for ${r.item}`} />
                 </TableCell>

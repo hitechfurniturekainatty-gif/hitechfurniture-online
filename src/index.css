@@ -147,3 +147,11 @@
 .admin-theme .benefit-entry [role="combobox"] { min-height:42px; height:auto; text-align:left; }
 .admin-theme .benefit-entry [role="combobox"] > span { white-space:normal; overflow-wrap:anywhere; }
 .admin-theme .benefit-entry label { line-height:1.5; }
+
+/* Department accents retain the same muted palette as the pipeline charts. */
+.overview-blue { --section-accent:#598da7; --section-tint:#edf3f8; }
+.overview-slate { --section-accent:#71819e; --section-tint:#eef1f6; }
+.overview-rose { --section-accent:#b7747c; --section-tint:#f8eef0; }
+.admin-theme .overview-tab { gap:8px; border:1px solid transparent; }
+.admin-theme .overview-tab[data-state="active"] { background:var(--section-tint); color:#263e46; border-color:var(--section-accent); box-shadow:0 2px 5px #243e4610; }
+.overview-tab-dot { width:8px; height:8px; border-radius:50%; background:var(--section-accent); flex-shrink:0; }

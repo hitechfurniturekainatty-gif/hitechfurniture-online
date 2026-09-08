@@ -234,24 +234,25 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
               <Table className="min-w-[720px] table-fixed">
                 <TableHeader><TableRow className="bg-muted/25">
                   <TableHead className="w-[280px]">Item</TableHead>
-                  <TableHead className="w-[90px] text-right">Qty</TableHead>
+                  <TableHead className="w-[130px]">Type</TableHead><TableHead className="w-[90px] text-right">Qty</TableHead>
                   <TableHead className="w-[140px] text-right">MRP / Unit</TableHead>
                   <TableHead className="w-[160px] text-right">Amount incl. Tax</TableHead>
                   <TableHead className="w-[110px] text-right">Discount</TableHead>
                   <TableHead className="w-[55px]"></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {rows.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">No items yet. Paste/upload the invoice or add one manually.</TableCell></TableRow>}
+                  {rows.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-xs text-muted-foreground">No items yet. Paste/upload the invoice or add one manually.</TableCell></TableRow>}
                   {rows.map((r) => {
                     const mrpValue = (Number(r.mrp) || 0) * (Number(r.qty) || 0);
                     const cost = Number(r.amountWithTax) || 0;
                     const disc = mrpValue > 0 ? ((mrpValue - cost) / mrpValue) * 100 : 0;
                     const invalid = !String(r.item || "").trim() || Number(r.qty) <= 0;
-                    return <TableRow key={r.id} className={invalid ? "bg-destructive/5" : undefined}>
+                    return <TableRow key={r.id} className={invalid ? "bg-destructive/5" : r.reward ? "bg-amber-50/40" : undefined}>
                       <TableCell className="space-y-2"><Input list="scheme-vendor-items" value={r.item} onChange={(e) => updateRow(r.id, { item: e.target.value })} className="h-9" placeholder="Item name" />
-                      {invoice.document_kind!=="purchase_return"&&<label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!r.reward} onChange={e=>updateRow(r.id,{reward:e.target.checked?{scheme_month:date.slice(0,7)}:undefined})}/>Free / scheme item</label>}
+
                       {r.reward&&<SchemeTargetSelect goodsOnly source={r.reward.scheme_period||monthRef(r.reward.scheme_month||date)} ruleKey={r.reward.scheme_rule_key} months={schemeMonths} periods={schemePeriods} onChange={(scheme_period,scheme_rule_key,scheme_label)=>updateRow(r.id,{reward:{scheme_period,scheme_month:refEndMonth(scheme_period),scheme_rule_key,scheme_label}})}/>}
                       </TableCell>
+                      <TableCell>{invoice.document_kind==="purchase_return"?<span className="text-xs">Purchase return</span>:<select aria-label={"Item type for "+r.item} className={"h-9 w-full rounded-md border px-2 text-xs "+(r.reward?"border-amber-300 bg-amber-50 text-amber-900":"bg-background")} value={r.reward?"free":"purchase"} onChange={e=>updateRow(r.id,{reward:e.target.value==="free"?{scheme_month:date.slice(0,7)}:undefined})}><option value="purchase">Purchase</option><option value="free">Free / scheme</option></select>}</TableCell>
                       <TableCell><Input type="number" min={0} value={r.qty} onChange={(e) => updateRow(r.id, { qty: Number(e.target.value) || 0 })} className="h-9 text-right" /></TableCell>
                       <TableCell><Input type="number" min={0} inputMode="decimal" value={r.mrp || ""} onChange={(e) => updateRow(r.id, { mrp: e.target.value === "" ? 0 : Number(e.target.value) })} className="h-9 border-primary/30 bg-primary/[0.03] text-right font-semibold" placeholder="Enter MRP" /></TableCell>
                       <TableCell><Input type="number" min={0} value={r.amountWithTax} onChange={(e) => updateRow(r.id, { amountWithTax: Number(e.target.value) || 0 })} className="h-9 text-right" /></TableCell>

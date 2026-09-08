@@ -17,7 +17,7 @@ import {
   Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ALL_STAGES, STAGE_DEFS, stageToneHex } from "@/lib/quotationPipeline";
+import { ALL_STAGES, STAGE_DEFS, stageToneHex, stageToneClasses } from "@/lib/quotationPipeline";
 
 type Snapshot = {
   catalog_pending_review: number;
@@ -261,7 +261,7 @@ export const CommandCenterPanel = ({ compact = false }: { compact?: boolean }) =
                   const count = stageCounts[String(stage)] ?? 0;
                   const pct = Math.round((count / maxStageCount) * 100);
                   return (
-                    <Link key={stage} to={`/admin/quotations?status=stage${stage}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-smooth hover:bg-secondary/60">
+                    <Link key={stage} to={`/admin/quotations?status=stage${stage}`} className={`-mx-2 flex items-center gap-3 rounded-lg border px-2 py-2 transition-smooth hover:shadow-sm ${stageToneClasses(def.tone)}`}>
                       <div className="w-28 shrink-0">
                         <div className="text-sm font-medium text-foreground">{def.label}</div>
                         <div className="text-[11px] text-muted-foreground">{def.owner}</div>

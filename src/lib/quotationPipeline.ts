@@ -105,12 +105,12 @@ export const computeStage = (q: PipelineInput): StageInfo => {
 
 export const stageToneClasses = (tone: StageInfo["tone"]) => {
   switch (tone) {
-    case "rose":    return "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300";
-    case "amber":   return "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-    case "sky":     return "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-    case "violet":  return "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300";
-    case "indigo":  return "border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300";
-    case "emerald": return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    case "rose":    return "border-[#b7747c]/40 bg-[#f8eef0] text-[#854b54] dark:bg-rose-950/30 dark:text-rose-300";
+    case "amber":   return "border-[#bd944d]/40 bg-[#faf5e9] text-[#806225] dark:bg-amber-950/30 dark:text-amber-300";
+    case "sky":     return "border-[#598da7]/40 bg-[#edf3f8] text-[#3e687d] dark:bg-sky-950/30 dark:text-sky-300";
+    case "violet":  return "border-[#9180ad]/40 bg-[#f4f0f8] text-[#6d5988] dark:bg-violet-950/30 dark:text-violet-300";
+    case "indigo":  return "border-[#71819e]/40 bg-[#eef1f6] text-[#536581] dark:bg-indigo-950/30 dark:text-indigo-300";
+    case "emerald": return "border-[#6d9785]/40 bg-[#eef5f1] text-[#456f5c] dark:bg-emerald-950/30 dark:text-emerald-300";
   }
 };
 
