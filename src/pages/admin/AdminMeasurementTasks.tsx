@@ -30,6 +30,8 @@ type Task = {
   assigned_to: string | null;
   created_at: string;
   completed_at: string | null;
+  visit_date?: string | null;
+  delivery_route_id?: string | null;
   draft_quotation_id: string | null;
 };
 
@@ -40,6 +42,11 @@ const AdminMeasurementTasks = () => {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
+  const [routes, setRoutes] = useState<{id: string; name: string}[]>([]);
+  const [routeFilter, setRouteFilter] = useState("all");
+  const [dayFilter, setDayFilter] = useState("");
+  const [scheduleSaving, setScheduleSaving] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,8 +61,13 @@ const AdminMeasurementTasks = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("measurement_tasks").select("*").is("deleted_at", null).order("created_at", { ascending: false });
-    setTasks((data ?? []) as Task[]);
+    const [{ data, error }, routeResult] = await Promise.all([
+      supabase.from("measurement_tasks").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
+      supabase.from("delivery_routes").select("id,name").eq("is_active", true).is("deleted_at", null).order("name"),
+    ]);
+    setLoadError(error?.message || routeResult.error?.message || "");
+    if (!error) setTasks((data ?? []) as Task[]);
+    if (!routeResult.error) setRoutes(routeResult.data ?? []);
     setLoading(false);
   };
 
@@ -151,6 +163,7 @@ const AdminMeasurementTasks = () => {
       status: "drafted",
       created_by: user?.id ?? null,
       source_task_id: t.id,
+      delivery_route_id: t.delivery_route_id,
     }).select("id").single();
     if (error || !q) {
       toast({ title: "Failed to create draft", description: error?.message, variant: "destructive" });
@@ -179,7 +192,19 @@ const AdminMeasurementTasks = () => {
   const myTasks = tasks.filter((t) => t.assigned_to === user?.id);
   const poolTasks = tasks.filter((t) => !t.assigned_to);
   const otherTasks = tasks.filter((t) => t.assigned_to && t.assigned_to !== user?.id);
-  const pending = (list: Task[]) => list.filter((t) => t.status !== "completed");
+  const pending = (list: Task[]) => list.filter((t) => t.status !== "completed"
+    && (routeFilter === "all" || (routeFilter === "unassigned" ? !t.delivery_route_id : t.delivery_route_id === routeFilter))
+    && (!dayFilter || t.visit_date === dayFilter))
+    .sort((a, b) => (a.visit_date || "9999").localeCompare(b.visit_date || "9999") || a.customer_place.localeCompare(b.customer_place));
+
+  const schedule = async (task: Task, patch: { visit_date?: string | null; delivery_route_id?: string | null }) => {
+    setScheduleSaving(task.id);
+    const { error } = await supabase.from("measurement_tasks").update(patch as any).eq("id", task.id);
+    setScheduleSaving(null);
+    if (error) { toast({ title: "Schedule not saved", description: error.message, variant: "destructive" }); return; }
+    setTasks((previous) => previous.map((t) => t.id === task.id ? { ...t, ...patch } : t));
+    toast({ title: "Visit schedule saved" });
+  };
   const done = (list: Task[]) => list.filter((t) => t.status === "completed");
 
   const claimTask = async (t: Task) => {
@@ -216,6 +241,10 @@ const AdminMeasurementTasks = () => {
             {t.status === "completed" ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <Clock className="mr-1 h-3 w-3" />}
             {t.status}
           </Badge>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div><Label className="text-xs">Visit date / പോകേണ്ട ദിവസം</Label><Input aria-label={`Visit date for ${t.customer_name}`} type="date" defaultValue={t.visit_date || ""} disabled={scheduleSaving === t.id || t.status === "completed" || !(mine || isOfficeStaff)} onBlur={(event) => { const value = event.target.value || null; if (value !== t.visit_date) void schedule(t, {visit_date: value}); }} /></div>
+          <div><Label className="text-xs">Route / റൂട്ട്</Label><Select value={t.delivery_route_id || "unassigned"} disabled={scheduleSaving === t.id || t.status === "completed" || !(mine || isOfficeStaff)} onValueChange={(value) => schedule(t, {delivery_route_id: value === "unassigned" ? null : value})}><SelectTrigger aria-label={`Route for ${t.customer_name}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">Not assigned</SelectItem>{routes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select></div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {mine && t.status !== "completed" && (
@@ -304,6 +333,13 @@ const AdminMeasurementTasks = () => {
         )}
       </div>
 
+      <div className="mb-4 grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-3">
+        <div><Label>Filter by visit date</Label><Input type="date" value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} /></div>
+        <div><Label>Filter by route</Label><Select value={routeFilter} onValueChange={setRouteFilter}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All routes</SelectItem><SelectItem value="unassigned">Route not assigned</SelectItem>{routes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="flex items-end"><Button variant="outline" onClick={() => {setDayFilter(""); setRouteFilter("all");}}>Show all pending visits</Button></div>
+        <p className="text-xs text-muted-foreground sm:col-span-3">ദിവസവും റൂട്ടും തിരഞ്ഞെടുത്താൽ ആ വഴിയിലുള്ള pending visits കാണാം. തീയതി നൽകാത്ത tasks കാണാൻ date filter clear ചെയ്യുക.</p>
+      </div>
+      {loadError && <div role="alert" className="mb-3 rounded border border-destructive p-3 text-sm">Tasks/routes could not be loaded: {loadError} <Button variant="outline" size="sm" onClick={load}>Retry</Button></div>}
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
