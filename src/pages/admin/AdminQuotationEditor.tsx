@@ -1,3 +1,4 @@
+import { MeasurementAssignment } from '@/components/admin/MeasurementAssignment';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -271,6 +272,8 @@ const AdminQuotationEditor = () => {
   const [dndOpen, setDndOpen] = useState(false);
   const [dragProduct, setDragProduct] = useState<CatalogProduct | null>(null);
 
+  const [measurementOpen, setMeasurementOpen] = useState(false);
+  const [measurementItems, setMeasurementItems] = useState<QItem[]>([]);
   const [jobOpen, setJobOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
@@ -1479,6 +1482,7 @@ const AdminQuotationEditor = () => {
                 jpgTooltip="JPG — high-res images for WhatsApp"
               />
               <Button variant="outline" className="shrink-0" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
+              <Button variant="outline" onClick={async () => { const saved = await ensureSaved(); if (saved) { setMeasurementItems(saved); setMeasurementOpen(true); } }}>Assign measurement</Button>
               <Button variant="secondary" className="shrink-0" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
               <AttachedNotesButton quotationId={q.id} />
             </>
@@ -2440,6 +2444,7 @@ const AdminQuotationEditor = () => {
         </DialogContent>
       </Dialog>
 
+      <MeasurementAssignment quotationId={q.id} items={measurementItems} open={measurementOpen} onClose={() => setMeasurementOpen(false)} />
       <Dialog open={jobOpen} onOpenChange={setJobOpen}>
         <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
           <DialogHeader className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">

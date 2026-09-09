@@ -397,21 +397,10 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     if (!assigneeId) return toast.error("Pick a measurement staff");
     setBusy(true);
     const r = row.raw;
-    const { error } = await supabase.from("measurement_tasks").insert({
-      customer_name: r.party_name,
-      customer_phone: r.party_phone,
-      customer_place: r.party_place,
-      requirement: r.notes,
-      assigned_to: assigneeId,
-      status: "pending",
-      draft_quotation_id: r.id,
-      created_by: user?.id ?? null,
+    const { error } = await (supabase as any).rpc("assign_item_measurement", {
+      q_id: r.id, staff_id: assigneeId, selected_ids: [],
+      route_id: r.delivery_route_id || null, visit_on: null,
     });
-    if (!error) {
-      await supabase.from("quotations")
-        .update({ enquiry_contacted_at: new Date().toISOString(), pipeline_stage: 2 })
-        .eq("id", row.id);
-    }
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Assigned to measurement");

@@ -1,3 +1,4 @@
+import { MeasurementReply } from '@/components/admin/MeasurementReply';
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -20,6 +21,8 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { softDelete } from "@/lib/softDelete";
 
 type Task = {
+  item_ids?: string[];
+  completion_note?: string | null;
   id: string;
   customer_name: string;
   customer_place: string;
@@ -40,6 +43,8 @@ type StaffOpt = { user_id: string; email: string | null; display_name: string | 
 const AdminMeasurementTasks = () => {
   const { user, isOfficeStaff, isMeasurementStaff, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [replyTask, setReplyTask] = useState<Task | null>(null);
+  const [staffFilter, setStaffFilter] = useState("all");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [routes, setRoutes] = useState<{id: string; name: string}[]>([]);
@@ -141,6 +146,14 @@ const AdminMeasurementTasks = () => {
   const startingMeasurement = useRef(false);
   const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
   const startMeasurement = async (t: Task) => {
+    if (t.item_ids?.length) {
+      if (t.status === "pending") {
+        const { error } = await supabase.from("measurement_tasks").update({ status: "in_progress" }).eq("id", t.id).select("id").single();
+        if (error) { toast({ title: "Could not start task", description: error.message, variant: "destructive" }); return; }
+        setTasks(list => list.map(x => x.id === t.id ? { ...x, status: "in_progress" } : x));
+      }
+      setReplyTask({ ...t, status: "in_progress" }); return;
+    }
     if (startingMeasurement.current) return;
     startingMeasurement.current = true;
     setStartingTaskId(t.id);
@@ -213,10 +226,11 @@ const AdminMeasurementTasks = () => {
     toast({ title: "Task moved to Trash" });
   };
 
+  const monitored = tasks.filter(t => staffFilter === "all" || t.assigned_to === staffFilter);
   const myTasks = tasks.filter((t) => t.assigned_to === user?.id);
   const poolTasks = tasks.filter((t) => !t.assigned_to);
   const otherTasks = tasks.filter((t) => t.assigned_to && t.assigned_to !== user?.id);
-  const pending = (list: Task[]) => list.filter((t) => t.status !== "completed"
+  const pending = (list: Task[]) => list.filter((t) => t.status !== "completed" && (staffFilter === "all" || t.assigned_to === staffFilter)
     && (routeFilter === "all" || (routeFilter === "unassigned" ? !t.delivery_route_id : t.delivery_route_id === routeFilter))
     && (!dayFilter || t.visit_date === dayFilter))
     .sort((a, b) => (a.visit_date || "9999").localeCompare(b.visit_date || "9999") || a.customer_place.localeCompare(b.customer_place));
@@ -229,7 +243,7 @@ const AdminMeasurementTasks = () => {
     setTasks((previous) => previous.map((t) => t.id === task.id ? { ...t, ...patch } : t));
     toast({ title: "Visit schedule saved" });
   };
-  const done = (list: Task[]) => list.filter((t) => t.status === "completed");
+  const done = (list: Task[]) => list.filter((t) => t.status === "completed" && (staffFilter === "all" || t.assigned_to === staffFilter));
 
   const claimTask = async (t: Task) => {
     if (!user?.id) return;
@@ -253,6 +267,7 @@ const AdminMeasurementTasks = () => {
             <p className="font-semibold truncate">{t.customer_name}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{t.customer_place}</p>
             {t.customer_phone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3" />{t.customer_phone}</p>}
+            {t.completion_note && <p className="mt-2 text-sm">Reply: {t.completion_note}</p>}
             {t.requirement && <p className="text-sm mt-2 text-foreground/80">{t.requirement}</p>}
             {!mine && isOfficeStaff && t.assigned_to && (
               <p className="text-xs mt-2 text-muted-foreground">Assigned to: <span className="font-medium text-foreground">{staffName(t.assigned_to)}</span></p>
@@ -271,7 +286,7 @@ const AdminMeasurementTasks = () => {
           <div><Label className="text-xs">Route / റൂട്ട്</Label><Select value={t.delivery_route_id || "unassigned"} disabled={scheduleSaving === t.id || t.status === "completed" || !(mine || isOfficeStaff)} onValueChange={(value) => schedule(t, {delivery_route_id: value === "unassigned" ? null : value})}><SelectTrigger aria-label={`Route for ${t.customer_name}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unassigned">Not assigned</SelectItem>{routes.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select></div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {mine && t.status !== "completed" && (
+          {(mine || isOfficeStaff) && t.status !== "completed" && (
             <Button size="sm" disabled={startingTaskId !== null} onClick={() => startMeasurement(t)}>
               <Ruler className="mr-1.5 h-3.5 w-3.5" /> {t.draft_quotation_id ? "Continue" : "Start measurement"}
             </Button>
@@ -281,6 +296,7 @@ const AdminMeasurementTasks = () => {
               Pick up
             </Button>
           )}
+          {t.item_ids?.length && t.status === "completed" ? <Button size="sm" variant="outline" onClick={() => setReplyTask(t)}>View measurement reply</Button> : null}
           {t.draft_quotation_id && (
             <Button size="sm" variant="outline" asChild>
               <Link to={`/admin/quotations/${t.draft_quotation_id}`}>Open draft <ArrowRight className="ml-1 h-3 w-3" /></Link>
@@ -298,6 +314,11 @@ const AdminMeasurementTasks = () => {
 
   return (
     <AdminShell>
+      <MeasurementReply task={replyTask} onClose={() => setReplyTask(null)} onSaved={load} />
+      {isOfficeStaff && <label className="mb-4 block">Monitor staff<select className="ml-3 rounded border p-2" value={staffFilter} onChange={e => setStaffFilter(e.target.value)}><option value="all">All staff</option>{staff.map(s => <option key={s.user_id} value={s.user_id}>{s.display_name || s.email}</option>)}</select></label>}
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        {[['Pending', monitored.filter(t => t.status === 'pending').length], ['In progress', monitored.filter(t => t.status === 'in_progress').length], ['Completed', monitored.filter(t => t.status === 'completed').length]].map(([label,count]) => <div key={label} className="rounded-xl border bg-muted/30 p-3"><p className="text-sm">{label}</p><p className="text-2xl font-semibold">{count}</p></div>)}
+      </div>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl">Measurement Tasks</h1>
