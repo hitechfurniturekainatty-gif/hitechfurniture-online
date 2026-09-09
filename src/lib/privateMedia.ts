@@ -43,7 +43,13 @@ export function privateMediaFetch(baseFetch: typeof fetch): typeof fetch {
     const urls = mediaUrls(value);
     if (!urls.length) return response;
     const paths = [...new Set(urls.map(mediaPath))];
-    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    const sourceHeaders = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    const headers = new Headers();
+    // Do not forward PostgREST schema, pagination or representation headers to Storage.
+    for (const name of ['authorization', 'apikey', 'x-client-info']) {
+      const value = sourceHeaders.get(name);
+      if (value) headers.set(name, value);
+    }
     headers.set('Content-Type','application/json');
     const rpc = url.pathname.split('/rpc/')[1];
     const shared = ['get_shared_quotation','get_shared_job_work_order','get_shared_delivery_note'].includes(rpc);

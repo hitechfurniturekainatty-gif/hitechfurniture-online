@@ -10,9 +10,12 @@ describe('Private attachments',()=>{
   });
   it('signs shared payloads with the original document token, preserving pagination headers',async()=>{
     const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([{image:file}]),{headers:{'content-type':'application/json','content-range':'0-0/1'}})).mockResolvedValueOnce(new Response(JSON.stringify({urls:{'folder/a b.jpg':signed}})));
-    const response=await privateMediaFetch(fetcher)(`${backendUrl}/rest/v1/rpc/get_shared_quotation`,{method:'POST',body:JSON.stringify({p_token:'document-token'}),headers:{Authorization:'Bearer public'}});
+    const response=await privateMediaFetch(fetcher)(`${backendUrl}/rest/v1/rpc/get_shared_quotation`,{method:'POST',body:JSON.stringify({p_token:'document-token'}),headers:{Authorization:'Bearer public','Accept-Profile':'public','Prefer':'return=representation','Range':'0-9'}});
     expect(await response.json()).toEqual([{image:signed}]);
     expect(response.headers.get('content-range')).toBe('0-0/1');
+    const signingHeaders = new Headers(fetcher.mock.calls[1][1].headers);
+    expect(signingHeaders.get('authorization')).toBe('Bearer public');
+    for (const name of ['accept-profile','prefer','range']) expect(signingHeaders.has(name)).toBe(false);
     expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({paths:['folder/a b.jpg'],rpc:'get_shared_quotation',token:'document-token'});
   });
   it('does not send credentials or signing requests for unrelated origins or catalogue responses',async()=>{
