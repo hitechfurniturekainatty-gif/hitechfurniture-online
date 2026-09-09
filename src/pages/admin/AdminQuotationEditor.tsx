@@ -1228,10 +1228,6 @@ const AdminQuotationEditor = () => {
   };
 
   const openJobDialog = async () => {
-    if (selectedItemIds.size === 0) {
-      toast({ title: "Select items first", description: "Tick the checkbox next to items to assign.", variant: "destructive" });
-      return;
-    }
     const saved = await ensureSaved();
     if (!saved) return;
     const { data } = await supabase.from("workers").select("id, name, whatsapp_number, trade").eq("is_active", true).order("name");
@@ -1631,6 +1627,12 @@ const AdminQuotationEditor = () => {
           )}
           {items.map((it, idx) => (
             <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+              {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
+                <label className="flex cursor-pointer items-center gap-2 border-b bg-primary/5 px-3 py-2 text-sm">
+                  <Checkbox checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Select item ${idx + 1} for job work`} />
+                  Select for job work / ജോലിക്ക് തിരഞ്ഞെടുക്കുക
+                </label>
+              )}
               <div className="flex flex-col gap-2 px-2 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] sm:items-center sm:px-3">
                 <div className="flex items-start gap-2 sm:contents">
                 <div className="flex shrink-0 flex-row items-center gap-1 sm:flex-col sm:justify-center">
@@ -1825,14 +1827,6 @@ const AdminQuotationEditor = () => {
               <>
               <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
-                    <Checkbox
-                      className="h-5 w-5"
-                      checked={selectedItemIds.has(it.id)}
-                      onCheckedChange={(v) => toggleItemSelect(it.id, !!v)}
-                      aria-label="Select for job work"
-                    />
-                  )}
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Item #{idx + 1}</span>
                   {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
                   <button
@@ -2456,6 +2450,18 @@ const AdminQuotationEditor = () => {
             onFocusCapture={scrollFocusedIntoView}
           >
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
+            <fieldset className="space-y-2 rounded-md border p-3">
+              <legend className="px-1 text-sm font-medium">Choose items / ഐറ്റം തിരഞ്ഞെടുക്കുക</legend>
+              <p className="text-xs text-muted-foreground">ഈ worker-ന് നൽകേണ്ട items മാത്രം തിരഞ്ഞെടുക്കുക. മറ്റുള്ളവ അടുത്ത worker-ന് വേറെ assign ചെയ്യാം.</p>
+              {items.filter((it) => !it._isNew).map((it) => (
+                <label key={it.id} className="flex items-start gap-2 rounded border p-2 text-sm">
+                  <Checkbox className="mt-1" disabled={it.fulfillment_route !== "custom"} checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Assign ${it.description || "item"}`} />
+                  <span>{it.description || "Unnamed item"} · Qty {it.quantity}
+                    {it.fulfillment_route !== "custom" && <span className="block text-xs text-muted-foreground">Ready Stock — production വേണമെങ്കിൽ item Details-ൽ Custom തിരഞ്ഞെടുക്കുക.</span>}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
 
             <div className="space-y-2">
               <Label>Send to</Label>
