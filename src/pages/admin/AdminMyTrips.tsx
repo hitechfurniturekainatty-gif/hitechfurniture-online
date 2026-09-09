@@ -54,6 +54,7 @@ const AdminMyTrips = () => {
   const [routes, setRoutes] = useState<RouteWithWaypoints[]>([]);
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [receivableBalanceByQuote, setReceivableBalanceByQuote] = useState<Record<string, number>>({});
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
@@ -63,14 +64,17 @@ const AdminMyTrips = () => {
   const load = async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(null);
+    try {
     const tripsQuery = isOfficeStaff
       ? supabase.from("trips").select("*").order("trip_date", { ascending: false }).limit(50)
       : supabase.from("trips").select("*").eq("assigned_driver_id", user.id).order("trip_date", { ascending: false });
-    const [{ data: t }, { data: r }, { data: w }] = await Promise.all([
+    const [{ data: t, error: tripsError }, { data: r, error: routesError }, { data: w, error: waypointsError }] = await Promise.all([
       tripsQuery,
       supabase.from("delivery_routes").select("*"),
       supabase.from("route_waypoints").select("*").order("display_order"),
     ]);
+    if (tripsError || routesError || waypointsError) throw tripsError || routesError || waypointsError;
     setTrips((t ?? []) as Trip[]);
     setRoutes(((r ?? []) as any[]).map((row) => ({
       id: row.id,
@@ -87,15 +91,16 @@ const AdminMyTrips = () => {
 
     const tripIds = (t ?? []).map((x: any) => x.id);
     if (tripIds.length) {
-      const { data: tq } = await supabase
+      const { data: tq, error: stopsError } = await supabase
         .from("trip_quotations")
         .select("*")
         .in("trip_id", tripIds)
         .order("stop_order");
+      if (stopsError) throw stopsError;
       const qids = ((tq ?? []) as TripQ[]).map((x) => x.quotation_id);
       setTripQs((tq ?? []) as TripQ[]);
       if (qids.length) {
-        const [{ data: qs }, { data: itemRows }, { data: receivableRows }] = await Promise.all([
+        const [{ data: qs, error: quotesError }, { data: itemRows, error: itemsError }, { data: receivableRows, error: balanceError }] = await Promise.all([
           supabase
             .from("quotations")
             .select("id, quotation_id, party_name, party_place, party_phone, party_address, delivery_place, expected_delivery_date, total, advance_amount, show_price_to_delivery")
@@ -111,6 +116,7 @@ const AdminMyTrips = () => {
             .in("quotation_id", qids)
             .eq("source", "quotation"),
         ]);
+        if (quotesError || itemsError || balanceError) throw quotesError || itemsError || balanceError;
         setQuotes((qs ?? []) as Q[]);
         setDeliveryItems((itemRows ?? []) as DeliveryItem[]);
         const balances: Record<string, number> = {};
@@ -131,7 +137,11 @@ const AdminMyTrips = () => {
       setReceivableBalanceByQuote({});
     }
     if (!activeTrip && t && t.length) setActiveTrip((t[0] as any).id);
-    setLoading(false);
+    } catch (error) {
+      setLoadError("Delivery details or collection balance could not be verified. Please retry before collecting payment.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -152,7 +162,8 @@ const AdminMyTrips = () => {
     const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
     const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
     const newStatus = allDelivered ? "delivered" : "in_transit";
-    await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
+    const { error: tripError } = await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
+    if (tripError) toast({ title: "Stop delivered; trip status update failed", description: tripError.message, variant: "destructive" });
     load();
   };
 
@@ -209,7 +220,13 @@ const AdminMyTrips = () => {
         <p className="mt-1 text-sm text-muted-foreground sm:text-base">Trips assigned to you, starting from the Hub.</p>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <div role="alert" className="rounded-xl border border-destructive/30 p-4 space-y-3">
+          <p>{loadError}</p>
+          <p className="text-sm text-muted-foreground">ബാലൻസ് സ്ഥിരീകരിക്കാനായില്ല. വീണ്ടും ലോഡ് ചെയ്തശേഷം മാത്രം പണം വാങ്ങുക.</p>
+          <Button onClick={load} disabled={loading}>{loading ? "Loading…" : "Retry"}</Button>
+        </div>
+      ) : loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : trips.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">No trips assigned yet.</p>
