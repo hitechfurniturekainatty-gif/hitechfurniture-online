@@ -28,6 +28,7 @@ const DeliveryNote = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user, isOfficeStaff, isDelivery, loading: authLoading } = useAuth();
+  const [ledgerBalance, setLedgerBalance] = useState<number | null>(null);
   const [q, setQ] = useState<Quote | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [routeName, setRouteName] = useState<string | null>(null);
@@ -48,10 +49,13 @@ const DeliveryNote = () => {
 
   const load = async (quoteId: string) => {
     setLoading(true);
-    const [{ data: quote, error: e1 }, { data: lines, error: e2 }] = await Promise.all([
+    const [{ data: quote, error: e1 }, { data: lines, error: e2 }, ledger] = await Promise.all([
       (supabase as any).from("quotations").select("id,quotation_id,party_name,party_place,party_phone,party_address,delivery_place,expected_delivery_date,notes,status,delivery_route_id,advance_amount,total,dispatch_vehicle,dispatch_vehicle_number,dispatch_driver_name,dispatch_driver_phone").eq("id", quoteId).maybeSingle(),
       (supabase as any).from("quotation_items").select("id,description,quantity,measurement,catalog_text,item_image_url,catalog_image_url,measurement_image_url,display_order").eq("quotation_id", quoteId).order("display_order", { ascending: true }),
+      supabase.from("receivables").select("pending_amount").eq("quotation_id", quoteId).eq("source", "quotation").maybeSingle(),
     ]);
+    if (ledger.error) { toast({ title: "Could not verify collection balance", description: ledger.error.message, variant: "destructive" }); setLoading(false); navigate(-1); return; }
+    setLedgerBalance(ledger.data ? Math.max(Number(ledger.data.pending_amount), 0) : null);
     if (e1 || !quote) { toast({ title: "Delivery note not found", variant: "destructive" }); navigate(-1); return; }
     if (e2) toast({ title: "Items load failed", description: e2.message, variant: "destructive" });
     setQ(quote as Quote); setItems((lines ?? []) as Item[]);
@@ -67,7 +71,7 @@ const DeliveryNote = () => {
 
   const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
   const advance = Number(q.advance_amount ?? 0);
-  const balance = Math.max(Number(q.total ?? 0) - advance, 0);
+  const balance = ledgerBalance ?? Math.max(Number(q.total ?? 0) - advance, 0);
   const vehicle = q.dispatch_vehicle === "outside" ? `Outside${q.dispatch_vehicle_number ? ` · ${q.dispatch_vehicle_number}` : ""}` : (q.dispatch_vehicle_number || "Own vehicle");
   const pdfData = () => ({
     quotationNumber: q.quotation_id, customerName: q.party_name, phone: q.party_phone, address: q.party_address, place: q.party_place,

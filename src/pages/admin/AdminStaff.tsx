@@ -44,6 +44,7 @@ const roleColor: Record<Role, string> = {
 
 const AdminStaff = () => {
   const { isAdmin, user } = useAuth();
+  const [listError, setListError] = useState("");
   const [rows, setRows] = useState<StaffRow[]>([]);
   const [workerByUserId, setWorkerByUserId] = useState<Record<string, { id: string; name: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -82,15 +83,17 @@ const AdminStaff = () => {
 
   const load = async () => {
     setLoading(true);
+    setListError("");
     const [{ data, error }, wRes] = await Promise.all([
       supabase.functions.invoke("list-staff-users"),
       supabase.from("workers").select("id, name, user_id").not("user_id", "is", null).is("deleted_at", null),
     ]);
     if (error) {
+      setListError(error.message);
       toast({ title: "Failed to load users", description: error.message, variant: "destructive" });
     } else if ((data as any)?.error) {
       toast({ title: "User list error", description: `${(data as any).error}${(data as any).detail ? ` — ${(data as any).detail}` : ""}`, variant: "destructive" });
-      setRows([]);
+      setListError((data as any).error);
     } else {
       setRows((data?.users ?? []) as StaffRow[]);
     }
@@ -324,7 +327,8 @@ const AdminStaff = () => {
               </Card>
             );
           })}
-          {rows.length === 0 && <p className="text-center text-muted-foreground py-8">No user accounts yet.</p>}
+          {listError && <div role="alert" className="rounded border border-destructive p-3 text-sm">Users could not be loaded: {listError} <Button variant="outline" size="sm" onClick={load}>Retry</Button></div>}
+          {!listError && rows.length === 0 && <p className="text-center text-muted-foreground py-8">No user accounts yet.</p>}
         </div>
       )}
 

@@ -12,7 +12,6 @@ import { Marker, Popup } from "react-leaflet";
 import { RoutePolyline } from "@/components/logistics/RoutePolyline";
 import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from "@/lib/logistics";
 import { toast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/brand";
 import { firstUrl } from "@/lib/firstUrl";
@@ -60,7 +59,6 @@ const AdminMyTrips = () => {
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
-  const [savingToggleId, setSavingToggleId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -158,22 +156,8 @@ const AdminMyTrips = () => {
     load();
   };
 
-  const togglePriceVisibility = async (q: Q, next: boolean) => {
-    setSavingToggleId(q.id);
-    const { error } = await supabase
-      .from("quotations")
-      .update({ show_price_to_delivery: next })
-      .eq("id", q.id);
-    setSavingToggleId(null);
-    if (error) {
-      toast({ title: "Couldn't update", description: error.message, variant: "destructive" });
-      return;
-    }
-    setQuotes((prev) => prev.map((row) => (row.id === q.id ? { ...row, show_price_to_delivery: next } : row)));
-    toast({ title: next ? "Pricing visible to delivery" : "Pricing hidden from delivery" });
-  };
-
   const openPricing = async (q: Q) => {
+    if (!isOfficeStaff) return;
     setPricingFor(q);
     setPricingItems([]);
     setPricingLoading(true);
@@ -314,25 +298,8 @@ const AdminMyTrips = () => {
                         </div>
                       )}
 
-                      {s.q && isOfficeStaff && (
-                        <div className="flex items-center justify-between gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold">Show Item-wise Pricing to Driver</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {s.q.show_price_to_delivery ? "Driver can open ‘View Full Pricing’ for the line-item breakdown." : "Hidden — driver still sees Total / Advance / Balance, just not per-item rates."}
-                            </p>
-                          </div>
-                          <Switch
-                            checked={s.q.show_price_to_delivery}
-                            onCheckedChange={(v) => s.q && togglePriceVisibility(s.q, v)}
-                            disabled={savingToggleId === s.q.id}
-                            aria-label="Show price to delivery team"
-                          />
-                        </div>
-                      )}
-
-                      {s.q && isDelivery && !s.q.show_price_to_delivery && (
-                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Lock className="h-3 w-3" /> Item-wise pricing hidden by office.</p>
+                      {s.q && isDelivery && !isOfficeStaff && (
+                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Lock className="h-3 w-3" /> Item prices are office-only. Collect the balance shown above.</p>
                       )}
 
                       {s.q && (() => {
@@ -375,7 +342,7 @@ const AdminMyTrips = () => {
                         {s.q && (
                           <Button asChild size="sm" variant="secondary"><Link to={`/delivery-note/${s.q.id}`}><FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip</Link></Button>
                         )}
-                        {s.q && s.q.show_price_to_delivery && (
+                        {s.q && isOfficeStaff && (
                           <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}><Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing</Button>
                         )}
                         {!s.delivered_at && (
