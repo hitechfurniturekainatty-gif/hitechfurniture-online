@@ -1627,7 +1627,7 @@ const AdminQuotationEditor = () => {
           )}
           {items.map((it, idx) => (
             <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
-              {canEditPrice && !it._isNew && it.fulfillment_route === "custom" && (
+              {canEditPrice && !it._isNew && (
                 <label className="flex cursor-pointer items-center gap-2 border-b bg-primary/5 px-3 py-2 text-sm">
                   <Checkbox checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Select item ${idx + 1} for job work`} />
                   Select for job work / ജോലിക്ക് തിരഞ്ഞെടുക്കുക
@@ -2455,9 +2455,9 @@ const AdminQuotationEditor = () => {
               <p className="text-xs text-muted-foreground">ഈ worker-ന് നൽകേണ്ട items മാത്രം തിരഞ്ഞെടുക്കുക. മറ്റുള്ളവ അടുത്ത worker-ന് വേറെ assign ചെയ്യാം.</p>
               {items.filter((it) => !it._isNew).map((it) => (
                 <label key={it.id} className="flex items-start gap-2 rounded border p-2 text-sm">
-                  <Checkbox className="mt-1" disabled={it.fulfillment_route !== "custom"} checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Assign ${it.description || "item"}`} />
+                  <Checkbox className="mt-1" checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Assign ${it.description || "item"}`} />
                   <span>{it.description || "Unnamed item"} · Qty {it.quantity}
-                    {it.fulfillment_route !== "custom" && <span className="block text-xs text-muted-foreground">Ready Stock — production വേണമെങ്കിൽ item Details-ൽ Custom തിരഞ്ഞെടുക്കുക.</span>}
+                    {it.fulfillment_route !== "custom" && <span className="block text-xs text-muted-foreground">Ready Stock — ഈ item-നും worker job assign ചെയ്യാം.</span>}
                   </span>
                 </label>
               ))}
@@ -2517,7 +2517,7 @@ const AdminQuotationEditor = () => {
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={jobMode === "saved" && !selectedWorker}
+              disabled={selectedItemIds.size === 0 || (jobMode === "saved" && !selectedWorker)}
               onPdf={() => generateAndSendJob("pdf")}
               onJpg={() => generateAndSendJob("jpg")}
               triggerVariant="default"
