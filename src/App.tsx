@@ -134,7 +134,7 @@ const App = () => (
             <Route path="/admin/pipeline" element={<AdminOnly><AdminPipelineMonitor /></AdminOnly>} />
             <Route path="/admin/command-center" element={<Navigate to="/admin" replace />} />
             <Route path="/admin/workers" element={<AdminOnly><AdminWorkers /></AdminOnly>} />
-            <Route path="/admin/workers/:id" element={<AdminOnly><AdminWorkerDetail /></AdminOnly>} />
+            <Route path="/admin/workers/:id" element={<OfficeStaffOnly><AdminWorkerDetail /></OfficeStaffOnly>} />
             <Route path="/admin/production" element={<OfficeStaffOnly><AdminProductionBoard /></OfficeStaffOnly>} />
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />

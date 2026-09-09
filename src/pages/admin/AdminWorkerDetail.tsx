@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/imageCompression";
+import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,7 +96,7 @@ const fmtDateTime = (iso: string) =>
 const AdminWorkerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isOfficeStaff, isAdmin } = useAuth();
+  const { isOfficeStaff, isAdmin, user } = useAuth();
   const [worker, setWorker] = useState<Worker | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +159,29 @@ const AdminWorkerDetail = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  const addStagePhoto = async (job: Job, file: File) => {
+    if (!id || !user || !isOfficeStaff) return;
+    if (!file.type.startsWith("image/")) { toast({ title: "Select a photo", variant: "destructive" }); return; }
+    setSavingId(job.id);
+    try {
+      const image = await compressImage(file);
+      const path = `worker-updates/${job.id}/${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from("quotations").upload(path, image, { contentType: image.type || file.type });
+      if (uploadError) throw uploadError;
+      const photo = await uploadedMediaUrl("quotations", path);
+      const { error } = await supabase.from("worker_status_updates").insert({
+        job_id: job.id, worker_id: id, status: job.status,
+        note: "Office photo update", photo_url: photo, created_by: user.id,
+      });
+      if (error) throw error;
+      setOpenHistory((previous) => ({ ...previous, [job.id]: true }));
+      await load();
+      toast({ title: "Photo added", description: `Saved against ${jobStatusLabel(job.status)}` });
+    } catch (e) {
+      toast({ title: "Photo upload failed", description: e instanceof Error ? e.message : "Please try again", variant: "destructive" });
+    } finally { setSavingId(null); }
+  };
 
   const updateStatus = async (job: Job, next: string) => {
     if (next === job.status) return;
@@ -381,6 +405,11 @@ const AdminWorkerDetail = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <label className={`inline-flex min-h-9 items-center gap-2 rounded-md border px-3 text-sm ${savingId === job.id ? "opacity-50" : "cursor-pointer hover:bg-muted"}`}>
+                      <Camera className="h-4 w-4" /> Add photo (optional)
+                      <input className="sr-only" aria-label={`Add photo for ${job.quotation_code}`} type="file" accept="image/*" disabled={savingId === job.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void addStagePhoto(job, file); }} />
+                    </label>
+                    <p className="w-full text-xs text-muted-foreground">Photo ഇല്ലാതെയും status മാറ്റാം. Photo ചേർത്താൽ നിലവിലെ stage-നൊപ്പം history-യിൽ സൂക്ഷിക്കും.</p>
                     {savingId === job.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   </div>
                 )}

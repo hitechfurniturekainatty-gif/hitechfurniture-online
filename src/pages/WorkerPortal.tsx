@@ -516,6 +516,7 @@ const WorkerPortal = () => {
               </div>
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-2"><Camera className="h-4 w-4" /> Photo (optional)</Label>
+                <p className="text-xs text-muted-foreground">Photo നിർബന്ധമല്ല. ചേർത്താൽ തിരഞ്ഞെടുത്ത status-നൊപ്പം സൂക്ഷിക്കും.</p>
                 <Input
                   type="file"
                   accept="image/*"

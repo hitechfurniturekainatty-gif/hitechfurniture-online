@@ -1,0 +1,12 @@
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.quotations;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.quotation_items;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.job_work_orders;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.measurement_tasks;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.trips;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.trip_quotations;
+DROP TRIGGER IF EXISTS zzz_stage_photo ON public.receivables;
+DROP FUNCTION IF EXISTS private.require_stage_photo();
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM public.stage_photo_proofs) THEN RAISE EXCEPTION 'Preserve evidence records before removing unused tables'; END IF; END $$;
+DROP TABLE public.stage_photo_proofs;
+DROP TABLE private.stage_proof_settings;
+NOTIFY pgrst,'reload schema';
