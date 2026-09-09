@@ -40,3 +40,20 @@ describe('Supplier cost access', () => {
     await expect(catalogCostFetch(native)(`${backendUrl}/rest/v1/products?select=*`)).rejects.toThrow('Unable to load supplier prices');
   });
 });
+
+describe('Quotation item price access', () => {
+  it('restores office prices while keeping price columns out of the base query', async () => {
+    const native = vi.fn().mockResolvedValueOnce(response([{ id: 'one', quantity: 2 }])).mockResolvedValueOnce(response({ one: { unit_price: 100, amount: 200 } }));
+    const result = await catalogCostFetch(native)(`${backendUrl}/rest/v1/quotation_items?select=*`);
+    const select = new URL(String(native.mock.calls[0][0])).searchParams.get('select');
+    expect(select).not.toContain('unit_price');
+    expect(select).not.toContain('amount');
+    expect(await result.json()).toEqual([{ id: 'one', quantity: 2, unit_price: 100, amount: 200 }]);
+    expect(JSON.parse(native.mock.calls[1][1].body).catalog_kind).toBe('quotation_items');
+  });
+  it('masks prices for delivery roles and preserves aliases', async () => {
+    const native = vi.fn().mockResolvedValueOnce(response({ id: 'one', quantity: 2 })).mockResolvedValueOnce(response({}));
+    const result = await catalogCostFetch(native)(`${backendUrl}/rest/v1/quotation_items?select=quantity,price:unit_price,line:amount`);
+    expect(await result.json()).toEqual({ quantity: 2, price: null, line: null });
+  });
+});

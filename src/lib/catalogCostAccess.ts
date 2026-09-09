@@ -3,6 +3,7 @@ import { backendUrl } from './privateMedia';
 // Keep normal catalogue queries independent of restricted supplier prices.
 // Authorization is enforced by PostgreSQL, never by this adapter.
 const columns: Record<string, string> = {
+  quotation_items: 'id,quotation_id,display_order,product_id,description,item_image_url,measurement,measurement_image_url,quantity,created_at,catalog_text,catalog_image_url,sketch_url,site_photos,fulfillment_route,dispatched_at,delivered_at,bundle_id,item_notes',
   products: 'id,main_category_id,sub_category_id,product_name,product_code,description,mrp,offer_price,available_colors,material,dimensions,stock_quantity,is_featured,is_published,created_at,updated_at,reorder_level,deleted_at,deleted_by,location_id,stock_status,floor_display_order,hsn_code,gst_rate,primary_material,secondary_material,color_finish,warranty_period,delivery_condition,dim_height,dim_width,dim_depth,primary_image_url,review_status,creation_method,submitted_by,reviewed_by,reviewed_at',
   product_bundles: 'id,bundle_code,name,description,main_category_id,sub_category_id,main_image_url,mrp,offer_price,available_colors,material,dimensions,is_featured,is_published,stock_status,floor_display_order,deleted_at,deleted_by,created_by,created_at,updated_at,location_id,show_item_prices_public,show_item_prices_staff',
 };
@@ -26,10 +27,12 @@ export function catalogCostFetch(baseFetch: typeof fetch): typeof fetch {
     // Mutations without RETURNING must remain untouched.
     if (method !== 'GET' && method !== 'HEAD' && !url.searchParams.has('select')) return baseFetch(input, init);
     const selected = fields(url.searchParams.get('select') ?? '*');
-    const costFields = selected.filter(field => /^(?:\w+:)?cost_price$/.test(field)).map(field => field.includes(':') ? field.split(':')[0] : field);
-    if (selected.includes('*')) costFields.push('cost_price');
+    const restricted = table === 'quotation_items' ? ['unit_price', 'amount'] : ['cost_price'];
+    const sourceField = (field: string) => field.split(':').at(-1)!;
+    const costFields = selected.filter(field => restricted.includes(sourceField(field)));
+    if (selected.includes('*')) costFields.push(...restricted);
     if (!costFields.length) return baseFetch(input, init);
-    const safe = selected.flatMap(field => field === '*' ? columns[table].split(',') : /^(?:\w+:)?cost_price$/.test(field) ? [] : [field]);
+    const safe = selected.flatMap(field => field === '*' ? columns[table].split(',') : restricted.includes(sourceField(field)) ? [] : [field]);
     const addedId = !safe.includes('id');
     if (addedId) safe.push('id');
     url.searchParams.set('select', [...new Set(safe)].join(','));
@@ -44,7 +47,7 @@ export function catalogCostFetch(baseFetch: typeof fetch): typeof fetch {
     headers.delete('Prefer');
     headers.delete('Accept');
     headers.delete('Range');
-    const costs: Record<string, number | null> = {};
+    const costs: Record<string, number | null | Record<string, number | null>> = {};
     for (let offset = 0; offset < ids.length; offset += 1000) {
       const prices = await baseFetch(`${backendUrl}/rest/v1/rpc/get_catalog_costs`, {
         method: 'POST', headers, body: JSON.stringify({ catalog_kind: table, item_ids: ids.slice(offset, offset + 1000) }), signal: init?.signal,
@@ -53,7 +56,12 @@ export function catalogCostFetch(baseFetch: typeof fetch): typeof fetch {
       Object.assign(costs, await prices.json());
     }
     for (const row of rows) {
-      for (const field of costFields) row[field] = costs[row.id] ?? null;
+      for (const field of costFields) {
+        const value = costs[row.id];
+        row[field.split(':')[0]] = table === 'quotation_items'
+          ? (typeof value === 'object' && value !== null ? value[sourceField(field)] ?? null : null)
+          : value ?? null;
+      }
       if (addedId) delete row.id;
     }
     const resultHeaders = new Headers(response.headers);
