@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 type Item = { id: string; description: string };
@@ -17,7 +17,7 @@ export function MeasurementAssignment({ quotationId, items, open, onClose }: { q
  const {error}=await (supabase as any).rpc('assign_item_measurement',{q_id:quotationId,staff_id:assignee,selected_ids:selected,route_id:route||null,visit_on:day||null});
  if(error)throw error;toast({title:'Measurement assigned',description:'Staff can reply from Measurement Tasks.'});onClose();
  }catch(e:any){setError(e.message??'Assignment failed');}finally{setBusy(false);}};
- return <Dialog open={open} onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Assign measurement / അളവെടുക്കാൻ നൽകുക</DialogTitle></DialogHeader>
+ return <Dialog open={open} onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Assign measurement / അളവെടുക്കാൻ നൽകുക</DialogTitle><DialogDescription>Choose the items, staff member, route and visit date for this measurement task.</DialogDescription></DialogHeader>
  <p className="text-sm text-muted-foreground">അളവെടുക്കേണ്ട items മാത്രം തിരഞ്ഞെടുക്കുക. Reply അതേ quotation-ൽ ലഭിക്കും.</p>
  {error&&<p role="alert" className="text-destructive">{error}</p>}
  {items.map(i=><label key={i.id} className="flex gap-3 rounded border p-3"><input type="checkbox" checked={selected.includes(i.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,i.id]:v.filter(id=>id!==i.id))}/>{i.description}</label>)}

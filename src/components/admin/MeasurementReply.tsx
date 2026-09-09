@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { compressImage } from '@/lib/imageCompression';
 import { toast } from '@/hooks/use-toast';
@@ -33,7 +33,7 @@ export function MeasurementReply({task,onClose,onSaved}:{task:{id:string;item_id
  toast({title:'Measurement completed',description:'Reply saved to quotation. Office notified.'});onSaved();onClose();
  }catch(e:any){setError(e.message??'Reply not saved');}finally{savingRef.current=false;setBusy(false);}};
  const completed=task?.status==='completed';
- return <Dialog open={!!task} onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Measurement reply / അളവുകൾ</DialogTitle></DialogHeader>
+ return <Dialog open={!!task} onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Measurement reply / അളവുകൾ</DialogTitle><DialogDescription>Enter measurements for assigned items. Photos are optional. Completion sends the reply to the office.</DialogDescription></DialogHeader>
  {loading&&<p>Loading assigned items…</p>}
  {error&&<div role="alert" className="text-destructive"><p>{error}</p>{!rows.length&&<Button variant="outline" disabled={busy||loading} onClick={()=>setRetry(v=>v+1)}>Retry loading</Button>}</div>}
  {rows.map((r,index)=><div key={r.id} className="space-y-2 rounded border p-3"><p className="font-medium">{r.description}</p>{r.item_image_url&&<img src={r.item_image_url} alt={r.description} className="h-24 object-contain"/>}
