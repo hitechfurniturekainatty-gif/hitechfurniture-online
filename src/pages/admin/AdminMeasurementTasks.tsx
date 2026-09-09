@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,12 +138,24 @@ const AdminMeasurementTasks = () => {
     load();
   };
 
+  const startingMeasurement = useRef(false);
+  const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
   const startMeasurement = async (t: Task) => {
-    // Measurement staff: open or create draft quotation tied to this task
-    if (t.draft_quotation_id) {
-      navigate(`/admin/quotations/${t.draft_quotation_id}`);
-      return;
-    }
+    if (startingMeasurement.current) return;
+    startingMeasurement.current = true;
+    setStartingTaskId(t.id);
+    try {
+      if (t.draft_quotation_id) {
+        navigate(`/admin/quotations/${t.draft_quotation_id}`);
+        return;
+      }
+      // Recover an already-created draft after a failed link or interrupted request.
+      const { data: existing, error: lookupError } = await supabase.from("quotations")
+        .select("id").eq("source_task_id", t.id).is("deleted_at", null)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (lookupError) throw lookupError;
+      let q = existing;
+      if (!q) {
     // create draft quotation
     const { data: qid, error: qidErr } = await supabase.rpc("next_quotation_id", {
       _party: t.customer_name,
@@ -153,7 +165,7 @@ const AdminMeasurementTasks = () => {
       toast({ title: "Failed to create draft", description: qidErr.message, variant: "destructive" });
       return;
     }
-    const { data: q, error } = await supabase.from("quotations").insert({
+    const { data: created, error } = await supabase.from("quotations").insert({
       quotation_id: qid as string,
       party_name: t.customer_name,
       party_place: t.customer_place,
@@ -165,12 +177,24 @@ const AdminMeasurementTasks = () => {
       source_task_id: t.id,
       delivery_route_id: t.delivery_route_id,
     }).select("id").single();
-    if (error || !q) {
+    if (error || !created) {
       toast({ title: "Failed to create draft", description: error?.message, variant: "destructive" });
       return;
     }
-    await supabase.from("measurement_tasks").update({ draft_quotation_id: q.id, status: "in_progress" }).eq("id", t.id);
-    navigate(`/admin/quotations/${q.id}`);
+
+        q = created;
+      }
+      const { data: linked, error: linkError } = await supabase.from("measurement_tasks")
+        .update({ draft_quotation_id: q.id, status: "in_progress" })
+        .eq("id", t.id).select("id").single();
+      if (linkError || !linked) throw linkError || new Error("Task link was not saved");
+      navigate(`/admin/quotations/${q.id}`);
+    } catch (error) {
+      toast({ title: "Could not open measurement", description: "Task link could not be verified. Please retry; any saved draft will be reused.", variant: "destructive" });
+    } finally {
+      startingMeasurement.current = false;
+      setStartingTaskId(null);
+    }
   };
 
   const staffName = (id: string) => {
@@ -248,7 +272,7 @@ const AdminMeasurementTasks = () => {
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {mine && t.status !== "completed" && (
-            <Button size="sm" onClick={() => startMeasurement(t)}>
+            <Button size="sm" disabled={startingTaskId !== null} onClick={() => startMeasurement(t)}>
               <Ruler className="mr-1.5 h-3.5 w-3.5" /> {t.draft_quotation_id ? "Continue" : "Start measurement"}
             </Button>
           )}
