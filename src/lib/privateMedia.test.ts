@@ -25,9 +25,28 @@ describe('Private attachments',()=>{
     await privateMediaFetch(fetcher)('https://example.com/rest/v1/products');
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
-  it('normalizes outgoing URLs, and fails closed when signing is denied',async()=>{
-    const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({image:file}),{headers:{'content-type':'application/json'}})).mockResolvedValueOnce(new Response('{}',{status:403}));
-    await expect(privateMediaFetch(fetcher)(`${backendUrl}/rest/v1/quotation_items`,{method:'PATCH',body:JSON.stringify({image:signed})})).rejects.toThrow('Unable to load private attachments');
+  it('normalizes outgoing URLs and keeps business data when signing is denied',async()=>{
+    const fetcher=vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({image:file,description:'Sofa'}),{headers:{'content-type':'application/json'}}))
+      .mockResolvedValueOnce(new Response('{}',{status:403}));
+    const response=await privateMediaFetch(fetcher)(`${backendUrl}/rest/v1/quotation_items`,{method:'PATCH',body:JSON.stringify({image:signed}),headers:{Authorization:'Bearer staff-session'}});
+    expect(await response.json()).toEqual({image:'',description:'Sofa'});
     expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({image:file});
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it('never reuses a cached signed URL across a different viewer scope',async()=>{
+    const firstSigned=`${backendUrl}/storage/v1/object/sign/quotations/folder/a%20b.jpg?token=first`;
+    const first=vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({image:file}),{headers:{'content-type':'application/json'}}))
+      .mockResolvedValueOnce(new Response(JSON.stringify({urls:{'folder/a b.jpg':firstSigned}})));
+    const firstResponse=await privateMediaFetch(first)(`${backendUrl}/rest/v1/quotation_items`,{headers:{Authorization:'Bearer viewer-one'}});
+    expect(await firstResponse.json()).toEqual({image:firstSigned});
+
+    const second=vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({image:file}),{headers:{'content-type':'application/json'}}))
+      .mockResolvedValueOnce(new Response('{}',{status:403}));
+    const secondResponse=await privateMediaFetch(second)(`${backendUrl}/rest/v1/quotation_items`,{headers:{Authorization:'Bearer viewer-two'}});
+    expect(await secondResponse.json()).toEqual({image:''});
+    expect(second).toHaveBeenCalledTimes(2);
   });
 });
