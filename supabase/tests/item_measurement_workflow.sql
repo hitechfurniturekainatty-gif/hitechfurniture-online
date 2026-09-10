@@ -25,4 +25,34 @@ DO $$ DECLARE office uuid; field_staff uuid; qid uuid; item1 uuid; item2 uuid; t
  IF EXISTS(SELECT 1 FROM public.quotation_items WHERE id=item2 AND measurement IS NOT NULL) THEN RAISE EXCEPTION 'Unselected item changed'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.pipeline_notifications WHERE quotation_id=qid AND title='Measurement completed') THEN RAISE EXCEPTION 'Office notification missing'; END IF;
 END $$;
+
+-- Exercise the same SELECT policies used by a real logged-in measurement-staff
+-- browser session instead of relying only on the privileged SQL test session.
+SELECT set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'role','authenticated',
+    'sub',(SELECT user_id FROM public.user_roles WHERE role='measurement_staff' LIMIT 1)
+  )::text,
+  true
+);
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE _measurement_rls_check ON COMMIT DROP AS
+SELECT
+  (SELECT count(*) FROM public.measurement_tasks mt
+    JOIN public.quotations q ON q.id=mt.draft_quotation_id
+    WHERE q.quotation_id='MEASUREMENT-ROLLBACK-TEST') AS visible_tasks,
+  (SELECT count(*) FROM public.quotation_items qi
+    JOIN public.quotations q ON q.id=qi.quotation_id
+    WHERE q.quotation_id='MEASUREMENT-ROLLBACK-TEST'
+      AND qi.description='Selected sofa') AS visible_assigned_items;
+RESET ROLE;
+DO $$ BEGIN
+ IF (SELECT visible_tasks FROM _measurement_rls_check) <> 1 THEN
+   RAISE EXCEPTION 'Assigned measurement task is not visible through authenticated RLS';
+ END IF;
+ IF (SELECT visible_assigned_items FROM _measurement_rls_check) <> 1 THEN
+   RAISE EXCEPTION 'Assigned quotation item is not visible through authenticated RLS';
+ END IF;
+END $$;
 ROLLBACK;
