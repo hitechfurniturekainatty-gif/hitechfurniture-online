@@ -22,14 +22,15 @@ jobs:
           from pathlib import Path
           path = Path('src/pages/admin/AdminQuotationEditor.tsx')
           text = path.read_text()
-          old = '''              {items.filter((it) => !it._isNew).map((it) => (
-                <label key={it.id} className="flex items-start gap-2 rounded border p-2 text-sm">
-                  <Checkbox className="mt-1" checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Assign ${it.description || "item"}`} />
-                  <span>{it.description || "Unnamed item"} · Qty {it.quantity}
-                    {it.fulfillment_route !== "custom" && <span className="block text-xs text-muted-foreground">Ready Stock — ഈ item-നും worker job assign ചെയ്യാം.</span>}
-                  </span>
-                </label>
-              ))}'''
+          start_marker = '              {items.filter((it) => !it._isNew).map((it) => ('
+          end_marker = '              ))}\n            </fieldset>'
+          start = text.find(start_marker)
+          if start < 0:
+              raise SystemExit('Job assignment item list start not found')
+          end = text.find(end_marker, start)
+          if end < 0:
+              raise SystemExit('Job assignment item list end not found')
+          end += len('              ))}')
           new = '''              {items.filter((it) => !it._isNew).map((it, index) => {
                 const previewImage = (it.item_image_url ?? "")
                   .split(/\\r?\\n/)
@@ -77,9 +78,7 @@ jobs:
                   </label>
                 );
               })}'''
-          if old not in text:
-              raise SystemExit('Expected job assignment block not found; refusing to modify file')
-          path.write_text(text.replace(old, new, 1))
+          path.write_text(text[:start] + new + text[end:])
           PY
       - name: Commit patch
         shell: bash
