@@ -2458,14 +2458,53 @@ const AdminQuotationEditor = () => {
             <fieldset className="space-y-2 rounded-md border p-3">
               <legend className="px-1 text-sm font-medium">Choose items / ഐറ്റം തിരഞ്ഞെടുക്കുക</legend>
               <p className="text-xs text-muted-foreground">ഈ worker-ന് നൽകേണ്ട items മാത്രം തിരഞ്ഞെടുക്കുക. മറ്റുള്ളവ അടുത്ത worker-ന് വേറെ assign ചെയ്യാം.</p>
-              {items.filter((it) => !it._isNew).map((it) => (
-                <label key={it.id} className="flex items-start gap-2 rounded border p-2 text-sm">
-                  <Checkbox className="mt-1" checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Assign ${it.description || "item"}`} />
-                  <span>{it.description || "Unnamed item"} · Qty {it.quantity}
-                    {it.fulfillment_route !== "custom" && <span className="block text-xs text-muted-foreground">Ready Stock — ഈ item-നും worker job assign ചെയ്യാം.</span>}
-                  </span>
-                </label>
-              ))}
+              {items.filter((it) => !it._isNew).map((it, index) => {
+      const previewImage = (it.item_image_url ?? "")
+        .split(/\r?\n/)
+        .map((url) => url.trim())
+        .find(Boolean) ?? null;
+      const checked = selectedItemIds.has(it.id);
+      return (
+        <label
+          key={it.id}
+          className={`grid cursor-pointer grid-cols-[auto_72px_minmax(0,1fr)] items-center gap-3 rounded-xl border p-2.5 text-sm transition ${checked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:border-primary/40 hover:bg-muted/40"}`}
+        >
+          <Checkbox
+            className="h-5 w-5"
+            checked={checked}
+            onCheckedChange={(v) => toggleItemSelect(it.id, !!v)}
+            aria-label={`Assign ${it.description || "item"}`}
+          />
+          <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border bg-muted">
+            {previewImage ? (
+              <img
+                src={previewImage}
+                alt={it.description || "Quotation item"}
+                loading="eager"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <ImageIcon className="h-6 w-6" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">#{index + 1}</span>
+              <span className="text-xs font-semibold text-muted-foreground">Qty {it.quantity}</span>
+            </div>
+            <p className="mt-1 truncate font-semibold text-foreground">{it.description || "Unnamed item"}</p>
+            {it.item_notes?.trim() ? (
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{it.item_notes}</p>
+            ) : null}
+            <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+              {it.fulfillment_route === "custom" ? "Custom / Production" : "Ready Stock"}
+            </p>
+          </div>
+        </label>
+      );
+    })}
             </fieldset>
 
             <div className="space-y-2">
