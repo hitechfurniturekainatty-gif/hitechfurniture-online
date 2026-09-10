@@ -279,6 +279,7 @@ const AdminQuotationEditor = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [selectedWorker, setSelectedWorker] = useState<string>("");
   const [jobNotes, setJobNotes] = useState("");
+  const [jobDueDate, setJobDueDate] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
@@ -1237,6 +1238,14 @@ const AdminQuotationEditor = () => {
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
     setJobNotes("");
+    if (q?.expected_delivery_date) {
+      const [y, m, d] = q.expected_delivery_date.split("-").map(Number);
+      const due = new Date(Date.UTC(y, m - 1, d));
+      due.setUTCDate(due.getUTCDate() - 1);
+      setJobDueDate(due.toISOString().slice(0, 10));
+    } else {
+      setJobDueDate("");
+    }
     setJobMode("saved");
     setJobOpen(true);
   };
@@ -1263,6 +1272,7 @@ const AdminQuotationEditor = () => {
           worker_id: worker.id,
           item_ids: chosenItems.map((c) => c.id),
           notes: jobNotes || null,
+          due_at: jobDueDate ? new Date(`${jobDueDate}T18:00:00+05:30`).toISOString() : null,
           created_by: user?.id ?? null,
         });
         if (error) {
@@ -1292,7 +1302,8 @@ const AdminQuotationEditor = () => {
         ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
         : `JobWork-${q.quotation_id}`;
       const greeting = worker ? `Hi ${worker.name},` : "Hi,";
-      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}\n\n— Hitech Furniture & Interiors`;
+      const dueLine = jobDueDate ? `\nDeadline: ${new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN")}` : "";
+      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}\n\n— Hitech Furniture & Interiors`;
 
       if (isDirect) {
         if (format === "pdf") {
@@ -2555,6 +2566,11 @@ const AdminQuotationEditor = () => {
                 WhatsApp group.
               </div>
             )}
+            <div className="space-y-1.5">
+              <Label>Job deadline / Due date</Label>
+              <Input type="date" value={jobDueDate} onChange={(e) => setJobDueDate(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">Auto: one day before quotation delivery date. You can change it before assigning.</p>
+            </div>
             <div className="space-y-1.5"><Label>Notes (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. priority, finish type..." /></div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">

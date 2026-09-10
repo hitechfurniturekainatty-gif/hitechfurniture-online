@@ -28,6 +28,7 @@ type JobFull = {
   notes: string | null;
   is_urgent: boolean;
   created_at: string;
+  due_at: string | null;
   item_ids: string[];
   quotation_code: string;
   party_place: string;
@@ -63,7 +64,7 @@ const WorkerJobView = () => {
     setLoading(true);
     const { data: jw, error } = await supabase
       .from("job_work_orders")
-      .select("id, status, notes, is_urgent, created_at, item_ids, quotations!inner(quotation_id, party_place)")
+      .select("id, status, notes, is_urgent, created_at, due_at, item_ids, quotations!inner(quotation_id, party_place)")
       .eq("id", id)
       .maybeSingle();
     if (error || !jw) {
@@ -77,6 +78,7 @@ const WorkerJobView = () => {
       notes: jw.notes,
       is_urgent: jw.is_urgent,
       created_at: jw.created_at,
+      due_at: jw.due_at ?? null,
       item_ids: jw.item_ids ?? [],
       quotation_code: (jw as any).quotations?.quotation_id ?? "",
       party_place: (jw as any).quotations?.party_place ?? "",
@@ -124,6 +126,13 @@ const WorkerJobView = () => {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-3 px-3 py-3 sm:px-4 sm:py-4">
+        {job.due_at && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-destructive">Complete before</p>
+            <p className="mt-1 text-base font-bold">{new Date(job.due_at).toLocaleDateString("en-IN")}</p>
+          </div>
+        )}
+
         {job.notes && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">Office note</p>

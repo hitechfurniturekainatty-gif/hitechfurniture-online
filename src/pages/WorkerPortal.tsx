@@ -34,6 +34,7 @@ type Job = {
   created_at: string;
   status_updated_at: string;
   is_urgent: boolean;
+  due_at: string | null;
   quotation_code: string;
   party_place: string;
   document_type: DocType;
@@ -99,7 +100,7 @@ const WorkerPortal = () => {
 
     const { data: js, error } = await supabase
       .from("job_work_orders")
-      .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, is_urgent, quotations!inner(quotation_id, party_place, document_type)")
+      .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, is_urgent, due_at, quotations!inner(quotation_id, party_place, document_type)")
       .eq("worker_id", w.id)
       .order("created_at", { ascending: false });
     if (error) {
@@ -162,6 +163,7 @@ const WorkerPortal = () => {
       created_at: row.created_at,
       status_updated_at: row.status_updated_at,
       is_urgent: row.is_urgent,
+      due_at: row.due_at ?? null,
       quotation_code: row.quotations?.quotation_id ?? "",
       party_place: row.quotations?.party_place ?? "",
       document_type: (row.quotations?.document_type ?? "quotation") as DocType,
@@ -409,6 +411,11 @@ const WorkerPortal = () => {
                       <p className="text-xs text-muted-foreground">
                         {job.items.length} item(s) · Assigned {fmtDateTime(job.created_at)}
                       </p>
+                      {job.due_at && (
+                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-destructive">
+                          <Clock className="h-3 w-3" /> Deadline {new Date(job.due_at).toLocaleDateString("en-IN")}
+                        </p>
+                      )}
                       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                       </p>
