@@ -476,8 +476,11 @@ const jwStyles = StyleSheet.create({
 
 export type JobWorkPdfData = {
   quotation_id: string;
+  customer_name: string;
+  customer_place: string;
   worker_name: string;
   date: string;
+  required_by: string | null;
   notes: string | null;
   items: {
     description: string;
@@ -513,12 +516,22 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
 
       <View style={jwStyles.metaStrip}>
         <View style={jwStyles.metaCell}>
-          <Text style={jwStyles.metaLabel}>Reference</Text>
+          <Text style={jwStyles.metaLabel}>Customer</Text>
+          <Text style={jwStyles.metaValue}>{d.customer_name}</Text>
+          <Text style={[jwStyles.metaLabel, { marginTop: 5 }]}>Place</Text>
+          <Text style={jwStyles.metaValue}>{d.customer_place}</Text>
+        </View>
+        <View style={jwStyles.metaCell}>
+          <Text style={jwStyles.metaLabel}>Quotation</Text>
           <Text style={jwStyles.metaValue}>{d.quotation_id}</Text>
+          <Text style={[jwStyles.metaLabel, { marginTop: 5 }]}>Assigned Date</Text>
+          <Text style={jwStyles.metaValue}>{d.date}</Text>
         </View>
         <View style={jwStyles.metaCellLast}>
-          <Text style={jwStyles.metaLabel}>Date</Text>
-          <Text style={jwStyles.metaValue}>{d.date}</Text>
+          <Text style={jwStyles.metaLabel}>Required By</Text>
+          <Text style={jwStyles.metaValue}>{d.required_by || "-"}</Text>
+          <Text style={[jwStyles.metaLabel, { marginTop: 5 }]}>Worker</Text>
+          <Text style={jwStyles.metaValue}>{d.worker_name}</Text>
         </View>
       </View>
 

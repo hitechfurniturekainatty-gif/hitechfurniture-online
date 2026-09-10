@@ -1283,8 +1283,11 @@ const AdminQuotationEditor = () => {
       const { generateJobWorkPdf } = await loadPdfLib();
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
+        customer_name: q.party_name,
+        customer_place: q.party_place,
         worker_name: worker?.name ?? "Job Work",
         date: new Date().toLocaleDateString("en-IN"),
+        required_by: jobDueDate ? new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN") : null,
         notes: jobNotes || null,
         items: chosenItems.map((it) => ({
           description: it.description,
@@ -1302,8 +1305,9 @@ const AdminQuotationEditor = () => {
         ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
         : `JobWork-${q.quotation_id}`;
       const greeting = worker ? `Hi ${worker.name},` : "Hi,";
-      const dueLine = jobDueDate ? `\nDeadline: ${new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN")}` : "";
-      const msg = `${greeting}\n\nNew job work assigned. Reference: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}\n\n— Hitech Furniture & Interiors`;
+      const dueLine = jobDueDate ? `\nRequired by: ${new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN")}` : "";
+      const noteLine = jobNotes.trim() ? `\nNote: ${jobNotes.trim()}` : "";
+      const msg = `${greeting}\n\nNew job work assigned.\nCustomer: ${q.party_name}\nPlace: ${q.party_place}\nQuotation: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}${noteLine}\n\n— Hitech Furniture & Interiors`;
 
       if (isDirect) {
         if (format === "pdf") {
@@ -2465,6 +2469,11 @@ const AdminQuotationEditor = () => {
             className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-semibold text-foreground">{q.party_name}</p>
+              <p className="text-xs text-muted-foreground">{q.party_place} · {q.quotation_id}</p>
+              <p className="mt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">Worker copy: customer phone is never included.</p>
+            </div>
             <p className="text-sm text-muted-foreground">{selectedItemIds.size} item(s) selected. Worker image will exclude prices, GST and customer phone.</p>
             <fieldset className="space-y-2 rounded-md border p-3">
               <legend className="px-1 text-sm font-medium">Choose items / ഐറ്റം തിരഞ്ഞെടുക്കുക</legend>
@@ -2567,11 +2576,11 @@ const AdminQuotationEditor = () => {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Job deadline / Due date</Label>
+              <Label>Required by / Delivery date for worker</Label>
               <Input type="date" value={jobDueDate} onChange={(e) => setJobDueDate(e.target.value)} />
-              <p className="text-[11px] text-muted-foreground">Auto: one day before quotation delivery date. You can change it before assigning.</p>
+              <p className="text-[11px] text-muted-foreground">Choose the date this worker must finish/hand over the selected items. It defaults to one day before the customer delivery date, but you can set any earlier date.</p>
             </div>
-            <div className="space-y-1.5"><Label>Notes (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. priority, finish type..." /></div>
+            <div className="space-y-1.5"><Label>Narration / Instructions (optional)</Label><Textarea rows={2} value={jobNotes} onChange={(e) => setJobNotes(e.target.value)} placeholder="e.g. finish before evening, polish type, special instruction..." /></div>
           </div>
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
