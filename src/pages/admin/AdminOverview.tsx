@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -8,12 +8,22 @@ import { SalesFollowupPanel } from "@/components/admin/SalesFollowupPanel";
 import { FurnitureWorkflowLauncher } from "@/components/admin/FurnitureWorkflowLauncher";
 import { ReceivablesTodayPanel } from "@/components/admin/ReceivablesTodayPanel";
 import { RoleFocusPanel } from "@/components/admin/RoleFocusPanel";
-const AdminAnalyticsDashboard = lazy(() => import("./AdminAnalyticsDashboard"));
-const AdminOfficeAnalyticsDashboard = lazy(() => import("./AdminOfficeAnalyticsDashboard"));
-const AdminProductionAnalyticsDashboard = lazy(() => import("./AdminProductionAnalyticsDashboard"));
-const AdminWarehouseAnalyticsDashboard = lazy(() => import("./AdminWarehouseAnalyticsDashboard"));
-const AdminDeliveryAnalyticsDashboard = lazy(() => import("./AdminDeliveryAnalyticsDashboard"));
-const AdminSeoHealthDashboard = lazy(() => import("./AdminSeoHealthDashboard"));
+
+const overviewLoaders = {
+  reports: () => import("./AdminAnalyticsDashboard"),
+  sales: () => import("./AdminOfficeAnalyticsDashboard"),
+  production: () => import("./AdminProductionAnalyticsDashboard"),
+  warehouse: () => import("./AdminWarehouseAnalyticsDashboard"),
+  delivery: () => import("./AdminDeliveryAnalyticsDashboard"),
+  website: () => import("./AdminSeoHealthDashboard"),
+};
+
+const AdminAnalyticsDashboard = lazy(overviewLoaders.reports);
+const AdminOfficeAnalyticsDashboard = lazy(overviewLoaders.sales);
+const AdminProductionAnalyticsDashboard = lazy(overviewLoaders.production);
+const AdminWarehouseAnalyticsDashboard = lazy(overviewLoaders.warehouse);
+const AdminDeliveryAnalyticsDashboard = lazy(overviewLoaders.delivery);
+const AdminSeoHealthDashboard = lazy(overviewLoaders.website);
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
@@ -26,6 +36,33 @@ const AdminOverview = () => {
   const showProduction = isOfficeStaff;
   const showWarehouse = isOfficeStaff || isWarehouse;
   const showDelivery = isOfficeStaff || isDelivery;
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const connection=(navigator as Navigator & {connection?:{saveData?:boolean;effectiveType?:string}}).connection;
+    if(connection?.saveData||connection?.effectiveType?.includes('2g')) return;
+
+    const keys: (keyof typeof overviewLoaders)[] = [];
+    if (showOffice) keys.push('sales');
+    if (showProduction) keys.push('production');
+    if (showWarehouse) keys.push('warehouse');
+    if (showDelivery) keys.push('delivery');
+    if (showAdmin) keys.push('reports','website');
+
+    let cancelled = false;
+    const preload = () => {
+      if (cancelled) return;
+      // Warm only the JS chunks; panel data still loads on first visit.
+      void Promise.allSettled(keys.map(key => overviewLoaders[key]()));
+    };
+    const win = window as Window & { requestIdleCallback?: (cb: () => void, options?: {timeout?: number}) => number; cancelIdleCallback?: (id:number)=>void };
+    if (win.requestIdleCallback) {
+      const id = win.requestIdleCallback(preload,{timeout:1800});
+      return () => { cancelled = true; win.cancelIdleCallback?.(id); };
+    }
+    const id = window.setTimeout(preload,700);
+    return () => { cancelled = true; window.clearTimeout(id); };
+  }, [authLoading,user,showAdmin,showOffice,showProduction,showWarehouse,showDelivery]);
 
   const roleTitle = isAdmin ? "Admin Command Center" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
   const roleSub = isAdmin
