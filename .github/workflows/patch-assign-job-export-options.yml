@@ -1,0 +1,74 @@
+name: Patch Assign Job Export Options
+
+on:
+  push:
+    paths:
+      - '.github/assign-job-export-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch assign job export menu
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/components/admin/DownloadShareMenu.tsx')
+          s = p.read_text()
+          s = s.replace(
+            '  onShareLink?: () => unknown | Promise<unknown>;\n',
+            '  onShareLink?: () => unknown | Promise<unknown>;\n  onShareFile?: () => unknown | Promise<unknown>;\n  menuTitle?: string;\n  menuDescription?: string;\n  pdfLabel?: string;\n  jpgLabel?: string;\n  shareLabel?: string;\n'
+          )
+          s = s.replace(
+            '  onShareLink,\n  busy = false,',
+            '  onShareLink,\n  onShareFile,\n  menuTitle,\n  menuDescription,\n  pdfLabel = "PDF Document",\n  jpgLabel = "Image Pages (JPG)",\n  shareLabel = "Share File",\n  busy = false,'
+          )
+          s = s.replace(
+            '<p className="text-sm font-semibold">Share or export quotation</p>\n            <p className="text-xs text-muted-foreground">Choose the best format for the customer or WhatsApp.</p>',
+            '<p className="text-sm font-semibold">{menuTitle ?? "Share or export quotation"}</p>\n            <p className="text-xs text-muted-foreground">{menuDescription ?? "Choose the best format for the customer or WhatsApp."}</p>'
+          )
+          marker = '          <button type="button" className={optionClass} onClick={() => handlePick(onPdf)} disabled={busy}>'
+          share_block = '''          {onShareFile && (\n            <button type="button" className={optionClass} onClick={() => handlePick(onShareFile)} disabled={busy}>\n              <span className={iconBox}><Share2 className="h-5 w-5" /></span>\n              <span className="min-w-0 flex-1">\n                <span className="block text-sm font-medium">{shareLabel}</span>\n                <span className="block text-xs text-muted-foreground">Open the phone share sheet with the worker-safe job file.</span>\n              </span>\n            </button>\n          )}\n\n'''
+          if marker not in s:
+            raise SystemExit('DownloadShareMenu insertion target missing')
+          s = s.replace(marker, share_block + marker, 1)
+          s = s.replace('<span className="block text-sm font-medium">PDF Document</span>', '<span className="block text-sm font-medium">{pdfLabel}</span>', 1)
+          s = s.replace('<span className="block text-sm font-medium">Image Pages (JPG)</span>', '<span className="block text-sm font-medium">{jpgLabel}</span>', 1)
+          p.write_text(s)
+
+          p = Path('src/pages/admin/AdminQuotationEditor.tsx')
+          s = p.read_text()
+          s = s.replace(
+            '  const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg") => {',
+            '  const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg", action: "send" | "download" | "share" = "send") => {'
+          )
+          old = '''      if (isDirect) {\n        if (format === "pdf") {\n          await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");\n        } else {\n          const { pdfBlobToJpgPages } = await loadJpgLib();\n          const blobs = await pdfBlobToJpgPages(pdfBlob);\n          await shareFilesNative(blobs, baseFilename, msg, "jpg");\n        }\n        toast({\n          title: "Ready to share",\n          description: "Pick the contact or WhatsApp group from your phone's share sheet.",\n        });\n      } else if (format === "pdf") {\n        downloadBlob(pdfBlob, `${baseFilename}.pdf`);\n        toast({\n          title: "Job PDF downloaded",\n          description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,\n        });\n      } else {\n        const { pdfBlobToJpgPages } = await loadJpgLib();\n        const blobs = await pdfBlobToJpgPages(pdfBlob);\n        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);\n        toast({\n          title: "Job work sent",\n          description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,\n        });\n      }'''
+          new = '''      if (action === "download") {\n        if (format === "pdf") {\n          downloadBlob(pdfBlob, `${baseFilename}.pdf`);\n          toast({ title: "Job PDF downloaded", description: `${chosenItems.length} selected item(s) included.` });\n        } else {\n          const { pdfBlobToJpgPages } = await loadJpgLib();\n          const blobs = await pdfBlobToJpgPages(pdfBlob);\n          blobs.forEach((blob, index) => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`));\n          toast({ title: "Job image downloaded", description: `${blobs.length} image page(s) saved.` });\n        }\n      } else if (action === "share" || isDirect) {\n        if (format === "pdf") {\n          await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");\n        } else {\n          const { pdfBlobToJpgPages } = await loadJpgLib();\n          const blobs = await pdfBlobToJpgPages(pdfBlob);\n          await shareFilesNative(blobs, baseFilename, msg, "jpg");\n        }\n        toast({ title: "Ready to share", description: "Pick any contact or WhatsApp group from your phone's share sheet." });\n      } else if (format === "pdf") {\n        downloadBlob(pdfBlob, `${baseFilename}.pdf`);\n        toast({ title: "Job PDF downloaded", description: `${chosenItems.length} item(s) assigned to ${worker!.name}.` });\n      } else {\n        const { pdfBlobToJpgPages } = await loadJpgLib();\n        const blobs = await pdfBlobToJpgPages(pdfBlob);\n        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);\n        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}` });\n      }'''
+          if old not in s:
+            raise SystemExit('generateAndSendJob action block target missing')
+          s = s.replace(old, new, 1)
+
+          old_menu = '''              onPdf={() => generateAndSendJob("pdf")}\n              onJpg={() => generateAndSendJob("jpg")}\n              triggerVariant="default"'''
+          new_menu = '''              onPdf={() => generateAndSendJob("pdf", "download")}\n              onJpg={() => generateAndSendJob("jpg", "download")}\n              onShareFile={() => generateAndSendJob("jpg", "share")}\n              menuTitle="Job work file"\n              menuDescription="Share now or download the worker-safe job as PDF or image."\n              pdfLabel="Download PDF"\n              jpgLabel="Download Image (JPG)"\n              shareLabel="Share Job File"\n              triggerVariant="default"'''
+          if old_menu not in s:
+            raise SystemExit('Assign Job DownloadShareMenu target missing')
+          s = s.replace(old_menu, new_menu, 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/admin/DownloadShareMenu.tsx src/pages/admin/AdminQuotationEditor.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add share and download options to assign job"
+          git push origin HEAD:main
