@@ -45,7 +45,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (targetErr) throw targetErr;
       if (!targetAdmin) return null;
-
       const { count, error: countErr } = await admin
         .from('user_roles')
         .select('user_id', { count: 'exact', head: true })
@@ -69,7 +68,8 @@ Deno.serve(async (req) => {
         const protection = await protectLastAdmin();
         if (protection) return json({ error: protection });
       }
-      await admin.from('user_roles').delete().eq('user_id', user_id);
+      const { error: deleteErr } = await admin.from('user_roles').delete().eq('user_id', user_id);
+      if (deleteErr) return json({ error: deleteErr.message });
       const { error } = await admin.from('user_roles').insert({ user_id, role });
       if (error) return json({ error: error.message });
       return json({ ok: true });
@@ -85,24 +85,26 @@ Deno.serve(async (req) => {
     }
 
     if (act === 'update_profile') {
-      const updates: Record<string, unknown> = {};
-      if (typeof email === 'string' && email.trim()) updates.email = email.trim();
-      const meta: Record<string, unknown> = {};
-      if (typeof display_name === 'string') meta.display_name = display_name;
-      if (Object.keys(meta).length) updates.user_metadata = meta;
-      if (Object.keys(updates).length) {
-        const { error } = await admin.auth.admin.updateUserById(user_id, updates as any);
-        if (error) return json({ error: error.message });
+      const normalizedEmail = typeof email === 'string' ? email.trim() : '';
+      if (normalizedEmail) {
+        const { data: target, error: getErr } = await admin.auth.admin.getUserById(user_id);
+        if (getErr) return json({ error: getErr.message });
+        if (target.user?.email !== normalizedEmail) {
+          const { error: emailErr } = await admin.auth.admin.updateUserById(user_id, { email: normalizedEmail });
+          if (emailErr) return json({ error: emailErr.message });
+        }
       }
+
       const profilePatch: Record<string, unknown> = {};
-      if (typeof display_name === 'string') profilePatch.display_name = display_name;
-      if (typeof email === 'string' && email.trim()) profilePatch.email = email.trim();
+      if (typeof display_name === 'string') profilePatch.display_name = display_name.trim() || null;
+      if (normalizedEmail) profilePatch.email = normalizedEmail;
       if (typeof whatsapp_number === 'string') profilePatch.whatsapp_number = whatsapp_number.trim() || null;
       if (Object.keys(profilePatch).length) {
-        await admin.from('profiles').upsert(
+        const { error: profileErr } = await admin.from('profiles').upsert(
           { user_id, ...profilePatch },
           { onConflict: 'user_id', ignoreDuplicates: false }
         );
+        if (profileErr) return json({ error: profileErr.message });
       }
       return json({ ok: true });
     }
