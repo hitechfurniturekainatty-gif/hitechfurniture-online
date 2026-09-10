@@ -5,7 +5,6 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { CommandCenterPanel } from "@/components/admin/CommandCenterPanel";
 import { SalesFollowupPanel } from "@/components/admin/SalesFollowupPanel";
-import { FurnitureWorkflowLauncher } from "@/components/admin/FurnitureWorkflowLauncher";
 import { ReceivablesTodayPanel } from "@/components/admin/ReceivablesTodayPanel";
 import { RoleFocusPanel } from "@/components/admin/RoleFocusPanel";
 
@@ -29,7 +28,6 @@ const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
   const [selected, setSelected] = useState("today");
   const [visited,setVisited]=useState<string[]>(["today"]);
-  if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) return <Navigate to="/admin/my-work" replace />;
 
   const showAdmin = isAdmin;
   const showOffice = isOfficeStaff;
@@ -63,6 +61,8 @@ const AdminOverview = () => {
     const id = window.setTimeout(preload,700);
     return () => { cancelled = true; window.clearTimeout(id); };
   }, [authLoading,user,showAdmin,showOffice,showProduction,showWarehouse,showDelivery]);
+
+  if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) return <Navigate to="/admin/my-work" replace />;
 
   const roleTitle = isAdmin ? "Admin Command Center" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
   const roleSub = isAdmin
