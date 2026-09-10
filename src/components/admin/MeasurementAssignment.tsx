@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-type Item = { id: string; description: string };
+import { Image as ImageIcon } from 'lucide-react';
+type Item = { id: string; description: string; item_image_url?: string | null; quantity?: number };
+const firstImage = (value?: string | null) => (value ?? '').split(/\r?\n/).map(v => v.trim()).find(Boolean) ?? null;
 export function MeasurementAssignment({ quotationId, items, open, onClose }: { quotationId: string; items: Item[]; open: boolean; onClose: () => void }) {
  const [staff,setStaff]=useState<any[]>([]),[routes,setRoutes]=useState<any[]>([]);
  const [assignee,setAssignee]=useState(''),[route,setRoute]=useState(''),[day,setDay]=useState(''),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -20,7 +22,7 @@ export function MeasurementAssignment({ quotationId, items, open, onClose }: { q
  return <Dialog open={open} onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Assign measurement / അളവെടുക്കാൻ നൽകുക</DialogTitle><DialogDescription>Choose the items, staff member, route and visit date for this measurement task.</DialogDescription></DialogHeader>
  <p className="text-sm text-muted-foreground">അളവെടുക്കേണ്ട items മാത്രം തിരഞ്ഞെടുക്കുക. Reply അതേ quotation-ൽ ലഭിക്കും.</p>
  {error&&<p role="alert" className="text-destructive">{error}</p>}
- {items.map(i=><label key={i.id} className="flex gap-3 rounded border p-3"><input type="checkbox" checked={selected.includes(i.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,i.id]:v.filter(id=>id!==i.id))}/>{i.description}</label>)}
+ {items.map(i=>{const image=firstImage(i.item_image_url);return <label key={i.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-2.5 transition ${selected.includes(i.id)?'border-primary bg-primary/5':'hover:bg-muted/40'}`}><input type="checkbox" checked={selected.includes(i.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,i.id]:v.filter(id=>id!==i.id))}/><div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted">{image?<img src={image} alt={i.description||'Quotation item'} loading="lazy" className="h-full w-full object-cover"/>:<div className="flex h-full w-full items-center justify-center text-muted-foreground"><ImageIcon className="h-5 w-5"/></div>}</div><span className="min-w-0 font-medium">{i.description||'Unnamed item'}{i.quantity!=null&&<span className="ml-1 text-xs font-normal text-muted-foreground">· Qty {i.quantity}</span>}</span></label>})}
  <label>Staff<select className="block w-full rounded border p-2" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="">Choose staff</option>{staff.map(s=><option key={s.user_id} value={s.user_id}>{s.display_name||s.email}</option>)}</select></label>
  <label>Route<select className="block w-full rounded border p-2" value={route} onChange={e=>setRoute(e.target.value)}><option value="">Choose route</option>{routes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
  <label>Visit date<input className="block w-full rounded border p-2" type="date" value={day} onChange={e=>setDay(e.target.value)}/></label>
