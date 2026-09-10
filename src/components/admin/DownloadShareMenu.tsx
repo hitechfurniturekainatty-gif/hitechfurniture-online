@@ -21,6 +21,12 @@ export type DownloadShareMenuProps = {
   onPdf: () => unknown | Promise<unknown>;
   onJpg: () => unknown | Promise<unknown>;
   onShareLink?: () => unknown | Promise<unknown>;
+  onShareFile?: () => unknown | Promise<unknown>;
+  menuTitle?: string;
+  menuDescription?: string;
+  pdfLabel?: string;
+  jpgLabel?: string;
+  shareLabel?: string;
   busy?: boolean;
   label?: string;
   triggerVariant?: ButtonProps["variant"];
@@ -39,6 +45,12 @@ export function DownloadShareMenu({
   onPdf,
   onJpg,
   onShareLink,
+  onShareFile,
+  menuTitle,
+  menuDescription,
+  pdfLabel = "PDF Document",
+  jpgLabel = "Image Pages (JPG)",
+  shareLabel = "Share File",
   busy = false,
   label = "Share / Export",
   triggerVariant = "outline",
@@ -139,8 +151,8 @@ export function DownloadShareMenu({
 
         <PopoverContent align="end" sideOffset={8} className="w-[min(92vw,340px)] p-2 shadow-xl">
           <div className="px-2 pb-2 pt-1">
-            <p className="text-sm font-semibold">Share or export quotation</p>
-            <p className="text-xs text-muted-foreground">Choose the best format for the customer or WhatsApp.</p>
+            <p className="text-sm font-semibold">{menuTitle ?? "Share or export quotation"}</p>
+            <p className="text-xs text-muted-foreground">{menuDescription ?? "Choose the best format for the customer or WhatsApp."}</p>
           </div>
 
           {isQuotationPreviewMenu && (
@@ -158,10 +170,20 @@ export function DownloadShareMenu({
             </button>
           )}
 
+          {onShareFile && (
+            <button type="button" className={optionClass} onClick={() => handlePick(onShareFile)} disabled={busy}>
+              <span className={iconBox}><Share2 className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{shareLabel}</span>
+                <span className="block text-xs text-muted-foreground">Open the phone share sheet with the worker-safe job file.</span>
+              </span>
+            </button>
+          )}
+
           <button type="button" className={optionClass} onClick={() => handlePick(onPdf)} disabled={busy}>
             <span className={iconBox}><FileText className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium">PDF Document</span>
+              <span className="block text-sm font-medium">{pdfLabel}</span>
               <span className="block text-xs text-muted-foreground">{pdfTooltip}</span>
             </span>
           </button>
@@ -169,7 +191,7 @@ export function DownloadShareMenu({
           <button type="button" className={optionClass} onClick={() => handlePick(onJpg)} disabled={busy}>
             <span className={iconBox}><ImageIcon className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium">Image Pages (JPG)</span>
+              <span className="block text-sm font-medium">{jpgLabel}</span>
               <span className="block text-xs text-muted-foreground">{jpgTooltip}</span>
             </span>
           </button>

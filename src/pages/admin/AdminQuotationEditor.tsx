@@ -1250,7 +1250,7 @@ const AdminQuotationEditor = () => {
     setJobOpen(true);
   };
 
-  const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg") => {
+  const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg", action: "send" | "download" | "share" = "send") => {
     if (!q) return;
     const isDirect = jobMode === "direct";
     let worker: Worker | undefined;
@@ -1309,7 +1309,17 @@ const AdminQuotationEditor = () => {
       const noteLine = jobNotes.trim() ? `\nNote: ${jobNotes.trim()}` : "";
       const msg = `${greeting}\n\nNew job work assigned.\nCustomer: ${q.party_name}\nPlace: ${q.party_place}\nQuotation: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}${noteLine}\n\n— Hitech Furniture & Interiors`;
 
-      if (isDirect) {
+      if (action === "download") {
+        if (format === "pdf") {
+          downloadBlob(pdfBlob, `${baseFilename}.pdf`);
+          toast({ title: "Job PDF downloaded", description: `${chosenItems.length} selected item(s) included.` });
+        } else {
+          const { pdfBlobToJpgPages } = await loadJpgLib();
+          const blobs = await pdfBlobToJpgPages(pdfBlob);
+          blobs.forEach((blob, index) => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`));
+          toast({ title: "Job image downloaded", description: `${blobs.length} image page(s) saved.` });
+        }
+      } else if (action === "share" || isDirect) {
         if (format === "pdf") {
           await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
         } else {
@@ -1317,24 +1327,15 @@ const AdminQuotationEditor = () => {
           const blobs = await pdfBlobToJpgPages(pdfBlob);
           await shareFilesNative(blobs, baseFilename, msg, "jpg");
         }
-        toast({
-          title: "Ready to share",
-          description: "Pick the contact or WhatsApp group from your phone's share sheet.",
-        });
+        toast({ title: "Ready to share", description: "Pick any contact or WhatsApp group from your phone's share sheet." });
       } else if (format === "pdf") {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
-        toast({
-          title: "Job PDF downloaded",
-          description: `${chosenItems.length} item(s) assigned to ${worker!.name}. Attach the PDF on WhatsApp manually.`,
-        });
+        toast({ title: "Job PDF downloaded", description: `${chosenItems.length} item(s) assigned to ${worker!.name}.` });
       } else {
         const { pdfBlobToJpgPages } = await loadJpgLib();
         const blobs = await pdfBlobToJpgPages(pdfBlob);
         await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
-        toast({
-          title: "Job work sent",
-          description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}`,
-        });
+        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}` });
       }
 
       setJobOpen(false);
@@ -2587,8 +2588,14 @@ const AdminQuotationEditor = () => {
             <DownloadShareMenu
               busy={generatingJob}
               disabled={selectedItemIds.size === 0 || (jobMode === "saved" && !selectedWorker)}
-              onPdf={() => generateAndSendJob("pdf")}
-              onJpg={() => generateAndSendJob("jpg")}
+              onPdf={() => generateAndSendJob("pdf", "download")}
+              onJpg={() => generateAndSendJob("jpg", "download")}
+              onShareFile={() => generateAndSendJob("jpg", "share")}
+              menuTitle="Job work file"
+              menuDescription="Share now or download the worker-safe job as PDF or image."
+              pdfLabel="Download PDF"
+              jpgLabel="Download Image (JPG)"
+              shareLabel="Share Job File"
               triggerVariant="default"
               triggerClassName="w-full sm:w-auto"
               label={jobMode === "direct" ? "Generate & Share" : "Assign & send"}
