@@ -30,20 +30,25 @@ export function canonicalMedia(value: unknown): unknown {
   return mapMedia(value, url => `${backendUrl}/storage/v1/object/public/quotations/${mediaPath(url).split('/').map(encodeURIComponent).join('/')}`);
 }
 
-function cachedSignedUrl(path: string): string | undefined {
-  const cached = signedCache.get(path);
+function cacheKey(scope: string, path: string) {
+  return `${scope}\n${path}`;
+}
+
+function cachedSignedUrl(scope: string, path: string): string | undefined {
+  const key = cacheKey(scope, path);
+  const cached = signedCache.get(key);
   if (!cached) return undefined;
   if (cached.expiresAt <= Date.now()) {
-    signedCache.delete(path);
+    signedCache.delete(key);
     return undefined;
   }
   return cached.url;
 }
 
-function cacheSignedUrls(urls: Record<string, string>) {
+function cacheSignedUrls(scope: string, urls: Record<string, string>) {
   const expiresAt = Date.now() + SIGNED_URL_TTL_MS;
   for (const [path, url] of Object.entries(urls)) {
-    if (url) signedCache.set(path, { url, expiresAt });
+    if (url) signedCache.set(cacheKey(scope, path), { url, expiresAt });
   }
 }
 
@@ -62,17 +67,25 @@ export function privateMediaFetch(baseFetch: typeof fetch): typeof fetch {
     const urls = mediaUrls(value);
     if (!urls.length) return response;
 
+    const sourceHeaders = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    const rpc = url.pathname.split('/rpc/')[1];
+    const shared = ['get_shared_quotation','get_shared_job_work_order','get_shared_delivery_note'].includes(rpc);
+    const token = shared ? (body as {p_token?:string})?.p_token ?? url.searchParams.get('p_token') : undefined;
+    const authorization = sourceHeaders.get('authorization') ?? '';
+    // Signed URLs are bearer capabilities. Never reuse one across a different
+    // authenticated session or a different public share token.
+    const scope = shared ? `share:${rpc}:${token ?? ''}` : `auth:${authorization}`;
+
     const paths = [...new Set(urls.map(mediaPath))];
     const signed: Record<string,string> = {};
     const missing: string[] = [];
     for (const path of paths) {
-      const cached = cachedSignedUrl(path);
+      const cached = cachedSignedUrl(scope, path);
       if (cached) signed[path] = cached;
       else missing.push(path);
     }
 
     if (missing.length) {
-      const sourceHeaders = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
       const headers = new Headers();
       // Do not forward PostgREST schema, pagination or representation headers to Storage.
       for (const name of ['authorization', 'apikey', 'x-client-info']) {
@@ -80,9 +93,6 @@ export function privateMediaFetch(baseFetch: typeof fetch): typeof fetch {
         if (value) headers.set(name, value);
       }
       headers.set('Content-Type','application/json');
-      const rpc = url.pathname.split('/rpc/')[1];
-      const shared = ['get_shared_quotation','get_shared_job_work_order','get_shared_delivery_note'].includes(rpc);
-      const token = shared ? (body as {p_token?:string})?.p_token ?? url.searchParams.get('p_token') : undefined;
       const batches: string[][] = [];
       for (let i = 0; i < missing.length; i += 100) batches.push(missing.slice(i, i + 100));
 
@@ -102,7 +112,7 @@ export function privateMediaFetch(baseFetch: typeof fetch): typeof fetch {
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         Object.assign(signed, result.value);
-        cacheSignedUrls(result.value);
+        cacheSignedUrls(scope, result.value);
       }
     }
 
