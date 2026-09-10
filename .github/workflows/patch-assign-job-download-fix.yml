@@ -1,0 +1,68 @@
+name: Patch Assign Job Download Fix
+
+on:
+  push:
+    paths:
+      - '.github/assign-job-download-fix-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix assign job downloads
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/admin/AdminQuotationEditor.tsx')
+          s = p.read_text()
+          s = s.replace(
+'''    let worker: Worker | undefined;
+    if (!isDirect) {
+      if (!selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
+      worker = workers.find((w) => w.id === selectedWorker);
+      if (!worker) return;
+    }''',
+'''    let worker: Worker | undefined = selectedWorker
+      ? workers.find((w) => w.id === selectedWorker)
+      : undefined;
+    if (action === "send" && !isDirect && !worker) {
+      toast({ title: "Select a worker", variant: "destructive" });
+      return;
+    }''', 1)
+          s = s.replace('''      if (worker) {
+        const { error } = await supabase.from("job_work_orders").insert({''', '''      // Export/share must never be blocked by creating a DB job row.
+      // Persist the assignment only for the actual Send action.
+      if (worker && action === "send") {
+        const { error } = await supabase.from("job_work_orders").insert({''', 1)
+          s = s.replace('''          blobs.forEach((blob, index) => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`));''', '''          blobs.forEach((blob, index) => {
+            setTimeout(
+              () => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`),
+              index * 300,
+            );
+          });''', 1)
+          s = s.replace('''      setJobOpen(false);
+      setSelectedItemIds(new Set());''', '''      // Keep the dialog and item selection intact after downloads so the
+      // admin can download another format or still assign/send the same job.
+      if (action !== "download") {
+        setJobOpen(false);
+        setSelectedItemIds(new Set());
+      }''', 1)
+          s = s.replace('''              disabled={selectedItemIds.size === 0 || (jobMode === "saved" && !selectedWorker)}''', '''              disabled={selectedItemIds.size === 0}''', 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/admin/AdminQuotationEditor.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: make assign job PDF and image downloads reliable"
+          git push origin HEAD:main
