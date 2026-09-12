@@ -1,143 +1,60 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown, MapPin } from "lucide-react";
-import entranceImage from "@/assets/hero-exterior-door.jpg";
-import glassDoorImage from "@/assets/hero-glass-door.jpg";
+import { ArrowRight, ChevronDown, ClipboardList, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import livingRoomImage from "@/assets/living-room-hero.png";
-import livingDetailImage from "@/assets/hero-interior-sofa.jpg";
 import diningRoomImage from "@/assets/dining-room-hero.png";
-import masterBedroomImage from "@/assets/master-bedroom-hero.png";
 import kitchenImage from "@/assets/kitchen-hero.png";
-import interiorRevealImage from "@/assets/hero-interior-room.jpg";
-import villaExteriorImage from "@/assets/hero-villa-arch.jpg";
+import masterBedroomImage from "@/assets/master-bedroom-hero.png";
+import balconyImage from "@/assets/balcony-hero.png";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 
-type JourneyStop = {
+type Scene = {
   id: string;
-  from: number;
-  to: number;
-  image: string;
-  title: string;
-  subtitle?: string;
+  label: string;
+  imageUrl: string;
   alt: string;
-  focus?: string;
 };
 
-const JOURNEY: JourneyStop[] = [
+const SCENES: Scene[] = [
   {
-    id: "entrance",
-    from: 0,
-    to: 0.055,
-    image: entranceImage,
-    title: "",
-    alt: "Bright luxury villa entrance for Hitech Furniture and Interiors",
-    focus: "center center",
+    id: "living-room",
+    label: "Living Room",
+    imageUrl: livingRoomImage,
+    alt: "Luxury living room interior with marble, walnut, chandelier and daylight flooding through tall glass windows",
   },
   {
-    id: "door",
-    from: 0.035,
-    to: 0.11,
-    image: glassDoorImage,
-    title: "",
-    alt: "Glass entrance opening into the same luxury villa",
-    focus: "center center",
-  },
-  {
-    id: "living",
-    from: 0.075,
-    to: 0.22,
-    image: livingRoomImage,
-    title: "Luxury Living",
-    subtitle: "Designed for the way you live.",
-    alt: "Premium luxury living room with sofa, teapoy, curtains and bright natural daylight",
-    focus: "center center",
-  },
-  {
-    id: "living-detail",
-    from: 0.15,
-    to: 0.255,
-    image: livingDetailImage,
-    title: "Luxury Living",
-    subtitle: "Designed for the way you live.",
-    alt: "Close architectural view of the same bright villa living room and premium sofa",
-    focus: "center center",
-  },
-  {
-    id: "dining",
-    from: 0.205,
-    to: 0.42,
-    image: diningRoomImage,
-    title: "Dining in Style",
-    alt: "Premium dining area inside the same luxury villa with upholstered dining chairs and daylight",
-    focus: "center center",
-  },
-  {
-    id: "bedroom",
-    from: 0.385,
-    to: 0.62,
-    image: masterBedroomImage,
-    title: "Your Private Retreat",
-    alt: "Luxury master bedroom with deep upholstered headboard, side tables, wardrobe and warm wood details",
-    focus: "center center",
+    id: "dining-room",
+    label: "Dining Room",
+    imageUrl: diningRoomImage,
+    alt: "Luxury dining room interior with sculptural lighting, walnut finishes and soft beige seating",
   },
   {
     id: "kitchen",
-    from: 0.585,
-    to: 0.79,
-    image: kitchenImage,
-    title: "Crafted for Everyday Luxury",
-    alt: "Premium modular kitchen inside the same villa with island, cabinetry, integrated appliances and daylight",
-    focus: "center center",
+    label: "Kitchen",
+    imageUrl: kitchenImage,
+    alt: "Premium kitchen with marble island, walnut cabinetry and warm daylight",
   },
   {
-    id: "interior-reveal",
-    from: 0.745,
-    to: 0.925,
-    image: interiorRevealImage,
-    title: "Furniture + Interiors",
-    subtitle: "Complete spaces. One trusted destination.",
-    alt: "Wide connected interior reveal showing Hitech furniture and complete interior solutions",
-    focus: "center center",
+    id: "master-bedroom",
+    label: "Master Bedroom",
+    imageUrl: masterBedroomImage,
+    alt: "Luxury master bedroom with upholstered bed, marble wall and floor-to-ceiling tropical view",
   },
   {
-    id: "exterior",
-    from: 0.885,
-    to: 1,
-    image: villaExteriorImage,
-    title: "",
-    alt: "Modern Kerala-friendly luxury villa exterior in bright daylight",
-    focus: "center center",
+    id: "balcony",
+    label: "Balcony",
+    imageUrl: balconyImage,
+    alt: "Luxury balcony lounge with soft sectional seating, marble table and mountain view",
   },
 ];
 
-const clamp = (value: number, min = 0, max = 1) => Math.min(Math.max(value, min), max);
-const smoothstep = (t: number) => {
-  const x = clamp(t);
-  return x * x * (3 - 2 * x);
-};
-
-function stopOpacity(progress: number, stop: JourneyStop) {
-  const span = Math.max(stop.to - stop.from, 0.001);
-  const local = clamp((progress - stop.from) / span);
-  const fadeIn = smoothstep(local / 0.28);
-  const fadeOut = 1 - smoothstep((local - 0.72) / 0.28);
-  return clamp(fadeIn * fadeOut);
-}
-
-function textOpacity(progress: number, stop: JourneyStop) {
-  const span = Math.max(stop.to - stop.from, 0.001);
-  const local = clamp((progress - stop.from) / span);
-  const fadeIn = smoothstep(local / 0.2);
-  const fadeOut = 1 - smoothstep((local - 0.67) / 0.24);
-  return clamp(fadeIn * fadeOut);
-}
+const clamp = (n: number, min = 0, max = 1) => Math.min(Math.max(n, min), max);
+const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 export const LuxuryScrollHero = () => {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const targetProgress = useRef(0);
-  const renderedProgress = useRef(0);
-  const rafRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -149,204 +66,294 @@ export const LuxuryScrollHero = () => {
   }, []);
 
   useEffect(() => {
-    const root = sectionRef.current;
-    if (!root) return;
+    const el = sectionRef.current;
+    if (!el) return;
 
-    const readScroll = () => {
-      const rect = root.getBoundingClientRect();
-      const travel = Math.max(root.offsetHeight - window.innerHeight, 1);
-      targetProgress.current = clamp(-rect.top / travel);
-    };
-
-    const animate = () => {
-      const target = targetProgress.current;
-      const current = renderedProgress.current;
-      const next = reduceMotion ? target : current + (target - current) * 0.14;
-      renderedProgress.current = Math.abs(target - next) < 0.0005 ? target : next;
-      setProgress(renderedProgress.current);
-      if (Math.abs(target - renderedProgress.current) > 0.0005) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        rafRef.current = null;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const total = Math.max(el.offsetHeight - viewportHeight, 1);
+      const next = clamp(-rect.top / total);
+      if (Math.abs(next - progressRef.current) > 0.005) {
+        progressRef.current = next;
+        setProgress(next);
       }
     };
 
     const onScroll = () => {
-      readScroll();
-      if (rafRef.current == null) rafRef.current = requestAnimationFrame(animate);
+      if (!raf) raf = window.requestAnimationFrame(update);
     };
 
-    readScroll();
-    renderedProgress.current = targetProgress.current;
-    setProgress(targetProgress.current);
+    update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (raf) cancelAnimationFrame(raf);
     };
-  }, [reduceMotion]);
-
-  useEffect(() => {
-    const priority = JOURNEY.slice(0, 4);
-    priority.forEach((stop) => {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = stop.image;
-    });
   }, []);
 
-  const renderedStops = useMemo(
-    () =>
-      JOURNEY.map((stop, index) => {
-        const span = Math.max(stop.to - stop.from, 0.001);
-        const local = clamp((progress - stop.from) / span);
-        const eased = smoothstep(local);
-        const cameraScale = reduceMotion ? 1 : 1.015 + eased * 0.075;
-        const cameraY = reduceMotion ? 0 : 10 - eased * 18;
-        const cameraX = reduceMotion ? 0 : index % 2 === 0 ? 4 - eased * 8 : -4 + eased * 8;
-        return {
-          ...stop,
-          index,
-          local,
-          imageOpacity: stopOpacity(progress, stop),
-          copyOpacity: stop.title ? textOpacity(progress, stop) : 0,
-          cameraScale,
-          cameraX,
-          cameraY,
-        };
-      }),
-    [progress, reduceMotion],
-  );
+  const sceneMetrics = useMemo(() => {
+    const count = SCENES.length;
+    return SCENES.map((scene, index) => {
+      const start = index / count;
+      const end = (index + 1) / count;
+      const local = clamp((progress - start) / (end - start));
+      const reveal = reduceMotion ? local : ease(local);
+      const fadeIn = clamp(local / 0.32);
+      const fadeOut = 1 - clamp((local - 0.72) / 0.28);
+      const opacity = clamp(fadeIn * fadeOut);
+      const active = progress >= start && progress < end;
+      return {
+        ...scene,
+        index,
+        active,
+        local,
+        reveal,
+        opacity: index === 0 && progress < start + 0.02 ? 1 : opacity,
+      };
+    });
+  }, [progress, reduceMotion]);
 
-  const activeIndex = renderedStops.reduce((best, stop, index, array) => {
-    return stop.imageOpacity > array[best].imageOpacity ? index : best;
-  }, 0);
-
-  const finalReveal = smoothstep((progress - 0.925) / 0.075);
-  const initialHint = 1 - smoothstep(progress / 0.08);
+  const activeIndex = Math.min(Math.floor(progress * SCENES.length), SCENES.length - 1);
+  const introFade = clamp(1 - progress * 1.45);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative bg-[#f5f1ea]"
-      style={{ height: reduceMotion ? "100vh" : "650vh" }}
-      aria-label="Hitech Furniture and Interiors continuous luxury villa journey"
-    >
-      <div className="sticky top-0 h-[100svh] overflow-hidden bg-[#eee9df]">
-        <div className="absolute inset-0">
-          {renderedStops.map((stop, index) => {
-            const visible = reduceMotion || Math.abs(index - activeIndex) <= 2 || stop.imageOpacity > 0.02;
-            if (!visible) return null;
-            return (
-              <div
-                key={stop.id}
-                className="absolute inset-0"
-                style={{
-                  opacity: index === 0 && progress < 0.03 ? Math.max(stop.imageOpacity, 1) : stop.imageOpacity,
-                  willChange: index === activeIndex ? "opacity, transform" : undefined,
-                }}
-                aria-hidden={index !== activeIndex}
-              >
-                <img
-                  src={stop.image}
-                  alt={stop.alt}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  loading={index <= 2 ? "eager" : "lazy"}
-                  decoding="async"
-                  {...({ fetchpriority: index === 0 ? "high" : "low" } as Record<string, string>)}
+    <>
+      <section
+        ref={sectionRef}
+        className="relative"
+        style={{ height: reduceMotion ? "100vh" : `${SCENES.length * 80}vh` }}
+        aria-label="Hitech Furniture and Interiors visual journey"
+      >
+        <div className="sticky top-0 h-screen overflow-hidden bg-background">
+          <div className="absolute inset-0">
+            {sceneMetrics.map((scene) => {
+              const depthShift = reduceMotion ? 0 : (scene.index - activeIndex) * 24 - scene.reveal * 18;
+              const slowZoom = reduceMotion ? 1 : 1.04 + scene.reveal * 0.07;
+              const parallaxY = reduceMotion ? 0 : 4 - scene.reveal * 16;
+              const shouldRenderImage = reduceMotion || Math.abs(scene.index - activeIndex) <= 1;
+
+              return (
+                <div
+                  key={scene.id}
+                  className="absolute inset-0"
                   style={{
-                    objectPosition: stop.focus ?? "center center",
-                    transform: `translate3d(${stop.cameraX}px, ${stop.cameraY}px, 0) scale(${stop.cameraScale})`,
-                    transformOrigin: "center center",
-                    willChange: index === activeIndex ? "transform" : undefined,
+                    opacity: scene.index === activeIndex ? Math.max(scene.opacity, 0.82) : scene.opacity,
+                    transform: `translate3d(0, ${depthShift}px, 0)`,
+                    transition: reduceMotion ? "opacity 280ms ease" : undefined,
+                    willChange: scene.index === activeIndex ? "opacity, transform" : undefined,
                   }}
-                />
+                  aria-hidden={!scene.active}
+                >
+                  {shouldRenderImage && (
+                    <img
+                      src={scene.imageUrl}
+                      alt={scene.alt}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading={scene.index === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      {...({ fetchpriority: scene.index === 0 ? "high" : "low" } as Record<string, string>)}
+                      style={{
+                        transform: `scale(${slowZoom}) translate3d(0, ${parallaxY}px, 0)`,
+                        transformOrigin: "center center",
+                        willChange: scene.index === activeIndex ? "transform" : undefined,
+                      }}
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-black/10" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/70" />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="absolute inset-0 z-10 flex flex-col justify-between px-5 pb-10 pt-24 sm:px-8 md:px-12 md:pt-28 lg:px-20">
+            <div className="max-w-4xl" style={{ opacity: Math.max(introFade, 0.42) }}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white backdrop-blur-md sm:text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                Hitech Furniture & Interiors
               </div>
-            );
-          })}
 
-          <div className="absolute inset-0 bg-gradient-to-b from-black/12 via-transparent to-black/24" />
-          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/32 via-black/8 to-transparent" />
-        </div>
+              <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.02] text-white [text-shadow:0_3px_18px_rgba(0,0,0,0.65)] sm:text-5xl md:text-6xl lg:text-7xl">
+                Furniture crafted for the way you live.
+              </h1>
 
-        <div className="pointer-events-none absolute inset-0 z-10">
-          {renderedStops.map((stop) =>
-            stop.title ? (
-              <div
-                key={`${stop.id}-copy`}
-                className="absolute inset-x-0 bottom-[12vh] px-5 sm:bottom-[13vh] sm:px-8 md:px-12 lg:px-20"
-                style={{
-                  opacity: stop.copyOpacity * (1 - finalReveal),
-                  transform: `translate3d(0, ${(1 - stop.copyOpacity) * 18}px, 0)`,
-                  filter: `blur(${(1 - stop.copyOpacity) * 5}px)`,
-                }}
-              >
-                <div className="max-w-2xl rounded-[1.4rem] border border-white/35 bg-white/76 p-5 text-[#34261c] shadow-[0_18px_70px_rgba(52,38,28,0.16)] backdrop-blur-md sm:p-6">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8b5c35]">Hitech Furniture & Interiors</p>
-                  <h2 className="mt-2 font-display text-3xl leading-tight sm:text-4xl md:text-5xl">{stop.title}</h2>
-                  {stop.subtitle ? (
-                    <p className="mt-2 text-sm font-medium text-[#5f5146] sm:text-base">{stop.subtitle}</p>
-                  ) : null}
+              <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white sm:text-xs">
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Custom Furniture</span>
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Premium Collections</span>
+                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Complete Interiors</span>
+              </div>
+
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.75)] sm:text-base md:text-lg">
+                Custom furniture, premium collections and complete interior solutions for homes and businesses across Wayanad.
+              </p>
+
+              <div className="pointer-events-auto mt-7 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to="/catalog"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-slate-100"
+                >
+                  Explore Collection
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => openEnquiryForm()}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/50 bg-black/35 px-6 py-3 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-black/50"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  Get Free Consultation
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-end justify-between gap-6">
+              <div className="rounded-xl border border-white/25 bg-black/40 px-4 py-3 text-white shadow-lg backdrop-blur-md">
+                <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/80">Explore</p>
+                <p className="mt-1 font-display text-xl text-white md:text-2xl">{SCENES[activeIndex]?.label}</p>
+              </div>
+
+              <div className="hidden items-center gap-3 md:flex">
+                <div className="flex gap-2">
+                  {SCENES.map((scene, index) => (
+                    <span
+                      key={scene.id}
+                      className="h-1.5 rounded-full bg-white/30 transition-all duration-500"
+                      style={{ width: index === activeIndex ? 44 : 16 }}
+                      aria-hidden
+                    >
+                      <span
+                        className="block h-full rounded-full bg-white"
+                        style={{
+                          width: index === activeIndex ? `${Math.max(sceneMetrics[index]?.local ?? 0, 0.1) * 100}%` : "0%",
+                        }}
+                      />
+                    </span>
+                  ))}
                 </div>
               </div>
-            ) : null,
+            </div>
+          </div>
+
+          {!reduceMotion && (
+            <div
+              className="pointer-events-none absolute bottom-9 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-1.5 text-white/80 sm:flex"
+              style={{ opacity: introFade }}
+            >
+              <span className="text-[9px] font-medium uppercase tracking-[0.35em]">Scroll to explore</span>
+              <ChevronDown className="h-4 w-4 animate-bounce" aria-hidden />
+            </div>
           )}
         </div>
+      </section>
 
-        <div
-          className="pointer-events-none absolute inset-0 z-20 flex items-end px-5 pb-7 sm:px-8 sm:pb-9 md:px-12 lg:px-20"
-          style={{ opacity: finalReveal }}
-        >
-          <div className="pointer-events-auto w-full rounded-[1.75rem] border border-white/60 bg-white/88 p-6 text-[#34261c] shadow-[0_24px_90px_rgba(52,38,28,0.18)] backdrop-blur-xl sm:max-w-3xl sm:p-8">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8b5c35]">Kalpetta · Wayanad</p>
-            <h1 className="mt-3 font-display text-3xl leading-[1.05] sm:text-5xl md:text-6xl">Hitech Furniture & Interiors</h1>
-            <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-[#5f5146] sm:text-base md:text-lg">
-              Affordable Luxury Furniture & Interior Solutions
+      <section className="border-b border-border bg-card" aria-label="Why choose Hitech">
+        <div className="container-page grid grid-cols-2 gap-px py-3 sm:grid-cols-4 sm:py-4">
+          <TrustItem icon={ShieldCheck} title="14+ Years" subtitle="Trusted craftsmanship" />
+          <TrustItem icon={Sparkles} title="Custom Made" subtitle="Built for your space" />
+          <TrustItem icon={MapPin} title="Wayanad" subtitle="Local showroom & service" />
+          <TrustItem icon={ClipboardList} title="Complete Interiors" subtitle="Design to installation" />
+        </div>
+      </section>
+
+      <section className="container-page py-14 md:py-20" aria-labelledby="shop-by-room-title">
+        <div className="mb-8 flex items-end justify-between gap-5 md:mb-10">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Explore your space</p>
+            <h2 id="shop-by-room-title" className="font-display text-3xl text-foreground md:text-4xl">Shop by room</h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              Discover furniture and interior inspiration room by room, then browse our live collection for available designs.
             </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link
-                to="/catalog"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#4a2810] px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#3b200d]"
-              >
-                Explore Furniture <ArrowRight className="h-4 w-4" />
-              </Link>
+          </div>
+          <Link to="/catalog" className="hidden items-center gap-2 text-sm font-semibold text-primary hover:underline sm:flex">
+            View full catalog <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+          {SCENES.map((scene) => (
+            <Link
+              key={scene.id}
+              to="/catalog"
+              className="group relative min-h-[190px] overflow-hidden rounded-2xl bg-muted sm:min-h-[240px] md:min-h-[300px]"
+            >
+              <img
+                src={scene.imageUrl}
+                alt={scene.alt}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                <p className="font-display text-lg font-semibold md:text-xl">{scene.label}</p>
+                <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-white/80">
+                  Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section id="interiors" className="container-page pb-14 md:pb-20">
+        <div className="grid overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="order-2 flex flex-col justify-center p-7 sm:p-10 lg:order-1 lg:p-14">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Interior solutions</p>
+            <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">From an empty room to a complete living space.</h2>
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              We handle custom furniture and complete interiors for living rooms, bedrooms, kitchens and more — from planning and material selection to production and installation.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => openEnquiryForm()}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#4a2810]/20 bg-white px-5 py-3 text-sm font-bold text-[#4a2810] transition hover:-translate-y-0.5 hover:bg-[#faf7f2]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
               >
-                Explore Interiors <ArrowRight className="h-4 w-4" />
+                Start an Interior Enquiry
+                <ArrowRight className="h-4 w-4" />
               </button>
               <Link
-                to="/contact"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#4a2810]/20 bg-white/80 px-5 py-3 text-sm font-semibold text-[#4a2810] transition hover:bg-white"
+                to="/about"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
-                <MapPin className="h-4 w-4" /> Visit Showroom
+                About Hitech
               </Link>
             </div>
-            <p className="mt-5 text-xs font-medium text-[#7c6a5a]">www.hitechfurniture.online</p>
+          </div>
+
+          <div className="order-1 grid min-h-[320px] grid-cols-2 lg:order-2 lg:min-h-[470px]">
+            <img src={kitchenImage} alt="Hitech kitchen interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <div className="grid grid-rows-2">
+              <img src={masterBedroomImage} alt="Hitech bedroom interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <img src={livingRoomImage} alt="Hitech living room interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            </div>
           </div>
         </div>
-
-        {!reduceMotion && (
-          <div
-            className="pointer-events-none absolute bottom-7 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-1.5 text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.35)]"
-            style={{ opacity: initialHint }}
-          >
-            <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.32em]">Scroll through the villa</span>
-            <ChevronDown className="h-4 w-4" aria-hidden />
-          </div>
-        )}
-
-        <div className="pointer-events-none absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 md:block">
-          <div className="h-36 w-[2px] overflow-hidden rounded-full bg-white/35">
-            <div className="w-full rounded-full bg-white" style={{ height: `${Math.max(progress * 100, 2)}%` }} />
-          </div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 };
+
+type TrustItemProps = {
+  icon: typeof ShieldCheck;
+  title: string;
+  subtitle: string;
+};
+
+const TrustItem = ({ icon: Icon, title, subtitle }: TrustItemProps) => (
+  <div className="flex items-center gap-3 px-2 py-3 sm:justify-center sm:px-4">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <Icon className="h-4 w-4" />
+    </div>
+    <div>
+      <p className="text-sm font-bold text-foreground">{title}</p>
+      <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:text-xs">{subtitle}</p>
+    </div>
+  </div>
+);
