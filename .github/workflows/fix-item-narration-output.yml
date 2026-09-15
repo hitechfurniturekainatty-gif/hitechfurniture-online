@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Patch narration into preview and generated documents
         run: |
@@ -39,7 +39,7 @@ jobs:
               '  items: {\n    description: string;\n    item_notes?: string | null;')
           rep(pdf,
               '<Text style={jwStyles.cellItem}>{it.description || "-"}</Text>',
-              '<Text style={jwStyles.cellItem}>{it.description || "-"}</Text>\n              {it.item_notes?.trim() ? (\n                <Text style={{ marginTop: 3, fontSize: 8.5, color: "#52666A", lineHeight: 1.35 }}>\n                  {it.item_notes}\n                </Text>\n              ) : null}')
+              '<View style={jwStyles.cellItem}>\n                <Text>{it.description || "-"}</Text>\n                {it.item_notes?.trim() ? (\n                  <Text style={{ marginTop: 3, fontSize: 8.5, color: "#52666A", lineHeight: 1.35 }}>{it.item_notes}</Text>\n                ) : null}\n              </View>')
 
           editor='src/pages/admin/AdminQuotationEditor.tsx'
           rep(editor,
