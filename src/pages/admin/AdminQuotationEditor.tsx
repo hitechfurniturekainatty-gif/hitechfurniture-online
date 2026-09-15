@@ -992,6 +992,7 @@ const AdminQuotationEditor = () => {
       is_po: po,
       items: items.map((it) => ({
         description: it.description,
+        item_notes: it.item_notes,
         item_image_url: it.item_image_url,
         measurement: it.measurement,
         measurement_image_url: it.measurement_image_url,
@@ -1291,6 +1292,7 @@ const AdminQuotationEditor = () => {
         notes: jobNotes || null,
         items: chosenItems.map((it) => ({
           description: it.description,
+          item_notes: it.item_notes,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,

@@ -59,6 +59,7 @@ const cols = { sl: 22, desc: 118, img: 70, meas: 95, cat: 100, qty: 30, price: 5
 
 export type QuotationItemPdf = {
   description: string;
+  item_notes?: string | null;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
@@ -172,7 +173,14 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         {q.items.map((it, i) => (
           <View key={i} style={[styles.tRow, i % 2 === 1 ? styles.tRowAlt : null]} wrap={false}>
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
-            <Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>
+            <View style={[styles.td, { width: cols.desc }]}>
+              <Text>{it.description}</Text>
+              {it.item_notes?.trim() ? (
+                <Text style={{ marginTop: 3, fontSize: 9.5, color: "#52666A", lineHeight: 1.35 }}>
+                  {it.item_notes}
+                </Text>
+              ) : null}
+            </View>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
               {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 10, color: "#9AA8AA" }}>-</Text>}
             </View>
@@ -484,6 +492,7 @@ export type JobWorkPdfData = {
   notes: string | null;
   items: {
     description: string;
+    item_notes?: string | null;
     item_image_url: string | null;
     measurement: string | null;
     measurement_image_url: string | null;
@@ -551,7 +560,12 @@ const JobWorkDoc = ({ d }: { d: JobWorkPdfData }) => (
               <Text style={jwStyles.cellSl}>{i + 1}</Text>
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.item }]}>
-              <Text style={jwStyles.cellItem}>{it.description || "-"}</Text>
+              <View style={jwStyles.cellItem}>
+                <Text>{it.description || "-"}</Text>
+                {it.item_notes?.trim() ? (
+                  <Text style={{ marginTop: 3, fontSize: 8.5, color: "#52666A", lineHeight: 1.35 }}>{it.item_notes}</Text>
+                ) : null}
+              </View>
             </View>
             <View style={[jwStyles.td, { width: JW_COLS.photo, justifyContent: "center" }]}>
               <View style={[jwStyles.photoBox, { width: 80, height: 80 }]}>

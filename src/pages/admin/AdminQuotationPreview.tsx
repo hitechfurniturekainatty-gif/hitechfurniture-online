@@ -37,6 +37,7 @@ import { lazyImport } from "@/lib/lazyImport";
 type QItem = {
   id: string;
   description: string;
+  item_notes: string | null;
   item_image_url: string | null;
   measurement: string | null;
   measurement_image_url: string | null;
@@ -259,6 +260,7 @@ const AdminQuotationPreview = () => {
         is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
+          item_notes: it.item_notes,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
@@ -335,6 +337,7 @@ const AdminQuotationPreview = () => {
         is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
+          item_notes: it.item_notes,
           item_image_url: it.item_image_url,
           measurement: it.measurement,
           measurement_image_url: it.measurement_image_url,
@@ -594,6 +597,9 @@ const AdminQuotationPreview = () => {
                     <p className="text-base font-semibold leading-tight text-slate-900">
                       <span className="text-slate-500">#{idx + 1}</span> {it.description}
                     </p>
+                    {it.item_notes?.trim() && (
+                      <p className="mt-1 whitespace-pre-line text-sm font-normal leading-snug text-slate-600">{it.item_notes}</p>
+                    )}
                     <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
                       <Hash className="-mt-0.5 mr-0.5 inline h-3 w-3" />{it.quantity}
                     </span>
@@ -699,6 +705,7 @@ const AdminQuotationPreview = () => {
                       <td className="px-3 py-3 text-left text-slate-500 tabular-nums">{idx + 1}</td>
                       <td className="px-3 py-3">
                         <p className="font-medium text-slate-900">{it.description}</p>
+                        {it.item_notes?.trim() && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{it.item_notes}</p>}
                         {it.catalog_text && <p className="mt-0.5 text-xs text-slate-500">Ref: {it.catalog_text}</p>}
                         {(it.measurement_image_url || it.catalog_image_url) && (
                           <div className="mt-2 flex gap-2">
