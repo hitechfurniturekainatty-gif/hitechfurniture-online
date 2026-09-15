@@ -37,3 +37,6 @@ jobs:
 
       - name: Build production site
         run: npm run build
+
+# Keep this workflow commit user-triggered so production deploy hooks receive source fixes
+# such as quotation item narration in preview/PDF/export outputs.
