@@ -45,7 +45,6 @@ jobs:
           rep(editor,
               'description: it.description,\n        item_image_url: it.item_image_url,',
               'description: it.description,\n        item_notes: it.item_notes,\n        item_image_url: it.item_image_url,')
-          # Job-work mappings can occur separately from quotation mapping.
           p=Path(editor); s=p.read_text()
           s=s.replace('description: it.description,\n          item_image_url: it.item_image_url,',
                       'description: it.description,\n          item_notes: it.item_notes,\n          item_image_url: it.item_image_url,')
@@ -64,7 +63,7 @@ jobs:
                       '<p className="font-medium text-slate-900">{it.description}</p>\n                        {it.item_notes?.trim() && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{it.item_notes}</p>}\n                        {it.catalog_text')
           p.write_text(s)
           PY
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run build
       - name: Commit fix
         run: |
