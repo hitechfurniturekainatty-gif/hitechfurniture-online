@@ -1,0 +1,75 @@
+name: Fix Item Narration Output
+on:
+  push:
+    paths:
+      - '.github/item-narration-output-trigger'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Patch narration into preview and generated documents
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def rep(path, old, new, count=None):
+              p=Path(path); s=p.read_text()
+              if old not in s:
+                  raise SystemExit(f'Pattern not found in {path}: {old[:100]}')
+              s=s.replace(old,new) if count is None else s.replace(old,new,count)
+              p.write_text(s)
+
+          pdf='src/lib/quotationPdf.tsx'
+          rep(pdf,
+              'export type QuotationItemPdf = {\n  description: string;',
+              'export type QuotationItemPdf = {\n  description: string;\n  item_notes?: string | null;')
+          rep(pdf,
+              '<Text style={[styles.td, { width: cols.desc }]}>{it.description}</Text>',
+              '<View style={[styles.td, { width: cols.desc }]}>\n              <Text>{it.description}</Text>\n              {it.item_notes?.trim() ? (\n                <Text style={{ marginTop: 3, fontSize: 9.5, color: "#52666A", lineHeight: 1.35 }}>\n                  {it.item_notes}\n                </Text>\n              ) : null}\n            </View>')
+          rep(pdf,
+              '  items: {\n    description: string;',
+              '  items: {\n    description: string;\n    item_notes?: string | null;')
+          rep(pdf,
+              '<Text style={jwStyles.cellItem}>{it.description || "-"}</Text>',
+              '<Text style={jwStyles.cellItem}>{it.description || "-"}</Text>\n              {it.item_notes?.trim() ? (\n                <Text style={{ marginTop: 3, fontSize: 8.5, color: "#52666A", lineHeight: 1.35 }}>\n                  {it.item_notes}\n                </Text>\n              ) : null}')
+
+          editor='src/pages/admin/AdminQuotationEditor.tsx'
+          rep(editor,
+              'description: it.description,\n        item_image_url: it.item_image_url,',
+              'description: it.description,\n        item_notes: it.item_notes,\n        item_image_url: it.item_image_url,')
+          # Job-work mappings can occur separately from quotation mapping.
+          p=Path(editor); s=p.read_text()
+          s=s.replace('description: it.description,\n          item_image_url: it.item_image_url,',
+                      'description: it.description,\n          item_notes: it.item_notes,\n          item_image_url: it.item_image_url,')
+          p.write_text(s)
+
+          preview='src/pages/admin/AdminQuotationPreview.tsx'
+          rep(preview,
+              '  description: string;\n  item_image_url: string | null;',
+              '  description: string;\n  item_notes: string | null;\n  item_image_url: string | null;')
+          p=Path(preview); s=p.read_text()
+          s=s.replace('description: it.description,\n          item_image_url: it.item_image_url,',
+                      'description: it.description,\n          item_notes: it.item_notes,\n          item_image_url: it.item_image_url,')
+          s=s.replace('<span className="text-slate-500">#{idx + 1}</span> {it.description}\n                    </p>',
+                      '<span className="text-slate-500">#{idx + 1}</span> {it.description}\n                    </p>\n                    {it.item_notes?.trim() && (\n                      <p className="mt-1 whitespace-pre-line text-sm font-normal leading-snug text-slate-600">{it.item_notes}</p>\n                    )}')
+          s=s.replace('<p className="font-medium text-slate-900">{it.description}</p>\n                        {it.catalog_text',
+                      '<p className="font-medium text-slate-900">{it.description}</p>\n                        {it.item_notes?.trim() && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{it.item_notes}</p>}\n                        {it.catalog_text')
+          p.write_text(s)
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit fix
+        run: |
+          git config user.name 'hitech-item-narration-fix'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/lib/quotationPdf.tsx src/pages/admin/AdminQuotationEditor.tsx src/pages/admin/AdminQuotationPreview.tsx
+          git commit -m 'fix: include item narration in quotation outputs' || exit 0
+          git push
