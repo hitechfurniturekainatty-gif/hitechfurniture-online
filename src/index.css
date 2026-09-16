@@ -155,3 +155,8 @@
 .admin-theme .overview-tab { gap:8px; border:1px solid transparent; }
 .admin-theme .overview-tab[data-state="active"] { background:var(--section-tint); color:#263e46; border-color:var(--section-accent); box-shadow:0 2px 5px #243e4610; }
 .overview-tab-dot { width:8px; height:8px; border-radius:50%; background:var(--section-accent); flex-shrink:0; }
+
+/* Self-host Malayalam glyphs for the diary without a third-party font request. */
+@font-face { font-family: "Diary Malayalam"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/diary/noto-sans-malayalam-malayalam-400-normal.woff2") format("woff2"); unicode-range: U+0D00-0D7F,U+200C-200D,U+25CC; }
+@font-face { font-family: "Diary Malayalam"; font-style: normal; font-weight: 600 900; font-display: swap; src: url("/fonts/diary/noto-sans-malayalam-malayalam-600-normal.woff2") format("woff2"); unicode-range: U+0D00-0D7F,U+200C-200D,U+25CC; }
+.diary-workspace, .diary-workspace h1, .diary-workspace h2, .diary-workspace h3, .diary-dialog { font-family: "Diary Malayalam", Inter, system-ui, sans-serif; }

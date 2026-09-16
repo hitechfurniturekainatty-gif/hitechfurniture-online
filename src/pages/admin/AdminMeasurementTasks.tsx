@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, MapPin, Phone, Ruler, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { Trash2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { softDelete } from "@/lib/softDelete";
@@ -43,6 +43,7 @@ type StaffOpt = { user_id: string; email: string | null; display_name: string | 
 const AdminMeasurementTasks = () => {
   const { user, isOfficeStaff, isMeasurementStaff, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [diaryParams] = useSearchParams();
   const [replyTask, setReplyTask] = useState<Task | null>(null);
   const [staffFilter, setStaffFilter] = useState("all");
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -315,6 +316,7 @@ const AdminMeasurementTasks = () => {
   return (
     <AdminShell>
       <MeasurementReply task={replyTask} onClose={() => setReplyTask(null)} onSaved={load} />
+      {diaryParams.get("task") && tasks.find(t => t.id === diaryParams.get("task")) && <section className="mb-5 rounded-2xl border-2 border-teal-500 p-3"><p className="mb-2 text-sm font-semibold">Opened from My Diary</p><TaskCard t={tasks.find(t => t.id === diaryParams.get("task"))!} mine={tasks.find(t => t.id === diaryParams.get("task"))?.assigned_to === user?.id} /></section>}
       {isOfficeStaff && <label className="mb-4 block">Monitor staff<select className="ml-3 rounded border p-2" value={staffFilter} onChange={e => setStaffFilter(e.target.value)}><option value="all">All staff</option>{staff.map(s => <option key={s.user_id} value={s.user_id}>{s.display_name || s.email}</option>)}</select></label>}
       <div className="mb-4 grid grid-cols-3 gap-3">
         {[['Pending', monitored.filter(t => t.status === 'pending').length], ['In progress', monitored.filter(t => t.status === 'in_progress').length], ['Completed', monitored.filter(t => t.status === 'completed').length]].map(([label,count]) => <div key={label} className="rounded-xl border bg-muted/30 p-3"><p className="text-sm">{label}</p><p className="text-2xl font-semibold">{count}</p></div>)}
