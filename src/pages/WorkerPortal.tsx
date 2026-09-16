@@ -1,3 +1,4 @@
+import { DiaryReminderCard } from "@/components/admin/DiaryReminderCard";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
@@ -343,6 +344,7 @@ const WorkerPortal = () => {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-4">
+        <DiaryReminderCard />
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
           <Stat label="Active" value={counts.active} tone="primary" />
           <Stat label="Assigned" value={counts.assigned ?? 0} />
