@@ -834,14 +834,28 @@ const AdminQuotationEditor = () => {
       const taxable = Math.max(0, newSubtotal - newDiscount);
       const newGst = taxable * ((Number(saveQ.gst_percent) || 0) / 100);
       const newTotal = taxable + newGst;
-      const { error: totErr } = await supabase
-        .from("quotations")
-        .update({
-          subtotal: newSubtotal,
-          gst_amount: newGst,
-          total: newTotal,
-        })
-        .eq("id", saveQ.id);
+      // On iOS Safari the request immediately following several item saves can
+      // occasionally fail at the transport layer with "TypeError: Load failed".
+      // Retrying this idempotent totals update is safe (unlike retrying item
+      // inserts, which could create duplicates) and prevents a completed save
+      // from being reported as failed because of a brief mobile-network hiccup.
+      let totErr: { message: string } | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await supabase
+          .from("quotations")
+          .update({
+            subtotal: newSubtotal,
+            gst_amount: newGst,
+            total: newTotal,
+          })
+          .eq("id", saveQ.id);
+        totErr = result.error;
+        if (!totErr) break;
+
+        const transientNetworkError = /load failed|failed to fetch|network(?:error| request)?/i.test(totErr.message);
+        if (!transientNetworkError || attempt === 2) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+      }
       if (totErr) {
         savingRef.current = false;
         setSaving(false);
