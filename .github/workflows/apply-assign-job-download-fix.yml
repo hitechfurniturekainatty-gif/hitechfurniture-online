@@ -1,0 +1,83 @@
+name: Apply Assign Job Download Fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/apply-assign-job-download-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch quotation assign-job downloads
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/pages/admin/AdminQuotationEditor.tsx')
+          s = p.read_text()
+          original = s
+
+          replacements = [
+              (
+                  '''    let worker: Worker | undefined;\n    if (!isDirect) {\n      if (!selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }\n      worker = workers.find((w) => w.id === selectedWorker);\n      if (!worker) return;\n    }''',
+                  '''    let worker: Worker | undefined = selectedWorker\n      ? workers.find((w) => w.id === selectedWorker)\n      : undefined;\n    if (action === "send" && !isDirect && !worker) {\n      toast({ title: "Select a worker", variant: "destructive" });\n      return;\n    }'''
+              ),
+              (
+                  '''      if (worker) {\n        const { error } = await supabase.from("job_work_orders").insert({''',
+                  '''      // Export/share must never be blocked by creating a DB job row.\n      // Persist the assignment only for the actual Send action.\n      if (worker && action === "send") {\n        const { error } = await supabase.from("job_work_orders").insert({'''
+              ),
+              (
+                  '''          blobs.forEach((blob, index) => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`));''',
+                  '''          blobs.forEach((blob, index) => {\n            setTimeout(\n              () => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`),\n              index * 300,\n            );\n          });'''
+              ),
+              (
+                  '''      setJobOpen(false);\n      setSelectedItemIds(new Set());''',
+                  '''      // Keep the dialog and item selection intact after downloads so the\n      // admin can download another format or still assign/send the same job.\n      if (action !== "download") {\n        setJobOpen(false);\n        setSelectedItemIds(new Set());\n      }'''
+              ),
+              (
+                  '''              disabled={selectedItemIds.size === 0 || (jobMode === "saved" && !selectedWorker)}''',
+                  '''              disabled={selectedItemIds.size === 0}'''
+              ),
+          ]
+
+          applied = 0
+          for old, new in replacements:
+              if old in s:
+                  s = s.replace(old, new, 1)
+                  applied += 1
+              elif new in s:
+                  pass
+              else:
+                  raise SystemExit(f'Expected source block not found:\n{old[:180]}')
+
+          if s != original:
+              p.write_text(s)
+              print(f'Applied {applied} patch block(s).')
+          else:
+              print('Fix is already present; no source changes required.')
+          PY
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/admin/AdminQuotationEditor.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "fix: make assign job PDF and image downloads reliable"
+          git push origin HEAD:main
