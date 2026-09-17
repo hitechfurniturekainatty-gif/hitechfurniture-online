@@ -1254,11 +1254,12 @@ const AdminQuotationEditor = () => {
   const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg", action: "send" | "download" | "share" = "send") => {
     if (!q) return;
     const isDirect = jobMode === "direct";
-    let worker: Worker | undefined;
-    if (!isDirect) {
-      if (!selectedWorker) { toast({ title: "Select a worker", variant: "destructive" }); return; }
-      worker = workers.find((w) => w.id === selectedWorker);
-      if (!worker) return;
+    let worker: Worker | undefined = selectedWorker
+      ? workers.find((w) => w.id === selectedWorker)
+      : undefined;
+    if (action === "send" && !isDirect && !worker) {
+      toast({ title: "Select a worker", variant: "destructive" });
+      return;
     }
     const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
     if (chosenItems.length === 0) {
@@ -1267,7 +1268,9 @@ const AdminQuotationEditor = () => {
     }
     setGeneratingJob(true);
     try {
-      if (worker) {
+      // Export/share must never be blocked by creating a DB job row.
+      // Persist the assignment only for the actual Send action.
+      if (worker && action === "send") {
         const { error } = await supabase.from("job_work_orders").insert({
           quotation_id: q.id,
           worker_id: worker.id,
@@ -1318,7 +1321,12 @@ const AdminQuotationEditor = () => {
         } else {
           const { pdfBlobToJpgPages } = await loadJpgLib();
           const blobs = await pdfBlobToJpgPages(pdfBlob);
-          blobs.forEach((blob, index) => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`));
+          blobs.forEach((blob, index) => {
+            setTimeout(
+              () => downloadBlob(blob, `${baseFilename}${blobs.length > 1 ? `-${index + 1}` : ""}.jpg`),
+              index * 300,
+            );
+          });
           toast({ title: "Job image downloaded", description: `${blobs.length} image page(s) saved.` });
         }
       } else if (action === "share" || isDirect) {
@@ -1340,8 +1348,12 @@ const AdminQuotationEditor = () => {
         toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}` });
       }
 
-      setJobOpen(false);
-      setSelectedItemIds(new Set());
+      // Keep the dialog and item selection intact after downloads so the
+      // admin can download another format or still assign/send the same job.
+      if (action !== "download") {
+        setJobOpen(false);
+        setSelectedItemIds(new Set());
+      }
     } catch (e: any) {
       console.error("Job image generation failed:", e);
       toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
@@ -2589,7 +2601,7 @@ const AdminQuotationEditor = () => {
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={selectedItemIds.size === 0 || (jobMode === "saved" && !selectedWorker)}
+              disabled={selectedItemIds.size === 0}
               onPdf={() => generateAndSendJob("pdf", "download")}
               onJpg={() => generateAndSendJob("jpg", "download")}
               onShareFile={() => generateAndSendJob("jpg", "share")}
