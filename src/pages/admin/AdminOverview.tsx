@@ -163,7 +163,7 @@ const AdminOverview = () => {
     },
     {
       title: "Demand Tracker",
-      count: counts.enquiries,
+      count: "→",
       detail: "Connected enquiry demand",
       sub: "Item demand remains linked to the enquiry pipeline",
       action: "View Demand",
@@ -277,7 +277,7 @@ const AdminOverview = () => {
       detail: "Business analytics",
       sub: "Sales, stock, pipeline and performance",
       action: "Open Reports",
-      href: "/admin#reports",
+      href: "/admin#detailed-dashboards",
       icon: BarChart3,
       show: showAdmin,
     },
@@ -354,7 +354,7 @@ const AdminOverview = () => {
         })}
       </div>
 
-      <div className="mt-8">
+      <div id="detailed-dashboards" className="mt-8">
         <div className="mb-3">
           <h2 className="font-display text-xl font-semibold text-[#2f2925]">Detailed dashboards</h2>
           <p className="mt-1 text-sm text-muted-foreground">Use these only when you need deeper operational details or reports.</p>
