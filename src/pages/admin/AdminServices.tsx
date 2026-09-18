@@ -40,6 +40,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
+import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import {
   COMPLAINT_STATUSES,
   SERVICE_STATUSES,
@@ -102,6 +103,7 @@ const AdminServices = () => {
     work_needed: "",
     estimated_cost: "",
     delivery_route_id: null as string | null,
+    photos: null as string | null,
   });
 
   const [cpForm, setCpForm] = useState({
@@ -112,6 +114,7 @@ const AdminServices = () => {
     original_quotation_code: "",
     issue_description: "",
     delivery_route_id: null as string | null,
+    photos: null as string | null,
   });
 
   const load = async () => {
@@ -182,6 +185,7 @@ const AdminServices = () => {
         estimated_cost: Number(svcForm.estimated_cost) || 0,
         delivery_route_id: svcForm.delivery_route_id,
         delivery_place: placeFinal,
+        photos: svcForm.photos,
         created_by: user?.id ?? null,
       })
       .select("id")
@@ -221,6 +225,8 @@ const AdminServices = () => {
           quantity: 1,
           unit_price: Number(svcForm.estimated_cost) || 0,
           display_order: 0,
+          item_image_url: svcForm.photos?.split(/\r?\n/).filter(Boolean)[0] ?? null,
+          site_photos: svcForm.photos,
         });
         await supabase
           .from("customer_services")
@@ -239,6 +245,7 @@ const AdminServices = () => {
       work_needed: "",
       estimated_cost: "",
       delivery_route_id: null,
+      photos: null,
     });
     toast({
       title: "Service created",
@@ -288,6 +295,7 @@ const AdminServices = () => {
         issue_description: issueFinal,
         delivery_route_id: cpForm.delivery_route_id,
         delivery_place: placeFinal,
+        photos: cpForm.photos,
         created_by: user?.id ?? null,
       })
       .select("id")
@@ -306,6 +314,7 @@ const AdminServices = () => {
       original_quotation_code: "",
       issue_description: "",
       delivery_route_id: null,
+      photos: null,
     });
     toast({ title: "Complaint logged", description: codeData as string });
     load();
@@ -556,6 +565,16 @@ const AdminServices = () => {
                       placeholder="e.g. reupholstery, polish, foam replacement"
                     />
                   </div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <MultiImagePicker
+                      value={svcForm.photos}
+                      onChange={(photos) => setSvcForm((f) => ({ ...f, photos }))}
+                      bucket="quotations"
+                      folder="service-requests"
+                      label="Item Photos — Camera / Gallery"
+                    />
+                    <p className="mt-2 text-[11px] text-muted-foreground">Take a fresh photo or choose one or more photos from the phone gallery.</p>
+                  </div>
                   <div>
                     <Label>Estimated Cost (₹)</Label>
                     <Input
@@ -637,6 +656,16 @@ const AdminServices = () => {
                       onChange={(e) => setCpForm({ ...cpForm, issue_description: e.target.value })}
                       placeholder="Describe the problem the customer is facing"
                     />
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <MultiImagePicker
+                      value={cpForm.photos}
+                      onChange={(photos) => setCpForm((f) => ({ ...f, photos }))}
+                      bucket="quotations"
+                      folder="complaints"
+                      label="Item Photos — Camera / Gallery"
+                    />
+                    <p className="mt-2 text-[11px] text-muted-foreground">Attach the damaged/problem item clearly. Multiple photos are allowed.</p>
                   </div>
                 </div>
                 <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
