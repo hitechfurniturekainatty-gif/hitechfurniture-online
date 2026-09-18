@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,6 +53,7 @@ type PaymentItem = {
   ordered_qty: number;
   unit_price: number;
   amount: number;
+  allocated_to_date?: number;
 };
 
 const methodLabel = (v: string | null) =>
@@ -74,6 +75,7 @@ export default function OrderReceivablesPanel() {
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [itemsLoading, setItemsLoading] = useState(false);
   const [historyAllocations, setHistoryAllocations] = useState<PaymentAllocation[]>([]);
+  const paymentRequestKeyRef = useRef<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -103,21 +105,41 @@ export default function OrderReceivablesPanel() {
     setReference("");
     setAllocations({});
     setPaymentItems([]);
+    paymentRequestKeyRef.current = crypto.randomUUID();
     if (!row.quotation_id) return;
 
     setItemsLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("quotation_items")
-      .select("id,description,quantity,ordered_qty,unit_price,amount")
-      .eq("quotation_id", row.quotation_id)
-      .order("display_order", { ascending: true });
+    const [{ data, error }, { data: priorAllocationRows }] = await Promise.all([
+      (supabase as any)
+        .from("quotation_items")
+        .select("id,description,quantity,ordered_qty,unit_price,amount")
+        .eq("quotation_id", row.quotation_id)
+        .order("display_order", { ascending: true }),
+      (supabase as any)
+        .from("quotation_item_payment_allocations")
+        .select("quotation_item_id,amount")
+        .eq("quotation_id", row.quotation_id),
+    ]);
     setItemsLoading(false);
 
     if (error) {
       toast({ title: "Order items load failed", description: error.message, variant: "destructive" });
       return;
     }
-    setPaymentItems((data ?? []) as PaymentItem[]);
+
+    const paidByItem = new Map<string, number>();
+    for (const allocation of (priorAllocationRows ?? []) as Array<{ quotation_item_id: string; amount: number }>) {
+      paidByItem.set(
+        allocation.quotation_item_id,
+        (paidByItem.get(allocation.quotation_item_id) ?? 0) + Number(allocation.amount || 0),
+      );
+    }
+
+    setPaymentItems(
+      ((data ?? []) as PaymentItem[])
+        .filter((item) => Number(item.ordered_qty || 0) > 0)
+        .map((item) => ({ ...item, allocated_to_date: paidByItem.get(item.id) ?? 0 })),
+    );
   };
 
   const receive = async () => {
@@ -136,51 +158,44 @@ export default function OrderReceivablesPanel() {
       return;
     }
 
-    setSaving(true);
-    const { data: payment, error } = await supabase
-      .from("receivable_payments")
-      .insert({
-        receivable_id: pay.id,
-        quotation_id: pay.quotation_id,
-        amount: n,
-        payment_method: method,
-        reference_no: reference.trim() || null,
-      })
-      .select("id")
-      .single();
-
-    if (error || !payment) {
-      setSaving(false);
-      toast({ title: "Payment save failed", description: error?.message, variant: "destructive" });
-      return;
-    }
-
     const itemAllocations = paymentItems
       .map((item) => ({ item_id: item.id, amount: Number(allocations[item.id] || 0) }))
       .filter((entry) => entry.amount > 0);
 
-    if (itemAllocations.length > 0) {
-      const { data: allocated, error: allocationError } = await (supabase as any).rpc(
-        "allocate_payment_to_quotation_items",
-        { _payment_id: payment.id, _allocations: itemAllocations },
-      );
-      if (allocationError || !allocated?.ok) {
-        setSaving(false);
-        toast({
-          title: "Payment saved, item allocation failed",
-          description: allocationError?.message || allocated?.error || "Use payment history to review this receipt.",
-          variant: "destructive",
-        });
-        return;
-      }
+    setSaving(true);
+    const requestKey = paymentRequestKeyRef.current ?? crypto.randomUUID();
+    paymentRequestKeyRef.current = requestKey;
+
+    const { data, error } = await (supabase as any).rpc("record_order_payment", {
+      _receivable_id: pay.id,
+      _amount: n,
+      _payment_method: method,
+      _reference_no: reference.trim() || null,
+      _note: null,
+      _allocations: itemAllocations,
+      _request_key: requestKey,
+    });
+    setSaving(false);
+
+    if (error || !data?.ok) {
+      const message =
+        data?.error === "amount_exceeds_pending"
+          ? `Payment is above the current pending balance (${formatINR(Number(data.pending_amount || 0))}). Refresh and try again.`
+          : data?.error === "allocation_item_not_ordered"
+            ? "Payment can only be allocated to quantities already converted to an order."
+            : data?.error === "allocations_exceed_payment"
+              ? "Item allocations cannot exceed the received amount."
+              : data?.error || error?.message;
+      toast({ title: "Payment save failed", description: message, variant: "destructive" });
+      return;
     }
 
-    setSaving(false);
+    paymentRequestKeyRef.current = null;
     toast({
-      title: "Amount received",
+      title: data.already_recorded ? "Payment already recorded" : "Amount received",
       description: itemAllocations.length
-        ? `${formatINR(n)} recorded; ${formatINR(allocatedTotal)} allocated to specific order items.`
-        : `${formatINR(n)} recorded from ${pay.customer_name || "customer"}. Receipt is available in History.`,
+        ? `${formatINR(n)} recorded atomically; ${formatINR(Number(data.allocated_total ?? allocatedTotal))} allocated to order items.`
+        : `${formatINR(n)} recorded from ${pay.customer_name || "customer"}.`,
     });
     setPay(null);
     setAmount("");
@@ -325,7 +340,7 @@ export default function OrderReceivablesPanel() {
         </Card>
       ))}
 
-      <Dialog open={!!pay} onOpenChange={(o) => { if (!o) { setPay(null); setAllocations({}); setPaymentItems([]); } }}>
+      <Dialog open={!!pay} onOpenChange={(o) => { if (!o) { setPay(null); setAllocations({}); setPaymentItems([]); paymentRequestKeyRef.current = null; } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Receive from Customer</DialogTitle></DialogHeader>
           {pay && (
@@ -359,7 +374,7 @@ export default function OrderReceivablesPanel() {
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold">{item.description || "Unnamed item"}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            Ordered {Number(item.ordered_qty || 0)}/{Number(item.quantity || 0)} · Item total {formatINR(Number(item.amount || 0))}
+                            Ordered {Number(item.ordered_qty || 0)}/{Number(item.quantity || 0)} · Item total {formatINR(Number(item.amount || 0))} · Allocated {formatINR(Number(item.allocated_to_date || 0))}
                           </p>
                         </div>
                         <Input
