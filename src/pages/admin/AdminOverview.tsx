@@ -128,8 +128,8 @@ const AdminOverview = () => {
         supabase.from("job_work_orders").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(completed,cancelled)"),
         supabase.from("customer_services").select("id", { count: "exact", head: true }).is("deleted_at", null).neq("status", "resolved"),
         supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("pipeline_stage", 6).neq("status", "delivered").neq("status", "rejected"),
-        supabase.from("receivables").select("id", { count: "exact", head: true }).neq("status", "closed"),
-        supabase.from("staff_diary").select("id", { count: "exact", head: true }).is("completed_at", null),
+        supabase.from("receivables").select("id", { count: "exact", head: true }).is("closed_at", null),
+        supabase.from("staff_diary_notes").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "pending"),
       ]);
       if (cancelled) return;
       setCounts({
