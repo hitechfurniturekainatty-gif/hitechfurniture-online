@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -333,6 +334,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
   const [measurementStaff, setMeasurementStaff] = useState<Array<{ user_id: string; name: string }>>([]);
   const [workers, setWorkers] = useState<Array<{ id: string; name: string }>>([]);
   const [assigneeId, setAssigneeId] = useState<string>("");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     setAssigneeId("");
@@ -468,23 +470,30 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
           {row.kind === "complaint" && row.raw.original_quotation_code && (
             <Field label="Original bill">{row.raw.original_quotation_code}</Field>
           )}
-          {row.kind === "complaint" && (() => {
+          {(row.kind === "complaint" || row.kind === "service") && (() => {
             const raw = row.raw.photos;
             const urls: string[] = Array.isArray(raw)
               ? raw.filter(Boolean)
               : typeof raw === "string" && raw.trim()
-                ? raw.split(/[\s,]+/).filter((u) => /^https?:\/\//i.test(u))
+                ? raw.split(/\r?\n|,/).map((u: string) => u.trim()).filter((u: string) => /^https?:\/\//i.test(u))
                 : [];
             if (urls.length === 0) return null;
             return (
               <Field label="Photos">
-                <div className="flex flex-wrap gap-2">
-                  {urls.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer">
-                      <img src={url} alt="" className="h-20 w-20 rounded-md object-cover" />
-                    </a>
+                <div className="grid grid-cols-3 gap-2">
+                  {urls.map((url, index) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setPreviewImage(url)}
+                      className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                      aria-label={`Preview item photo ${index + 1}`}
+                    >
+                      <img src={url} alt={`Item photo ${index + 1}`} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                    </button>
                   ))}
                 </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">Tap a photo to preview it here.</p>
               </Field>
             );
           })()}
@@ -542,6 +551,19 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
           )}
         </div>
       </SheetContent>
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl border-0 bg-black/95 p-2 sm:p-3">
+          {previewImage && (
+            <div className="flex max-h-[85dvh] min-h-[40dvh] items-center justify-center overflow-hidden rounded-md">
+              <img
+                src={previewImage}
+                alt="Item photo preview"
+                className="max-h-[82dvh] max-w-full object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 };
