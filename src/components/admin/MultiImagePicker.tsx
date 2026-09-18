@@ -24,10 +24,11 @@ type MultiImagePickerProps = {
   bucket?: string;
   folder?: string;
   label?: string;
+  onUploadingChange?: (uploading: boolean) => void;
 };
 
 export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps>(function MultiImagePicker(
-  { value, onChange, bucket = "quotations", folder = "measurements", label },
+  { value, onChange, bucket = "quotations", folder = "measurements", label, onUploadingChange },
   ref,
 ) {
   const [urlInput, setUrlInput] = useState("");
@@ -140,13 +141,17 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
 
   const uploading = pending.length > 0;
 
+  useEffect(() => {
+    onUploadingChange?.(uploading);
+  }, [uploading, onUploadingChange]);
+
   return (
     <div ref={ref} className="space-y-2">
       {label && <p className="text-xs font-medium text-muted-foreground">{label}</p>}
 
       <Tabs defaultValue="upload">
         <TabsList className="grid w-full grid-cols-3 h-8">
-          <TabsTrigger value="upload" className="text-[11px]"><Upload className="mr-1 h-3 w-3" />Upload</TabsTrigger>
+          <TabsTrigger value="upload" className="text-[11px]"><Upload className="mr-1 h-3 w-3" />Gallery</TabsTrigger>
           <TabsTrigger value="camera" className="text-[11px]"><Camera className="mr-1 h-3 w-3" />Camera</TabsTrigger>
           <TabsTrigger value="url" className="text-[11px]"><LinkIcon className="mr-1 h-3 w-3" />URL</TabsTrigger>
         </TabsList>
@@ -160,7 +165,7 @@ export const MultiImagePicker = forwardRef<HTMLDivElement, MultiImagePickerProps
           >
             <input {...getInputProps()} />
             <span className="text-muted-foreground">
-              {uploading ? `Uploading ${pending.length}…` : "Click or drop images (multiple allowed)"}
+              {uploading ? `Uploading ${pending.length}…` : "Choose photos from gallery (multiple allowed)"}
             </span>
           </div>
         </TabsContent>
