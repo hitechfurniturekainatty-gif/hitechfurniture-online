@@ -93,6 +93,8 @@ const AdminServices = () => {
   const [svcOpen, setSvcOpen] = useState(false);
   const [cpOpen, setCpOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [svcPhotoUploading, setSvcPhotoUploading] = useState(false);
+  const [cpPhotoUploading, setCpPhotoUploading] = useState(false);
 
   const [svcForm, setSvcForm] = useState({
     customer_name: "",
@@ -154,6 +156,10 @@ const AdminServices = () => {
   }, [tab]);
 
   const createService = async () => {
+    if (svcPhotoUploading) {
+      toast({ title: "Photo upload in progress", description: "Please wait until the item photos finish uploading.", variant: "destructive" });
+      return;
+    }
     if (!svcForm.customer_name.trim() || !svcForm.customer_phone.trim()) {
       toast({
         title: "Missing details",
@@ -255,6 +261,10 @@ const AdminServices = () => {
   };
 
   const createComplaint = async () => {
+    if (cpPhotoUploading) {
+      toast({ title: "Photo upload in progress", description: "Please wait until the item photos finish uploading.", variant: "destructive" });
+      return;
+    }
     if (!cpForm.customer_name.trim() || !cpForm.customer_phone.trim()) {
       toast({
         title: "Missing details",
@@ -572,6 +582,7 @@ const AdminServices = () => {
                       bucket="quotations"
                       folder="service-requests"
                       label="Item Photos — Camera / Gallery"
+                      onUploadingChange={setSvcPhotoUploading}
                     />
                     <p className="mt-2 text-[11px] text-muted-foreground">Take a fresh photo or choose one or more photos from the phone gallery.</p>
                   </div>
@@ -588,8 +599,8 @@ const AdminServices = () => {
                 </div>
                 <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
                   <Button variant="outline" onClick={() => setSvcOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-                  <Button onClick={createService} disabled={creating} className="w-full sm:w-auto">
-                    {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Service
+                  <Button onClick={createService} disabled={creating || svcPhotoUploading} className="w-full sm:w-auto">
+                    {(creating || svcPhotoUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {svcPhotoUploading ? "Uploading photos…" : "Create Service"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -664,14 +675,15 @@ const AdminServices = () => {
                       bucket="quotations"
                       folder="complaints"
                       label="Item Photos — Camera / Gallery"
+                      onUploadingChange={setCpPhotoUploading}
                     />
                     <p className="mt-2 text-[11px] text-muted-foreground">Attach the damaged/problem item clearly. Multiple photos are allowed.</p>
                   </div>
                 </div>
                 <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
                   <Button variant="outline" onClick={() => setCpOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-                  <Button onClick={createComplaint} disabled={creating} className="w-full sm:w-auto">
-                    {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Log Complaint
+                  <Button onClick={createComplaint} disabled={creating || cpPhotoUploading} className="w-full sm:w-auto">
+                    {(creating || cpPhotoUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {cpPhotoUploading ? "Uploading photos…" : "Log Complaint"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
