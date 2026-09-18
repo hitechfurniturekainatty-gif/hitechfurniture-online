@@ -64,6 +64,13 @@ function DiaryWorkspace() {
     }
   }, [user, refresh]);
   useEffect(() => {
+    if (params.get('new') !== '1') return;
+    setEditing(null);
+    setDraft(emptyDraft());
+    setOpen(true);
+  }, [params]);
+
+  useEffect(() => {
     const id = params.get('note');
     if (id && id !== openedLink.current) {
       const note = notes.find(n => n.id === id);
