@@ -39,6 +39,13 @@ type Payment = {
   received_at: string;
 };
 
+type PaymentAllocation = {
+  payment_id: string;
+  amount: number;
+  quotation_item_id: string;
+  description: string;
+};
+
 type PaymentItem = {
   id: string;
   description: string;
@@ -66,6 +73,7 @@ export default function OrderReceivablesPanel() {
   const [paymentItems, setPaymentItems] = useState<PaymentItem[]>([]);
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [itemsLoading, setItemsLoading] = useState(false);
+  const [historyAllocations, setHistoryAllocations] = useState<PaymentAllocation[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -98,7 +106,7 @@ export default function OrderReceivablesPanel() {
     if (!row.quotation_id) return;
 
     setItemsLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("quotation_items")
       .select("id,description,quantity,ordered_qty,unit_price,amount")
       .eq("quotation_id", row.quotation_id)
@@ -185,13 +193,53 @@ export default function OrderReceivablesPanel() {
   const showHistory = async (r: Row) => {
     setHistoryFor(r);
     setHistoryLoading(true);
+    setHistoryAllocations([]);
+
     const { data, error } = await supabase
       .from("receivable_payments")
       .select("id,receivable_id,amount,payment_method,reference_no,note,received_at")
       .eq("receivable_id", r.id)
       .order("received_at", { ascending: false });
-    if (error) toast({ title: "History load failed", description: error.message, variant: "destructive" });
-    setHistory((data ?? []) as Payment[]);
+
+    if (error) {
+      toast({ title: "History load failed", description: error.message, variant: "destructive" });
+      setHistory([]);
+      setHistoryLoading(false);
+      return;
+    }
+
+    const payments = (data ?? []) as Payment[];
+    setHistory(payments);
+
+    if (payments.length > 0) {
+      const paymentIds = payments.map((p) => p.id);
+      const { data: allocationRows } = await (supabase as any)
+        .from("quotation_item_payment_allocations")
+        .select("payment_id,amount,quotation_item_id")
+        .in("payment_id", paymentIds);
+
+      const rawAllocations = (allocationRows ?? []) as Array<{
+        payment_id: string;
+        amount: number;
+        quotation_item_id: string;
+      }>;
+
+      if (rawAllocations.length > 0) {
+        const itemIds = Array.from(new Set(rawAllocations.map((a) => a.quotation_item_id)));
+        const { data: itemRows } = await (supabase as any)
+          .from("quotation_items")
+          .select("id,description")
+          .in("id", itemIds);
+        const names = new Map<string, string>(
+          ((itemRows ?? []) as Array<{ id: string; description: string }>).map((item) => [item.id, item.description]),
+        );
+        setHistoryAllocations(rawAllocations.map((a) => ({
+          ...a,
+          description: names.get(a.quotation_item_id) || "Order item",
+        })));
+      }
+    }
+
     setHistoryLoading(false);
   };
 
@@ -351,7 +399,21 @@ export default function OrderReceivablesPanel() {
               {history.map((p, i) => (
                 <div key={p.id} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div><p className="font-semibold">{formatINR(Number(p.amount))}</p><p className="text-xs text-muted-foreground">{methodLabel(p.payment_method)}{p.reference_no ? ` · Ref: ${p.reference_no}` : ""}</p>{p.note && <p className="mt-1 text-xs">{p.note}</p>}</div>
+                    <div>
+                      <p className="font-semibold">{formatINR(Number(p.amount))}</p>
+                      <p className="text-xs text-muted-foreground">{methodLabel(p.payment_method)}{p.reference_no ? ` · Ref: ${p.reference_no}` : ""}</p>
+                      {p.note && <p className="mt-1 text-xs">{p.note}</p>}
+                      {historyAllocations.filter((a) => a.payment_id === p.id).length > 0 && (
+                        <div className="mt-2 space-y-1 rounded-md bg-muted/50 p-2">
+                          {historyAllocations.filter((a) => a.payment_id === p.id).map((a) => (
+                            <div key={a.quotation_item_id} className="flex justify-between gap-3 text-[11px]">
+                              <span className="truncate text-muted-foreground">{a.description}</span>
+                              <span className="shrink-0 font-semibold">{formatINR(Number(a.amount))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-col items-end gap-1"><Badge variant="secondary">Payment {history.length - i}</Badge><p className="text-[10px] text-muted-foreground">{new Date(p.received_at).toLocaleString("en-IN")}</p><Button size="sm" variant="outline" disabled={receiptBusy === p.id} onClick={() => shareReceipt(p)}>{receiptBusy === p.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <FileText className="mr-1 h-3.5 w-3.5" />}Receipt PDF</Button></div>
                   </div>
                 </div>
