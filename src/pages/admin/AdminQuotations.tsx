@@ -190,6 +190,15 @@ const AdminQuotations = () => {
     setSearchParams(next, { replace: true });
   };
   useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setNewDocType("quotation");
+    setOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     const fromUrl = searchParams.get("status") ?? "active";
     if (fromUrl !== statusFilter) setStatusFilterState(fromUrl);
     const docFromUrl = (searchParams.get("doc") as DocType) ?? "quotation";

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
   FileText,
@@ -15,9 +15,12 @@ import {
   BarChart3,
   ArrowRight,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,6 +71,7 @@ const EMPTY_COUNTS: DashboardCounts = {
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState("today");
   const [visited,setVisited]=useState<string[]>(["today"]);
   const [counts, setCounts] = useState<DashboardCounts>(EMPTY_COUNTS);
@@ -159,6 +163,7 @@ const AdminOverview = () => {
       action: "Open Enquiries",
       href: "/admin/enquiries",
       icon: ClipboardList,
+      quickAction: { label: "+ New Enquiry", kind: "enquiry" },
       show: showOffice || showAdmin,
     },
     {
@@ -179,6 +184,7 @@ const AdminOverview = () => {
       action: "Open Quotations",
       href: "/admin/quotations",
       icon: FileText,
+      quickAction: { label: "+ New Quotation", href: "/admin/quotations?new=1" },
       show: showOffice || showAdmin,
     },
     {
@@ -199,6 +205,7 @@ const AdminOverview = () => {
       action: "Open Inventory",
       href: "/admin/inventory/ledger",
       icon: Boxes,
+      quickAction: { label: "+ Stock Inward", href: "/admin/inventory/receiving" },
       show: showOffice || showAdmin || showWarehouse,
     },
     {
@@ -249,6 +256,7 @@ const AdminOverview = () => {
       action: "Open Service",
       href: "/admin/services",
       icon: Wrench,
+      quickAction: { label: "+ New Service", href: "/admin/services?new=service" },
       show: showOffice || showAdmin,
     },
     {
@@ -269,6 +277,7 @@ const AdminOverview = () => {
       action: "Open Tasks",
       href: "/admin/diary",
       icon: ListTodo,
+      quickAction: { label: "+ New Task", href: "/admin/diary?new=1" },
       show: true,
     },
     {
@@ -324,32 +333,69 @@ const AdminOverview = () => {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
+          const quickAction = "quickAction" in card ? card.quickAction : undefined;
+          const openCard = () => navigate(card.href);
+          const runQuickAction = (event: React.MouseEvent) => {
+            event.stopPropagation();
+            if (!quickAction) return;
+            if ("kind" in quickAction && quickAction.kind === "enquiry") {
+              openEnquiryForm();
+              return;
+            }
+            if ("href" in quickAction && quickAction.href) navigate(quickAction.href);
+          };
           return (
-            <Link key={card.title} to={card.href} className="group block">
-              <Card className="h-full border-[#8b6b4f]/15 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md">
-                <CardContent className="flex h-full min-h-[178px] flex-col p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8b6b4f]/10 text-[#76563f]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="text-right">
-                      {countsLoading && typeof card.count === "number" ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      ) : (
-                        <span className="font-display text-2xl font-semibold text-[#2f2925]">{card.count}</span>
-                      )}
-                    </div>
+            <Card
+              key={card.title}
+              role="link"
+              tabIndex={0}
+              onClick={openCard}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openCard();
+                }
+              }}
+              className="group h-full cursor-pointer border-[#8b6b4f]/15 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6b4f]/40"
+            >
+              <CardContent className="flex h-full min-h-[188px] flex-col p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8b6b4f]/10 text-[#76563f]">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <h2 className="mt-4 text-base font-semibold text-foreground">{card.title}</h2>
-                  <p className="mt-1 text-xs font-medium text-[#8b6b4f]">{card.detail}</p>
-                  <p className="mt-1.5 flex-1 text-xs leading-5 text-muted-foreground">{card.sub}</p>
-                  <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-xs font-semibold text-[#76563f]">
-                    <span>{card.action}</span>
+                  <div className="text-right">
+                    {countsLoading && typeof card.count === "number" ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <span className="font-display text-2xl font-semibold text-[#2f2925]">{card.count}</span>
+                    )}
+                  </div>
+                </div>
+                <h2 className="mt-4 text-base font-semibold text-foreground">{card.title}</h2>
+                <p className="mt-1 text-xs font-medium text-[#8b6b4f]">{card.detail}</p>
+                <p className="mt-1.5 flex-1 text-xs leading-5 text-muted-foreground">{card.sub}</p>
+                <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-3">
+                  {quickAction ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-[#8b6b4f]/25 text-xs text-[#76563f] hover:bg-[#8b6b4f]/5"
+                      onClick={runQuickAction}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      {quickAction.label.replace(/^\+\s*/, "")}
+                    </Button>
+                  ) : (
+                    <span className="text-xs font-semibold text-[#76563f]">{card.action}</span>
+                  )}
+                  <div className="ml-auto flex items-center gap-1 text-xs font-semibold text-[#76563f]">
+                    <span className="hidden sm:inline">{card.action}</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
+                </div>
+              </CardContent>
+            </Card>
           );
         })}
       </div>
