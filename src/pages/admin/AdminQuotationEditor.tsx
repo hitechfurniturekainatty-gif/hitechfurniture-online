@@ -1507,9 +1507,7 @@ const AdminQuotationEditor = () => {
     if (error || !data?.ok) {
       toast({
         title: "Partial conversion failed",
-        description: data?.error === "no_orderable_items"
-          ? "All quotation quantities are already closed/cancelled. Reopen an item before confirming the order."
-          : data?.error || error?.message,
+        description: data?.error || error?.message,
         variant: "destructive",
       });
       return;
@@ -1614,7 +1612,9 @@ const AdminQuotationEditor = () => {
     if (error || !data?.ok) {
       toast({
         title: "Could not confirm quotation",
-        description: data?.error || error?.message,
+        description: data?.error === "no_orderable_items"
+          ? "All quotation quantities are already closed/cancelled. Reopen an item before confirming the order."
+          : data?.error || error?.message,
         variant: "destructive",
       });
       return;
