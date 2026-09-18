@@ -70,7 +70,7 @@ const EMPTY_COUNTS: DashboardCounts = {
 };
 
 const AdminOverview = () => {
-  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, user, loading: authLoading } = useAuth();
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, isWorker, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState("today");
   const [visited,setVisited]=useState<string[]>(["today"]);
@@ -82,6 +82,15 @@ const AdminOverview = () => {
   const showProduction = isOfficeStaff;
   const showWarehouse = isOfficeStaff || isWarehouse;
   const showDelivery = isOfficeStaff || isDelivery;
+
+  // Home actions are capability-gated independently from card visibility.
+  // Multi-role accounts receive the union of capabilities granted by their roles.
+  const canCreateEnquiry = isAdmin || isOfficeStaff;
+  const canCreateQuotation = isAdmin || isOfficeStaff;
+  const canReceiveStock = isAdmin || isOfficeStaff;
+  const canCreateService = isAdmin || isOfficeStaff;
+  const canCreatePersonalTask =
+    isAdmin || isOfficeStaff || isMeasurementStaff || isWarehouse || isDelivery || isWorker;
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -163,7 +172,7 @@ const AdminOverview = () => {
       action: "Open Enquiries",
       href: "/admin/enquiries",
       icon: ClipboardList,
-      quickAction: { label: "+ New Enquiry", kind: "enquiry" },
+      quickAction: canCreateEnquiry ? { label: "+ New Enquiry", kind: "enquiry" } : undefined,
       show: showOffice || showAdmin,
     },
     {
@@ -184,7 +193,7 @@ const AdminOverview = () => {
       action: "Open Quotations",
       href: "/admin/quotations",
       icon: FileText,
-      quickAction: { label: "+ New Quotation", href: "/admin/quotations?new=1" },
+      quickAction: canCreateQuotation ? { label: "+ New Quotation", href: "/admin/quotations?new=1" } : undefined,
       show: showOffice || showAdmin,
     },
     {
@@ -205,7 +214,7 @@ const AdminOverview = () => {
       action: "Open Inventory",
       href: "/admin/inventory/ledger",
       icon: Boxes,
-      quickAction: { label: "+ Stock Inward", href: "/admin/inventory/receiving" },
+      quickAction: canReceiveStock ? { label: "+ Stock Inward", href: "/admin/inventory/receiving" } : undefined,
       show: showOffice || showAdmin || showWarehouse,
     },
     {
@@ -256,7 +265,7 @@ const AdminOverview = () => {
       action: "Open Service",
       href: "/admin/services",
       icon: Wrench,
-      quickAction: { label: "+ New Service", href: "/admin/services?new=service" },
+      quickAction: canCreateService ? { label: "+ New Service", href: "/admin/services?new=service" } : undefined,
       show: showOffice || showAdmin,
     },
     {
@@ -277,7 +286,7 @@ const AdminOverview = () => {
       action: "Open Tasks",
       href: "/admin/diary",
       icon: ListTodo,
-      quickAction: { label: "+ New Task", href: "/admin/diary?new=1" },
+      quickAction: canCreatePersonalTask ? { label: "+ New Task", href: "/admin/diary?new=1" } : undefined,
       show: true,
     },
     {
@@ -290,7 +299,19 @@ const AdminOverview = () => {
       icon: BarChart3,
       show: showAdmin,
     },
-  ].filter((card) => card.show), [counts, showOffice, showAdmin, showWarehouse, showProduction, showDelivery]);
+  ].filter((card) => card.show), [
+    counts,
+    showOffice,
+    showAdmin,
+    showWarehouse,
+    showProduction,
+    showDelivery,
+    canCreateEnquiry,
+    canCreateQuotation,
+    canReceiveStock,
+    canCreateService,
+    canCreatePersonalTask,
+  ]);
 
   const roleTitle = isAdmin ? "Home Dashboard" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
   const roleSub = isAdmin
