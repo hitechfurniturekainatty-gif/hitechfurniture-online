@@ -80,6 +80,10 @@ type QItem = {
   conversion_status?: "open" | "partially_ordered" | "ordered" | "lost" | "closed";
   converted_at?: string | null;
   converted_by?: string | null;
+  cancelled_qty?: number;
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
   _isNew?: boolean;
   _dirty?: boolean;
   // Stable React list key, independent of `id`. `id` starts as a `tmp-...`
@@ -1446,7 +1450,7 @@ const AdminQuotationEditor = () => {
     const qtys: Record<string, number> = {};
     for (const item of saved) {
       if (item._isNew) continue;
-      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0));
+      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
       if (remaining > 0 && !["lost", "closed"].includes(item.conversion_status ?? "open")) {
         qtys[item.id] = 0;
       }
@@ -1478,7 +1482,7 @@ const AdminQuotationEditor = () => {
     for (const entry of selected) {
       const item = items.find((x) => x.id === entry.item_id);
       if (!item) continue;
-      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0));
+      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
       if (entry.quantity > remaining) {
         toast({
           title: "Quantity exceeds remaining",
@@ -1516,6 +1520,76 @@ const AdminQuotationEditor = () => {
       title: "Selected items converted",
       description: "Remaining quantities stay open and can be converted later.",
     });
+  };
+
+  const closeRemainingItem = async (item: QItem) => {
+    const remaining = Math.max(
+      0,
+      Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0),
+    );
+    if (remaining <= 0) return;
+
+    const reason = window.prompt(
+      `Close the remaining ${remaining} qty of "${item.description || "this item"}"?\n\nEnter reason (required):`,
+      "",
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      toast({ title: "Reason is required", variant: "destructive" });
+      return;
+    }
+
+    const { data, error } = await (supabase as any).rpc("cancel_quotation_item_remaining", {
+      _item_id: item.id,
+      _reason: reason.trim(),
+    });
+
+    if (error || !data?.ok) {
+      const message =
+        data?.error === "active_job_exists"
+          ? "An active production/job assignment exists for this item. Complete or cancel that job first."
+          : data?.error === "item_already_dispatched_or_delivered"
+            ? "Dispatched or delivered items cannot be closed here."
+            : data?.error === "quotation_locked"
+              ? "This quotation is already rejected or delivered."
+              : data?.error || error?.message;
+      toast({ title: "Could not close remaining quantity", description: message, variant: "destructive" });
+      return;
+    }
+
+    await load({ silent: true });
+    setStatusHistoryKey((k) => k + 1);
+    toast({ title: "Remaining quantity closed", description: `${remaining} qty kept out of future order conversion.` });
+  };
+
+  const reopenCancelledItem = async (item: QItem) => {
+    const cancelled = Number(item.cancelled_qty || 0);
+    if (cancelled <= 0) return;
+
+    const ok = window.confirm(
+      `Reopen ${cancelled} cancelled qty of "${item.description || "this item"}"?\n\nIt will become available for later order conversion again.`,
+    );
+    if (!ok) return;
+
+    const { data, error } = await (supabase as any).rpc("reopen_quotation_item_cancelled", {
+      _item_id: item.id,
+      _reason: "Reopened from quotation editor",
+    });
+
+    if (error || !data?.ok) {
+      const message =
+        data?.error === "item_already_dispatched_or_delivered"
+          ? "Dispatched or delivered items cannot be reopened."
+          : data?.error === "quotation_locked"
+            ? "This quotation is already rejected or delivered."
+            : data?.error || error?.message;
+      toast({ title: "Could not reopen item", description: message, variant: "destructive" });
+      return;
+    }
+
+    await load({ silent: true });
+    setStatusHistoryKey((k) => k + 1);
+    toast({ title: "Cancelled quantity reopened", description: `${cancelled} qty is open for conversion again.` });
   };
 
   const confirmToOrder = async () => {
@@ -1907,10 +1981,36 @@ const AdminQuotationEditor = () => {
                       Ordered {Number(it.ordered_qty ?? 0)}/{Number(it.quantity ?? 0)}
                     </span>
                   )}
+                  {Number(it.cancelled_qty ?? 0) > 0 && (
+                    <span
+                      className="rounded-full border border-stone-400/50 bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-600"
+                      title={it.cancellation_reason || "Cancelled quantity"}
+                    >
+                      Closed {Number(it.cancelled_qty ?? 0)}
+                    </span>
+                  )}
                   {Number(it.ordered_qty ?? 0) < Number(it.quantity ?? 0) && (
                     <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
-                      Open {Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0))}
+                      Open {Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0))}
                     </span>
+                  )}
+                  {canEditPrice && !it._isNew && Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0)) > 0 && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-amber-500/40 px-1.5 py-0.5 font-semibold text-amber-700 hover:bg-amber-50"
+                      onClick={(e) => { e.stopPropagation(); void closeRemainingItem(it); }}
+                    >
+                      Close Remaining
+                    </button>
+                  )}
+                  {canEditPrice && !it._isNew && Number(it.cancelled_qty ?? 0) > 0 && normalizeStatus(q.status) !== "delivered" && normalizeStatus(q.status) !== "rejected" && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-sky-500/40 px-1.5 py-0.5 font-semibold text-sky-700 hover:bg-sky-50"
+                      onClick={(e) => { e.stopPropagation(); void reopenCancelledItem(it); }}
+                    >
+                      Reopen
+                    </button>
                   )}
                   {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
@@ -2443,10 +2543,10 @@ const AdminQuotationEditor = () => {
           </DialogHeader>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
             {items.filter((item) => {
-              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0));
+              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
               return !item._isNew && remaining > 0 && !["lost","closed"].includes(item.conversion_status ?? "open");
             }).map((item) => {
-              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0));
+              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
               return (
                 <div key={item.id} className="grid grid-cols-[1fr_110px] items-center gap-3 rounded-lg border p-3">
                   <div className="min-w-0">
