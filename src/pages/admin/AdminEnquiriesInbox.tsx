@@ -100,14 +100,14 @@ const InboxPage = () => {
         .limit(100),
       supabase
         .from("customer_complaints")
-        .select("*")
+        .select("id,complaint_code,customer_name,customer_phone,customer_place,issue_description,original_quotation_code,photos,status,created_at")
         .is("deleted_at", null)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(100),
       supabase
         .from("customer_services")
-        .select("*")
+        .select("id,service_code,customer_name,customer_phone,customer_place,item_description,work_needed,photos,status,created_at")
         .is("deleted_at", null)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
@@ -152,7 +152,9 @@ const InboxPage = () => {
     if (!id || !["lead", "complaint", "service"].includes(k)) return;
     (async () => {
       if (k === "lead") {
-        const { data } = await supabase.from("quotations").select("*").eq("id", id).maybeSingle();
+        const existing = rows.find((r) => r.kind === "lead" && r.id === id);
+        if (existing) { setOpen(existing); return; }
+        const { data } = await supabase.from("quotations").select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type").eq("id", id).maybeSingle();
         if (data) setOpen({
           id: data.id, kind: "lead", code: data.quotation_id,
           name: data.party_name, phone: data.party_phone, place: data.party_place,
@@ -160,7 +162,9 @@ const InboxPage = () => {
           enquiry_type: data.enquiry_type, created_at: data.created_at, raw: data,
         });
       } else if (k === "complaint") {
-        const { data } = await supabase.from("customer_complaints").select("*").eq("id", id).maybeSingle();
+        const existing = rows.find((r) => r.kind === "complaint" && r.id === id);
+        if (existing) { setOpen(existing); return; }
+        const { data } = await supabase.from("customer_complaints").select("id,complaint_code,customer_name,customer_phone,customer_place,customer_address,issue_description,original_quotation_code,photos,status,created_at").eq("id", id).maybeSingle();
         if (data) setOpen({
           id: data.id, kind: "complaint", code: data.complaint_code,
           name: data.customer_name, phone: data.customer_phone, place: data.customer_place,
@@ -168,7 +172,9 @@ const InboxPage = () => {
           created_at: data.created_at, raw: data,
         });
       } else {
-        const { data } = await supabase.from("customer_services").select("*").eq("id", id).maybeSingle();
+        const existing = rows.find((r) => r.kind === "service" && r.id === id);
+        if (existing) { setOpen(existing); return; }
+        const { data } = await supabase.from("customer_services").select("id,service_code,customer_name,customer_phone,customer_place,customer_address,item_description,work_needed,photos,status,created_at").eq("id", id).maybeSingle();
         if (data) setOpen({
           id: data.id, kind: "service", code: data.service_code,
           name: data.customer_name, phone: data.customer_phone, place: data.customer_place,
