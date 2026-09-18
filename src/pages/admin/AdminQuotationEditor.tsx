@@ -75,6 +75,7 @@ type QItem = {
   fulfillment_route: "ready_stock" | "custom";
   dispatched_at?: string | null;
   delivered_at?: string | null;
+  client_item_key?: string | null;
   _isNew?: boolean;
   _dirty?: boolean;
   // Stable React list key, independent of `id`. `id` starts as a `tmp-...`
@@ -380,10 +381,12 @@ const AdminQuotationEditor = () => {
     const lt = q?.lead_type ?? "lead";
     const defaultRoute: "ready_stock" | "custom" =
       lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
-    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const clientItemKey = crypto.randomUUID();
+    const tmpId = `tmp-${clientItemKey}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
+      client_item_key: clientItemKey,
       description: "",
       item_notes: null,
       item_image_url: null,
@@ -535,10 +538,12 @@ const AdminQuotationEditor = () => {
   };
 
   const addFromProduct = (p: Product) => {
-    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const clientItemKey = crypto.randomUUID();
+    const tmpId = `tmp-${clientItemKey}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
+      client_item_key: clientItemKey,
       description: `${p.product_name} (${p.product_code})`,
       item_notes: null,
       item_image_url: p.product_images?.[0]?.image_url ?? null,
@@ -572,10 +577,12 @@ const AdminQuotationEditor = () => {
 
   const addFromBundle = (b: Bundle) => {
     const price = Number(b.offer_price ?? b.mrp ?? 0);
-    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const clientItemKey = crypto.randomUUID();
+    const tmpId = `tmp-${clientItemKey}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
+      client_item_key: clientItemKey,
       description: b.name,
       item_notes: null,
       item_image_url: b.main_image_url ?? null,
@@ -606,10 +613,12 @@ const AdminQuotationEditor = () => {
 
   const addFromCatalogViewProduct = (p: CatalogProduct) => {
     const price = Number(p.offer_price ?? p.mrp ?? 0);
-    const tmpId = `tmp-${crypto.randomUUID()}`;
+    const clientItemKey = crypto.randomUUID();
+    const tmpId = `tmp-${clientItemKey}`;
     const next: QItem = {
       id: tmpId,
       _clientKey: tmpId,
+      client_item_key: clientItemKey,
       description: `${p.product_name} (${p.product_code})`,
       item_notes: null,
       item_image_url: p.primary_image_url ?? null,
@@ -773,6 +782,7 @@ const AdminQuotationEditor = () => {
           fulfillment_route: it.fulfillment_route ?? "ready_stock",
           dispatched_at: it.dispatched_at ?? null,
           delivered_at: it.delivered_at ?? null,
+          client_item_key: it.client_item_key ?? null,
         },
       });
     }
@@ -780,7 +790,11 @@ const AdminQuotationEditor = () => {
     const results = await Promise.all(
       jobs.map((j) =>
         j.isNew
-          ? supabase.from("quotation_items").insert(j.payload).select("id").single()
+          ? (supabase as any)
+              .from("quotation_items")
+              .upsert(j.payload, { onConflict: "quotation_id,client_item_key" })
+              .select("id")
+              .single()
           : supabase.from("quotation_items").update(j.payload).eq("id", j.existingId).select("id").single()
       )
     );
