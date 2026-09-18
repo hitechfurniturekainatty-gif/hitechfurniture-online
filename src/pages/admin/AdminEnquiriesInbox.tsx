@@ -7,11 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { MultiImagePicker } from "@/components/admin/MultiImagePicker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle } from "lucide-react";
+import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -335,9 +337,16 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
   const [workers, setWorkers] = useState<Array<{ id: string; name: string }>>([]);
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editIssue, setEditIssue] = useState("");
+  const [editPhotos, setEditPhotos] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     setAssigneeId("");
+    setEditing(false);
+    setEditIssue(row?.kind === "complaint" ? row.raw?.issue_description ?? "" : row?.kind === "service" ? row.raw?.work_needed ?? row.preview ?? "" : "");
+    setEditPhotos(row?.raw?.photos ?? null);
     if (!row) return;
     if (row.kind === "lead") {
       (async () => {
@@ -429,6 +438,24 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     onChanged();
   };
 
+  const saveEdits = async () => {
+    if (row.kind === "lead" || photoUploading) return;
+    setBusy(true);
+    const table = row.kind === "complaint" ? "customer_complaints" : "customer_services";
+    const patch = row.kind === "complaint"
+      ? { issue_description: editIssue.trim() || "Complaint logged", photos: editPhotos }
+      : { work_needed: editIssue.trim() || null, photos: editPhotos };
+    const { data, error } = await supabase.from(table).update(patch).eq("id", row.id).select("*").single();
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    row.raw = data;
+    row.preview = row.kind === "complaint"
+      ? data.issue_description ?? ""
+      : [data.item_description, data.work_needed].filter(Boolean).join(" — ");
+    setEditing(false);
+    toast.success("Changes saved");
+  };
+
   const markResolved = async () => {
     setBusy(true);
     const table = row.kind === "complaint" ? "customer_complaints" : "customer_services";
@@ -465,12 +492,27 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
             </Field>
           )}
           <Field label={row.kind === "lead" ? "Message" : row.kind === "complaint" ? "Issue" : "Work needed"}>
-            <p className="whitespace-pre-wrap">{row.preview || "—"}</p>
+            {editing && row.kind !== "lead" ? (
+              <Textarea value={editIssue} onChange={(e) => setEditIssue(e.target.value)} rows={4} />
+            ) : (
+              <p className="whitespace-pre-wrap">{row.preview || "—"}</p>
+            )}
           </Field>
           {row.kind === "complaint" && row.raw.original_quotation_code && (
             <Field label="Original bill">{row.raw.original_quotation_code}</Field>
           )}
-          {(row.kind === "complaint" || row.kind === "service") && (() => {
+          {editing && (row.kind === "complaint" || row.kind === "service") ? (
+            <Field label="Photos">
+              <MultiImagePicker
+                value={editPhotos}
+                onChange={setEditPhotos}
+                bucket="quotations"
+                folder={row.kind === "complaint" ? "complaints" : "service-requests"}
+                label="Item Photos — Camera / Gallery"
+                onUploadingChange={setPhotoUploading}
+              />
+            </Field>
+          ) : (row.kind === "complaint" || row.kind === "service") && (() => {
             const raw = row.raw.photos;
             const urls: string[] = Array.isArray(raw)
               ? raw.filter(Boolean)
@@ -501,6 +543,25 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
 
         <div className="mt-6 space-y-3 border-t pt-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</p>
+          {row.kind !== "lead" && (
+            <div className="flex gap-2">
+              {editing ? (
+                <>
+                  <Button onClick={saveEdits} disabled={busy || photoUploading} className="flex-1">
+                    {photoUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {photoUploading ? "Uploading…" : "Save Changes"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setEditing(false); setEditIssue(row.kind === "complaint" ? row.raw.issue_description ?? "" : row.raw.work_needed ?? row.preview ?? ""); setEditPhotos(row.raw.photos ?? null); }} disabled={busy || photoUploading}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setEditing(true)} className="w-full">
+                  <Pencil className="mr-2 h-4 w-4" /> Edit Details & Photos
+                </Button>
+              )}
+            </div>
+          )}
 
           {row.kind === "lead" ? (
             <>
