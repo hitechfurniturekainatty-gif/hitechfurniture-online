@@ -128,14 +128,16 @@ const AdminServices = () => {
           "id, service_code, customer_name, customer_place, customer_phone, item_description, estimated_cost, status, created_at, quotation_id",
         )
         .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
       supabase
         .from("customer_complaints")
         .select(
           "id, complaint_code, customer_name, customer_place, customer_phone, issue_description, paid_parts_amount, status, created_at, service_quotation_id, original_quotation_code",
         )
         .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
     ]);
     setServices((svcRes.data ?? []) as ServiceRow[]);
     setComplaints((cpRes.data ?? []) as ComplaintRow[]);
@@ -384,7 +386,7 @@ const AdminServices = () => {
   }, [complaints, search, statusFilter]);
 
   const renderServiceRow = (r: ServiceRow) => (
-    <Card key={r.id} className="transition-smooth hover:shadow-product">
+    <Card key={r.id} className="hover:shadow-product">
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -425,7 +427,7 @@ const AdminServices = () => {
   );
 
   const renderComplaintRow = (r: ComplaintRow) => (
-    <Card key={r.id} className="transition-smooth hover:shadow-product">
+    <Card key={r.id} className="hover:shadow-product">
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
