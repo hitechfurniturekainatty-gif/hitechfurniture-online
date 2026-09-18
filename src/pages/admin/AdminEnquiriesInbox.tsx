@@ -91,7 +91,7 @@ const InboxPage = () => {
     const [qRes, cRes, sRes] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type")
+        .select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type,commercial_status")
         .is("deleted_at", null)
         .eq("lead_type", "lead")
         .is("enquiry_contacted_at", null)
@@ -154,7 +154,7 @@ const InboxPage = () => {
       if (k === "lead") {
         const existing = rows.find((r) => r.kind === "lead" && r.id === id);
         if (existing) { setOpen(existing); return; }
-        const { data } = await supabase.from("quotations").select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type").eq("id", id).maybeSingle();
+        const { data } = await supabase.from("quotations").select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type,commercial_status").eq("id", id).maybeSingle();
         if (data) setOpen({
           id: data.id, kind: "lead", code: data.quotation_id,
           name: data.party_name, phone: data.party_phone, place: data.party_place,
@@ -412,15 +412,43 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
   };
 
   // Lead enquiries already live in the quotations table as pipeline stage 1.
-  // Continue with that exact row instead of creating a second quotation/customer.
+  // "Continue to Quotation" must mature that same row, never copy it.
+  // Only workflow metadata is changed here; customer/source/notes/items stay linked
+  // through quotations.id -> quotation_items.quotation_id.
   const continueToQuotation = async () => {
     if (row.kind !== "lead") return;
     setBusy(true);
 
-    if (!row.raw?.enquiry_contacted_at) {
+    // Read the latest workflow state first so a deep-linked/older enquiry can
+    // never be moved backwards from a later commercial stage.
+    const { data: latest, error: readError } = await supabase
+      .from("quotations")
+      .select("commercial_status,enquiry_contacted_at")
+      .eq("id", row.id)
+      .maybeSingle();
+
+    if (readError || !latest) {
+      setBusy(false);
+      toast.error(readError?.message || "Enquiry record not found");
+      return;
+    }
+
+    const patch: {
+      enquiry_contacted_at?: string;
+      commercial_status?: string;
+    } = {};
+
+    if (!latest.enquiry_contacted_at) {
+      patch.enquiry_contacted_at = new Date().toISOString();
+    }
+    if (!latest.commercial_status || latest.commercial_status === "lead") {
+      patch.commercial_status = "quote_preparation";
+    }
+
+    if (Object.keys(patch).length > 0) {
       const { error } = await supabase
         .from("quotations")
-        .update({ enquiry_contacted_at: new Date().toISOString() })
+        .update(patch)
         .eq("id", row.id);
       if (error) {
         setBusy(false);
