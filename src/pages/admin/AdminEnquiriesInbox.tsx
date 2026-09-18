@@ -419,45 +419,22 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     if (row.kind !== "lead") return;
     setBusy(true);
 
-    // Read the latest workflow state first so a deep-linked/older enquiry can
-    // never be moved backwards from a later commercial stage.
-    const { data: latest, error: readError } = await supabase
-      .from("quotations")
-      .select("commercial_status,enquiry_contacted_at")
-      .eq("id", row.id)
-      .maybeSingle();
+    // One atomic, idempotent DB operation:
+    // - never inserts a quotation/customer/item
+    // - sets first-contact time once
+    // - advances lead -> quote_preparation only
+    // - never moves a later commercial stage backwards
+    const { data, error } = await (supabase as any).rpc(
+      "advance_enquiry_to_quotation",
+      { p_quotation_id: row.id },
+    );
 
-    if (readError || !latest) {
-      setBusy(false);
-      toast.error(readError?.message || "Enquiry record not found");
+    setBusy(false);
+    if (error || !data?.ok) {
+      toast.error(data?.error || error?.message || "Could not continue to quotation");
       return;
     }
 
-    const patch: {
-      enquiry_contacted_at?: string;
-      commercial_status?: string;
-    } = {};
-
-    if (!latest.enquiry_contacted_at) {
-      patch.enquiry_contacted_at = new Date().toISOString();
-    }
-    if (!latest.commercial_status || latest.commercial_status === "lead") {
-      patch.commercial_status = "quote_preparation";
-    }
-
-    if (Object.keys(patch).length > 0) {
-      const { error } = await supabase
-        .from("quotations")
-        .update(patch)
-        .eq("id", row.id);
-      if (error) {
-        setBusy(false);
-        toast.error(error.message);
-        return;
-      }
-    }
-
-    setBusy(false);
     onClose();
     navigate(`/admin/quotations/${row.id}`);
   };
