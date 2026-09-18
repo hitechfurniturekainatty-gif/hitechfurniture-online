@@ -129,7 +129,7 @@ const AdminServices = () => {
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(100),
       supabase
         .from("customer_complaints")
         .select(
@@ -137,7 +137,7 @@ const AdminServices = () => {
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(100),
     ]);
     setServices((svcRes.data ?? []) as ServiceRow[]);
     setComplaints((cpRes.data ?? []) as ComplaintRow[]);
