@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle, Pencil, Save, X } from "lucide-react";
+import { Loader2, Phone, MapPin, Search, Inbox, AlertTriangle, Wrench, ShoppingBag, Ruler, CheckCircle2, MessageCircle, Pencil, Save, X, FileText, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -338,6 +338,7 @@ const RowCard = ({
 
 const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: () => void; onChanged: () => void }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [measurementStaff, setMeasurementStaff] = useState<Array<{ user_id: string; name: string }>>([]);
   const [workers, setWorkers] = useState<Array<{ id: string; name: string }>>([]);
@@ -408,6 +409,29 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     if (error) return toast.error(error.message);
     toast.success("Marked as contacted");
     onChanged();
+  };
+
+  // Lead enquiries already live in the quotations table as pipeline stage 1.
+  // Continue with that exact row instead of creating a second quotation/customer.
+  const continueToQuotation = async () => {
+    if (row.kind !== "lead") return;
+    setBusy(true);
+
+    if (!row.raw?.enquiry_contacted_at) {
+      const { error } = await supabase
+        .from("quotations")
+        .update({ enquiry_contacted_at: new Date().toISOString() })
+        .eq("id", row.id);
+      if (error) {
+        setBusy(false);
+        toast.error(error.message);
+        return;
+      }
+    }
+
+    setBusy(false);
+    onClose();
+    navigate(`/admin/quotations/${row.id}`);
   };
 
   const assignToMeasurement = async () => {
@@ -571,6 +595,16 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
 
           {row.kind === "lead" ? (
             <>
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">Connected sales flow</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This enquiry is already the Stage 1 quotation record. Continue with the same customer and items — no duplicate record is created.
+                </p>
+                <Button onClick={continueToQuotation} disabled={busy} className="mt-3 w-full">
+                  <FileText className="mr-2 h-4 w-4" /> Continue to Quotation
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">Assign to Measurement Staff</p>
                 <Select value={assigneeId} onValueChange={setAssigneeId}>
