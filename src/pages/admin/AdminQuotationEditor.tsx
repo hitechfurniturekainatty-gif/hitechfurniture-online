@@ -113,6 +113,9 @@ type Quotation = {
   submitted_for_pricing_at?: string | null;
   lead_type?: string | null;
   is_direct_order?: boolean | null;
+  commercial_status?: string | null;
+  pipeline_stage?: number | null;
+  confirmed_at?: string | null;
 };
 
 const DEFAULT_TERMS = `1. Advance payment, if any, will be adjusted against the order total. Balance to be paid as agreed before/at delivery.
