@@ -194,7 +194,8 @@ const AdminProducts = () => {
       .from("products")
       .select("*, product_images(id, image_url, display_order)")
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
     // Defensive: filter out anything with a deleted_at timestamp at the
     // client level too, so a stale cache or replication lag can never
     // inflate the catalog count.
@@ -215,10 +216,18 @@ const AdminProducts = () => {
   };
 
   useEffect(() => {
-    load();
-    supabase.from("main_categories").select("id, name, image_url, display_order").order("display_order").then(({ data }) => setMainCats((data ?? []) as MainCat[]));
-    supabase.from("sub_categories").select("id, main_category_id, name, image_url, display_order").order("display_order").then(({ data }) => setSubCats((data ?? []) as SubCat[]));
-    loadLocations();
+    // Start independent requests together so the page is not held up by
+    // sequential network round-trips on mobile connections.
+    void load();
+    void Promise.all([
+      supabase.from("main_categories").select("id, name, image_url, display_order").order("display_order"),
+      supabase.from("sub_categories").select("id, main_category_id, name, image_url, display_order").order("display_order"),
+      supabase.from("product_locations").select("id, name, display_order").order("display_order"),
+    ]).then(([main, sub, loc]) => {
+      setMainCats((main.data ?? []) as MainCat[]);
+      setSubCats((sub.data ?? []) as SubCat[]);
+      setLocations((loc.data ?? []) as unknown as Location[]);
+    });
   }, []);
 
   const loadLocations = async () => {
