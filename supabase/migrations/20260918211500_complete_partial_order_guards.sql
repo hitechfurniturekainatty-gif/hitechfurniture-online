@@ -670,7 +670,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=public
-AS $
+AS $confirm$
 DECLARE
   _q public.quotations%ROWTYPE;
   _item public.quotation_items%ROWTYPE;
@@ -793,7 +793,7 @@ BEGIN
     'confirmed_at',_q.confirmed_at
   );
 END;
-$;
+$confirm$;
 
 REVOKE ALL ON FUNCTION public.confirm_quotation_to_order(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.confirm_quotation_to_order(uuid) TO authenticated;
