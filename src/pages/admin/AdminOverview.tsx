@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
@@ -17,65 +17,44 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { CommandCenterPanel } from "@/components/admin/CommandCenterPanel";
-import { SalesFollowupPanel } from "@/components/admin/SalesFollowupPanel";
-import { ReceivablesTodayPanel } from "@/components/admin/ReceivablesTodayPanel";
-import { RoleFocusPanel } from "@/components/admin/RoleFocusPanel";
 
-const overviewLoaders = {
-  reports: () => import("./AdminAnalyticsDashboard"),
-  sales: () => import("./AdminOfficeAnalyticsDashboard"),
-  production: () => import("./AdminProductionAnalyticsDashboard"),
-  warehouse: () => import("./AdminWarehouseAnalyticsDashboard"),
-  delivery: () => import("./AdminDeliveryAnalyticsDashboard"),
-  website: () => import("./AdminSeoHealthDashboard"),
-};
-
-const AdminAnalyticsDashboard = lazy(overviewLoaders.reports);
-const AdminOfficeAnalyticsDashboard = lazy(overviewLoaders.sales);
-const AdminProductionAnalyticsDashboard = lazy(overviewLoaders.production);
-const AdminWarehouseAnalyticsDashboard = lazy(overviewLoaders.warehouse);
-const AdminDeliveryAnalyticsDashboard = lazy(overviewLoaders.delivery);
-const AdminSeoHealthDashboard = lazy(overviewLoaders.website);
-
-type DashboardCounts = {
+type Detail = { label: string; value: number | string; tone: "green" | "orange" | "red" | "blue" | "muted" };
+type Snapshot = {
   enquiries: number;
+  demandItems: number;
   quotations: number;
   orders: number;
   inventory: number;
+  purchase: number;
   production: number;
+  delivery: number;
+  paymentAmount: number;
   services: number;
-  deliveries: number;
-  payments: number;
+  customers: number;
   tasks: number;
+  details: Record<string, Detail[]>;
 };
 
-const EMPTY_COUNTS: DashboardCounts = {
-  enquiries: 0,
-  quotations: 0,
-  orders: 0,
-  inventory: 0,
-  production: 0,
-  services: 0,
-  deliveries: 0,
-  payments: 0,
-  tasks: 0,
+const EMPTY: Snapshot = {
+  enquiries: 0, demandItems: 0, quotations: 0, orders: 0, inventory: 0, purchase: 0,
+  production: 0, delivery: 0, paymentAmount: 0, services: 0, customers: 0, tasks: 0,
+  details: {},
 };
+
+const day = (iso?: string | null) => iso ? new Date(iso).toISOString().slice(0, 10) : "";
+const formatINR = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, isWorker, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState("today");
-  const [visited,setVisited]=useState<string[]>(["today"]);
-  const [counts, setCounts] = useState<DashboardCounts>(EMPTY_COUNTS);
-  const [countsLoading, setCountsLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY);
+  const [loading, setLoading] = useState(true);
 
   const showAdmin = isAdmin;
   const showOffice = isOfficeStaff;
@@ -83,8 +62,6 @@ const AdminOverview = () => {
   const showWarehouse = isOfficeStaff || isWarehouse;
   const showDelivery = isOfficeStaff || isDelivery;
 
-  // Home actions are capability-gated independently from card visibility.
-  // Multi-role accounts receive the union of capabilities granted by their roles.
   const canCreateEnquiry = isAdmin || isOfficeStaff;
   const canCreateQuotation = isAdmin || isOfficeStaff;
   const canReceiveStock = isAdmin || isOfficeStaff;
@@ -94,70 +71,146 @@ const AdminOverview = () => {
 
   useEffect(() => {
     if (authLoading || !user) return;
-    const connection=(navigator as Navigator & {connection?:{saveData?:boolean;effectiveType?:string}}).connection;
-    if(connection?.saveData||connection?.effectiveType?.includes("2g")) return;
-
-    const keys: (keyof typeof overviewLoaders)[] = [];
-    if (showOffice) keys.push("sales");
-    if (showProduction) keys.push("production");
-    if (showWarehouse) keys.push("warehouse");
-    if (showDelivery) keys.push("delivery");
-    if (showAdmin) keys.push("reports","website");
-
     let cancelled = false;
-    const preload = () => {
-      if (cancelled) return;
-      void Promise.allSettled(keys.map(key => overviewLoaders[key]()));
-    };
-    const win = window as Window & { requestIdleCallback?: (cb: () => void, options?: {timeout?: number}) => number; cancelIdleCallback?: (id:number)=>void };
-    if (win.requestIdleCallback) {
-      const id = win.requestIdleCallback(preload,{timeout:1800});
-      return () => { cancelled = true; win.cancelIdleCallback?.(id); };
-    }
-    const id = window.setTimeout(preload,700);
-    return () => { cancelled = true; window.clearTimeout(id); };
-  }, [authLoading,user,showAdmin,showOffice,showProduction,showWarehouse,showDelivery]);
 
-  useEffect(() => {
-    if (authLoading || !user) return;
-    let cancelled = false;
     (async () => {
-      setCountsLoading(true);
+      setLoading(true);
       const [
-        enquiries,
-        quotations,
-        orders,
-        inventory,
-        production,
-        services,
-        deliveries,
-        payments,
-        tasks,
+        qRes,
+        itemRes,
+        productRes,
+        jobRes,
+        serviceRes,
+        recvRes,
+        taskRes,
+        followRes,
+        stockMoveRes,
       ] = await Promise.all([
-        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("lead_type", "lead").not("status", "in", "(rejected,delivered)"),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "drafted"),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("pipeline_stage", 3).neq("status", "rejected"),
-        supabase.from("products").select("id", { count: "exact", head: true }).is("deleted_at", null),
-        supabase.from("job_work_orders").select("id", { count: "exact", head: true }).is("deleted_at", null).not("status", "in", "(completed,cancelled)"),
-        supabase.from("customer_services").select("id", { count: "exact", head: true }).is("deleted_at", null).neq("status", "resolved"),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("pipeline_stage", 6).neq("status", "delivered").neq("status", "rejected"),
-        supabase.from("receivables").select("id", { count: "exact", head: true }).is("closed_at", null),
-        supabase.from("staff_diary_notes").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "pending"),
+        supabase.from("quotations").select("id,status,pipeline_stage,commercial_status,lead_type,enquiry_contacted_at,next_follow_up_at,created_at,party_phone").is("deleted_at", null),
+        supabase.from("quotation_items").select("id,quotation_id,quantity"),
+        supabase.from("products").select("id,stock_quantity,reorder_level,created_at").is("deleted_at", null),
+        supabase.from("job_work_orders").select("id,status,warehouse_status,job_type,due_at").is("deleted_at", null),
+        supabase.from("customer_services").select("id,status,created_at").is("deleted_at", null),
+        supabase.from("receivables").select("id,pending_amount,next_follow_up_at,closed_at"),
+        supabase.from("staff_diary_notes").select("id,status,due_date,created_at").is("deleted_at", null),
+        supabase.from("quotation_followups").select("id,quotation_id,status,scheduled_for"),
+        supabase.from("stock_movements").select("id,reason,created_at").eq("reason", "inbound_receive"),
       ]);
+
       if (cancelled) return;
-      setCounts({
-        enquiries: enquiries.count ?? 0,
-        quotations: quotations.count ?? 0,
-        orders: orders.count ?? 0,
-        inventory: inventory.count ?? 0,
-        production: production.count ?? 0,
-        services: services.count ?? 0,
-        deliveries: deliveries.count ?? 0,
-        payments: payments.count ?? 0,
-        tasks: tasks.count ?? 0,
+
+      const today = new Date().toISOString().slice(0, 10);
+      const qs = (qRes.data ?? []) as any[];
+      const items = (itemRes.data ?? []) as any[];
+      const products = (productRes.data ?? []) as any[];
+      const jobs = (jobRes.data ?? []) as any[];
+      const services = (serviceRes.data ?? []) as any[];
+      const receivables = (recvRes.data ?? []) as any[];
+      const tasks = (taskRes.data ?? []) as any[];
+      const followups = (followRes.data ?? []) as any[];
+      const stockMoves = (stockMoveRes.data ?? []) as any[];
+
+      const openLeads = qs.filter(q => q.lead_type === "lead" && !["rejected","delivered"].includes(q.status));
+      const leadIds = new Set(openLeads.map(q => q.id));
+      const demandItems = items.filter(i => leadIds.has(i.quotation_id));
+      const followDue = followups.filter(f => f.status !== "completed" && day(f.scheduled_for) <= today).length;
+      const quoteRows = qs.filter(q => q.status === "drafted" && q.lead_type !== "lead");
+      const confirmed = qs.filter(q => q.commercial_status === "confirmed").length;
+      const orders = qs.filter(q => Number(q.pipeline_stage ?? 0) >= 3 && !["rejected","delivered"].includes(q.status));
+      const lowStock = products.filter(p => Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= Number(p.reorder_level ?? 0)).length;
+      const outStock = products.filter(p => Number(p.stock_quantity ?? 0) <= 0).length;
+      const openJobs = jobs.filter(j => !["ready","delivered","completed","cancelled"].includes(j.status) && j.warehouse_status !== "dispatched");
+      const pendingReceivables = receivables.filter(r => !r.closed_at);
+      const paymentAmount = pendingReceivables.reduce((sum, r) => sum + Number(r.pending_amount ?? 0), 0);
+      const openServices = services.filter(s => !["resolved","closed","completed"].includes(s.status));
+      const pendingTasks = tasks.filter(t => t.status === "pending");
+
+      const phones = qs.map(q => String(q.party_phone ?? "").replace(/\D/g, "")).filter(Boolean);
+      const uniquePhones = new Set(phones);
+      const phoneCounts = phones.reduce<Record<string, number>>((acc, p) => { acc[p] = (acc[p] ?? 0) + 1; return acc; }, {});
+      const repeatCustomers = Object.values(phoneCounts).filter(n => n > 1).length;
+
+      const details: Record<string, Detail[]> = {
+        enquiries: [
+          { label: "New Today", value: openLeads.filter(q => day(q.created_at) === today).length, tone: "green" },
+          { label: "Follow-up Due", value: followDue, tone: "orange" },
+          { label: "Not Contacted", value: openLeads.filter(q => !q.enquiry_contacted_at).length, tone: "red" },
+        ],
+        demand: [
+          { label: "Open Enquiry Items", value: demandItems.length, tone: "orange" },
+          { label: "Customers Waiting", value: openLeads.length, tone: "red" },
+          { label: "Follow-up Due", value: followDue, tone: "blue" },
+        ],
+        quotations: [
+          { label: "Draft", value: quoteRows.length, tone: "orange" },
+          { label: "In Follow-up", value: followups.filter(f => f.status === "pending").length, tone: "blue" },
+          { label: "Confirmed", value: confirmed, tone: "green" },
+        ],
+        orders: [
+          { label: "OPS", value: orders.filter(q => Number(q.pipeline_stage) === 3).length, tone: "blue" },
+          { label: "Production", value: orders.filter(q => Number(q.pipeline_stage) === 4).length, tone: "orange" },
+          { label: "Warehouse", value: orders.filter(q => Number(q.pipeline_stage) === 5).length, tone: "green" },
+        ],
+        inventory: [
+          { label: "Low Stock", value: lowStock, tone: "orange" },
+          { label: "Out of Stock", value: outStock, tone: "red" },
+          { label: "Inward Today", value: stockMoves.filter(m => day(m.created_at) === today).length, tone: "green" },
+        ],
+        purchase: [
+          { label: "Low Stock", value: lowStock, tone: "orange" },
+          { label: "Out of Stock", value: outStock, tone: "red" },
+          { label: "Needs Review", value: lowStock + outStock, tone: "blue" },
+        ],
+        production: [
+          { label: "Assigned", value: jobs.filter(j => j.status === "assigned").length, tone: "orange" },
+          { label: "In Production", value: jobs.filter(j => ["started","in_progress"].includes(j.status)).length, tone: "blue" },
+          { label: "Ready", value: jobs.filter(j => j.status === "ready").length, tone: "green" },
+        ],
+        delivery: [
+          { label: "Logistics Stage", value: qs.filter(q => Number(q.pipeline_stage ?? 0) === 6 && q.status !== "delivered").length, tone: "blue" },
+          { label: "Ready / Dispatched", value: jobs.filter(j => ["ready_to_pack","ready_for_dispatch","dispatched"].includes(j.warehouse_status)).length, tone: "green" },
+          { label: "Delivered", value: qs.filter(q => q.status === "delivered").length, tone: "green" },
+        ],
+        payments: [
+          { label: "Due Today", value: formatINR(pendingReceivables.filter(r => day(r.next_follow_up_at) === today).reduce((s,r) => s + Number(r.pending_amount ?? 0),0)), tone: "orange" },
+          { label: "Overdue", value: formatINR(pendingReceivables.filter(r => r.next_follow_up_at && day(r.next_follow_up_at) < today).reduce((s,r) => s + Number(r.pending_amount ?? 0),0)), tone: "red" },
+          { label: "Open Accounts", value: pendingReceivables.length, tone: "blue" },
+        ],
+        services: [
+          { label: "New", value: openServices.filter(s => ["new","pending"].includes(s.status)).length, tone: "green" },
+          { label: "Assigned", value: openServices.filter(s => s.status === "assigned").length, tone: "blue" },
+          { label: "In Progress", value: openServices.filter(s => ["in_progress","converted"].includes(s.status)).length, tone: "orange" },
+        ],
+        customers: [
+          { label: "Unique Customers", value: uniquePhones.size, tone: "green" },
+          { label: "Repeat Customers", value: repeatCustomers, tone: "blue" },
+          { label: "Follow-up Pending", value: followDue, tone: "red" },
+        ],
+        tasks: [
+          { label: "Today", value: pendingTasks.filter(t => t.due_date === today).length, tone: "green" },
+          { label: "Overdue", value: pendingTasks.filter(t => t.due_date && t.due_date < today).length, tone: "red" },
+          { label: "Upcoming", value: pendingTasks.filter(t => t.due_date && t.due_date > today).length, tone: "orange" },
+        ],
+      };
+
+      setSnapshot({
+        enquiries: openLeads.length,
+        demandItems: demandItems.length,
+        quotations: quoteRows.length,
+        orders: orders.length,
+        inventory: products.length,
+        purchase: lowStock + outStock,
+        production: openJobs.length,
+        delivery: qs.filter(q => Number(q.pipeline_stage ?? 0) >= 6 && q.status !== "delivered" && q.status !== "rejected").length,
+        paymentAmount,
+        services: openServices.length,
+        customers: uniquePhones.size,
+        tasks: pendingTasks.length,
+        details,
       });
-      setCountsLoading(false);
+      setLoading(false);
     })();
+
     return () => { cancelled = true; };
   }, [authLoading, user]);
 
@@ -165,287 +218,177 @@ const AdminOverview = () => {
 
   const cards = useMemo(() => [
     {
-      title: "Enquiries",
-      count: counts.enquiries,
-      detail: "Open customer enquiries",
-      sub: "New leads, follow-up and customer requirements",
-      action: "Open Enquiries",
-      href: "/admin/enquiries",
-      icon: ClipboardList,
-      quickAction: canCreateEnquiry ? { label: "+ New Enquiry", kind: "enquiry" } : undefined,
+      key: "enquiries", title: "Enquiries", count: snapshot.enquiries, href: "/admin/enquiries",
+      action: "Open Enquiries", icon: ClipboardList,
+      quickAction: canCreateEnquiry ? { label: "New Enquiry", kind: "enquiry" } : undefined,
       show: showOffice || showAdmin,
     },
     {
-      title: "Demand Tracker",
-      count: "→",
-      detail: "Connected enquiry demand",
-      sub: "Item demand remains linked to the enquiry pipeline",
-      action: "View Demand",
-      href: "/admin/enquiries",
-      icon: PackageSearch,
+      key: "demand", title: "Demand Tracker", count: snapshot.demandItems, href: "/admin/enquiries",
+      action: "View Demand", icon: PackageSearch, show: showOffice || showAdmin,
+    },
+    {
+      key: "quotations", title: "Quotations", count: snapshot.quotations, href: "/admin/quotations",
+      action: "Open Quotations", icon: FileText,
+      quickAction: canCreateQuotation ? { label: "New Quotation", href: "/admin/quotations?new=1" } : undefined,
       show: showOffice || showAdmin,
     },
     {
-      title: "Quotations",
-      count: counts.quotations,
-      detail: "Draft quotations",
-      sub: "Prepare, revise, share and convert",
-      action: "Open Quotations",
-      href: "/admin/quotations",
-      icon: FileText,
-      quickAction: canCreateQuotation ? { label: "+ New Quotation", href: "/admin/quotations?new=1" } : undefined,
-      show: showOffice || showAdmin,
+      key: "orders", title: "Orders", count: snapshot.orders, href: "/admin/pipeline",
+      action: "View Orders", icon: ShoppingCart, show: showOffice || showAdmin,
     },
     {
-      title: "Orders",
-      count: counts.orders,
-      detail: "Orders in pipeline",
-      sub: "Existing sales pipeline — no duplicate workflow",
-      action: "View Orders",
-      href: "/admin/pipeline",
-      icon: ShoppingCart,
-      show: showOffice || showAdmin,
-    },
-    {
-      title: "Inventory",
-      count: counts.inventory,
-      detail: "Active catalogue products",
-      sub: "Stock ledger, receiving and stock take",
-      action: "Open Inventory",
-      href: "/admin/inventory/ledger",
-      icon: Boxes,
-      quickAction: canReceiveStock ? { label: "+ Stock Inward", href: "/admin/inventory/receiving" } : undefined,
+      key: "inventory", title: "Inventory", count: snapshot.inventory, href: "/admin/inventory/ledger",
+      action: "Open Inventory", icon: Boxes,
+      quickAction: canReceiveStock ? { label: "Stock Inward", href: "/admin/inventory/receiving" } : undefined,
       show: showOffice || showAdmin || showWarehouse,
     },
     {
-      title: "Purchase",
-      count: "→",
-      detail: "Reorder & requirements",
-      sub: "Review items that need replenishment",
-      action: "Open Purchase",
-      href: "/admin/inventory/reorder",
-      icon: PackageSearch,
+      key: "purchase", title: "Purchase Requirements", count: snapshot.purchase, href: "/admin/inventory/reorder",
+      action: "Open Purchase", icon: PackageSearch, show: showOffice || showAdmin,
+    },
+    {
+      key: "production", title: "Production", count: snapshot.production, href: "/admin/production",
+      action: "View Production", icon: Hammer, show: showProduction || showAdmin,
+    },
+    {
+      key: "delivery", title: "Delivery", count: snapshot.delivery, href: "/admin/logistics",
+      action: "View Deliveries", icon: Truck, show: showDelivery || showOffice || showAdmin,
+    },
+    {
+      key: "payments", title: "Payments", count: formatINR(snapshot.paymentAmount), href: "/admin/backlog",
+      action: "View Payments", icon: WalletCards, show: showOffice || showAdmin,
+    },
+    {
+      key: "services", title: "Repairs & Service", count: snapshot.services, href: "/admin/services",
+      action: "Open Service", icon: Wrench,
+      quickAction: canCreateService ? { label: "New Service", href: "/admin/services?new=service" } : undefined,
       show: showOffice || showAdmin,
     },
     {
-      title: "Production",
-      count: counts.production,
-      detail: "Active work orders",
-      sub: "Pending, assigned and production jobs",
-      action: "Open Production",
-      href: "/admin/production",
-      icon: Hammer,
-      show: showProduction || showAdmin,
+      key: "customers", title: "Customers", count: snapshot.customers, href: "/admin/enquiries",
+      action: "View Customers", icon: Users, show: showOffice || showAdmin,
     },
     {
-      title: "Delivery",
-      count: counts.deliveries,
-      detail: "Pending delivery flow",
-      sub: "Logistics, routes and delivery handoff",
-      action: "Open Delivery",
-      href: "/admin/logistics",
-      icon: Truck,
-      show: showDelivery || showOffice || showAdmin,
-    },
-    {
-      title: "Payments",
-      count: counts.payments,
-      detail: "Open receivables",
-      sub: "Pending and overdue customer balances",
-      action: "View Payments",
-      href: "/admin/backlog",
-      icon: WalletCards,
-      show: showOffice || showAdmin,
-    },
-    {
-      title: "Repairs & Service",
-      count: counts.services,
-      detail: "Open service requests",
-      sub: "Repair, service and customer support jobs",
-      action: "Open Service",
-      href: "/admin/services",
-      icon: Wrench,
-      quickAction: canCreateService ? { label: "+ New Service", href: "/admin/services?new=service" } : undefined,
-      show: showOffice || showAdmin,
-    },
-    {
-      title: "Customers",
-      count: "→",
-      detail: "Customer-linked records",
-      sub: "Open through enquiries and quotation history",
-      action: "View Customers",
-      href: "/admin/enquiries",
-      icon: Users,
-      show: showOffice || showAdmin,
-    },
-    {
-      title: "Tasks / Follow-ups",
-      count: counts.tasks,
-      detail: "Open diary tasks",
-      sub: "Today, overdue and upcoming follow-ups",
-      action: "Open Tasks",
-      href: "/admin/diary",
-      icon: ListTodo,
-      quickAction: canCreatePersonalTask ? { label: "+ New Task", href: "/admin/diary?new=1" } : undefined,
+      key: "tasks", title: "Tasks / Follow-ups", count: snapshot.tasks, href: "/admin/diary",
+      action: "View Tasks", icon: ListTodo,
+      quickAction: canCreatePersonalTask ? { label: "New Task", href: "/admin/diary?new=1" } : undefined,
       show: true,
     },
     {
-      title: "Reports",
-      count: "↗",
-      detail: "Business analytics",
-      sub: "Sales, stock, pipeline and performance",
-      action: "Open Reports",
-      href: "/admin#detailed-dashboards",
-      icon: BarChart3,
+      key: "reports", title: "Reports", count: "", href: "/admin/pipeline",
+      action: "Open Reports", icon: BarChart3,
+      customDetails: [
+        { label: "Sales", value: "›", tone: "muted" as const },
+        { label: "Demand", value: "›", tone: "muted" as const },
+        { label: "Stock", value: "›", tone: "muted" as const },
+      ],
       show: showAdmin,
     },
-  ].filter((card) => card.show), [
-    counts,
-    showOffice,
-    showAdmin,
-    showWarehouse,
-    showProduction,
-    showDelivery,
-    canCreateEnquiry,
-    canCreateQuotation,
-    canReceiveStock,
-    canCreateService,
-    canCreatePersonalTask,
+  ].filter(c => c.show), [
+    snapshot, showOffice, showAdmin, showWarehouse, showProduction, showDelivery,
+    canCreateEnquiry, canCreateQuotation, canReceiveStock, canCreateService, canCreatePersonalTask,
   ]);
 
   const roleTitle = isAdmin ? "Home Dashboard" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
-  const roleSub = isAdmin
-    ? "One screen for enquiries, quotations, orders, stock, production, delivery and payments."
-    : isOfficeStaff
-      ? "Customer enquiries, quotations, orders and follow-ups in one clean view."
-      : isWarehouse
-        ? "Stock, order readiness and delivery handoff."
-        : isDelivery
-          ? "Trips, routes and pending deliveries."
-          : "Your assigned work and next actions.";
-
-  const sections = [
-    { key: "today", label: "Today · Action centre", tone: "sand", node: <>{showAdmin ? <CommandCenterPanel compact /> : <RoleFocusPanel isAdmin={isAdmin} isOfficeStaff={isOfficeStaff} isWarehouse={isWarehouse} isDelivery={isDelivery} />}{showAdmin && <div className="mt-5"><ReceivablesTodayPanel /></div>}</> },
-    ...(showOffice ? [{key:"sales",label:"Sales & quotations",tone:"blue",node:<><SalesFollowupPanel /><AdminOfficeAnalyticsDashboard /></>}] : []),
-    ...(showProduction ? [{key:"production",label:"Production",tone:"violet",node:<AdminProductionAnalyticsDashboard />}] : []),
-    ...(showWarehouse ? [{key:"warehouse",label:"Stock & warehouse",tone:"sage",node:<AdminWarehouseAnalyticsDashboard />}] : []),
-    ...(showDelivery ? [{key:"delivery",label:"Delivery",tone:"terracotta",node:<AdminDeliveryAnalyticsDashboard />}] : []),
-    ...(showAdmin ? [{key:"reports",label:"Business reports",tone:"slate",node:<AdminAnalyticsDashboard />},{key:"website",label:"Website health",tone:"rose",node:<AdminSeoHealthDashboard />}] : []),
-  ];
 
   return (
     <AdminShell>
-      <div className="mb-5 rounded-2xl border border-[#8b6b4f]/15 bg-gradient-to-br from-[#fbf8f4] to-white px-5 py-5 shadow-sm sm:px-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b6b4f]">Hitech Furniture & Interiors</p>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-[#2f2925] sm:text-3xl">{roleTitle}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{roleSub}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <MiniStat label="Enquiries" value={counts.enquiries} loading={countsLoading} />
-            <MiniStat label="Orders" value={counts.orders} loading={countsLoading} />
-            <MiniStat label="Delivery" value={counts.deliveries} loading={countsLoading} />
-            <MiniStat label="Payments" value={counts.payments} loading={countsLoading} />
-          </div>
-        </div>
+      <div className="mb-5">
+        <h1 className="font-display text-2xl font-semibold text-[#2f2925] sm:text-3xl">{roleTitle}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Today's business overview</p>
+      </div>
+
+      <div className="mb-5 grid overflow-hidden rounded-2xl border border-[#8b6b4f]/15 bg-white shadow-sm sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryStat label="Today Enquiries" value={snapshot.details.enquiries?.[0]?.value ?? 0} loading={loading} />
+        <SummaryStat label="Orders" value={snapshot.orders} loading={loading} />
+        <SummaryStat label="Deliveries" value={snapshot.delivery} loading={loading} />
+        <SummaryStat label="Pending Payments" value={formatINR(snapshot.paymentAmount)} loading={loading} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           const quickAction = "quickAction" in card ? card.quickAction : undefined;
+          const details = "customDetails" in card && card.customDetails ? card.customDetails : (snapshot.details[card.key] ?? []);
           const openCard = () => navigate(card.href);
-          const runQuickAction = (event: React.MouseEvent) => {
+          const runQuick = (event: React.MouseEvent) => {
             event.stopPropagation();
             if (!quickAction) return;
-            if ("kind" in quickAction && quickAction.kind === "enquiry") {
-              openEnquiryForm();
-              return;
-            }
+            if ("kind" in quickAction && quickAction.kind === "enquiry") return openEnquiryForm();
             if ("href" in quickAction && quickAction.href) navigate(quickAction.href);
           };
+
           return (
             <Card
-              key={card.title}
+              key={card.key}
               role="link"
               tabIndex={0}
               onClick={openCard}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  openCard();
-                }
-              }}
-              className="group h-full cursor-pointer border-[#8b6b4f]/15 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6b4f]/40"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(); } }}
+              className="group cursor-pointer border-[#8b6b4f]/15 bg-white transition-all hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md"
             >
-              <CardContent className="flex h-full min-h-[188px] flex-col p-4 sm:p-5">
+              <CardContent className="flex min-h-[245px] h-full flex-col p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8b6b4f]/10 text-[#76563f]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <div className="text-right">
-                    {countsLoading && typeof card.count === "number" ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    ) : (
-                      <span className="font-display text-2xl font-semibold text-[#2f2925]">{card.count}</span>
-                    )}
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                </div>
+
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-foreground">{card.title}</h2>
+                  <div className="font-display text-2xl font-semibold text-[#2f2925]">
+                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : card.count}
                   </div>
                 </div>
-                <h2 className="mt-4 text-base font-semibold text-foreground">{card.title}</h2>
-                <p className="mt-1 text-xs font-medium text-[#8b6b4f]">{card.detail}</p>
-                <p className="mt-1.5 flex-1 text-xs leading-5 text-muted-foreground">{card.sub}</p>
-                <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-3">
+
+                <div className="mt-4 space-y-2.5">
+                  {details.slice(0, 3).map((d) => (
+                    <div key={d.label} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <StatusDot tone={d.tone} />
+                        {d.label}
+                      </span>
+                      <span className="font-semibold text-foreground">{loading ? "—" : d.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-auto pt-4">
                   {quickAction ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 border-[#8b6b4f]/25 text-xs text-[#76563f] hover:bg-[#8b6b4f]/5"
-                      onClick={runQuickAction}
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      {quickAction.label.replace(/^\+\s*/, "")}
+                    <Button type="button" size="sm" className="h-8 bg-[#76563f] text-xs hover:bg-[#654936]" onClick={runQuick}>
+                      <Plus className="mr-1 h-3.5 w-3.5" />{quickAction.label}
                     </Button>
                   ) : (
-                    <span className="text-xs font-semibold text-[#76563f]">{card.action}</span>
+                    <Button type="button" size="sm" variant="outline" className="h-8 border-[#8b6b4f]/25 text-xs text-[#76563f]" onClick={(e) => { e.stopPropagation(); openCard(); }}>
+                      {card.action}
+                    </Button>
                   )}
-                  <div className="ml-auto flex items-center gap-1 text-xs font-semibold text-[#76563f]">
-                    <span className="hidden sm:inline">{card.action}</span>
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </div>
                 </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
-
-      <div id="detailed-dashboards" className="mt-8">
-        <div className="mb-3">
-          <h2 className="font-display text-xl font-semibold text-[#2f2925]">Detailed dashboards</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Use these only when you need deeper operational details or reports.</p>
-        </div>
-        <Tabs value={sections.some(s => s.key === selected) ? selected : "today"} onValueChange={key=>{setSelected(key);setVisited(prev=>prev.includes(key)?prev:[...prev,key]);}}>
-          <TabsList aria-label="Dashboard departments" className="mb-5 flex h-auto flex-wrap justify-start gap-2">
-            {sections.map(s => <TabsTrigger key={s.key} value={s.key} className={`overview-tab overview-${s.tone}`}><span className="overview-tab-dot" aria-hidden="true"/>{s.label}</TabsTrigger>)}
-          </TabsList>
-          {sections.filter(s=>visited.includes(s.key)).map(s => (
-            <TabsContent forceMount hidden={s.key!==(sections.some(s=>s.key===selected)?selected:"today")} key={s.key} value={s.key} className={`overview-section overview-${s.tone} space-y-5 rounded-2xl border p-4 sm:p-5`}>
-              <Suspense fallback={<div role="status" className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Loading {s.label}…</div>}>{s.node}</Suspense>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
     </AdminShell>
   );
 };
 
-const MiniStat = ({ label, value, loading }: { label: string; value: number; loading: boolean }) => (
-  <div className="min-w-[92px] rounded-xl border border-[#8b6b4f]/15 bg-white px-3 py-2.5 shadow-sm">
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-    <div className="mt-1 font-display text-lg font-semibold text-[#2f2925]">
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : value}
+const StatusDot = ({ tone }: { tone: Detail["tone"] }) => {
+  const cls = tone === "green" ? "bg-emerald-500"
+    : tone === "orange" ? "bg-amber-500"
+      : tone === "red" ? "bg-red-500"
+        : tone === "blue" ? "bg-sky-500"
+          : "bg-stone-400";
+  return <span className={`h-2 w-2 shrink-0 rounded-full ${cls}`} />;
+};
+
+const SummaryStat = ({ label, value, loading }: { label: string; value: number | string; loading: boolean }) => (
+  <div className="border-b border-[#8b6b4f]/10 px-5 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="mt-1 font-display text-2xl font-semibold text-[#2f2925]">
+      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : value}
     </div>
   </div>
 );
