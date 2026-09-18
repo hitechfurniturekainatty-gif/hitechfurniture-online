@@ -27,7 +27,7 @@ export default function AdminDiary() {
 function DiaryWorkspace() {
   const { user, isAdmin, isWorker, isOfficeStaff } = useAuth();
   const { notes, tasks, now, today, refresh, isPending, isError, refetch } = useDiary();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState<DiaryTab>('today'), [scope, setScope] = useState<'mine' | 'team'>('mine');
   const [search, setSearch] = useState(''), [date, setDate] = useState('');
   const [open, setOpen] = useState(false), [editing, setEditing] = useState<DiaryNote | null>(null);
@@ -68,7 +68,10 @@ function DiaryWorkspace() {
     setEditing(null);
     setDraft(emptyDraft());
     setOpen(true);
-  }, [params]);
+    const next = new URLSearchParams(params);
+    next.delete('new');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
 
   useEffect(() => {
     const id = params.get('note');
