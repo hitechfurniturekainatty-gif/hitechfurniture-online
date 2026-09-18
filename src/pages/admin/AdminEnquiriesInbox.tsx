@@ -97,21 +97,21 @@ const InboxPage = () => {
         .is("enquiry_contacted_at", null)
         .not("status", "in", "(rejected,delivered)")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(100),
       supabase
         .from("customer_complaints")
         .select("*")
         .is("deleted_at", null)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(100),
       supabase
         .from("customer_services")
         .select("*")
         .is("deleted_at", null)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(100),
     ]);
 
     const leads: Row[] = (qRes.data ?? []).map((r: any) => ({
@@ -531,7 +531,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
                       className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
                       aria-label={`Preview item photo ${index + 1}`}
                     >
-                      <img src={url} alt={`Item photo ${index + 1}`} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
+                      <img src={url} alt={`Item photo ${index + 1}`} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -619,6 +619,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
               <img
                 src={previewImage}
                 alt="Item photo preview"
+                decoding="async"
                 className="max-h-[82dvh] max-w-full object-contain"
               />
             </div>
