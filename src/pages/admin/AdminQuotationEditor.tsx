@@ -1428,6 +1428,49 @@ const AdminQuotationEditor = () => {
     if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
     setStatusHistoryKey((k) => k + 1);
   };
+  const confirmToOrder = async () => {
+    if (!q || !canEditPrice) return;
+    const saved = await ensureSaved();
+    if (!saved || saved.length === 0) {
+      toast({ title: "Add and save at least one quotation item first", variant: "destructive" });
+      return;
+    }
+
+    const ok = window.confirm(
+      "Customer accepted this quotation?\n\nThis will confirm the quotation and move the SAME record to the existing Order / OPS stage."
+    );
+    if (!ok) return;
+
+    const { data, error } = await (supabase as any).rpc("confirm_quotation_to_order", {
+      _quotation_id: q.id,
+    });
+    if (error || !data?.ok) {
+      toast({
+        title: "Could not confirm quotation",
+        description: data?.error || error?.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setQ((prev) => {
+      const next = prev ? {
+        ...prev,
+        status: data.status ?? "finalized",
+        commercial_status: data.commercial_status ?? "confirmed",
+        pipeline_stage: data.pipeline_stage ?? 3,
+        confirmed_at: data.confirmed_at ?? prev.confirmed_at,
+      } as Quotation : prev;
+      qRef.current = next;
+      return next;
+    });
+    setStatusHistoryKey((k) => k + 1);
+    toast({
+      title: data.already_confirmed ? "Order already confirmed" : "Quotation confirmed",
+      description: "Moved to the existing Order / OPS pipeline. No duplicate record was created.",
+    });
+  };
+
   const handleReject = async () => {
     const ok = window.confirm("Reject this quotation? This cancels the order.");
     if (!ok) return;
@@ -1511,6 +1554,16 @@ const AdminQuotationEditor = () => {
                 <SelectItem value="logistics">→ Logistics</SelectItem>
               </SelectContent>
             </Select>
+          )}
+          {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
+            <Button
+              size="sm"
+              className="h-8 shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={confirmToOrder}
+              disabled={saving}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />Confirm & Convert to Order
+            </Button>
           )}
           {canReject && (
             <Button
@@ -2202,6 +2255,15 @@ const AdminQuotationEditor = () => {
                   <SelectItem value="logistics">→ Logistics</SelectItem>
                 </SelectContent>
               </Select>
+            )}
+            {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
+              <Button
+                className="h-11 flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={confirmToOrder}
+                disabled={saving}
+              >
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />Confirm Order
+              </Button>
             )}
             {canReject && (
               <Button
