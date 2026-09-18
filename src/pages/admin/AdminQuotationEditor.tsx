@@ -124,6 +124,7 @@ type Quotation = {
   commercial_status?: string | null;
   pipeline_stage?: number | null;
   confirmed_at?: string | null;
+  item_conversion_status?: "open" | "partial" | "converted" | "lost" | null;
 };
 
 const DEFAULT_TERMS = `1. Advance payment, if any, will be adjusted against the order total. Balance to be paid as agreed before/at delivery.
@@ -1506,7 +1507,9 @@ const AdminQuotationEditor = () => {
     if (error || !data?.ok) {
       toast({
         title: "Partial conversion failed",
-        description: data?.error || error?.message,
+        description: data?.error === "no_orderable_items"
+          ? "All quotation quantities are already closed/cancelled. Reopen an item before confirming the order."
+          : data?.error || error?.message,
         variant: "destructive",
       });
       return;
@@ -1546,8 +1549,8 @@ const AdminQuotationEditor = () => {
 
     if (error || !data?.ok) {
       const message =
-        data?.error === "active_job_exists"
-          ? "An active production/job assignment exists for this item. Complete or cancel that job first."
+        data?.error === "active_job_exists" || data?.error === "job_exists"
+          ? "A production/job assignment already exists for this item. Cancel or resolve that job before closing the remaining quantity."
           : data?.error === "item_already_dispatched_or_delivered"
             ? "Dispatched or delivered items cannot be closed here."
             : data?.error === "quotation_locked"
