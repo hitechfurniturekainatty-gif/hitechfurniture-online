@@ -148,6 +148,16 @@ const AdminServices = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (searchParams.get("new") !== "service") return;
+    setTab("service");
+    setSvcOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    next.set("tab", "service");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // Sync tab into URL so deep links work
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
