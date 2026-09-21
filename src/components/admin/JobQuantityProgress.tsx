@@ -83,10 +83,10 @@ export const JobQuantityProgress = ({
     const next = Math.max(0, Math.min(row.assigned_qty, Number(drafts[row.id] ?? row.completed_qty)));
     setSaving(row.id);
     const db = supabase as any;
-    const { error } = await db
-      .from("job_work_order_items")
-      .update({ completed_qty: next })
-      .eq("id", row.id);
+    const { error } = await db.rpc("set_job_item_completed_qty", {
+      p_job_item_id: row.id,
+      p_completed_qty: next,
+    });
     setSaving(null);
 
     if (error) {
