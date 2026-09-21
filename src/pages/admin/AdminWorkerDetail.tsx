@@ -35,6 +35,7 @@ type Job = {
   quotation_id: string;
   created_at: string;
   status_updated_at: string;
+  due_at: string | null;
   // Joined
   quotation_code: string;
   party_name: string;
@@ -115,7 +116,7 @@ const AdminWorkerDetail = () => {
       supabase.from("workers").select("*").eq("id", id).maybeSingle(),
       supabase
         .from("job_work_orders")
-        .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, quotations!inner(quotation_id, party_name, party_place, document_type)")
+        .select("id, status, notes, item_ids, quotation_id, created_at, status_updated_at, due_at, quotations!inner(quotation_id, party_name, party_place, document_type)")
         .eq("worker_id", id)
         .order("created_at", { ascending: false }),
     ]);
@@ -133,6 +134,7 @@ const AdminWorkerDetail = () => {
       quotation_id: row.quotation_id,
       created_at: row.created_at,
       status_updated_at: row.status_updated_at,
+      due_at: row.due_at ?? null,
       quotation_code: row.quotations?.quotation_id ?? "",
       party_name: row.quotations?.party_name ?? "",
       party_place: row.quotations?.party_place ?? "",
@@ -331,6 +333,17 @@ const AdminWorkerDetail = () => {
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" /> Updated {fmtDateTime(job.status_updated_at)}
                     </p>
+                    {job.due_at && (
+                      <p className={`mt-1 flex items-center gap-1 text-xs font-semibold ${
+                        new Date(job.due_at).getTime() < Date.now() && job.status !== "ready" && job.status !== "delivered"
+                          ? "text-destructive"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}>
+                        <Clock className="h-3 w-3" />
+                        Due {new Date(job.due_at).toLocaleDateString("en-IN")}
+                        {new Date(job.due_at).getTime() < Date.now() && job.status !== "ready" && job.status !== "delivered" ? " · OVERDUE" : ""}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap shrink-0 gap-2">
                     <Button asChild size="sm" variant="outline" className="h-9">
