@@ -462,9 +462,6 @@ const AdminQuotationEditor = () => {
   }, []);
 
   const addBlankItem = () => {
-    const lt = q?.lead_type ?? "lead";
-    const defaultRoute: "ready_stock" | "custom" =
-      lt === "custom_project" || lt === "consultation" ? "custom" : "ready_stock";
     const clientItemKey = crypto.randomUUID();
     const tmpId = `tmp-${clientItemKey}`;
     const next: QItem = {
