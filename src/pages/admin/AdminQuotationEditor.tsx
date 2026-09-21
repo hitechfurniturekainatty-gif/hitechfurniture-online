@@ -74,6 +74,7 @@ type QItem = {
   bundle_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
   ready_stock_qty?: number;
+  stock_decision?: "ready_stock" | "custom" | null;
   dispatched_at?: string | null;
   delivered_at?: string | null;
   client_item_key?: string | null;
@@ -485,7 +486,8 @@ const AdminQuotationEditor = () => {
       display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: null,
       bundle_id: null,
-      fulfillment_route: defaultRoute,
+      fulfillment_route: "custom",
+      stock_decision: null,
       _isNew: true,
       _dirty: true,
     };
@@ -642,10 +644,8 @@ const AdminQuotationEditor = () => {
       display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: p.id,
       bundle_id: null,
-      fulfillment_route:
-        (q?.lead_type === "custom_project" || q?.lead_type === "consultation")
-          ? "custom"
-          : "ready_stock",
+      fulfillment_route: "custom",
+      stock_decision: null,
       _isNew: true,
       _dirty: true,
     };
@@ -681,7 +681,8 @@ const AdminQuotationEditor = () => {
       display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: null,
       bundle_id: b.id,
-      fulfillment_route: "ready_stock",
+      fulfillment_route: "custom",
+      stock_decision: null,
       _isNew: true,
       _dirty: true,
     };
@@ -717,8 +718,8 @@ const AdminQuotationEditor = () => {
       display_order: (items.reduce((m, i) => Math.max(m, i.display_order ?? -1), -1)) + 1,
       product_id: p.id,
       bundle_id: null,
-      fulfillment_route:
-        (q?.lead_type === "custom_project" || q?.lead_type === "consultation") ? "custom" : "ready_stock",
+      fulfillment_route: "custom",
+      stock_decision: null,
       _isNew: true,
       _dirty: true,
     };
@@ -1980,12 +1981,36 @@ const AdminQuotationEditor = () => {
                     onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
                     placeholder="Description — specs, customer notes, etc. (optional)"
                   />
+                  {canEditPrice && !it._isNew && (
+                    <div className="pt-1">
+                      <ReadyStockSplitEditor
+                        itemId={it.id}
+                        quantity={Number(it.quantity) || 0}
+                        onRouteChange={(route, readyQty, decision) => {
+                          setItems((prev) => {
+                            const next = prev.map((row) =>
+                              row.id === it.id
+                                ? { ...row, fulfillment_route: route, ready_stock_qty: readyQty, stock_decision: decision }
+                                : row
+                            );
+                            itemsRef.current = next;
+                            return next;
+                          });
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap items-center gap-1 text-[10px]">
-                    <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
-                      it.fulfillment_route === "custom"
-                        ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    }`}>{it.fulfillment_route === "custom" ? "Custom" : "Ready"}</span>
+                    {it.stock_decision && (
+                      <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
+                        it.stock_decision === "custom"
+                          ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                          : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      }`}>
+                        {it.stock_decision === "custom" ? "Customize" : "Ready Stock"}
+                      </span>
+                    )}
                     {it.measurement && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Dim</span>}
                     {it.sketch_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Sketch</span>}
                     {it.item_image_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Photo</span>}
@@ -2264,16 +2289,6 @@ const AdminQuotationEditor = () => {
                   )}
                 </div>
               </div>
-
-              {!it._isNew && (
-                <div className="border-b bg-muted/10 px-3 py-2">
-                  <ReadyStockSplitEditor
-                    itemId={it.id}
-                    quantity={Number(it.quantity) || 0}
-                    onRouteChange={(route) => updateItem(it.id, { fulfillment_route: route })}
-                  />
-                </div>
-              )}
 
               {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
                 <div className="border-b bg-muted/20 px-3 py-2">
