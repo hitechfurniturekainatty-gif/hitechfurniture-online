@@ -1790,7 +1790,7 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      <div className="mb-6 rounded-2xl border-2 border-primary/35 bg-white p-3 shadow-md sm:p-4">
+      <div className="mb-6 rounded-2xl border-2 border-primary/45 bg-primary/[0.018] p-3 shadow-md sm:p-4">
       <Card className="mb-4 border border-primary/25 bg-primary/[0.018] shadow-none">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base flex items-center gap-2">
@@ -1921,9 +1921,9 @@ const AdminQuotationEditor = () => {
             </div>
           )}
           {items.map((it, idx) => (
-            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-xl border-2 border-primary/30 bg-white shadow-sm transition-colors hover:border-primary/50">
+            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-xl border-2 border-primary/45 bg-primary/[0.04] shadow-md transition-colors hover:border-primary/65 hover:bg-primary/[0.06]">
               {canEditPrice && !it._isNew && (
-                <label className="flex cursor-pointer items-center gap-2 border-b border-primary/20 bg-primary/[0.045] px-3 py-2 text-sm">
+                <label className="flex cursor-pointer items-center gap-2 border-b border-primary/30 bg-primary/[0.085] px-3 py-2 text-sm">
                   <Checkbox checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Select item ${idx + 1} for job work`} />
                   Select for job work / ജോലിക്ക് തിരഞ്ഞെടുക്കുക
                 </label>
