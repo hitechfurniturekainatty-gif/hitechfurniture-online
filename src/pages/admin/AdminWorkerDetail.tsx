@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { docTagClasses, isPO, type DocType } from "@/lib/docType";
 import { Textarea } from "@/components/ui/textarea";
+import { JobQuantityProgress } from "@/components/admin/JobQuantityProgress";
 
 type Worker = {
   id: string;
@@ -387,6 +388,8 @@ const AdminWorkerDetail = () => {
                 {!isOfficeStaff && job.notes && (
                   <p className="text-xs italic text-muted-foreground">"{job.notes}"</p>
                 )}
+
+                <JobQuantityProgress jobId={job.id} editable={isOfficeStaff} onSaved={() => void load()} />
 
                 {isOfficeStaff && (
                   <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
