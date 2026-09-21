@@ -1659,7 +1659,7 @@ const AdminQuotationEditor = () => {
 
   const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
-      <div className="mb-4 flex flex-col gap-3">
+      <div className="mb-5 flex flex-col gap-3 rounded-xl border-2 border-primary/20 bg-primary/[0.035] p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-start gap-2 sm:items-center">
           <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
             <Link to="/admin/quotations" aria-label="Back to quotations">
@@ -1668,7 +1668,7 @@ const AdminQuotationEditor = () => {
             </Link>
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs text-muted-foreground truncate">{q.quotation_id}</p>
+            <p className="mb-1 inline-flex w-fit rounded-md bg-primary px-2.5 py-1 font-mono text-xs font-bold text-primary-foreground shadow-sm">{q.quotation_id}</p>
             <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
               {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
@@ -1790,7 +1790,7 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      <Card className="mb-4">
+      <Card className="mb-5 border-2 border-primary/15 shadow-sm">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base flex items-center gap-2">
             {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
@@ -1856,8 +1856,8 @@ const AdminQuotationEditor = () => {
       </Card>
 
       <ItemsDropZone>
-      <Card className="mb-4">
-        <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="mb-5 border-2 border-primary/15 shadow-sm">
+        <CardHeader className="flex flex-col gap-2 border-b border-primary/10 bg-primary/[0.025] pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex flex-wrap items-center gap-2">
             <span>Items ({items.length})</span>
             {items.length > 0 && (() => {
