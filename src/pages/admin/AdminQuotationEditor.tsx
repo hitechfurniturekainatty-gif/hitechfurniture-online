@@ -54,6 +54,7 @@ import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
 import { STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
 import { QuotationFlowLinks } from "@/components/admin/QuotationFlowLinks";
+import { ReadyStockSplitEditor } from "@/components/admin/ReadyStockSplitEditor";
 
 type QItem = {
   id: string;
@@ -2231,6 +2232,16 @@ const AdminQuotationEditor = () => {
                   )}
                 </div>
               </div>
+
+              {!it._isNew && (
+                <div className="border-b bg-muted/10 px-3 py-2">
+                  <ReadyStockSplitEditor
+                    itemId={it.id}
+                    quantity={Number(it.quantity) || 0}
+                    onRouteChange={(route) => updateItem(it.id, { fulfillment_route: route })}
+                  />
+                </div>
+              )}
 
               {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
                 <div className="border-b bg-muted/20 px-3 py-2">
