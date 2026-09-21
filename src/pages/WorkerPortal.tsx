@@ -23,6 +23,7 @@ import { compressImage } from "@/lib/imageCompression";
 import { lazyImport } from "@/lib/lazyImport";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { JobQuantityProgress } from "@/components/admin/JobQuantityProgress";
 
 type WorkerRow = { id: string; name: string; trade: string | null };
 
@@ -453,6 +454,8 @@ const WorkerPortal = () => {
                       ))}
                     </div>
                   )}
+
+                  <JobQuantityProgress jobId={job.id} onSaved={() => void load()} />
 
                   <div className="flex flex-wrap gap-2 border-t border-border/50 pt-3">
                     <Button
