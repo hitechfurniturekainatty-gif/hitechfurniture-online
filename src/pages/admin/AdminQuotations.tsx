@@ -718,10 +718,10 @@ const AdminQuotations = () => {
   }, [rows, search]);
 
   const renderRow = (q: Q) => (
-    <Card key={q.id} className="overflow-hidden">
+    <Card key={q.id} className="overflow-hidden border-2 border-primary/20 bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-md">
       <CardContent className="p-4">
         <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex min-w-0 items-start gap-2">
+          <div className="flex min-w-0 items-start gap-3 rounded-lg border border-primary/15 bg-primary/[0.035] p-3">
             {isPO(q.document_type) ? (
               <ShoppingCart className="mt-1 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
             ) : (
@@ -729,7 +729,7 @@ const AdminQuotations = () => {
             )}
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span className="min-w-0 break-words font-mono text-sm font-semibold leading-snug">{q.quotation_id}</span>
+                <span className="inline-flex w-fit rounded-md bg-primary px-2.5 py-1 font-mono text-sm font-bold leading-snug text-primary-foreground shadow-sm">{q.quotation_id}</span>
                 <Badge variant="outline" className={`w-fit shrink-0 ${docTagClasses(q.document_type)}`}>
                   {isPO(q.document_type) ? "PO" : "Quotation"}
                 </Badge>
@@ -826,8 +826,8 @@ const AdminQuotations = () => {
                 <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
               )}
               <div className={`grid gap-2 sm:flex sm:items-center ${(isAdmin || isOfficeStaff) ? "grid-cols-2" : "grid-cols-1"}`}>
-                <Button size="sm" asChild className="h-10 w-full px-4 sm:w-auto">
-                  <Link to={`/admin/quotations/${q.id}`}>Open <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                <Button size="sm" asChild className="h-11 w-full px-5 font-semibold shadow-sm sm:w-auto">
+                  <Link to={`/admin/quotations/${q.id}`}>Open Quotation <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
                 </Button>
                 {(isAdmin || isOfficeStaff) && (
                   <Button size="sm" variant="outline" className="h-10 w-full sm:w-auto" onClick={() => remove(q)}>
@@ -1171,7 +1171,7 @@ const AdminQuotations = () => {
               ))}
             </div>
           )}
-          <TabsContent value={statusFilter} className="mt-4 grid gap-3">
+          <TabsContent value={statusFilter} className="mt-4 grid gap-5">
             {filtered.map(renderRow)}
             {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
           </TabsContent>
