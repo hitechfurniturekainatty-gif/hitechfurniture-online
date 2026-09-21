@@ -1790,7 +1790,8 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      <Card className="mb-5 border-2 border-primary/15 shadow-sm">
+      <div className="mb-6 rounded-2xl border-2 border-primary/35 bg-white p-3 shadow-md sm:p-4">
+      <Card className="mb-4 border border-primary/25 bg-primary/[0.018] shadow-none">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base flex items-center gap-2">
             {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
@@ -1856,8 +1857,8 @@ const AdminQuotationEditor = () => {
       </Card>
 
       <ItemsDropZone>
-      <Card className="mb-5 border-2 border-primary/15 shadow-sm">
-        <CardHeader className="flex flex-col gap-2 border-b border-primary/10 bg-primary/[0.025] pb-3 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="mb-4 border-2 border-primary/30 bg-primary/[0.012] shadow-sm">
+        <CardHeader className="flex flex-col gap-2 border-b border-primary/25 bg-primary/[0.04] pb-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex flex-wrap items-center gap-2">
             <span>Items ({items.length})</span>
             {items.length > 0 && (() => {
@@ -1920,9 +1921,9 @@ const AdminQuotationEditor = () => {
             </div>
           )}
           {items.map((it, idx) => (
-            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-xl border-2 border-primary/30 bg-white shadow-sm transition-colors hover:border-primary/50">
               {canEditPrice && !it._isNew && (
-                <label className="flex cursor-pointer items-center gap-2 border-b bg-primary/5 px-3 py-2 text-sm">
+                <label className="flex cursor-pointer items-center gap-2 border-b border-primary/20 bg-primary/[0.045] px-3 py-2 text-sm">
                   <Checkbox checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Select item ${idx + 1} for job work`} />
                   Select for job work / ജോലിക്ക് തിരഞ്ഞെടുക്കുക
                 </label>
@@ -2339,7 +2340,7 @@ const AdminQuotationEditor = () => {
       </Dialog>
 
       {!po && (
-      <Card className="mb-4">
+      <Card className="mb-4 border border-primary/25 bg-primary/[0.012] shadow-none">
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <div className="space-y-3 order-2 md:order-1">
             <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
@@ -2437,7 +2438,7 @@ const AdminQuotationEditor = () => {
       </Card>
       )}
       {po && (
-        <Card className="mb-4">
+        <Card className="mb-4 border border-primary/25 bg-primary/[0.012] shadow-none">
           <CardContent className="space-y-3 p-4">
             <div className="space-y-1.5">
               <Label>Notes for worker / supplier</Label>
@@ -2450,6 +2451,7 @@ const AdminQuotationEditor = () => {
           </CardContent>
         </Card>
       )}
+      </div>
 
       {isFieldOnly && (
         <p className="mb-24 text-center text-xs text-muted-foreground sm:mb-4">
