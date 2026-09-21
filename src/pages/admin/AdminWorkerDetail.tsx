@@ -402,7 +402,7 @@ const AdminWorkerDetail = () => {
                   <p className="text-xs italic text-muted-foreground">"{job.notes}"</p>
                 )}
 
-                <JobQuantityProgress jobId={job.id} editable={isOfficeStaff} onSaved={() => void load()} />
+                <JobQuantityProgress jobId={job.id} editable={isOfficeStaff} allowReceive={isOfficeStaff} onSaved={() => void load()} />
 
                 {isOfficeStaff && (
                   <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
