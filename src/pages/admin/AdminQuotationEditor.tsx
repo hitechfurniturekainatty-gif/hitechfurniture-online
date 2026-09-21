@@ -142,6 +142,7 @@ type Worker = { id: string; name: string; whatsapp_number: string; trade: string
 type ItemWorkSummary = {
   assigned: number;
   completed: number;
+  received: number;
   pending: number;
   workers: string[];
   due_at: string | null;
@@ -307,9 +308,7 @@ const AdminQuotationEditor = () => {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
-  const [partialOrderBusy, setPartialOrderBusy] = useState(false);
   const [itemWorkMap, setItemWorkMap] = useState<Record<string, ItemWorkSummary>>({});
-  const partialOrderRequestKeyRef = useRef<string | null>(null);
 
   const canEditPrice = isOfficeStaff;
   const isFieldOnly = isMeasurementStaff && !isOfficeStaff;
@@ -328,7 +327,7 @@ const AdminQuotationEditor = () => {
     const db = supabase as any;
     const { data: progressRows } = await db
       .from("job_work_order_items")
-      .select("job_id, quotation_item_id, assigned_qty, completed_qty")
+      .select("job_id, quotation_item_id, assigned_qty, completed_qty, received_qty")
       .in("quotation_item_id", itemIds);
 
     const rows = (progressRows ?? []) as any[];
@@ -358,11 +357,12 @@ const AdminQuotationEditor = () => {
       const job = jobsById[row.job_id];
       if (!job) continue;
       const key = row.quotation_item_id as string;
-      const cur = next[key] ?? { assigned: 0, completed: 0, pending: 0, workers: [], due_at: null, statuses: [] };
+      const cur = next[key] ?? { assigned: 0, completed: 0, received: 0, pending: 0, workers: [], due_at: null, statuses: [] };
       const assigned = Number(row.assigned_qty ?? 0);
       const completed = Number(row.completed_qty ?? 0);
       cur.assigned += assigned;
       cur.completed += completed;
+      cur.received += Number(row.received_qty ?? 0);
       cur.pending += Math.max(0, assigned - completed);
       const workerName = workerNames[job.worker_id];
       if (workerName && !cur.workers.includes(workerName)) cur.workers.push(workerName);
@@ -1373,9 +1373,14 @@ const AdminQuotationEditor = () => {
       toast({ title: "Select a worker", variant: "destructive" });
       return;
     }
-    const chosenItems = items.filter((it) => selectedItemIds.has(it.id) && !it._isNew);
+    const chosenItems = items.filter((it) => {
+      if (!selectedItemIds.has(it.id) || it._isNew) return false;
+      const readyQty = Math.min(Number(it.quantity ?? 0), Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? it.quantity : 0))));
+      const customQty = Math.max(0, Number(it.quantity ?? 0) - readyQty);
+      return customQty > 0 && Number(itemWorkMap[it.id]?.assigned ?? 0) === 0;
+    });
     if (chosenItems.length === 0) {
-      toast({ title: "No saved items selected", description: "Save the quotation, then re-tick the items.", variant: "destructive" });
+      toast({ title: "No customize item selected", description: "Select only items that still need customization.", variant: "destructive" });
       return;
     }
     setGeneratingJob(true);
@@ -1415,7 +1420,11 @@ const AdminQuotationEditor = () => {
           catalog_image_url: it.catalog_image_url,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
-          quantity: it.quantity,
+          quantity: Math.max(
+            0,
+            Number(it.quantity ?? 0) -
+              Math.min(Number(it.quantity ?? 0), Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? it.quantity : 0)))),
+          ),
         })),
       }, format === "jpg" ? SHARE_PDF_OPTIONS : undefined);
       const baseFilename = worker
@@ -1465,6 +1474,7 @@ const AdminQuotationEditor = () => {
       if (action !== "download") {
         setJobOpen(false);
         setSelectedItemIds(new Set());
+        await load({ silent: true });
       }
     } catch (e: any) {
       console.error("Job image generation failed:", e);
@@ -1512,64 +1522,6 @@ const AdminQuotationEditor = () => {
     if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
     setStatusHistoryKey((k) => k + 1);
   };
-  const convertSelectedItemsToOrder = async () => {
-    if (!q || !canEditPrice || partialOrderBusy) return;
-    const saved = await ensureSaved();
-    if (!saved) return;
-
-    const selected = saved
-      .filter((item) => !item._isNew && selectedItemIds.has(item.id))
-      .map((item) => {
-        const remaining = Math.max(
-          0,
-          Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0),
-        );
-        return {
-          item_id: item.id,
-          quantity: remaining,
-          description: item.description,
-        };
-      })
-      .filter((entry) => entry.quantity > 0);
-
-    if (selected.length === 0) {
-      toast({
-        title: "Select item(s) to convert",
-        description: "Tick the quotation items. Their remaining quotation quantity will be used automatically.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setPartialOrderBusy(true);
-    const requestKey = crypto.randomUUID();
-    partialOrderRequestKeyRef.current = requestKey;
-    const { data, error } = await (supabase as any).rpc("convert_quotation_items_to_order", {
-      _quotation_id: q.id,
-      _items: selected.map(({ item_id, quantity }) => ({ item_id, quantity })),
-      _request_key: requestKey,
-    });
-    setPartialOrderBusy(false);
-
-    if (error || !data?.ok) {
-      toast({
-        title: "Order conversion failed",
-        description: data?.error || error?.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    partialOrderRequestKeyRef.current = null;
-    setSelectedItemIds(new Set());
-    await load({ silent: true });
-    setStatusHistoryKey((k) => k + 1);
-    toast({
-      title: "Converted to Order",
-      description: selected.length + " item(s) converted using the quotation quantity. No extra quantity entry needed.",
-    });
-  };
-
   const closeRemainingItem = async (item: QItem) => {
     const remaining = Math.max(
       0,
@@ -1769,18 +1721,6 @@ const AdminQuotationEditor = () => {
               </SelectContent>
             </Select>
           )}
-          {canEditPrice && bypassStatus !== "rejected" && bypassStatus !== "delivered" && !po && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 shrink-0"
-              onClick={convertSelectedItemsToOrder}
-              disabled={saving || partialOrderBusy || selectedItemIds.size === 0}
-            >
-              {partialOrderBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
-              Convert to Order
-            </Button>
-          )}
           {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
             <Button
               size="sm"
@@ -1969,12 +1909,29 @@ const AdminQuotationEditor = () => {
           )}
           {items.map((it, idx) => (
             <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-xl border-2 border-primary/45 bg-primary/[0.04] shadow-md transition-colors hover:border-primary/65 hover:bg-primary/[0.06]">
-              {canEditPrice && !it._isNew && (
-                <label className="flex cursor-pointer items-center gap-2 border-b border-primary/30 bg-primary/[0.085] px-3 py-2 text-sm">
-                  <Checkbox checked={selectedItemIds.has(it.id)} onCheckedChange={(v) => toggleItemSelect(it.id, !!v)} aria-label={`Select item ${idx + 1} for job work`} />
-                  Select for job work / ജോലിക്ക് തിരഞ്ഞെടുക്കുക
-                </label>
-              )}
+              {canEditPrice && !it._isNew && (() => {
+                const readyQty = Math.min(Number(it.quantity ?? 0), Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? it.quantity : 0))));
+                const customQty = Math.max(0, Number(it.quantity ?? 0) - readyQty);
+                const alreadyAssigned = Number(itemWorkMap[it.id]?.assigned ?? 0);
+                const canAssign = customQty > 0 && alreadyAssigned === 0;
+                return (
+                  <label className={`flex items-center gap-2 border-b border-primary/30 px-3 py-2 text-sm ${
+                    canAssign ? "cursor-pointer bg-violet-500/[0.07]" : "cursor-default bg-primary/[0.035] text-muted-foreground"
+                  }`}>
+                    <Checkbox
+                      checked={selectedItemIds.has(it.id)}
+                      disabled={!canAssign}
+                      onCheckedChange={(v) => toggleItemSelect(it.id, !!v)}
+                      aria-label={`Select item ${idx + 1} for job work`}
+                    />
+                    {canAssign
+                      ? `Customize job · Qty ${customQty}`
+                      : customQty === 0
+                        ? "Ready stock · No job required"
+                        : "Already assigned to worker"}
+                  </label>
+                );
+              })()}
               <div className="flex flex-col gap-2 px-2 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] sm:items-center sm:px-3">
                 <div className="flex items-start gap-2 sm:contents">
                 <div className="flex shrink-0 flex-row items-center gap-1 sm:flex-col sm:justify-center">
@@ -2079,10 +2036,11 @@ const AdminQuotationEditor = () => {
                         <span><b>Ready:</b> {ready} · <b>Custom pending:</b> {customPending}</span>
                         <span>
                           <b>Worker:</b> {work?.workers.length ? work.workers.join(", ") : "Not assigned"}
-                          {work ? " · Pending " + work.pending : ""}
+                          {work ? " · Complete " + work.completed + " · Pending " + work.pending : ""}
                         </span>
                         <span>
                           <b>Due:</b> {work?.due_at ? new Date(work.due_at).toLocaleDateString("en-IN") : "—"}
+                          {work ? " · Received " + work.received : ""}
                         </span>
                       </div>
                     );
@@ -2550,17 +2508,6 @@ const AdminQuotationEditor = () => {
                   <SelectItem value="logistics">→ Logistics</SelectItem>
                 </SelectContent>
               </Select>
-            )}
-            {canEditPrice && bypassStatus !== "rejected" && bypassStatus !== "delivered" && !po && (
-              <Button
-                variant="outline"
-                className="h-11 flex-1"
-                onClick={convertSelectedItemsToOrder}
-                disabled={saving || partialOrderBusy || selectedItemIds.size === 0}
-              >
-                {partialOrderBusy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                Convert Order
-              </Button>
             )}
             {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
               <Button
