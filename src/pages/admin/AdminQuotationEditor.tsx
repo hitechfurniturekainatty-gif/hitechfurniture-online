@@ -74,6 +74,7 @@ type QItem = {
   product_id: string | null;
   bundle_id: string | null;
   fulfillment_route: "ready_stock" | "custom";
+  ready_stock_qty?: number;
   dispatched_at?: string | null;
   delivered_at?: string | null;
   client_item_key?: string | null;
@@ -138,6 +139,14 @@ const DEFAULT_TERMS = `1. Advance payment, if any, will be adjusted against the 
 8. Warranty as per manufacturer terms; does not cover misuse or natural wear.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
+type ItemWorkSummary = {
+  assigned: number;
+  completed: number;
+  pending: number;
+  workers: string[];
+  due_at: string | null;
+  statuses: string[];
+};
 type Product = {
   id: string;
   product_name: string;
@@ -298,9 +307,8 @@ const AdminQuotationEditor = () => {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
-  const [partialOrderOpen, setPartialOrderOpen] = useState(false);
-  const [partialOrderQty, setPartialOrderQty] = useState<Record<string, number>>({});
   const [partialOrderBusy, setPartialOrderBusy] = useState(false);
+  const [itemWorkMap, setItemWorkMap] = useState<Record<string, ItemWorkSummary>>({});
   const partialOrderRequestKeyRef = useRef<string | null>(null);
 
   const canEditPrice = isOfficeStaff;
@@ -309,6 +317,64 @@ const AdminQuotationEditor = () => {
   const fieldReadOnly = isFieldOnly && submittedForPricing;
   const po = isPO(q?.document_type);
   const showPricing = !po;
+
+  const loadItemWorkSummary = async (quotationItems: QItem[]) => {
+    const itemIds = quotationItems.filter((it) => !it._isNew).map((it) => it.id);
+    if (!itemIds.length) {
+      setItemWorkMap({});
+      return;
+    }
+
+    const db = supabase as any;
+    const { data: progressRows } = await db
+      .from("job_work_order_items")
+      .select("job_id, quotation_item_id, assigned_qty, completed_qty")
+      .in("quotation_item_id", itemIds);
+
+    const rows = (progressRows ?? []) as any[];
+    const jobIds = Array.from(new Set(rows.map((row) => row.job_id).filter(Boolean)));
+    if (!jobIds.length) {
+      setItemWorkMap({});
+      return;
+    }
+
+    const { data: jobs } = await db
+      .from("job_work_orders")
+      .select("id, worker_id, due_at, status")
+      .in("id", jobIds)
+      .is("deleted_at", null);
+
+    const jobRows = (jobs ?? []) as any[];
+    const workerIds = Array.from(new Set(jobRows.map((job) => job.worker_id).filter(Boolean)));
+    const { data: workerRows } = workerIds.length
+      ? await db.from("workers").select("id, name").in("id", workerIds)
+      : { data: [] };
+
+    const workerNames = Object.fromEntries(((workerRows ?? []) as any[]).map((w) => [w.id, w.name]));
+    const jobsById = Object.fromEntries(jobRows.map((job) => [job.id, job]));
+    const next: Record<string, ItemWorkSummary> = {};
+
+    for (const row of rows) {
+      const job = jobsById[row.job_id];
+      if (!job) continue;
+      const key = row.quotation_item_id as string;
+      const cur = next[key] ?? { assigned: 0, completed: 0, pending: 0, workers: [], due_at: null, statuses: [] };
+      const assigned = Number(row.assigned_qty ?? 0);
+      const completed = Number(row.completed_qty ?? 0);
+      cur.assigned += assigned;
+      cur.completed += completed;
+      cur.pending += Math.max(0, assigned - completed);
+      const workerName = workerNames[job.worker_id];
+      if (workerName && !cur.workers.includes(workerName)) cur.workers.push(workerName);
+      if (job.status && !cur.statuses.includes(job.status)) cur.statuses.push(job.status);
+      if (job.due_at && (!cur.due_at || new Date(job.due_at).getTime() < new Date(cur.due_at).getTime())) {
+        cur.due_at = job.due_at;
+      }
+      next[key] = cur;
+    }
+
+    setItemWorkMap(next);
+  };
 
   const load = async (opts: { silent?: boolean } = {}) => {
     if (!id) return;
@@ -332,6 +398,7 @@ const AdminQuotationEditor = () => {
     itemsRef.current = nextItems;
     setQ(nextQ);
     setItems(nextItems);
+    void loadItemWorkSummary(nextItems);
     headerDirtyRef.current = false;
     setHeaderDirty(false);
     if (!opts.silent) setLoading(false);
@@ -1445,69 +1512,48 @@ const AdminQuotationEditor = () => {
     if (fresh) setQ((prev) => prev ? { ...prev, status: fresh.status, ...(fresh as any) } : prev);
     setStatusHistoryKey((k) => k + 1);
   };
-  const openPartialOrder = async () => {
-    if (!q || !canEditPrice) return;
+  const convertSelectedItemsToOrder = async () => {
+    if (!q || !canEditPrice || partialOrderBusy) return;
     const saved = await ensureSaved();
     if (!saved) return;
-    const qtys: Record<string, number> = {};
-    for (const item of saved) {
-      if (item._isNew) continue;
-      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
-      if (remaining > 0 && !["lost", "closed"].includes(item.conversion_status ?? "open")) {
-        qtys[item.id] = 0;
-      }
-    }
-    if (Object.keys(qtys).length === 0) {
-      toast({ title: "No open quantities left to convert" });
-      return;
-    }
-    partialOrderRequestKeyRef.current = crypto.randomUUID();
-    setPartialOrderQty(qtys);
-    setPartialOrderOpen(true);
-  };
 
-  const convertPartialOrder = async () => {
-    if (!q || !canEditPrice) return;
-    const selected = items
-      .filter((item) => !item._isNew)
-      .map((item) => ({
-        item_id: item.id,
-        quantity: Number(partialOrderQty[item.id] || 0),
-      }))
+    const selected = saved
+      .filter((item) => !item._isNew && selectedItemIds.has(item.id))
+      .map((item) => {
+        const remaining = Math.max(
+          0,
+          Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0),
+        );
+        return {
+          item_id: item.id,
+          quantity: remaining,
+          description: item.description,
+        };
+      })
       .filter((entry) => entry.quantity > 0);
 
     if (selected.length === 0) {
-      toast({ title: "Enter quantity for at least one item", variant: "destructive" });
+      toast({
+        title: "Select item(s) to convert",
+        description: "Tick the quotation items. Their remaining quotation quantity will be used automatically.",
+        variant: "destructive",
+      });
       return;
     }
 
-    for (const entry of selected) {
-      const item = items.find((x) => x.id === entry.item_id);
-      if (!item) continue;
-      const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
-      if (entry.quantity > remaining) {
-        toast({
-          title: "Quantity exceeds remaining",
-          description: `${item.description || "Item"} has only ${remaining} remaining.`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     setPartialOrderBusy(true);
-    const requestKey = partialOrderRequestKeyRef.current ?? crypto.randomUUID();
+    const requestKey = crypto.randomUUID();
     partialOrderRequestKeyRef.current = requestKey;
     const { data, error } = await (supabase as any).rpc("convert_quotation_items_to_order", {
       _quotation_id: q.id,
-      _items: selected,
+      _items: selected.map(({ item_id, quantity }) => ({ item_id, quantity })),
       _request_key: requestKey,
     });
     setPartialOrderBusy(false);
 
     if (error || !data?.ok) {
       toast({
-        title: "Partial conversion failed",
+        title: "Order conversion failed",
         description: data?.error || error?.message,
         variant: "destructive",
       });
@@ -1515,12 +1561,12 @@ const AdminQuotationEditor = () => {
     }
 
     partialOrderRequestKeyRef.current = null;
-    setPartialOrderOpen(false);
+    setSelectedItemIds(new Set());
     await load({ silent: true });
     setStatusHistoryKey((k) => k + 1);
     toast({
-      title: "Selected items converted",
-      description: "Remaining quantities stay open and can be converted later.",
+      title: "Converted to Order",
+      description: selected.length + " item(s) converted using the quotation quantity. No extra quantity entry needed.",
     });
   };
 
@@ -1728,10 +1774,11 @@ const AdminQuotationEditor = () => {
               size="sm"
               variant="outline"
               className="h-8 shrink-0"
-              onClick={openPartialOrder}
-              disabled={saving}
+              onClick={convertSelectedItemsToOrder}
+              disabled={saving || partialOrderBusy || selectedItemIds.size === 0}
             >
-              Convert Selected Items
+              {partialOrderBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
+              Convert to Order
             </Button>
           )}
           {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
@@ -2020,6 +2067,27 @@ const AdminQuotationEditor = () => {
                   {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
                   </div>
+                  {!it._isNew && (() => {
+                    const work = itemWorkMap[it.id];
+                    const quoted = Number(it.quantity ?? 0);
+                    const ordered = Number(it.ordered_qty ?? 0);
+                    const ready = Math.min(quoted, Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? quoted : 0))));
+                    const customPending = Math.max(0, quoted - ready);
+                    return (
+                      <div className="mt-1 grid gap-1 rounded-md border border-primary/20 bg-primary/[0.035] p-2 text-[10px] sm:grid-cols-2 lg:grid-cols-4">
+                        <span><b>Quoted:</b> {quoted} · <b>Order:</b> {ordered}</span>
+                        <span><b>Ready:</b> {ready} · <b>Custom pending:</b> {customPending}</span>
+                        <span>
+                          <b>Worker:</b> {work?.workers.length ? work.workers.join(", ") : "Not assigned"}
+                          {work ? " · Pending " + work.pending : ""}
+                        </span>
+                        <span>
+                          <b>Due:</b> {work?.due_at ? new Date(work.due_at).toLocaleDateString("en-IN") : "—"}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
                   <div data-enter-skip className="pt-1">
                     <QuotationItemMediaStack
                       item={it}
@@ -2487,10 +2555,11 @@ const AdminQuotationEditor = () => {
               <Button
                 variant="outline"
                 className="h-11 flex-1"
-                onClick={openPartialOrder}
-                disabled={saving}
+                onClick={convertSelectedItemsToOrder}
+                disabled={saving || partialOrderBusy || selectedItemIds.size === 0}
               >
-                Partial Order
+                {partialOrderBusy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                Convert Order
               </Button>
             )}
             {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
@@ -2551,53 +2620,6 @@ const AdminQuotationEditor = () => {
         )}
       </div>
       <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
-
-      <Dialog open={partialOrderOpen} onOpenChange={(open) => { setPartialOrderOpen(open); if (!open) partialOrderRequestKeyRef.current = null; }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Convert Selected Items to Order</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {items.filter((item) => {
-              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
-              return !item._isNew && remaining > 0 && !["lost","closed"].includes(item.conversion_status ?? "open");
-            }).map((item) => {
-              const remaining = Math.max(0, Number(item.quantity || 0) - Number(item.ordered_qty || 0) - Number(item.cancelled_qty || 0));
-              return (
-                <div key={item.id} className="grid grid-cols-[1fr_110px] items-center gap-3 rounded-lg border p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{item.description || "Unnamed item"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Total {Number(item.quantity || 0)} · Ordered {Number(item.ordered_qty || 0)} · Remaining {remaining}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] uppercase tracking-wide">Convert Qty</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={remaining}
-                      step={1}
-                      value={partialOrderQty[item.id] ?? 0}
-                      onChange={(e) => {
-                        const value = Math.max(0, Math.min(remaining, Math.floor(Number(e.target.value) || 0)));
-                        setPartialOrderQty((prev) => ({ ...prev, [item.id]: value }));
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPartialOrderOpen(false)} disabled={partialOrderBusy}>Cancel</Button>
-            <Button onClick={convertPartialOrder} disabled={partialOrderBusy}>
-              {partialOrderBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-              Convert to Order
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={productPickerOpen}
