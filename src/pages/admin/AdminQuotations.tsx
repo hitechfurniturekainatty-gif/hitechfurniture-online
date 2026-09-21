@@ -718,10 +718,10 @@ const AdminQuotations = () => {
   }, [rows, search]);
 
   const renderRow = (q: Q) => (
-    <Card key={q.id} className="overflow-hidden border-2 border-primary/20 bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-md">
+    <Card key={q.id} className="overflow-hidden border-2 border-primary/35 bg-primary/[0.035] shadow-md transition-all hover:border-primary/60 hover:bg-primary/[0.055] hover:shadow-lg">
       <CardContent className="p-4">
         <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex min-w-0 items-start gap-3 rounded-lg border border-primary/15 bg-primary/[0.035] p-3">
+          <div className="flex min-w-0 items-start gap-3 rounded-lg border border-primary/25 bg-primary/[0.07] p-3">
             {isPO(q.document_type) ? (
               <ShoppingCart className="mt-1 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
             ) : (
@@ -750,7 +750,7 @@ const AdminQuotations = () => {
                   </Badge>
                 )}
               </div>
-              <p className="rounded-md bg-primary/10 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
+              <p className="rounded-md border border-primary/15 bg-primary/15 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
                 {titleCaseTrim(q.party_name)} <span className="text-primary/70">·</span> {q.party_place}
                 {q.party_phone && (
                   <>
