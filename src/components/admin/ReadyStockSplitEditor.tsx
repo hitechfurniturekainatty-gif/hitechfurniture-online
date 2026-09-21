@@ -82,44 +82,42 @@ export const ReadyStockSplitEditor = ({
   };
 
   return (
-    <div className="rounded-lg border-2 border-primary/25 bg-background p-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold">Stock status</p>
-          <p className="text-[11px] text-muted-foreground">
-            {decision
-              ? `Total ${total} · Ready ${ready} · Customize ${pending}`
-              : "Save completed. Now choose Ready Stock or Customize."}
-          </p>
-        </div>
+    <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.025] px-2 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Stock</span>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={decision === "ready_stock" && ready >= total ? "default" : "outline"}
-            className="h-9"
-            disabled={saving}
-            onClick={() => void persist(total, "ready_stock")}
-          >
-            ✓ Ready Stock
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={decision === "custom" ? "default" : "outline"}
-            className="h-9"
-            disabled={saving}
-            onClick={() => void persist(0, "custom")}
-          >
-            Customize
-          </Button>
-        </div>
-      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant={decision === "ready_stock" && ready >= total ? "default" : "outline"}
+        className="h-7 px-2 text-[11px]"
+        disabled={saving}
+        onClick={() => void persist(total, "ready_stock")}
+      >
+        Ready
+      </Button>
+
+      <Button
+        type="button"
+        size="sm"
+        variant={decision === "custom" ? "default" : "outline"}
+        className="h-7 px-2 text-[11px]"
+        disabled={saving}
+        onClick={() => void persist(0, "custom")}
+      >
+        Customize
+      </Button>
+
+      {decision && (
+        <span className="text-[10px] text-muted-foreground">
+          {decision === "ready_stock"
+            ? `Ready ${ready}/${total}`
+            : `Ready ${ready} · Custom ${pending}`}
+        </span>
+      )}
 
       {total > 1 && decision === "custom" && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
-          <span className="text-[11px] font-medium">Ready Qty</span>
+        <>
+          <span className="ml-1 text-[10px] font-medium text-muted-foreground">Ready Qty</span>
           <Input
             type="number"
             min={0}
@@ -127,15 +125,21 @@ export const ReadyStockSplitEditor = ({
             step="1"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="h-8 w-20"
+            className="h-7 w-16 px-2 text-xs"
             aria-label="Ready stock quantity"
           />
-          <span className="text-[11px] text-muted-foreground">Customize {Math.max(0, total - (Number(draft) || 0))}</span>
-          <Button type="button" size="sm" className="h-8" onClick={() => void save()} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-            Save Split
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-7 px-2 text-[11px]"
+            onClick={() => void save()}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+            Save
           </Button>
-        </div>
+        </>
       )}
     </div>
   );
