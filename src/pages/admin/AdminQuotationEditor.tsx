@@ -49,7 +49,6 @@ import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { shareLiveLink } from "@/lib/shareLink";
 import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { notesWindow } from "@/components/admin/notesWindowStore";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { QuotationStatusHistory } from "@/components/admin/QuotationStatusHistory";
 import { STAGE_DEFS, stageToneClasses, type PipelineStage } from "@/lib/quotationPipeline";
@@ -307,7 +306,7 @@ const AdminQuotationEditor = () => {
   const [generatingJob, setGeneratingJob] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
-  const [jobMode, setJobMode] = useState<"saved" | "direct">("saved");
+  const [jobAssignmentKey, setJobAssignmentKey] = useState<string | null>(null);
   const [itemWorkMap, setItemWorkMap] = useState<Record<string, ItemWorkSummary>>({});
 
   const canEditPrice = isOfficeStaff;
@@ -1351,6 +1350,7 @@ const AdminQuotationEditor = () => {
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
     setJobNotes("");
+    setJobAssignmentKey(crypto.randomUUID());
     if (q?.expected_delivery_date) {
       const [y, m, d] = q.expected_delivery_date.split("-").map(Number);
       const due = new Date(Date.UTC(y, m - 1, d));
@@ -1359,20 +1359,17 @@ const AdminQuotationEditor = () => {
     } else {
       setJobDueDate("");
     }
-    setJobMode("saved");
     setJobOpen(true);
   };
 
   const generateAndSendJob = async (format: "jpg" | "pdf" = "jpg", action: "send" | "download" | "share" = "send") => {
     if (!q) return;
-    const isDirect = jobMode === "direct";
-    let worker: Worker | undefined = selectedWorker
-      ? workers.find((w) => w.id === selectedWorker)
-      : undefined;
-    if (action === "send" && !isDirect && !worker) {
-      toast({ title: "Select a worker", variant: "destructive" });
+    const worker = selectedWorker ? workers.find((w) => w.id === selectedWorker) : undefined;
+    if (!worker) {
+      toast({ title: "Select a worker", description: "Choose the worker first. The job will be added to that worker automatically.", variant: "destructive" });
       return;
     }
+
     const chosenItems = items.filter((it) => {
       if (!selectedItemIds.has(it.id) || it._isNew) return false;
       const readyQty = Math.min(Number(it.quantity ?? 0), Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? it.quantity : 0))));
@@ -1383,30 +1380,44 @@ const AdminQuotationEditor = () => {
       toast({ title: "No customize item selected", description: "Select only items that still need customization.", variant: "destructive" });
       return;
     }
+
     setGeneratingJob(true);
     try {
-      // Export/share must never be blocked by creating a DB job row.
-      // Persist the assignment only for the actual Send action.
-      if (worker && action === "send") {
-        const { error } = await supabase.from("job_work_orders").insert({
+      const assignmentKey = jobAssignmentKey ?? crypto.randomUUID();
+      setJobAssignmentKey(assignmentKey);
+
+      const db = supabase as any;
+      const { data: existingJob } = await db
+        .from("job_work_orders")
+        .select("id")
+        .eq("client_assignment_key", assignmentKey)
+        .maybeSingle();
+
+      if (!existingJob?.id) {
+        const { error: jobError } = await db.from("job_work_orders").insert({
           quotation_id: q.id,
           worker_id: worker.id,
           item_ids: chosenItems.map((c) => c.id),
           notes: jobNotes || null,
           due_at: jobDueDate ? new Date(`${jobDueDate}T18:00:00+05:30`).toISOString() : null,
           created_by: user?.id ?? null,
+          client_assignment_key: assignmentKey,
         });
-        if (error) {
-          toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
+
+        if (jobError && !/duplicate|unique/i.test(jobError.message || "")) {
+          toast({ title: "Failed to assign job", description: jobError.message, variant: "destructive" });
           return;
         }
       }
+
+      await load({ silent: true });
+
       const { generateJobWorkPdf } = await loadPdfLib();
       const pdfBlob = await generateJobWorkPdf({
         quotation_id: q.quotation_id,
         customer_name: q.party_name,
         customer_place: q.party_place,
-        worker_name: worker?.name ?? "Job Work",
+        worker_name: worker.name,
         date: new Date().toLocaleDateString("en-IN"),
         required_by: jobDueDate ? new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN") : null,
         notes: jobNotes || null,
@@ -1427,18 +1438,15 @@ const AdminQuotationEditor = () => {
           ),
         })),
       }, format === "jpg" ? SHARE_PDF_OPTIONS : undefined);
-      const baseFilename = worker
-        ? `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`
-        : `JobWork-${q.quotation_id}`;
-      const greeting = worker ? `Hi ${worker.name},` : "Hi,";
+
+      const baseFilename = `JobWork-${q.quotation_id}-${worker.name.replace(/\s+/g, "_")}`;
       const dueLine = jobDueDate ? `\nRequired by: ${new Date(`${jobDueDate}T12:00:00`).toLocaleDateString("en-IN")}` : "";
       const noteLine = jobNotes.trim() ? `\nNote: ${jobNotes.trim()}` : "";
-      const msg = `${greeting}\n\nNew job work assigned.\nCustomer: ${q.party_name}\nPlace: ${q.party_place}\nQuotation: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}${noteLine}\n\n— Hitech Furniture & Interiors`;
+      const msg = `Hi ${worker.name},\n\nNew job work assigned.\nCustomer: ${q.party_name}\nPlace: ${q.party_place}\nQuotation: ${q.quotation_id}\nItems: ${chosenItems.length}${dueLine}${noteLine}\n\n— Hitech Furniture & Interiors`;
 
       if (action === "download") {
         if (format === "pdf") {
           downloadBlob(pdfBlob, `${baseFilename}.pdf`);
-          toast({ title: "Job PDF downloaded", description: `${chosenItems.length} selected item(s) included.` });
         } else {
           const { pdfBlobToJpgPages } = await loadJpgLib();
           const blobs = await pdfBlobToJpgPages(pdfBlob);
@@ -1448,9 +1456,9 @@ const AdminQuotationEditor = () => {
               index * 300,
             );
           });
-          toast({ title: "Job image downloaded", description: `${blobs.length} image page(s) saved.` });
         }
-      } else if (action === "share" || isDirect) {
+        toast({ title: "Job assigned & file downloaded", description: `Added to ${worker.name}'s work list.` });
+      } else if (action === "share") {
         if (format === "pdf") {
           await shareFilesNative([pdfBlob], baseFilename, msg, "pdf");
         } else {
@@ -1458,27 +1466,24 @@ const AdminQuotationEditor = () => {
           const blobs = await pdfBlobToJpgPages(pdfBlob);
           await shareFilesNative(blobs, baseFilename, msg, "jpg");
         }
-        toast({ title: "Ready to share", description: "Pick any contact or WhatsApp group from your phone's share sheet." });
+        toast({ title: "Job assigned & ready to share", description: `Added to ${worker.name}'s work list.` });
       } else if (format === "pdf") {
         downloadBlob(pdfBlob, `${baseFilename}.pdf`);
-        toast({ title: "Job PDF downloaded", description: `${chosenItems.length} item(s) assigned to ${worker!.name}.` });
+        toast({ title: "Job assigned", description: `Added to ${worker.name}'s work list and PDF downloaded.` });
       } else {
         const { pdfBlobToJpgPages } = await loadJpgLib();
         const blobs = await pdfBlobToJpgPages(pdfBlob);
-        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker!.whatsapp_number, msg);
-        toast({ title: "Job work sent", description: `${chosenItems.length} item(s) assigned to ${worker!.name}${blobs.length > 1 ? ` (${blobs.length} pages)` : ""}` });
+        await shareJpgPagesViaWhatsApp(blobs, baseFilename, worker.whatsapp_number, msg);
+        toast({ title: "Job assigned & sent", description: `Added to ${worker.name}'s work list.` });
       }
 
-      // Keep the dialog and item selection intact after downloads so the
-      // admin can download another format or still assign/send the same job.
-      if (action !== "download") {
-        setJobOpen(false);
-        setSelectedItemIds(new Set());
-        await load({ silent: true });
-      }
+      setJobOpen(false);
+      setSelectedItemIds(new Set());
+      setJobAssignmentKey(null);
+      await load({ silent: true });
     } catch (e: any) {
-      console.error("Job image generation failed:", e);
-      toast({ title: "Image generation failed", description: e?.message ?? "An image may be blocked. Try re-uploading the item/measurement images.", variant: "destructive" });
+      console.error("Job assignment/file generation failed:", e);
+      toast({ title: "Job failed", description: e?.message ?? "Try again.", variant: "destructive" });
     } finally {
       setGeneratingJob(false);
     }
@@ -2885,31 +2890,6 @@ const AdminQuotationEditor = () => {
     })}
             </fieldset>
 
-            <div className="space-y-2">
-              <Label>Send to</Label>
-              <RadioGroup
-                value={jobMode}
-                onValueChange={(v) => setJobMode(v as "saved" | "direct")}
-                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-              >
-                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "saved" ? "border-primary bg-primary/5" : "border-border"}`}>
-                  <RadioGroupItem value="saved" id="jobmode-saved" className="mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Saved Worker</p>
-                    <p className="text-[11px] text-muted-foreground">Pick from registered workers.</p>
-                  </div>
-                </label>
-                <label className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${jobMode === "direct" ? "border-primary bg-primary/5" : "border-border"}`}>
-                  <RadioGroupItem value="direct" id="jobmode-direct" className="mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Direct WhatsApp Share</p>
-                    <p className="text-[11px] text-muted-foreground">Any contact / WhatsApp group.</p>
-                  </div>
-                </label>
-              </RadioGroup>
-            </div>
-
-            {jobMode === "saved" ? (
             <div className="space-y-1.5">
               <Label>Worker *</Label>
               <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -2922,17 +2902,14 @@ const AdminQuotationEditor = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Any Job File action below will automatically add these items to this worker's work list.
+              </p>
               {workers.length === 0 && (
                 <p className="text-xs text-muted-foreground">No active workers. <Link to="/admin/workers" className="text-primary underline">Add one</Link>.</p>
               )}
             </div>
-            ) : (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
-                We'll generate the worker-safe file (no prices, no customer phone)
-                and open your phone's share sheet so you can pick any contact or
-                WhatsApp group.
-              </div>
-            )}
+
             <div className="space-y-1.5">
               <Label>Required by / Delivery date for worker</Label>
               <Input type="date" value={jobDueDate} onChange={(e) => setJobDueDate(e.target.value)} />
@@ -2944,18 +2921,18 @@ const AdminQuotationEditor = () => {
             <Button variant="outline" onClick={() => setJobOpen(false)} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={selectedItemIds.size === 0}
+              disabled={selectedItemIds.size === 0 || !selectedWorker}
               onPdf={() => generateAndSendJob("pdf", "download")}
               onJpg={() => generateAndSendJob("jpg", "download")}
               onShareFile={() => generateAndSendJob("jpg", "share")}
               menuTitle="Job work file"
-              menuDescription="Share now or download the worker-safe job as PDF or image."
+              menuDescription="Assigns the job to the selected worker first, then shares or downloads the worker-safe file."
               pdfLabel="Download PDF"
               jpgLabel="Download Image (JPG)"
               shareLabel="Share Job File"
               triggerVariant="default"
               triggerClassName="w-full sm:w-auto"
-              label={jobMode === "direct" ? "Generate & Share" : "Assign & send"}
+              label="Assign / Job File"
               pdfTooltip="PDF — worker-safe (no prices / no customer phone)"
               jpgTooltip="JPG — send via WhatsApp to worker now"
             />
