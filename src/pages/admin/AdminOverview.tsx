@@ -311,7 +311,7 @@ const AdminOverview = () => {
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(); } }}
               className="group cursor-pointer border-[#8b6b4f]/15 bg-white transition-all hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md"
             >
-              <CardContent className="flex min-h-[245px] h-full flex-col p-4">
+              <CardContent className="flex min-h-[190px] h-full flex-col p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]">
                     <Icon className="h-5 w-5" />
@@ -326,7 +326,7 @@ const AdminOverview = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-2.5">
+                <div className="mt-3 space-y-2">
                   {details.slice(0, 3).map((d) => (
                     <div key={d.label} className="flex items-center justify-between gap-3 text-xs">
                       <span className="flex items-center gap-2 text-muted-foreground">
@@ -338,7 +338,7 @@ const AdminOverview = () => {
                   ))}
                 </div>
 
-                <div className="mt-auto pt-4">
+                <div className="mt-auto pt-3">
                   {quickAction ? (
                     <Button type="button" size="sm" className="h-8 bg-[#76563f] text-xs hover:bg-[#654936]" onClick={runQuick}>
                       <Plus className="mr-1 h-3.5 w-3.5" />{quickAction.label}
