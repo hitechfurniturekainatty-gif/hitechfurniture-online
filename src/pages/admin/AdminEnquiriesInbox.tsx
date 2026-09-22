@@ -78,7 +78,9 @@ const InboxPage = () => {
       toast.error((data as any)?.error || error?.message || "Failed to start chat");
       return;
     }
-    toast.success("WhatsApp sent");
+    const phone = String(row.phone ?? "").replace(/\D/g, "");
+    if (phone) window.open(`https://wa.me/${phone.length === 10 ? `91${phone}` : phone}`, "_blank", "noopener,noreferrer");
+    toast.success("Lead marked as contacted");
     setRows((prev) =>
       prev.map((r) =>
         r.id === row.id
