@@ -96,7 +96,6 @@ export default function AdminWorkerReports() {
 
   const qMap = useMemo(() => new Map(quotes.map(q => [q.id, q])), [quotes]);
   const qiMap = useMemo(() => new Map(quoteItems.map(i => [i.id, i])), [quoteItems]);
-  const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
 
   const workerCards = useMemo(() => workers.map(w => {
     const wJobs = jobs.filter(j => j.worker_id === w.id);
