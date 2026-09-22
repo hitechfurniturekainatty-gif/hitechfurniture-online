@@ -11,10 +11,12 @@ export const RoutePolyline = ({
   stops,
   color,
   weight = 5,
+  onClick,
 }: {
   stops: LatLng[];
   color: string;
   weight?: number;
+  onClick?: () => void;
 }) => {
   const [geom, setGeom] = useState<[number, number][] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -34,7 +36,7 @@ export const RoutePolyline = ({
   }, [JSON.stringify(stops)]);
 
   if (geom) {
-    return <Polyline positions={geom} pathOptions={{ color, weight }} />;
+    return <Polyline positions={geom} pathOptions={{ color, weight }} eventHandlers={onClick ? { click: onClick } : undefined} />;
   }
   if (failed) {
     // Straight dashed fallback so users still see route intent
@@ -42,6 +44,7 @@ export const RoutePolyline = ({
       <Polyline
         positions={stops.map((s) => [s.lat, s.lng]) as [number, number][]}
         pathOptions={{ color, weight: 3, dashArray: "8 8", opacity: 0.7 }}
+        eventHandlers={onClick ? { click: onClick } : undefined}
       />
     );
   }
