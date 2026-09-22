@@ -150,20 +150,38 @@ const AdminMyTrips = () => {
   }, [user, isDelivery, isOfficeStaff]);
 
   const markDelivered = async (stop: TripQ) => {
+    const deliveredAt = new Date().toISOString();
     const { error } = await supabase
       .from("trip_quotations")
-      .update({ delivered_at: new Date().toISOString() })
+      .update({ delivered_at: deliveredAt })
       .eq("id", stop.id);
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Marked delivered" });
+
+    const [quoteRes, itemRes, warehouseRes] = await Promise.all([
+      supabase.from("quotations").update({ status: "delivered", pipeline_stage: 6 } as any).eq("id", stop.quotation_id),
+      supabase.from("quotation_items").update({ delivered_at: deliveredAt } as any).eq("quotation_id", stop.quotation_id).is("delivered_at", null),
+      (supabase as any).from("warehouse_order_items").update({ delivered_at: deliveredAt }).eq("quotation_id", stop.quotation_id).is("delivered_at", null),
+    ]);
+
+    if (quoteRes.error) {
+      toast({ title: "Delivery saved, but quotation sync failed", description: quoteRes.error.message, variant: "destructive" });
+    }
+    if (itemRes.error) {
+      toast({ title: "Delivery saved, but item sync failed", description: itemRes.error.message, variant: "destructive" });
+    }
+    if (warehouseRes.error) {
+      toast({ title: "Delivery saved, but warehouse sync failed", description: warehouseRes.error.message, variant: "destructive" });
+    }
+
     const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
     const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
     const newStatus = allDelivered ? "delivered" : "in_transit";
     const { error: tripError } = await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
     if (tripError) toast({ title: "Stop delivered; trip status update failed", description: tripError.message, variant: "destructive" });
+    toast({ title: "Marked delivered", description: "Quotation, items and payment flow synced." });
     load();
   };
 
