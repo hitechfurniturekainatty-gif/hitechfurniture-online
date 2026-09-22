@@ -29,6 +29,7 @@ type PendingQ = {
   expected_delivery_date: string | null;
   ready: boolean;
   assignedTrip: boolean;
+  items: string[];
 };
 
 const dayKey = (iso: string | null) => iso ? new Date(`${iso}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
@@ -54,14 +55,13 @@ const AdminLogistics = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: r }, { data: w }, { data: q }, { data: tq }, { data: wh }] = await Promise.all([
+    const [{ data: r }, { data: w }, { data: q }, { data: tq }, { data: wh }, { data: qi }] = await Promise.all([
       supabase.from("delivery_routes").select("*").eq("is_active", true).order("name"),
       supabase.from("route_waypoints").select("*").order("display_order"),
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, commercial_status, total, advance_amount, expected_delivery_date")
-        .or("status.eq.finalized,commercial_status.eq.confirmed")
-        .not("expected_delivery_date", "is", null),
+        .or("status.eq.finalized,commercial_status.eq.confirmed"),
       supabase
         .from("trip_quotations")
         .select("quotation_id, delivered_at, trip_id, trips!inner(status)"),
@@ -69,6 +69,7 @@ const AdminLogistics = () => {
         .from("warehouse_order_items")
         .select("quotation_id, warehouse_ready, delivered_at")
         .eq("order_confirmed", true),
+      supabase.from("quotation_items").select("quotation_id, description, quantity"),
     ]);
 
     const merged: RouteWithWaypoints[] = (r ?? []).map((row: any) => ({
@@ -101,7 +102,16 @@ const AdminLogistics = () => {
       readiness.set(x.quotation_id, cur);
     }
 
+    const itemNames = new Map<string, string[]>();
+    for (const x of (qi ?? []) as any[]) {
+      const arr = itemNames.get(x.quotation_id) ?? [];
+      const qty = Number(x.quantity ?? 0);
+      arr.push(`${x.description}${qty > 1 ? ` × ${qty}` : ""}`);
+      itemNames.set(x.quotation_id, arr);
+    }
+
     const rows = ((q ?? []) as any[])
+      .filter((x) => x.status !== "delivered")
       .filter((x) => !deliveredQids.has(x.id))
       .map((x) => {
         const rr = readiness.get(x.id);
@@ -111,6 +121,7 @@ const AdminLogistics = () => {
           total: Number(x.total ?? 0),
           ready: !!rr && rr.total > 0 && rr.ready === rr.total,
           assignedTrip: activeTripQids.has(x.id),
+          items: itemNames.get(x.id) ?? [],
         } as PendingQ;
       });
     setPending(rows);
@@ -236,7 +247,7 @@ const AdminLogistics = () => {
                 const stops = [{ lat: HUB.lat, lng: HUB.lng }, ...r.waypoints.map((w) => ({ lat: w.lat, lng: w.lng })), { lat: r.destination_lat, lng: r.destination_lng }];
                 const items = grouped.get(r.id) ?? [];
                 return <div key={r.id}>
-                  <RoutePolyline stops={stops} color={r.color} weight={highlightedRoute === r.id ? 6 : 4} />
+                  <RoutePolyline stops={stops} color={r.color} weight={highlightedRoute === r.id ? 6 : 4} onClick={() => setHighlightedRoute(r.id)} />
                   {r.waypoints.map((w, i) => <Marker key={`${r.id}-w${i}`} position={[w.lat, w.lng]} icon={coloredIcon(r.color, String(i + 1))}><Popup>{w.name} ({r.name})</Popup></Marker>)}
                   <Marker position={[r.destination_lat, r.destination_lng]} icon={coloredIcon(r.color, items.length ? String(items.length) : "✓")}><Popup><strong>{r.destination_name}</strong><br />{items.length} pending deliveries{items.slice(0, 5).map((it) => <div key={it.id} className="mt-1 text-xs">• {it.quotation_id} — {it.party_name}</div>)}</Popup></Marker>
                 </div>;
@@ -261,6 +272,7 @@ const AdminLogistics = () => {
                         {r && <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><span className="inline-block h-2 w-2 rounded-full" style={{ background: r.color }} />{r.name}</span>}
                       </div>
                       <p className="text-sm">{p.party_name} · {p.delivery_place || p.party_place}</p>
+                      {p.items.length > 0 && <p className="mt-0.5 text-xs font-medium text-foreground">{p.items.slice(0, 4).join(" · ")}{p.items.length > 4 ? ` +${p.items.length - 4} more` : ""}</p>}
                       <p className="text-xs text-muted-foreground">Balance to collect: {formatINR(balance)}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -269,7 +281,7 @@ const AdminLogistics = () => {
                     </div>
                   </CardContent></Card>;
                 })}
-              {pending.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No pending deliveries.</p>}
+              {(highlightedRoute ? (grouped.get(highlightedRoute) ?? []).length === 0 : pending.length === 0) && <p className="py-6 text-center text-sm text-muted-foreground">No pending deliveries on this route.</p>}
             </div>
           </div>
         </div>
