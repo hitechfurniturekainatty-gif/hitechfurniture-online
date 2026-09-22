@@ -95,6 +95,7 @@ const AdminOverview = () => {
         taskRes,
         followRes,
         stockMoveRes,
+        leadRes,
       ] = await Promise.all([
         supabase.from("quotations").select("id,status,pipeline_stage,commercial_status,lead_type,enquiry_contacted_at,next_follow_up_at,created_at,party_phone,expected_delivery_date").is("deleted_at", null),
         supabase.from("quotation_items").select("id,quotation_id,quantity"),
@@ -105,6 +106,7 @@ const AdminOverview = () => {
         supabase.from("staff_diary_notes").select("id,status,due_date,created_at").is("deleted_at", null),
         supabase.from("quotation_followups").select("id,quotation_id,status,scheduled_for"),
         supabase.from("stock_movements").select("id,reason,created_at").eq("reason", "inbound_receive"),
+        (supabase as any).from("sales_leads").select("id,status,source,contacted_at,created_at").is("deleted_at", null),
       ]);
 
       if (cancelled) return;
@@ -119,13 +121,13 @@ const AdminOverview = () => {
       const tasks = (taskRes.data ?? []) as any[];
       const followups = (followRes.data ?? []) as any[];
       const stockMoves = (stockMoveRes.data ?? []) as any[];
-
-      const leadRows = qs.filter(q => q.lead_type === "lead");
-      const openLeads = leadRows.filter(q => Number(q.pipeline_stage ?? 1) <= 1 && !["rejected","delivered"].includes(q.status));
-      const convertedLeads = leadRows.filter(q => Number(q.pipeline_stage ?? 1) >= 2 && q.status !== "rejected");
-      const cancelledLeads = leadRows.filter(q => q.status === "rejected");
-      const leadIds = new Set(openLeads.map(q => q.id));
-      const demandItems = items.filter(i => leadIds.has(i.quotation_id));
+      const leadRows = (leadRes.data ?? []) as any[];
+      const openLeads = leadRows.filter(q => ["pending","contacted"].includes(q.status));
+      const convertedLeads = leadRows.filter(q => q.status === "converted");
+      const cancelledLeads = leadRows.filter(q => ["lost","cancelled"].includes(q.status));
+      const onlineLeads = leadRows.filter(q => q.source === "website");
+      const manualLeads = leadRows.filter(q => q.source === "manual");
+      const demandItems: any[] = [];
       const followDue = followups.filter(f => f.status !== "completed" && day(f.scheduled_for) <= today).length;
       const quoteRows = qs.filter(q => Number(q.pipeline_stage ?? 1) >= 2 && Number(q.pipeline_stage ?? 1) < 3 && !["rejected","delivered"].includes(q.status));
       const confirmed = qs.filter(q => q.commercial_status === "confirmed").length;
@@ -146,9 +148,10 @@ const AdminOverview = () => {
 
       const details: Record<string, Detail[]> = {
         enquiries: [
-          { label: "New Today", value: openLeads.filter(q => day(q.created_at) === today).length, tone: "green" },
-          { label: "Follow-up Due", value: followDue, tone: "orange" },
-          { label: "Not Contacted", value: openLeads.filter(q => !q.enquiry_contacted_at).length, tone: "red" },
+          { label: "Pending", value: openLeads.length, tone: "orange" },
+          { label: "Converted", value: convertedLeads.length, tone: "green" },
+          { label: "Cancelled / Lost", value: cancelledLeads.length, tone: "red" },
+          { label: "Online / Manual", value: `${onlineLeads.length} / ${manualLeads.length}`, tone: "blue" },
         ],
         demand: [
           { label: "Open Enquiry Items", value: demandItems.length, tone: "orange" },
