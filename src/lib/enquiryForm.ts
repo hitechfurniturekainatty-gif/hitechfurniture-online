@@ -12,6 +12,8 @@ export interface EnquiryOpenOpts {
   productId?: string;
   /** Preferred shape: open the dialog pre-loaded with one or more catalog products. */
   catalogProducts?: CatalogProduct[];
+  /** Internal staff-created leads are tagged manual; public forms default to website. */
+  source?: "website" | "manual";
 }
 
 type Opener = (opts: EnquiryOpenOpts) => void;
