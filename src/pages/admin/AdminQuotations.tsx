@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, Trash2, Search, Filter, User, ShoppingCart, Eye } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatINR } from "@/lib/brand";
 import { statusBadgeVariant, statusLabel, normalizeStatus } from "./AdminQuotationEditor";
@@ -825,7 +825,13 @@ const AdminQuotations = () => {
               ) : (
                 <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
               )}
-              <div className={`grid gap-2 sm:flex sm:items-center ${(isAdmin || isOfficeStaff) ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className={`grid gap-2 sm:flex sm:items-center ${(isAdmin || isOfficeStaff) ? "grid-cols-3" : "grid-cols-2"}`}>
+                <Button size="sm" variant="outline" asChild className="h-10 w-full font-semibold sm:w-auto">
+                  <Link to={`/admin/quotations/${q.id}/preview`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
+                  </Link>
+                </Button>
                 <Button size="sm" asChild className="h-11 w-full px-5 font-semibold shadow-sm sm:w-auto">
                   <Link to={`/admin/quotations/${q.id}`}>Open Quotation <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
                 </Button>
