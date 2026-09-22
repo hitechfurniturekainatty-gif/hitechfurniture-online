@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Input } from "@/components/ui/input";
-import { Loader2, MessageCircle, Search, Phone, ArrowDownToLine } from "lucide-react";
+import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type Message = {
   id: number;
@@ -42,6 +43,8 @@ const InboxPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [q, setQ] = useState("");
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -123,6 +126,41 @@ const InboxPage = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [active?.messages.length]);
 
+  const sendReply = async () => {
+    const text = reply.trim();
+    if (!active || !text || sending) return;
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-whatsapp-reply", {
+        body: {
+          phone: active.phone,
+          customer_name: active.customer_name,
+          message: text,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.detail || data?.error || "Message could not be sent");
+
+      setReply("");
+      if (data.message) {
+        setMessages((prev) =>
+          prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message as Message],
+        );
+      }
+      toast({ title: "WhatsApp reply sent" });
+    } catch (e) {
+      toast({
+        title: "Reply not sent",
+        description: e instanceof Error ? e.message : "WhatsApp sending failed",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <AdminShell>
       <div className="mb-5 flex flex-col gap-1">
@@ -130,7 +168,7 @@ const InboxPage = () => {
           <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Inbox
         </h1>
         <p className="text-sm text-muted-foreground">
-          Customer conversations handled by the AI assistant — read-only view.
+          Customer conversations from WhatsApp — office staff can reply directly from here.
         </p>
       </div>
 
@@ -229,8 +267,36 @@ const InboxPage = () => {
                   ))}
                   <div ref={bottomRef} />
                 </div>
-                <div className="flex items-center gap-2 border-t px-4 py-2 text-xs text-muted-foreground">
-                  <ArrowDownToLine className="h-3 w-3" /> AI-handled conversation · read-only
+                <div className="border-t bg-background p-3">
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      value={reply}
+                      onChange={(e) => setReply(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void sendReply();
+                        }
+                      }}
+                      placeholder="Type a WhatsApp reply…"
+                      rows={2}
+                      maxLength={4096}
+                      className="min-h-[52px] flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void sendReply()}
+                      disabled={sending || !reply.trim()}
+                      className="inline-flex h-[52px] min-w-[52px] items-center justify-center rounded-xl bg-[#0E5C66] px-4 text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Send WhatsApp reply"
+                    >
+                      {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                    <span>Enter to send · Shift+Enter for new line</span>
+                    <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Secure server send</span>
+                  </div>
                 </div>
               </>
             ) : (
