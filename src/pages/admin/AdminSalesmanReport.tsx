@@ -174,7 +174,12 @@ export default function AdminSalesmanReport() {
       const pending = Math.max(0, Number(r.pending_amount || 0));
       return { received: Math.max(0, original - pending), pending, receivable: r };
     }
-    return { received: Math.min(total, advance), pending: Math.max(0, total - advance), receivable: null as Receivable | null };
+    const orderConfirmed = q.commercial_status === "confirmed" || q.status === "finalized";
+    return {
+      received: Math.min(total, advance),
+      pending: orderConfirmed ? Math.max(0, total - advance) : 0,
+      receivable: null as Receivable | null
+    };
   };
 
   const groups = useMemo(() => {
