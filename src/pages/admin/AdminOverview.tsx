@@ -96,7 +96,7 @@ const AdminOverview = () => {
         followRes,
         stockMoveRes,
       ] = await Promise.all([
-        supabase.from("quotations").select("id,status,pipeline_stage,commercial_status,lead_type,enquiry_contacted_at,next_follow_up_at,created_at,party_phone").is("deleted_at", null),
+        supabase.from("quotations").select("id,status,pipeline_stage,commercial_status,lead_type,enquiry_contacted_at,next_follow_up_at,created_at,party_phone,expected_delivery_date").is("deleted_at", null),
         supabase.from("quotation_items").select("id,quotation_id,quantity"),
         supabase.from("products").select("id,stock_quantity,reorder_level,created_at").is("deleted_at", null),
         supabase.from("job_work_orders").select("id,status,warehouse_status,job_type,due_at").is("deleted_at", null),
@@ -126,7 +126,8 @@ const AdminOverview = () => {
       const followDue = followups.filter(f => f.status !== "completed" && day(f.scheduled_for) <= today).length;
       const quoteRows = qs.filter(q => q.status === "drafted" && q.lead_type !== "lead");
       const confirmed = qs.filter(q => q.commercial_status === "confirmed").length;
-      const orders = qs.filter(q => Number(q.pipeline_stage ?? 0) >= 3 && !["rejected","delivered"].includes(q.status));
+      const orders = qs.filter(q => (q.commercial_status === "confirmed" || q.status === "finalized" || Number(q.pipeline_stage ?? 0) >= 3) && !["rejected","delivered"].includes(q.status));
+      const deliveryPendingRows = orders.filter(q => !!q.expected_delivery_date);
       const lowStock = products.filter(p => Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= Number(p.reorder_level ?? 0)).length;
       const outStock = products.filter(p => Number(p.stock_quantity ?? 0) <= 0).length;
       const openJobs = jobs.filter(j => !["ready","delivered","completed","cancelled"].includes(j.status) && j.warehouse_status !== "dispatched");
@@ -177,9 +178,9 @@ const AdminOverview = () => {
           { label: "Ready", value: jobs.filter(j => j.status === "ready").length, tone: "green" },
         ],
         delivery: [
-          { label: "Logistics Stage", value: qs.filter(q => Number(q.pipeline_stage ?? 0) === 6 && q.status !== "delivered").length, tone: "blue" },
-          { label: "Ready / Dispatched", value: jobs.filter(j => ["ready_to_pack","ready_for_dispatch","dispatched"].includes(j.warehouse_status)).length, tone: "green" },
-          { label: "Delivered", value: qs.filter(q => q.status === "delivered").length, tone: "green" },
+          { label: "Due Today", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) === today).length, tone: "orange" },
+          { label: "Overdue", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) && day(q.expected_delivery_date) < today).length, tone: "red" },
+          { label: "Upcoming", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) > today).length, tone: "green" },
         ],
         payments: [
           { label: "Due Today", value: formatINR(pendingReceivables.filter(r => day(r.next_follow_up_at) === today).reduce((s,r) => s + Number(r.pending_amount ?? 0),0)), tone: "orange" },
@@ -211,7 +212,7 @@ const AdminOverview = () => {
         inventory: products.length,
         purchase: lowStock + outStock,
         production: openJobs.length,
-        delivery: qs.filter(q => Number(q.pipeline_stage ?? 0) >= 6 && q.status !== "delivered" && q.status !== "rejected").length,
+        delivery: deliveryPendingRows.length,
         paymentAmount,
         services: openServices.length,
         customers: uniquePhones.size,
