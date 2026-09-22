@@ -256,6 +256,7 @@ const AdminWarehouse = () => {
         dispatch_driver_name: isOutside ? (outsideDriver.trim() || null) : null,
         dispatch_driver_phone: isOutside ? (outsidePhone.trim() || null) : null,
         dispatched_at: now,
+        pipeline_stage: 6,
       } as any)
       .eq("id", dispatchGroup.quotationId);
 
