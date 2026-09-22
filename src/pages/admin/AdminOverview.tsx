@@ -304,7 +304,7 @@ const AdminOverview = () => {
           const runQuick = (event: React.MouseEvent) => {
             event.stopPropagation();
             if (!quickAction) return;
-            if ("kind" in quickAction && quickAction.kind === "enquiry") return openEnquiryForm();
+            if ("kind" in quickAction && quickAction.kind === "enquiry") return openEnquiryForm({ source: "manual" });
             if ("href" in quickAction && quickAction.href) navigate(quickAction.href);
           };
 
