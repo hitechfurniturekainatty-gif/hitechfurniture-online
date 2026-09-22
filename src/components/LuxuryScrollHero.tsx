@@ -194,13 +194,13 @@ export const LuxuryScrollHero = () => {
               </p>
 
               <div className="pointer-events-auto mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  to="/catalog"
+                <a
+                  href="/catalog"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-slate-100"
                 >
                   Explore Collection
                   <ArrowRight className="h-4 w-4" />
-                </Link>
+                </a>
                 <button
                   type="button"
                   onClick={() => openEnquiryForm()}
