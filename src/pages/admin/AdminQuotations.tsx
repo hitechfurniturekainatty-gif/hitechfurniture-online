@@ -604,6 +604,8 @@ const AdminQuotations = () => {
       // Treat missing document_type as 'quotation' (legacy rows).
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return false;
+      // Stage-1 raw leads/enquiries belong in Enquiries, not the Quotation list.
+      if (!isPO(t) && (r.lead_type ?? "lead") === "lead" && stageFor(r).stage === 1) return false;
       if (!isPO(t) && leadFilter !== "all") {
         const lt = (r.lead_type ?? "lead").toString();
         if (lt !== leadFilter) return false;
@@ -638,6 +640,7 @@ const AdminQuotations = () => {
     rows.forEach((r) => {
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return;
+      if (!isPO(t) && (r.lead_type ?? "lead") === "lead" && stageFor(r).stage === 1) return;
       if (!r.created_by) return;
       const name = creatorMap[r.created_by] ?? "Staff";
       const ex = seen.get(r.created_by);
@@ -653,6 +656,7 @@ const AdminQuotations = () => {
     rows.forEach((r) => {
       const t: DocType = (r.document_type as DocType) ?? "quotation";
       if (t !== docTab) return;
+      if (!isPO(t) && (r.lead_type ?? "lead") === "lead" && stageFor(r).stage === 1) return;
       const name = (r.salesperson_name ?? "").trim();
       if (!name) return;
       map.set(name, (map.get(name) ?? 0) + 1);
@@ -712,7 +716,7 @@ const AdminQuotations = () => {
       r.party_name.toLowerCase().includes(s) ||
       r.party_place.toLowerCase().includes(s);
     return {
-      quotation: rows.filter((r) => ((r.document_type as DocType) ?? "quotation") === "quotation" && matchesSearch(r)).length,
+      quotation: rows.filter((r) => ((r.document_type as DocType) ?? "quotation") === "quotation" && !((r.lead_type ?? "lead") === "lead" && stageFor(r).stage === 1) && matchesSearch(r)).length,
       po: rows.filter((r) => r.document_type === "po" && matchesSearch(r)).length,
     };
   }, [rows, search]);
