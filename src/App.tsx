@@ -48,6 +48,7 @@ const AdminWorkerDetail = lazy(pageLoaders.AdminWorkerDetail);
 const AdminProductionBoard = lazy(pageLoaders.AdminProductionBoard);
 const AdminMeasurementTasks = lazy(pageLoaders.AdminMeasurementTasks);
 const AdminQuotations = lazy(pageLoaders.AdminQuotations);
+const AdminDeliveryPlanner = lazy(pageLoaders.AdminDeliveryPlanner);
 const AdminQuotationEditor = lazy(pageLoaders.AdminQuotationEditor);
 const AdminQuotationPreview = lazy(pageLoaders.AdminQuotationPreview);
 const AdminQuotationBulkCreate = lazy(pageLoaders.AdminQuotationBulkCreate);
@@ -140,6 +141,7 @@ const App = () => (
             <Route path="/admin/production" element={<OfficeStaffOnly><AdminProductionBoard /></OfficeStaffOnly>} />
             <Route path="/admin/measurement-tasks" element={<AdminMeasurementTasks />} />
             <Route path="/admin/quotations" element={<AdminQuotations />} />
+            <Route path="/admin/delivery" element={<AdminDeliveryPlanner />} />
             <Route path="/admin/quotations/bulk" element={<AdminQuotationBulkCreate />} />
             <Route path="/admin/scheme-calculator" element={<OfficeStaffOnly><AdminSchemeCalculator /></OfficeStaffOnly>} />
             <Route path="/admin/quotations/:id" element={<AdminQuotationEditor />} />
