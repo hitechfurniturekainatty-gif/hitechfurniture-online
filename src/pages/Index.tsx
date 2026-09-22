@@ -128,9 +128,9 @@ const Index = () => {
                 <Link to="/about" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
                   Discover Hitech <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
+                <a href="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
                   Browse furniture <ArrowRight className="h-4 w-4" />
-                </Link>
+                </a>
               </div>
             </div>
           </div>
@@ -259,7 +259,7 @@ const Index = () => {
                 <ClipboardList className="mr-2 h-5 w-5" /> Start a custom order
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-xl">
-                <Link to="/catalog">Explore furniture <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <a href="/catalog">Explore furniture <ArrowRight className="ml-2 h-4 w-4" /></a>
               </Button>
             </div>
           </div>
@@ -361,7 +361,7 @@ const Index = () => {
                 <ClipboardList className="mr-2 h-5 w-5" /> Start an enquiry
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-xl">
-                <Link to="/catalog">Browse furniture <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <a href="/catalog">Browse furniture <ArrowRight className="ml-2 h-4 w-4" /></a>
               </Button>
             </div>
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
