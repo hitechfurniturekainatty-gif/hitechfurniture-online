@@ -47,7 +47,17 @@ const EMPTY: Snapshot = {
   details: {},
 };
 
-const day = (iso?: string | null) => iso ? new Date(iso).toISOString().slice(0, 10) : "";
+const day = (iso?: string | null) => {
+  if (!iso) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 const formatINR = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 const AdminOverview = () => {
@@ -99,7 +109,7 @@ const AdminOverview = () => {
 
       if (cancelled) return;
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayKey();
       const qs = (qRes.data ?? []) as any[];
       const items = (itemRes.data ?? []) as any[];
       const products = (productRes.data ?? []) as any[];
@@ -224,50 +234,32 @@ const AdminOverview = () => {
       show: showOffice || showAdmin,
     },
     {
-      key: "demand", title: "Demand Tracker", count: snapshot.demandItems, href: "/admin/enquiries",
-      action: "View Demand", icon: PackageSearch, show: showOffice || showAdmin,
-    },
-    {
       key: "quotations", title: "Quotations", count: snapshot.quotations, href: "/admin/quotations",
       action: "Open Quotations", icon: FileText,
       quickAction: canCreateQuotation ? { label: "New Quotation", href: "/admin/quotations?new=1" } : undefined,
       show: showOffice || showAdmin,
     },
     {
-      key: "orders", title: "Orders", count: snapshot.orders, href: "/admin/pipeline",
-      action: "View Orders", icon: ShoppingCart, show: showOffice || showAdmin,
-    },
-    {
-      key: "inventory", title: "Inventory", count: snapshot.inventory, href: "/admin/inventory/ledger",
-      action: "Open Inventory", icon: Boxes,
-      quickAction: canReceiveStock ? { label: "Stock Inward", href: "/admin/inventory/receiving" } : undefined,
-      show: showOffice || showAdmin || showWarehouse,
-    },
-    {
-      key: "purchase", title: "Purchase Requirements", count: snapshot.purchase, href: "/admin/inventory/reorder",
-      action: "Open Purchase", icon: PackageSearch, show: showOffice || showAdmin,
-    },
-    {
-      key: "production", title: "Production", count: snapshot.production, href: "/admin/production",
-      action: "View Production", icon: Hammer, show: showProduction || showAdmin,
-    },
-    {
-      key: "delivery", title: "Delivery", count: snapshot.delivery, href: "/admin/logistics",
-      action: "View Deliveries", icon: Truck, show: showDelivery || showOffice || showAdmin,
+      key: "delivery", title: "Delivery", count: snapshot.delivery, href: "/admin/delivery",
+      action: "Open Delivery Planner", icon: Truck, show: showDelivery || showOffice || showAdmin,
     },
     {
       key: "payments", title: "Payments", count: formatINR(snapshot.paymentAmount), href: "/admin/backlog",
       action: "View Payments", icon: WalletCards, show: showOffice || showAdmin,
     },
     {
-      key: "services", title: "Repairs & Service", count: snapshot.services, href: "/admin/services",
-      action: "Open Service", icon: Wrench,
-      quickAction: canCreateService ? { label: "New Service", href: "/admin/services?new=service" } : undefined,
+      key: "sales", title: "Sales Analysis", count: snapshot.orders, href: "/admin/salesman-reports",
+      action: "Salesman-wise Report", icon: BarChart3,
+      customDetails: [
+        { label: "Confirmed / Orders", value: snapshot.orders, tone: "green" as const },
+        { label: "Pending Payments", value: formatINR(snapshot.paymentAmount), tone: "red" as const },
+        { label: "Delivery Pending", value: snapshot.delivery, tone: "orange" as const },
+      ],
       show: showOffice || showAdmin,
     },
     {
-      key: "customers", title: "Customers", count: snapshot.customers, href: "/admin/enquiries",
-      action: "View Customers", icon: Users, show: showOffice || showAdmin,
+      key: "production", title: "Work Progress", count: snapshot.production, href: "/admin/worker-reports",
+      action: "Open Work Reports", icon: Hammer, show: showProduction || showAdmin,
     },
     {
       key: "tasks", title: "Tasks / Follow-ups", count: snapshot.tasks, href: "/admin/diary",
@@ -275,19 +267,9 @@ const AdminOverview = () => {
       quickAction: canCreatePersonalTask ? { label: "New Task", href: "/admin/diary?new=1" } : undefined,
       show: true,
     },
-    {
-      key: "reports", title: "Reports", count: "", href: "/admin/pipeline",
-      action: "Open Reports", icon: BarChart3,
-      customDetails: [
-        { label: "Sales", value: "›", tone: "muted" as const },
-        { label: "Demand", value: "›", tone: "muted" as const },
-        { label: "Stock", value: "›", tone: "muted" as const },
-      ],
-      show: showAdmin,
-    },
   ].filter(c => c.show), [
-    snapshot, showOffice, showAdmin, showWarehouse, showProduction, showDelivery,
-    canCreateEnquiry, canCreateQuotation, canReceiveStock, canCreateService, canCreatePersonalTask,
+    snapshot, showOffice, showAdmin, showProduction, showDelivery,
+    canCreateEnquiry, canCreateQuotation, canCreatePersonalTask,
   ]);
 
   const roleTitle = isAdmin ? "Home Dashboard" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
