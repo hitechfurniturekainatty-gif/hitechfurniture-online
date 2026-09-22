@@ -66,7 +66,9 @@ const InboxPage = () => {
 
   const startChat = async (row: Row) => {
     setChatBusy((s) => new Set(s).add(row.id));
-    const { data, error } = await supabase.rpc("start_lead_chat" as any, { p_quotation_id: row.id });
+    const contactedAt = new Date().toISOString();
+    const { error } = await (supabase as any).from("sales_leads").update({ status: "contacted", contacted_at: contactedAt, updated_at: contactedAt }).eq("id", row.id);
+    const data = { ok: !error };
     setChatBusy((s) => {
       const next = new Set(s);
       next.delete(row.id);
@@ -80,7 +82,7 @@ const InboxPage = () => {
     setRows((prev) =>
       prev.map((r) =>
         r.id === row.id
-          ? { ...r, raw: { ...r.raw, enquiry_contacted_at: new Date().toISOString() } }
+          ? { ...r, raw: { ...r.raw, contacted_at: contactedAt, status: "contacted" } }
           : r,
       ),
     );
@@ -89,13 +91,11 @@ const InboxPage = () => {
   const load = async () => {
     setLoading(true);
     const [qRes, cRes, sRes] = await Promise.all([
-      supabase
-        .from("quotations")
-        .select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type,commercial_status")
+      (supabase as any)
+        .from("sales_leads")
+        .select("id,lead_code,customer_name,customer_phone,customer_place,requirement,enquiry_type,source,status,contacted_at,converted_quotation_id,converted_at,item_image_url,suggested_amount,created_at")
         .is("deleted_at", null)
-        .eq("lead_type", "lead")
-        .is("enquiry_contacted_at", null)
-        .not("status", "in", "(rejected,delivered)")
+        .in("status", ["pending","contacted"])
         .order("created_at", { ascending: false })
         .limit(100),
       supabase
@@ -115,9 +115,9 @@ const InboxPage = () => {
     ]);
 
     const leads: Row[] = (qRes.data ?? []).map((r: any) => ({
-      id: r.id, kind: "lead", code: r.quotation_id,
-      name: r.party_name, phone: r.party_phone, place: r.party_place,
-      preview: (r.notes ?? "").replace(/^Website enquiry — .*?\n+/, "").slice(0, 200),
+      id: r.id, kind: "lead", code: r.lead_code,
+      name: r.customer_name, phone: r.customer_phone, place: r.customer_place,
+      preview: (r.requirement ?? "").slice(0, 200),
       enquiry_type: r.enquiry_type, created_at: r.created_at, raw: r,
     }));
     const complaints: Row[] = (cRes.data ?? []).map((r: any) => ({
@@ -154,11 +154,11 @@ const InboxPage = () => {
       if (k === "lead") {
         const existing = rows.find((r) => r.kind === "lead" && r.id === id);
         if (existing) { setOpen(existing); return; }
-        const { data } = await supabase.from("quotations").select("id,quotation_id,party_name,party_phone,party_place,notes,enquiry_type,created_at,status,pipeline_stage,enquiry_contacted_at,lead_type,commercial_status").eq("id", id).maybeSingle();
+        const { data } = await (supabase as any).from("sales_leads").select("*").eq("id", id).maybeSingle();
         if (data) setOpen({
-          id: data.id, kind: "lead", code: data.quotation_id,
-          name: data.party_name, phone: data.party_phone, place: data.party_place,
-          preview: (data.notes ?? "").replace(/^Website enquiry — .*?\n+/, ""),
+          id: data.id, kind: "lead", code: data.lead_code,
+          name: data.customer_name, phone: data.customer_phone, place: data.customer_place,
+          preview: data.requirement ?? "",
           enquiry_type: data.enquiry_type, created_at: data.created_at, raw: data,
         });
       } else if (k === "complaint") {
@@ -401,9 +401,10 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
 
   const markLeadContacted = async () => {
     setBusy(true);
-    const { error } = await supabase
-      .from("quotations")
-      .update({ enquiry_contacted_at: new Date().toISOString() })
+    const now = new Date().toISOString();
+    const { error } = await (supabase as any)
+      .from("sales_leads")
+      .update({ status: "contacted", contacted_at: now, updated_at: now })
       .eq("id", row.id);
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -411,32 +412,22 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     onChanged();
   };
 
-  // Lead enquiries already live in the quotations table as pipeline stage 1.
-  // "Continue to Quotation" must mature that same row, never copy it.
-  // Only workflow metadata is changed here; customer/source/notes/items stay linked
-  // through quotations.id -> quotation_items.quotation_id.
+  // Leads remain independent until this explicit conversion.
+  // The RPC creates exactly one quotation and links it back to the lead.
   const continueToQuotation = async () => {
     if (row.kind !== "lead") return;
     setBusy(true);
-
-    // One atomic, idempotent DB operation:
-    // - never inserts a quotation/customer/item
-    // - sets first-contact time once
-    // - advances lead -> quote_preparation only
-    // - never moves a later commercial stage backwards
     const { data, error } = await (supabase as any).rpc(
-      "advance_enquiry_to_quotation",
-      { p_quotation_id: row.id },
+      "convert_sales_lead_to_quotation",
+      { p_lead_id: row.id },
     );
-
     setBusy(false);
     if (error || !data?.ok) {
-      toast.error(data?.error || error?.message || "Could not continue to quotation");
+      toast.error(data?.error || error?.message || "Could not convert lead to quotation");
       return;
     }
-
     onClose();
-    navigate(`/admin/quotations/${row.id}`);
+    navigate(`/admin/quotations/${data.quotation_id}`);
   };
 
   const assignToMeasurement = async () => {
@@ -603,7 +594,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-primary">Connected sales flow</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  This enquiry is already the Stage 1 quotation record. Continue with the same customer and items — no duplicate record is created.
+                  This is a separate lead. A quotation is created only when you convert it; customer details and requirement are carried forward automatically.
                 </p>
                 <Button onClick={continueToQuotation} disabled={busy} className="mt-3 w-full">
                   <FileText className="mr-2 h-4 w-4" /> Continue to Quotation
