@@ -120,11 +120,14 @@ const AdminOverview = () => {
       const followups = (followRes.data ?? []) as any[];
       const stockMoves = (stockMoveRes.data ?? []) as any[];
 
-      const openLeads = qs.filter(q => q.lead_type === "lead" && !["rejected","delivered"].includes(q.status));
+      const leadRows = qs.filter(q => q.lead_type === "lead");
+      const openLeads = leadRows.filter(q => Number(q.pipeline_stage ?? 1) <= 1 && !["rejected","delivered"].includes(q.status));
+      const convertedLeads = leadRows.filter(q => Number(q.pipeline_stage ?? 1) >= 2 && q.status !== "rejected");
+      const cancelledLeads = leadRows.filter(q => q.status === "rejected");
       const leadIds = new Set(openLeads.map(q => q.id));
       const demandItems = items.filter(i => leadIds.has(i.quotation_id));
       const followDue = followups.filter(f => f.status !== "completed" && day(f.scheduled_for) <= today).length;
-      const quoteRows = qs.filter(q => q.status === "drafted" && q.lead_type !== "lead");
+      const quoteRows = qs.filter(q => Number(q.pipeline_stage ?? 1) >= 2 && Number(q.pipeline_stage ?? 1) < 3 && !["rejected","delivered"].includes(q.status));
       const confirmed = qs.filter(q => q.commercial_status === "confirmed").length;
       const orders = qs.filter(q => (q.commercial_status === "confirmed" || q.status === "finalized" || Number(q.pipeline_stage ?? 0) >= 3) && !["rejected","delivered"].includes(q.status));
       const deliveryPendingRows = orders.filter(q => !!q.expected_delivery_date);
