@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/brand";
@@ -58,6 +60,8 @@ export default function AdminSalesmanReport() {
   const [selectedSalesman, setSelectedSalesman] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState<"all" | "month">("all");
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -96,6 +100,38 @@ export default function AdminSalesmanReport() {
     })();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("list-staff-users");
+      if (cancelled || error) return;
+      const users = (data?.users ?? []) as Array<{ display_name?: string | null; email?: string | null; role?: string | null }>;
+      const names = users
+        .filter((u) => u.role && u.role !== "delivery")
+        .map((u) => (u.display_name || u.email || "").trim())
+        .filter(Boolean);
+      setStaffOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const assignSalesman = async (quotationId: string, name: string) => {
+    if (!name) return;
+    setAssigningId(quotationId);
+    const { error } = await supabase
+      .from("quotations")
+      .update({ salesperson_name: name, updated_at: new Date().toISOString() })
+      .eq("id", quotationId);
+    if (error) {
+      toast({ title: "Salesman assign failed", description: error.message, variant: "destructive" });
+      setAssigningId(null);
+      return;
+    }
+    setQuotations((prev) => prev.map((q) => q.id === quotationId ? { ...q, salesperson_name: name } : q));
+    toast({ title: "Salesman assigned", description: name });
+    setAssigningId(null);
+  };
 
   const monthPrefix = useMemo(() => {
     const n = new Date();
@@ -259,7 +295,18 @@ export default function AdminSalesmanReport() {
                                 <div className="rounded-lg border bg-emerald-50/50 p-2 dark:bg-emerald-950/20"><div className="text-[10px] text-muted-foreground">Received</div><div className="font-semibold">{formatINR(pay.received)}</div></div>
                                 <div className="rounded-lg border bg-red-50/50 p-2 dark:bg-red-950/20"><div className="text-[10px] text-muted-foreground">Pending</div><div className="font-semibold">{formatINR(pay.pending)}</div></div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex flex-col gap-2 sm:flex-row">
+                                {selected.name === "Unassigned" && (
+                                  <div className="min-w-[210px]">
+                                    <SearchableSelect
+                                      value=""
+                                      onChange={(v) => assignSalesman(q.id, v)}
+                                      options={staffOptions.map((s) => ({ value: s, label: s }))}
+                                      placeholder={assigningId === q.id ? "Assigning…" : "Assign salesman…"}
+                                      emptyText="No staff found"
+                                    />
+                                  </div>
+                                )}
                                 <Button asChild size="sm" variant="outline"><Link to={`/admin/quotations/${q.id}/preview`}>Preview</Link></Button>
                                 <Button asChild size="sm"><Link to={`/admin/quotations/${q.id}`}>Open</Link></Button>
                               </div>
