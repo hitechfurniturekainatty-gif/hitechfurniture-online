@@ -123,6 +123,7 @@ export const EnquiryForm = () => {
 
   // success metadata
   const [resultCode, setResultCode] = useState<string | null>(null);
+  const [leadSource, setLeadSource] = useState<"website" | "manual">("website");
 
   const reset = () => {
     setStep(1);
@@ -138,6 +139,7 @@ export const EnquiryForm = () => {
     setWorkNeeded("");
     setSuggestedAmount("");
     setResultCode(null);
+    setLeadSource("website");
   };
 
   // Opener registration. Pre-fill product-related enquiries as New Purchase
@@ -147,6 +149,7 @@ export const EnquiryForm = () => {
     registerEnquiryOpener((opts: EnquiryOpenOpts = {}) => {
       reset();
       setOpen(true);
+      setLeadSource(opts.source ?? "website");
       const prefName =
         opts.catalogProducts?.[0]?.productName || opts.productName;
       if (prefName) {
@@ -240,6 +243,7 @@ export const EnquiryForm = () => {
           photoBase64: photo?.base64 ?? null,
           photoName: photo?.name ?? null,
           suggestedAmount: (parsedAmount && !isNaN(parsedAmount)) ? parsedAmount : null,
+          source: leadSource,
         },
       });
       if (error) {
