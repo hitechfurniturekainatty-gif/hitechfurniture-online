@@ -18,6 +18,7 @@ type DeliveryRow = {
   status: string | null;
   commercial_status: string | null;
   document_type: string | null;
+  pipeline_stage: number | null;
   total: number | null;
 };
 
@@ -58,7 +59,7 @@ export default function AdminDeliveryPlanner() {
       const [qRes, tripRes] = await Promise.all([
         supabase
           .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, commercial_status, document_type, total")
+          .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, commercial_status, document_type, pipeline_stage, total")
           .is("deleted_at", null),
         supabase
           .from("trip_quotations")
@@ -74,7 +75,8 @@ export default function AdminDeliveryPlanner() {
 
       const clean = ((qRes.data ?? []) as DeliveryRow[])
         .filter((r) => (r.document_type ?? "quotation") !== "po")
-        .filter((r) => !isCancelled(r));
+        .filter((r) => !isCancelled(r))
+        .filter((r) => r.commercial_status === "confirmed" || r.status === "finalized" || Number(r.pipeline_stage ?? 0) >= 3);
 
       setRows(clean);
       setDeliveredIds(delivered);
