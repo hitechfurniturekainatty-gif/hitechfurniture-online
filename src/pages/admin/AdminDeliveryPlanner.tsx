@@ -59,8 +59,7 @@ export default function AdminDeliveryPlanner() {
         supabase
           .from("quotations")
           .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, commercial_status, document_type, total")
-          .is("deleted_at", null)
-          .not("expected_delivery_date", "is", null),
+          .is("deleted_at", null),
         supabase
           .from("trip_quotations")
           .select("quotation_id, delivered_at, trips:trip_id(status)")
@@ -75,7 +74,6 @@ export default function AdminDeliveryPlanner() {
 
       const clean = ((qRes.data ?? []) as DeliveryRow[])
         .filter((r) => (r.document_type ?? "quotation") !== "po")
-        .filter((r) => !!r.expected_delivery_date)
         .filter((r) => !isCancelled(r));
 
       setRows(clean);
@@ -87,18 +85,20 @@ export default function AdminDeliveryPlanner() {
   }, []);
 
   const pendingRows = useMemo(() => rows.filter((r) => !deliveredIds.has(r.id)), [rows, deliveredIds]);
-  const overdueRows = useMemo(() => pendingRows.filter((r) => (r.expected_delivery_date ?? "") < todayKey), [pendingRows, todayKey]);
-  const todayRows = useMemo(() => pendingRows.filter((r) => r.expected_delivery_date === todayKey), [pendingRows, todayKey]);
-  const upcomingRows = useMemo(() => pendingRows.filter((r) => (r.expected_delivery_date ?? "") > todayKey), [pendingRows, todayKey]);
+  const undatedRows = useMemo(() => pendingRows.filter((r) => !r.expected_delivery_date), [pendingRows]);
+  const datedPendingRows = useMemo(() => pendingRows.filter((r) => !!r.expected_delivery_date), [pendingRows]);
+  const overdueRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date! < todayKey), [datedPendingRows, todayKey]);
+  const todayRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date === todayKey), [datedPendingRows, todayKey]);
+  const upcomingRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date! > todayKey), [datedPendingRows, todayKey]);
 
   const pendingByDate = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const r of pendingRows) {
+    for (const r of datedPendingRows) {
       const k = r.expected_delivery_date!;
       map[k] = (map[k] ?? 0) + 1;
     }
     return map;
-  }, [pendingRows]);
+  }, [datedPendingRows]);
 
   const selectedRows = useMemo(() =>
     rows
@@ -134,7 +134,7 @@ export default function AdminDeliveryPlanner() {
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border-amber-300 bg-amber-50/70 dark:bg-amber-950/20">
             <CardContent className="p-4">
               <div className="flex items-center justify-between"><span className="text-sm font-medium">Today</span><Clock3 className="h-5 w-5 text-amber-600" /></div>
@@ -156,7 +156,39 @@ export default function AdminDeliveryPlanner() {
               <div className="text-xs text-muted-foreground">future pending deliveries</div>
             </CardContent>
           </Card>
+          <Card className="border-slate-300 bg-slate-50/70 dark:bg-slate-900/30">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between"><span className="text-sm font-medium">Date not set</span><AlertTriangle className="h-5 w-5 text-slate-600" /></div>
+              <div className="mt-2 text-3xl font-bold">{undatedRows.length}</div>
+              <div className="text-xs text-muted-foreground">quotations needing a delivery date</div>
+            </CardContent>
+          </Card>
         </div>
+
+        {undatedRows.length > 0 && (
+          <Card className="border-slate-300">
+            <CardContent className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold">Delivery date not set</h2>
+                  <p className="text-xs text-muted-foreground">Set a delivery date so these quotations appear on the calendar.</p>
+                </div>
+                <Badge variant="outline">{undatedRows.length}</Badge>
+              </div>
+              <div className="grid gap-2">
+                {undatedRows.slice(0, 8).map((r) => (
+                  <Link key={r.id} to={`/admin/quotations/${r.id}`} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3 hover:bg-muted/50">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xs font-bold">{r.quotation_id}</div>
+                      <div className="truncate font-medium">{r.party_name} · {r.party_place}</div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {overdueRows.length > 0 && (
           <Card className="border-red-300">
