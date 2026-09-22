@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Input } from "@/components/ui/input";
-import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck } from "lucide-react";
+import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -45,6 +45,8 @@ const InboxPage = () => {
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [health, setHealth] = useState<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -58,8 +60,22 @@ const InboxPage = () => {
     setLoading(false);
   };
 
+  const loadHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-reply-health", { body: {} });
+      if (error) throw error;
+      setHealth(data ?? null);
+    } catch (e) {
+      setHealth({ ok: false, connected: false, error: e instanceof Error ? e.message : "Diagnostics unavailable" });
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadHealth();
   }, []);
 
   // Realtime: new messages append live without a full reload.
@@ -149,7 +165,11 @@ const InboxPage = () => {
           prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message as Message],
         );
       }
-      toast({ title: "WhatsApp reply sent" });
+      toast({
+        title: "WhatsApp reply sent",
+        description: data.gateway ? `Sent via ${data.gateway === "n8n" ? "n8n" : "WhatsApp Cloud API"}` : undefined,
+      });
+      void loadHealth();
     } catch (e) {
       toast({
         title: "Reply not sent",
@@ -163,13 +183,49 @@ const InboxPage = () => {
 
   return (
     <AdminShell>
-      <div className="mb-5 flex flex-col gap-1">
-        <h1 className="font-display text-2xl flex items-center gap-2">
-          <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Inbox
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Customer conversations from WhatsApp — office staff can reply directly from here.
-        </p>
+      <div className="mb-5 space-y-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-2xl flex items-center gap-2">
+            <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Inbox
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Customer conversations from WhatsApp — office staff can reply directly from here.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs">
+          {healthLoading ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Checking WhatsApp send connection…</>
+          ) : health?.connected ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span className="font-medium text-foreground">Send connection ready</span>
+              <span className="text-muted-foreground">
+                {health?.gateways?.n8n ? "n8n" : ""}
+                {health?.gateways?.n8n && health?.gateways?.cloud_api ? " + " : ""}
+                {health?.gateways?.cloud_api ? "Cloud API fallback" : ""}
+              </span>
+              {health?.last_failure && (
+                <span className="ml-1 text-amber-700">
+                  Last failure: {health.last_failure.gateway} · {health.last_failure.error_message || "send failed"}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <span className="font-medium text-destructive">WhatsApp sending not connected</span>
+              <span className="text-muted-foreground">Configure n8n webhook or WhatsApp Cloud API server secrets.</span>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => void loadHealth()}
+            className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-primary hover:bg-muted"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Recheck
+          </button>
+        </div>
       </div>
 
       {loading ? (
