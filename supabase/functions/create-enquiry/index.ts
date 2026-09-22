@@ -1,6 +1,6 @@
 // Public 3-step enquiry router. Routes by `type` to the right table.
 // - new_purchase / custom_design / delivery_installation / general_inquiry
-//     → quotations (lead) with `enquiry_type` set
+//     → sales_leads (pre-quotation funnel)
 // - complaint_replacement → customer_complaints
 // - service_repair        → customer_services
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -110,65 +110,34 @@ Deno.serve(async (req) => {
       return ok({ ok: true, type, code });
     }
 
-    // ── Lead-style: quotations ───────────────────────────────────────────────
+    // ── Lead-style: keep separate until staff explicitly converts ───────────
     if (!LEAD_TYPES.includes(type)) {
       return bad("Unknown enquiry type");
     }
 
-    const { data: qid, error: idErr } = await supabase.rpc("next_quotation_id", {
-      _party: name,
-      _place: place,
-    });
-    if (idErr) throw idErr;
+    const { data: leadCode, error: codeErr } = await supabase.rpc("next_lead_code");
+    if (codeErr) throw codeErr;
 
-    const labelMap: Record<string, string> = {
-      new_purchase: "New Purchase",
-      custom_design: "Custom Design",
-      delivery_installation: "Delivery & Installation",
-      general_inquiry: "General Inquiry",
-    };
-    const notes = `Website enquiry — ${labelMap[type]}\n\n${message || "(no message)"}`;
-
-    const { data: qRow, error: qErr } = await supabase
-      .from("quotations")
-      .insert({
-        quotation_id: qid,
-        party_name: name,
-        party_place: place,
-        party_phone: phone,
-        notes,
-        salesperson_name: "Website Enquiry",
-        lead_type: "lead",
-        enquiry_type: type,
-        status: "drafted",
-        pipeline_stage: 1,
-      })
-      .select("id")
-      .single();
-    if (qErr) throw qErr;
-
-    // Capture customer's item description + reference photo item-wise,
-    // so staff see it as a proper line item, not buried in notes.
-    if (message || photoBase64) {
-      let itemImageUrl: string | null = null;
-      if (photoBase64) {
-        itemImageUrl = await uploadPhoto(supabase, photoBase64, photoName, "leads");
-      }
-      const unitPrice = suggestedAmount ?? 0;
-      const { error: itemErr } = await supabase.from("quotation_items").insert({
-        quotation_id: qRow.id,
-        display_order: 1,
-        description: message || "(no description provided)",
-        item_image_url: itemImageUrl,
-        quantity: 1,
-        unit_price: unitPrice,
-        amount: unitPrice,
-        fulfillment_route: "custom",
-      });
-      if (itemErr) console.error("quotation_items insert failed", itemErr);
+    let itemImageUrl: string | null = null;
+    if (photoBase64) {
+      itemImageUrl = await uploadPhoto(supabase, photoBase64, photoName, "leads");
     }
 
-    return ok({ ok: true, type, code: qid });
+    const { error: leadErr } = await supabase.from("sales_leads").insert({
+      lead_code: leadCode,
+      customer_name: name,
+      customer_phone: phone,
+      customer_place: place,
+      requirement: message || null,
+      enquiry_type: type,
+      source: body.source === "manual" ? "manual" : "website",
+      status: "pending",
+      item_image_url: itemImageUrl,
+      suggested_amount: suggestedAmount ?? 0,
+    });
+    if (leadErr) throw leadErr;
+
+    return ok({ ok: true, type, code: leadCode });
   } catch (e) {
     console.error("create-enquiry error", e);
     return new Response(
