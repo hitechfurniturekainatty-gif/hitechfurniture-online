@@ -1,5 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
 const state=vi.hoisted(()=>({production:0,delivery:0}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({isAdmin:true,isOfficeStaff:true,isWarehouse:false,isDelivery:false,isMeasurementStaff:false,user:{id:'a'},loading:false})}));
 vi.mock('@/components/admin/AdminShell',()=>({AdminShell:({children}:any)=>children}));
@@ -10,7 +11,7 @@ vi.mock('./AdminProductionAnalyticsDashboard',async()=>{const React=await import
 vi.mock('./AdminDeliveryAnalyticsDashboard',async()=>{const React=await import('react');return {default:()=>{React.useEffect(()=>{state.delivery++;},[]);return <p>Delivery loaded data</p>;}};});
 import AdminOverview from './AdminOverview';
 it('loads only selected departments and keeps their data on return',async()=>{
- render(<AdminOverview/>);
+ render(<MemoryRouter><AdminOverview/></MemoryRouter>);
  expect(state.production).toBe(0);expect(state.delivery).toBe(0);
  fireEvent.mouseDown(screen.getByRole('tab',{name:'Production'}),{button:0,ctrlKey:false});
  await screen.findByText('Production loaded data');
