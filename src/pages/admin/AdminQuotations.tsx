@@ -517,6 +517,9 @@ const AdminQuotations = () => {
       submitted_for_pricing_at: isDirect ? nowIso : null,
       source_task_id: sourceTaskId,
       salesperson_name: salespersonName,
+      // Anything created from the Quotation screen is already a quotation,
+      // never a pre-quotation lead. Leads live only in sales_leads.
+      commercial_status: isQuotation ? "quote_preparation" : undefined,
       created_by: user?.id ?? null,
     }).select("id").single();
     setCreating(false);
