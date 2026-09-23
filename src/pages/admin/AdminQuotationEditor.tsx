@@ -1660,8 +1660,8 @@ const AdminQuotationEditor = () => {
 
   const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
-      <div className="mb-5 flex flex-col gap-3 rounded-xl border-2 border-primary/20 bg-primary/[0.035] p-3 shadow-sm sm:p-4">
-        <div className="flex flex-wrap items-start gap-2 sm:items-center">
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.055] to-background p-3 shadow-sm sm:p-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
             <Link to="/admin/quotations" aria-label="Back to quotations">
               <ArrowLeft className="h-4 w-4 sm:mr-1" />
@@ -1670,7 +1670,7 @@ const AdminQuotationEditor = () => {
           </Button>
           <div className="min-w-0 flex-1">
             <p className="mb-1 inline-flex w-fit rounded-md bg-primary px-2.5 py-1 font-mono text-xs font-bold text-primary-foreground shadow-sm">{q.quotation_id}</p>
-            <h1 className="font-display text-lg leading-tight sm:text-2xl truncate">
+            <h1 className="truncate font-display text-lg font-semibold leading-tight sm:text-xl">
               {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
             {(() => {
@@ -1713,7 +1713,7 @@ const AdminQuotationEditor = () => {
 
         <QuotationFlowLinks quotationId={q.id} />
 
-        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+        <div className="hidden flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/80 p-2 shadow-sm sm:flex">
           {canBypass && (
             <Select onValueChange={pushToSelectValueChange}>
               <SelectTrigger className="h-8 w-auto min-w-[130px] shrink-0"><SelectValue placeholder="Push to…" /></SelectTrigger>
@@ -1780,9 +1780,9 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      <div className="mb-6 rounded-2xl border-2 border-primary/45 bg-primary/[0.018] p-3 shadow-md sm:p-4">
-      <Card className="mb-4 border border-primary/25 bg-primary/[0.018] shadow-none">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+      <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/[0.012] p-2.5 shadow-sm sm:p-3">
+      <Card className="mb-3 overflow-hidden rounded-xl border border-primary/20 bg-background shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b border-border/50 bg-muted/20 px-4 py-3">
           <CardTitle className="text-base flex items-center gap-2">
             {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
             {po ? "Purchase Order Details" : "Party & Quotation Details"}
@@ -1800,7 +1800,7 @@ const AdminQuotationEditor = () => {
           />
         </CardHeader>
         <CardContent
-          className="grid gap-3 sm:grid-cols-2 md:grid-cols-3"
+          className="grid gap-x-4 gap-y-3 p-4 sm:grid-cols-2 md:grid-cols-3"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
         >
           <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} onBlur={(e) => updateHeader({ party_name: toTitleCase(e.target.value) })} /></div>
