@@ -85,7 +85,7 @@ INSERT INTO public.sales_leads(
 )
 SELECT
   'LEG-' || q.quotation_id,q.party_name,q.party_phone,q.party_place,q.notes,q.enquiry_type,
-  CASE WHEN q.salesperson_name='Website Enquiry' THEN 'website' ELSE 'manual' END,
+  'website',
   CASE WHEN q.status='rejected' THEN 'lost'
        WHEN COALESCE(q.pipeline_stage,1)>=2 THEN 'converted'
        WHEN q.enquiry_contacted_at IS NOT NULL THEN 'contacted'
@@ -96,6 +96,7 @@ SELECT
   q.created_by,q.created_at
 FROM public.quotations q
 WHERE q.lead_type='lead'
+  AND (q.salesperson_name='Website Enquiry' OR (q.enquiry_type IS NOT NULL AND q.created_by IS NULL))
   AND NOT EXISTS (SELECT 1 FROM public.sales_leads l WHERE l.lead_code='LEG-' || q.quotation_id);
 
 COMMENT ON TABLE public.sales_leads IS 'Pre-quotation sales funnel. Only explicit conversion creates an operational quotation.';
