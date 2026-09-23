@@ -832,18 +832,53 @@ const AdminQuotations = () => {
               ) : (
                 <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
               )}
-              <div className={`grid gap-2 sm:flex sm:items-center ${(isAdmin || isOfficeStaff) ? "grid-cols-3" : "grid-cols-2"}`}>
-                <Button size="sm" variant="outline" asChild className="h-10 w-full font-semibold sm:w-auto">
+
+              {/* Mobile: keep actions airy and readable. The long primary action gets
+                  its own row; secondary actions sit below without text collisions. */}
+              <div className="grid grid-cols-2 gap-2 sm:hidden">
+                <Button size="sm" asChild className="col-span-2 h-11 w-full rounded-xl font-semibold shadow-sm">
+                  <Link to={`/admin/quotations/${q.id}`}>
+                    Open Quotation
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild className="h-10 w-full rounded-xl font-semibold">
                   <Link to={`/admin/quotations/${q.id}/preview`}>
                     <Eye className="mr-2 h-4 w-4" />
                     Preview
                   </Link>
                 </Button>
-                <Button size="sm" asChild className="h-11 w-full px-5 font-semibold shadow-sm sm:w-auto">
-                  <Link to={`/admin/quotations/${q.id}`}>Open Quotation <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                {(isAdmin || isOfficeStaff) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-10 w-full rounded-xl font-semibold text-destructive hover:text-destructive"
+                    onClick={() => remove(q)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                ) : (
+                  <div aria-hidden="true" />
+                )}
+              </div>
+
+              {/* Tablet / desktop: retain the compact inline action row. */}
+              <div className="hidden items-center gap-2 sm:flex">
+                <Button size="sm" variant="outline" asChild className="h-10 font-semibold">
+                  <Link to={`/admin/quotations/${q.id}/preview`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
+                  </Link>
+                </Button>
+                <Button size="sm" asChild className="h-11 px-5 font-semibold shadow-sm">
+                  <Link to={`/admin/quotations/${q.id}`}>
+                    Open Quotation
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Link>
                 </Button>
                 {(isAdmin || isOfficeStaff) && (
-                  <Button size="sm" variant="outline" className="h-10 w-full sm:w-auto" onClick={() => remove(q)}>
+                  <Button size="sm" variant="outline" className="h-10" onClick={() => remove(q)}>
                     <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                     Delete
                   </Button>
