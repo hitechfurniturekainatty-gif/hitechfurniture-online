@@ -27,7 +27,10 @@ export function BenefitReceiptEditor({ receipts, onChange, rules: localRules = [
   const benefit = receiptBenefit(draft);
   const numeric = (field: keyof BenefitReceipt, label: string) => <div><Label className="text-xs">{label}</Label><Input aria-label={label} type="number" min={0} step="any" value={Number(draft[field]) || ''} onChange={e => patch({[field]: Math.max(0, Number(e.target.value) || 0)})} placeholder="0" /></div>;
   const save = () => {
+    if (!draft.date || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) return setError('Received date is required.');
+    if (!draft.reference?.trim()) return setError('Bill / credit note / reference number is required.');
     if (free && (!draft.item?.trim() || !(Number(draft.qty)>0))) return setError('Enter the received product and quantity.');
+    if (free && !draft.included_in_invoice && !(Number(draft.unit_value)>0)) return setError('Enter the benefit value per free unit, or mark it as already included in the invoice.');
     if (!free && !(Number(draft.amount)>0)) return setError('Enter the credit / benefit amount.');
     const units = free ? Number(draft.qty) || 0 : credit ? Number(draft.replaces_free_qty) || 0 : 0;
     if (units && !Number.isInteger(units)) return setError('Enter a whole number of scheme items.');
@@ -35,7 +38,7 @@ export function BenefitReceiptEditor({ receipts, onChange, rules: localRules = [
     const selected = rules.find(r => r.key === draft.scheme_rule_key);
     if (selected && units > Math.max(0, selected.eligible - settledForRule(selected, rules, matchingReceipts.filter(r => r.id !== draft.id)))) return setError('This quantity exceeds the remaining eligible benefit for the selected scheme.');
     const ref = draft.reference?.trim().toLowerCase();
-    if (ref && receipts.some(r => r.id !== draft.id && r.kind === draft.kind && r.reference?.trim().toLowerCase() === ref && (r.scheme_rule_key || '') === (draft.scheme_rule_key || ''))) return setError('This reference is already recorded for this scheme. Edit the existing receipt instead.');
+    if (ref && matchingReceipts.some(r => r.id !== draft.id && r.kind === draft.kind && r.reference?.trim().toLowerCase() === ref && (r.scheme_rule_key || '') === (draft.scheme_rule_key || ''))) return setError('This reference is already recorded for this scheme. Edit the existing receipt instead.');
     const saved = {...draft,scheme_period:source};
     onChange(editing ? receipts.map(r => r.id === draft.id ? saved : r) : [...receipts,saved]);
     setDraft({...blank(),benefit_month:defaultMonth}); setEditing(false); setError('');
