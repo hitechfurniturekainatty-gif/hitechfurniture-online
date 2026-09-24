@@ -18,6 +18,7 @@ import { PartiesTab } from "@/components/scheme-calculator/PartiesTab";
 import { SchemesTab } from "@/components/scheme-calculator/SchemesTab";
 import { summarizePeriodBenefit, SchemeBenefitAnalysis } from "@/components/scheme-calculator/BenefitTracker";
 import { Stat } from "@/components/scheme-calculator/Stat";
+import { SchemeReconciliation } from "@/components/scheme-calculator/SchemeReconciliation";
 import { FY_MONTHS, hasSchemeRule, aggregateRowsByItem, computeAchievementPct, computeFreeReport, currentFy, fmt } from "@/components/scheme-calculator/utils";
 import type { Invoice, Party, Row, SchemeRow, TimelineMode, VendorMonth } from "@/components/scheme-calculator/types";
 
@@ -158,6 +159,7 @@ const AdminSchemeCalculator = () => {
         {!vendor ? <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center"><TrendingUp className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="text-sm text-muted-foreground">Pick a vendor to open the scheme dashboard.</p></div> : loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div> : <>
           {periodLoading&&<p className="text-sm text-muted-foreground">Loading schemes…</p>}
           {periodError&&<p role="alert" className="text-sm text-destructive">Could not load all schemes. Reload before using totals.</p>}
+          <SchemeReconciliation months={allSchemeMonths} records={periodRecords} fy={fy} />
           {mode === "monthly" ? <div className="space-y-4">{months.map((m) => <MonthBlock schemePeriods={periodRecords} schemeMonths={allSchemeMonths} invoiceReceipts={linkedReceipts.filter(r=>r.benefit_month===monthKey(m))} additionalReceipts={periodReceiptsForMonths(periodRecords,fy,[m.month])} key={m.month} vm={m} fy={fy} savedSchemes={savedSchemes} onChange={(patch) => updateMonth(m.month, patch)} onSave={(next) => persistMonth(next || m)} />)}</div> : <AggregatedView schemeMonths={allSchemeMonths} schemePeriods={periodRecords} onPeriodRecordChange={updatePeriodRecord} periodRecords={periodRecords.filter(p=>p.fy_year===fy)} mode={mode} fy={fy} months={months} savedSchemes={savedSchemes} onChangeMonth={updateMonth} onSaveMonth={persistMonth} />}
           {!periodLoading&&!periodError&&<details className="rounded-2xl border bg-card p-4"><summary className="cursor-pointer font-semibold">Reports / റിപ്പോർട്ടുകൾ</summary><div className="mt-4 space-y-4"><SchemePeriodAnalysis months={allSchemeMonths} records={periodRecords} fy={fy} mode={mode}/><InvoiceRewardReport months={allSchemeMonths} records={periodRecords}/><details className="rounded-xl border p-3"><summary className="cursor-pointer text-sm">Received-period totals / ലഭിച്ച കാലയളവ്</summary><SchemeBenefitAnalysis months={months} fy={fy} mode={mode} periodRecords={periodRecords.filter(p=>p.fy_year===fy)}/></details></div></details>}
         </>}
