@@ -222,7 +222,7 @@ const AdminProducts = () => {
     void Promise.all([
       supabase.from("main_categories").select("id, name, image_url, display_order").order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name, image_url, display_order").order("display_order"),
-      supabase.from("product_locations").select("id, name, display_order").order("display_order"),
+      supabase.from("product_locations").select("id, building, floor, section, part, display_order, is_active").eq("is_active", true).order("display_order"),
     ]).then(([main, sub, loc]) => {
       setMainCats((main.data ?? []) as MainCat[]);
       setSubCats((sub.data ?? []) as SubCat[]);
@@ -369,11 +369,12 @@ const AdminProducts = () => {
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
-  // Derive Building / Floor / Section from the selected location_id (or stored strings)
+  // Derive the physical location from location_id. The current shop setup is
+  // Building/Godown → Floor → Part. Older rows used `section` for Part A/B,
+  // so keep a fallback for those records while treating `part` as canonical.
   const selectedLocation = locations.find((l) => l.id === form.location_id) || null;
   const formBuilding = selectedLocation?.building ?? form.location_building ?? "";
   const formFloor = selectedLocation?.floor ?? form.location_floor ?? "";
-  const formSection = selectedLocation?.section ?? form.location_section ?? "";
   const buildingOptions = useMemo(
     () => Array.from(new Set(locations.filter((l) => l.is_active).map((l) => l.building))),
     [locations],
@@ -382,32 +383,20 @@ const AdminProducts = () => {
     () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding).map((l) => l.floor))),
     [locations, formBuilding],
   );
-  // Distinct section names for current building+floor
-  const sectionNameOptions = useMemo(
-    () => Array.from(new Set(locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor).map((l) => l.section ?? ""))).filter(Boolean),
-    [locations, formBuilding, formFloor],
-  );
-  // Part options: location rows for chosen building+floor+section
   const partOptions = useMemo(
-    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor && (l.section ?? "") === formSection),
-    [locations, formBuilding, formFloor, formSection],
+    () => locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor),
+    [locations, formBuilding, formFloor],
   );
 
   const pickBuilding = (b: string) => {
     setForm({ ...form, location_building: b, location_floor: "", location_id: "", location_section: "" });
   };
   const pickFloor = (b: string, f: string) => {
-    setForm({ ...form, location_building: b, location_floor: f, location_id: "", location_section: "" });
+    const rows = locations.filter((l) => l.is_active && l.building === b && l.floor === f);
+    // Auto-select when a floor has only one physical location row.
+    setForm({ ...form, location_building: b, location_floor: f, location_id: rows.length === 1 ? rows[0].id : "", location_section: "" });
   };
-  const pickSection = (sectionName: string) => {
-    // Store section name; auto-pick location_id if there's exactly one part row
-    const rows = locations.filter((l) => l.is_active && l.building === formBuilding && l.floor === formFloor && (l.section ?? "") === sectionName);
-    const autoId = rows.length === 1 ? rows[0].id : "";
-    setForm({ ...form, location_section: sectionName, location_id: autoId });
-  };
-  const pickPart = (id: string) => {
-    setForm({ ...form, location_id: id });
-  };
+  const pickPart = (id: string) => setForm({ ...form, location_id: id });
 
   const [newSection, setNewSection] = useState("");
   const [addingSection, setAddingSection] = useState(false);
@@ -422,8 +411,8 @@ const AdminProducts = () => {
       .insert({
         building: formBuilding,
         floor: formFloor,
-        section: formSection || name,
-        part: formSection ? name : null,
+        section: null,
+        part: name,
         display_order: (locations[locations.length - 1]?.display_order ?? 0) + 10,
       })
       .select("*")
@@ -432,7 +421,7 @@ const AdminProducts = () => {
     if (error || !data) return toast({ title: "Failed", description: error?.message, variant: "destructive" });
     setNewSection("");
     await loadLocations();
-    setForm((f) => ({ ...f, location_id: (data as unknown as Location).id, location_section: (data as unknown as Location).section ?? "" }));
+    setForm((f) => ({ ...f, location_id: (data as unknown as Location).id, location_section: "" }));
     toast({ title: "Part added" });
   };
 
@@ -1665,25 +1654,19 @@ const AdminProducts = () => {
                 disabled={!formBuilding}
               />
             </Field>
-            <Field label="Section">
-              <SearchableSelect
-                value={formSection || ""}
-                onChange={(v) => v && pickSection(v)}
-                options={sectionNameOptions.map((s) => ({ value: s, label: s }))}
-                placeholder={formFloor ? "Choose section…" : "Pick a floor first"}
-                disabled={!formFloor}
-              />
-            </Field>
             <Field label="Part" wide>
               <div className="space-y-2">
                 <SearchableSelect
                   value={form.location_id || ""}
                   onChange={(v) => v && pickPart(v)}
-                  options={partOptions.map((l) => ({ value: l.id, label: l.part ? l.part : `(no part · ${l.section ?? l.floor})` }))}
-                  placeholder={formSection ? "Choose part…" : "Pick a section first"}
-                  disabled={!formSection}
+                  options={partOptions.map((l) => ({
+                    value: l.id,
+                    label: l.part || l.section || "General / no part",
+                  }))}
+                  placeholder={formFloor ? "Choose Part A / Part B…" : "Pick a floor first"}
+                  disabled={!formFloor}
                 />
-                {formBuilding && formFloor && formSection && (
+                {formBuilding && formFloor && (
                   <div className="flex gap-2">
                     <Input
                       value={newSection}
