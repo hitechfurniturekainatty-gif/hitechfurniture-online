@@ -1,5 +1,5 @@
 import type { VendorMonth } from "./types";
-import type { PeriodBenefitRecord } from "./periodBenefits";
+import { monthRows, type PeriodBenefitRecord } from "./periodBenefits";
 import { allAttributedReceipts, attributedBalances, attributedSummary, refLabel } from "./schemeAttribution";
 import { fmt } from "./utils";
 
@@ -43,9 +43,9 @@ export function SchemeReconciliation({
   const previousFyReceivedValue = previousFyReceived.reduce((s, r) => s + r.net, 0);
 
   const purchaseQty = fyMonths
-    .flatMap((m) => (m.invoices?.length ? m.invoices.flatMap((i) => i.rows) : m.purchase_rows || []))
+    .flatMap((m) => monthRows(m))
     .filter((r) => !r.reward)
-    .reduce((s, r) => s + Math.max(0, Number(r.qty) || 0), 0);
+    .reduce((s, r) => s + (Number(r.qty) || 0), 0);
 
   const rows = balances
     .slice()
@@ -116,7 +116,6 @@ export function SchemeReconciliation({
                   const achieved = Number(b.eligible) || 0;
                   const received = Number(b.received) || 0;
                   const pending = Number(b.pending) || 0;
-                  const unit = b.unit === "₹" ? "₹" : "pcs";
                   const format = (v: number) => b.unit === "₹" ? money(v) : `${v} pcs`;
                   const status = achieved <= 0
                     ? (target > 0 && purchased < target ? "Not achieved" : "No benefit yet")
