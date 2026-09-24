@@ -20,6 +20,7 @@ export const ImageUploader = ({
 }) => {
   const [urlInput, setUrlInput] = useState("");
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ id: string; preview: string }[]>([]);
 
   // Latest refs to avoid stale closures during background uploads.
@@ -122,6 +123,24 @@ export const ImageUploader = ({
           onGenerated={handleAiGenerated}
           existingImageUrls={value.map((v) => v.url)}
         />
+      </div>
+      {/* Always-visible mobile actions: users should not have to discover a tab
+          before they can choose a photo or open the camera. */}
+      <div className="grid grid-cols-2 gap-2 sm:hidden">
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={onCameraCapture}
+        />
+        <Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()}>
+          <Upload className="mr-1.5 h-4 w-4" /> Gallery
+        </Button>
+        <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()}>
+          <Camera className="mr-1.5 h-4 w-4" /> Camera
+        </Button>
       </div>
       <Tabs defaultValue="upload" className="min-w-0 max-w-full">
         <TabsList className="grid w-full min-w-0 grid-cols-3">
