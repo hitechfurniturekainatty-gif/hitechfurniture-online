@@ -1,7 +1,7 @@
 import { SchemeTargetSelect } from "./SchemeTargetSelect";
 import { receiptBenefit } from "./settlements";
 import { SchemePeriodPicker } from "./SchemePeriodPicker";
-import { monthRef, refId, refEndMonth, targetCatalog } from "./schemeAttribution";
+import { monthRef, refId, refEndMonth, targetCatalog, allAttributedReceipts } from "./schemeAttribution";
 import type { PeriodBenefitRecord } from "./periodBenefits";
 import { invoiceRows } from "./periodBenefits";
 import { monthKey, rewardRulesForMonth } from "./invoiceRewards";
@@ -23,9 +23,11 @@ import type { BenefitReceipt, Invoice, Row, VendorMonth } from "./types";
 type VendorItemMrp = { id: string; item_name: string; mrp: number };
 const norm = (v: unknown) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeMonths = [], schemePeriods = [] }: {
+export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeMonths = [], schemePeriods = [], expectedMonth, expectedYear }: {
   schemePeriods?: PeriodBenefitRecord[];
   schemeMonths?: VendorMonth[];
+  expectedMonth?: number;
+  expectedYear?: number;
   open: boolean;
   invoice: Invoice | null;
   partyId: string;
@@ -183,12 +185,21 @@ export function InvoiceDialog({ open, invoice, partyId, onClose, onSave, schemeM
   };
 
   const commit = async () => {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast({ title: "Invoice date is required", variant: "destructive" });
+    if (expectedMonth && expectedYear) {
+      const [year, month] = date.split("-").map(Number);
+      if (year !== expectedYear || month !== expectedMonth) return toast({ title: "Invoice date does not match this month", description: `Expected ${expectedYear}-${String(expectedMonth).padStart(2,"0")}`, variant: "destructive" });
+    }
     if (!rows.length) return toast({ title: "Add at least one item", variant: "destructive" });
     if (invalidRows.length) return toast({ title: "Check invoice items", description: `${invalidRows.length} row${invalidRows.length === 1 ? "" : "s"} need valid item, quantity and amount.`, variant: "destructive" });
     if (!Number.isFinite(footerDiscount) || footerDiscount<0 || footerDiscount>grossCost) return toast({title:"Discount must be between zero and the invoice item total",variant:"destructive"});
     if (rows.some(r=>r.reward&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(r.reward.scheme_month))) return toast({title:"Choose the scheme month for each reward item",variant:"destructive"});
     if(credits.some(c=>Number(c.replaces_free_qty)>0&&(!c.scheme_rule_key||!Number.isInteger(Number(c.replaces_free_qty)))))return toast({title:"Choose the scheme and enter a whole free quantity for replacement credits",variant:"destructive"});
     if(credits.some(c=>!(Number(c.amount)>0)))return toast({title:"Enter the credit note amount or remove the empty entry",variant:"destructive"});
+    if(credits.some(c=>!c.date || !/^\d{4}-\d{2}-\d{2}$/.test(c.date)))return toast({title:"Credit note received date is required",variant:"destructive"});
+    if(credits.some(c=>!c.reference?.trim()))return toast({title:"Credit note reference is required",variant:"destructive"});
+    const existingReceiptRefs = allAttributedReceipts(schemeMonths,schemePeriods);
+    if(credits.some(c=>existingReceiptRefs.some(r=>r.id!==c.id && r.kind===c.kind && r.source && c.scheme_period && refId(r.source)===refId(c.scheme_period) && r.reference?.trim().toLowerCase()===c.reference?.trim().toLowerCase() && (r.scheme_rule_key||"")===(c.scheme_rule_key||"")))) return toast({title:"Duplicate benefit reference",description:"This credit/benefit reference is already recorded for the same scheme.",variant:"destructive"});
     if (saving) return;
     setSaving(true);
     const savedInvoice = { ...invoice, label: label.trim() || invoice.label, invoice_no: invoiceNo.trim(), date, rows, discount_amount:footerDiscount, benefit_receipts:credits };
