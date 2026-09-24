@@ -151,6 +151,8 @@ const AdminProducts = () => {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfStockFilter, setPdfStockFilter] = useState<"all" | "ready" | "none">("all");
+  const [pdfMainCat, setPdfMainCat] = useState<string>("__all__");
+  const [pdfSubCat, setPdfSubCat] = useState<string>("__all__");
   // Track the prices we loaded so we can detect changes on save and log
   // a new effective-dated row in product_price_history via the RPC.
   const [origPrices, setOrigPrices] = useState<{ cost: number | null; mrp: number | null; selling: number | null } | null>(null);
@@ -930,59 +932,49 @@ const AdminProducts = () => {
                 <DropdownMenuRadioItem value="none">No-stock inventory only</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
+              <DropdownMenuLabel>Category</DropdownMenuLabel>
+              <div className="px-2 pb-2" onClick={(e) => e.stopPropagation()}>
+                <SearchableSelect
+                  value={pdfMainCat}
+                  onChange={(v) => { setPdfMainCat(v); setPdfSubCat("__all__"); }}
+                  options={[{ value: "__all__", label: "All categories" }, ...mainCats.map((mc) => ({ value: mc.id, label: toTitleCase(mc.name) }))]}
+                  placeholder="Choose category"
+                />
+              </div>
+              {pdfMainCat !== "__all__" && (
+                <>
+                  <DropdownMenuLabel>Sub-category</DropdownMenuLabel>
+                  <div className="px-2 pb-2" onClick={(e) => e.stopPropagation()}>
+                    <SearchableSelect
+                      value={pdfSubCat}
+                      onChange={setPdfSubCat}
+                      options={[
+                        { value: "__all__", label: `All ${toTitleCase(mainCats.find((mc) => mc.id === pdfMainCat)?.name || "products")}` },
+                        ...subCats.filter((sc) => sc.main_category_id === pdfMainCat).map((sc) => ({ value: sc.id, label: toTitleCase(sc.name) })),
+                      ]}
+                      placeholder="Choose sub-category"
+                    />
+                  </div>
+                </>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuLabel>Download</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => downloadProductsPdf(pdfStockFilter, { type: "all" })}>
-                Entire catalog (all categories)
+              <DropdownMenuItem
+                onClick={() => downloadProductsPdf(
+                  pdfStockFilter,
+                  pdfSubCat !== "__all__"
+                    ? { type: "sub", id: pdfSubCat }
+                    : pdfMainCat !== "__all__"
+                      ? { type: "main", id: pdfMainCat }
+                      : { type: "all" },
+                )}
+              >
+                {pdfSubCat !== "__all__"
+                  ? `Download ${toTitleCase(subCats.find((sc) => sc.id === pdfSubCat)?.name || "sub-category")} PDF`
+                  : pdfMainCat !== "__all__"
+                    ? `Download all ${toTitleCase(mainCats.find((mc) => mc.id === pdfMainCat)?.name || "category")} PDF`
+                    : "Download entire catalog PDF"}
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>By main category…</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="max-h-80 w-64 overflow-y-auto">
-                  {mainCats.length === 0 ? (
-                    <DropdownMenuItem disabled>No categories</DropdownMenuItem>
-                  ) : (
-                    [...mainCats]
-                      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
-                      .map((mc) => (
-                        <DropdownMenuItem
-                          key={mc.id}
-                          onClick={() => downloadProductsPdf(pdfStockFilter, { type: "main", id: mc.id })}
-                        >
-                          {toTitleCase(mc.name)}
-                        </DropdownMenuItem>
-                      ))
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>By sub-category…</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="max-h-80 w-72 overflow-y-auto">
-                  {subCats.length === 0 ? (
-                    <DropdownMenuItem disabled>No sub-categories</DropdownMenuItem>
-                  ) : (
-                    [...mainCats]
-                      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
-                      .flatMap((mc) => {
-                        const subs = subCats
-                          .filter((s) => s.main_category_id === mc.id)
-                          .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
-                        if (subs.length === 0) return [];
-                        return [
-                          <DropdownMenuLabel key={`lbl-${mc.id}`} className="text-xs text-muted-foreground">
-                            {toTitleCase(mc.name)}
-                          </DropdownMenuLabel>,
-                          ...subs.map((sc) => (
-                            <DropdownMenuItem
-                              key={sc.id}
-                              onClick={() => downloadProductsPdf(pdfStockFilter, { type: "sub", id: sc.id })}
-                            >
-                              {toTitleCase(sc.name)}
-                            </DropdownMenuItem>
-                          )),
-                        ];
-                      })
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" onClick={() => setPinDialogOpen(true)} className="gap-1.5">
