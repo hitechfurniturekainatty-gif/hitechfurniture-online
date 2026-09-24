@@ -126,7 +126,7 @@ export function MonthBlock({ vm, fy, savedSchemes, onChange, onSave, additionalR
         <div className="mt-3 space-y-4">{invoices.map((inv, i) => <InvoiceCard key={inv.id} index={i} invoice={inv} savedSchemes={savedSchemes} fallbackScheme={{ kind: vm.scheme_kind, config: vm.scheme_config }} onChange={(p) => updateInvoice(inv.id, p)} onPersist={() => onSave(nextMonthWithInvoices(invoices))} onRemove={() => persistInvoices(invoices.filter((x) => x.id !== inv.id))} onEdit={() => { setDialogInvoice(inv); setDialogOpen(true); }} />)}</div>
       </section>
 
-      <InvoiceDialog schemePeriods={schemePeriods} schemeMonths={schemeMonths} open={dialogOpen} invoice={dialogInvoice} partyId={vm.party_id} onClose={() => setDialogOpen(false)} onSave={async (inv) => {
+      <InvoiceDialog expectedMonth={vm.month} expectedYear={fyCalendarYear(fy, vm.month)} schemePeriods={schemePeriods} schemeMonths={schemeMonths} open={dialogOpen} invoice={dialogInvoice} partyId={vm.party_id} onClose={() => setDialogOpen(false)} onSave={async (inv) => {
         const exists = invoices.some((x) => x.id === inv.id);
         const next = exists ? invoices.map((x) => x.id === inv.id ? inv : x) : [...invoices, inv];
         await persistInvoices(next);
