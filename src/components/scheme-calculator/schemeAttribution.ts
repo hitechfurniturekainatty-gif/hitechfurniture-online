@@ -57,9 +57,20 @@ export function targetCatalog(months:VendorMonth[],records:PeriodBenefitRecord[]
   if(!rules.length && g.kind!=="bogo"){
     if(g.kind==="percent"||g.kind==="cashback"){
       const cost=rows.reduce((s,r)=>s+r.amountWithTax,0);
-      const eligible=g.kind==="percent"?cost*(Number(g.config?.percent)||0)/100:cost>=(Number(g.config?.minAmount)||0)?Number(g.config?.cashback)||0:0;
-      rules=[{key:g.kind+":amount",label:g.kind==="percent"?"Percentage discount":"Cashback target",freeItem:"",eligible:Math.max(0,eligible),unit:"₹"}];
-    }else rules=report.rep.map((r,i)=>({key:g.kind+":"+i,label:r.item,freeItem:(r as any).freeItem||r.item,eligible:Math.max(0,Number(r.free)||0),unit:"pcs",purchased:Number(r.qty)||0}));
+      const target=g.kind==="cashback"?Math.max(0,Number(g.config?.minAmount)||0):0;
+      const eligible=g.kind==="percent"?cost*(Number(g.config?.percent)||0)/100:cost>=target?Number(g.config?.cashback)||0:0;
+      rules=[{key:g.kind+":amount",label:g.kind==="percent"?"Percentage discount":"Cashback target",freeItem:"",eligible:Math.max(0,eligible),unit:"₹",purchased:Math.max(0,cost),target}];
+    }else rules=report.rep.map((r,i)=>{
+      const purchased=Math.max(0,Number(r.qty)||0);
+      let target=0;
+      if(g.kind==="company") target=Math.max(1,Number(g.config?.everyQty)||10);
+      if(g.kind==="slab"){
+        const slabs=(g.config?.slabs||[]).slice().sort((a:any,b:any)=>Number(a.minQty)-Number(b.minQty));
+        const achieved=slabs.filter((s:any)=>purchased>=Number(s.minQty)).at(-1);
+        target=Math.max(0,Number(achieved?.minQty ?? slabs[0]?.minQty)||0);
+      }
+      return {key:g.kind+":"+i,label:r.item,freeItem:(r as any).freeItem||r.item,eligible:Math.max(0,Number(r.free)||0),unit:"pcs",purchased,target};
+    });
   }
   return {...g,rules};
  });
