@@ -1,8 +1,12 @@
+import { useEffect, useState } from "react";
 import type { VendorMonth } from "./types";
 import { monthRows, type PeriodBenefitRecord } from "./periodBenefits";
 import { allAttributedReceipts, attributedBalances, attributedSummary, refLabel } from "./schemeAttribution";
 import { auditSchemeFy } from "./accountingAudit";
 import { fmt } from "./utils";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const FY_MONTHS = [4,5,6,7,8,9,10,11,12,1,2,3];
 
@@ -23,6 +27,9 @@ export function SchemeReconciliation({
   fy: number;
 }) {
   const fyMonths = months.filter((m) => m.fy_year === fy);
+  const partyId = fyMonths[0]?.party_id || months.find((m) => m.party_id)?.party_id || "";
+  const [closure, setClosure] = useState<any>(null);
+  const [closing, setClosing] = useState(false);
   const total = attributedSummary(months, records, fy, FY_MONTHS);
   const balances = attributedBalances(months, records).filter((b) => b.ref.fy === fy);
   const receipts = allAttributedReceipts(months, records);
@@ -61,6 +68,62 @@ export function SchemeReconciliation({
     .slice()
     .sort((a, b) => refLabel(a.ref).localeCompare(refLabel(b.ref)));
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!partyId) { setClosure(null); return; }
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("scheme_fy_closures")
+        .select("*")
+        .eq("party_id", partyId)
+        .eq("fy_year", fy)
+        .maybeSingle();
+      if (!cancelled) {
+        if (error) setClosure(null);
+        else setClosure(data || null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [partyId, fy]);
+
+  const closeFy = async () => {
+    if (!partyId || audit.criticalIssues > 0 || closing) return;
+    setClosing(true);
+    const payload = {
+      party_id: partyId,
+      fy_year: fy,
+      status: audit.pendingFreeQty > 0 || audit.pendingCashValue > 0 ? "closed_with_pending" : "closed",
+      closed_at: new Date().toISOString(),
+      audit_snapshot: audit,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await (supabase as any)
+      .from("scheme_fy_closures")
+      .upsert(payload, { onConflict: "party_id,fy_year" })
+      .select()
+      .single();
+    setClosing(false);
+    if (error) {
+      toast({ title: "FY close failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setClosure(data);
+    toast({ title: "Financial year closed", description: payload.status === "closed_with_pending" ? "Vendor pending benefits remain tracked." : "Reconciliation checks passed." });
+  };
+
+  const reopenFy = async () => {
+    if (!closure || closing) return;
+    setClosing(true);
+    const { error } = await (supabase as any).from("scheme_fy_closures").delete().eq("id", closure.id);
+    setClosing(false);
+    if (error) {
+      toast({ title: "Could not reopen FY", description: error.message, variant: "destructive" });
+      return;
+    }
+    setClosure(null);
+    toast({ title: "Financial year reopened" });
+  };
+
   const statusLabel =
     audit.status === "reconciled" ? "FY Reconciled" :
     audit.status === "reconciled_pending" ? "Reconciled · Vendor benefit pending" :
@@ -76,11 +139,21 @@ export function SchemeReconciliation({
             Benefit അടുത്ത FY-ൽ കിട്ടിയാലും original scheme FY-ലേക്ക് link ചെയ്താണ് കണക്ക്.
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-          audit.status === "reconciled" ? "bg-emerald-100 text-emerald-800" :
-          audit.status === "reconciled_pending" ? "bg-amber-100 text-amber-800" :
-          "bg-destructive/10 text-destructive"
-        }`}>{statusLabel}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            closure ? "bg-slate-900 text-white" :
+            audit.status === "reconciled" ? "bg-emerald-100 text-emerald-800" :
+            audit.status === "reconciled_pending" ? "bg-amber-100 text-amber-800" :
+            "bg-destructive/10 text-destructive"
+          }`}>{closure ? (closure.status === "closed_with_pending" ? "FY Closed · Vendor pending tracked" : "FY Closed") : statusLabel}</span>
+          {closure ? (
+            <Button size="sm" variant="outline" onClick={reopenFy} disabled={closing}>Reopen FY</Button>
+          ) : (
+            <Button size="sm" onClick={closeFy} disabled={audit.criticalIssues > 0 || closing}>
+              {closing ? "Closing…" : "Close FY"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {audit.criticalIssues > 0 && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs">
