@@ -61,6 +61,7 @@ const AdminLogistics = () => {
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, party_phone, delivery_route_id, delivery_place, status, commercial_status, total, advance_amount, expected_delivery_date")
+        .is("deleted_at", null)
         .or("status.eq.finalized,commercial_status.eq.confirmed"),
       supabase
         .from("trip_quotations")
@@ -86,11 +87,9 @@ const AdminLogistics = () => {
     }));
     setRoutes(merged);
 
-    const deliveredQids = new Set<string>();
     const activeTripQids = new Set<string>();
     for (const x of (tq ?? []) as any[]) {
-      if (x.trips?.status === "delivered" || x.delivered_at) deliveredQids.add(x.quotation_id);
-      else if (["planned", "assigned", "in_progress", "dispatched"].includes(x.trips?.status)) activeTripQids.add(x.quotation_id);
+      if (!x.delivered_at && ["planned", "in_transit", "assigned", "in_progress", "dispatched"].includes(x.trips?.status)) activeTripQids.add(x.quotation_id);
     }
 
     const readiness = new Map<string, { total: number; ready: number }>();
@@ -112,14 +111,13 @@ const AdminLogistics = () => {
 
     const rows = ((q ?? []) as any[])
       .filter((x) => x.status !== "delivered")
-      .filter((x) => !deliveredQids.has(x.id))
       .map((x) => {
         const rr = readiness.get(x.id);
         return {
           ...x,
           advance_amount: Number(x.advance_amount ?? 0),
           total: Number(x.total ?? 0),
-          ready: !!rr && rr.total > 0 && rr.ready === rr.total,
+          ready: !!rr && rr.total > 0 && rr.ready > 0,
           assignedTrip: activeTripQids.has(x.id),
           items: itemNames.get(x.id) ?? [],
         } as PendingQ;

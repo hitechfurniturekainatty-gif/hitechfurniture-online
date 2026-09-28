@@ -14,6 +14,7 @@ import { HUB, tripStatusLabel, tripStatusVariant, type RouteWithWaypoints } from
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/brand";
+import { Checkbox } from "@/components/ui/checkbox";
 import { firstUrl } from "@/lib/firstUrl";
 
 type Trip = {
@@ -44,6 +45,7 @@ type DeliveryItem = {
   measurement: string | null;
   item_image_url: string | null;
   sketch_url: string | null;
+  delivered_at: string | null;
 };
 
 const AdminMyTrips = () => {
@@ -57,6 +59,9 @@ const AdminMyTrips = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
+  const [deliveryStop, setDeliveryStop] = useState<TripQ | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [savingDelivery, setSavingDelivery] = useState(false);
   const [pricingFor, setPricingFor] = useState<Q | null>(null);
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -107,7 +112,7 @@ const AdminMyTrips = () => {
             .in("id", qids),
           supabase
             .from("quotation_items")
-            .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url")
+            .select("id, quotation_id, description, quantity, measurement, item_image_url, sketch_url, delivered_at")
             .in("quotation_id", qids)
             .order("display_order", { ascending: true }),
           (supabase as any)
@@ -149,39 +154,20 @@ const AdminMyTrips = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isDelivery, isOfficeStaff]);
 
-  const markDelivered = async (stop: TripQ) => {
-    const deliveredAt = new Date().toISOString();
-    const { error } = await supabase
-      .from("trip_quotations")
-      .update({ delivered_at: deliveredAt })
-      .eq("id", stop.id);
-    if (error) {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+  const markDelivered = async () => {
+    if (!deliveryStop || !selectedItems.length || savingDelivery) return;
+    setSavingDelivery(true);
+    const { data, error } = await (supabase as any).from("trip_quotations")
+      .update({ delivered_at: new Date().toISOString(), delivered_item_ids: selectedItems })
+      .eq("id", deliveryStop.id).select("id").single();
+    setSavingDelivery(false);
+    if (error || !data) {
+      toast({ title: "Delivery not saved", description: error?.message ?? "Reload and retry.", variant: "destructive" });
       return;
     }
-
-    const [quoteRes, itemRes, warehouseRes] = await Promise.all([
-      supabase.from("quotations").update({ status: "delivered", pipeline_stage: 6 } as any).eq("id", stop.quotation_id),
-      supabase.from("quotation_items").update({ delivered_at: deliveredAt } as any).eq("quotation_id", stop.quotation_id).is("delivered_at", null),
-      (supabase as any).from("warehouse_order_items").update({ delivered_at: deliveredAt }).eq("quotation_id", stop.quotation_id).is("delivered_at", null),
-    ]);
-
-    if (quoteRes.error) {
-      toast({ title: "Delivery saved, but quotation sync failed", description: quoteRes.error.message, variant: "destructive" });
-    }
-    if (itemRes.error) {
-      toast({ title: "Delivery saved, but item sync failed", description: itemRes.error.message, variant: "destructive" });
-    }
-    if (warehouseRes.error) {
-      toast({ title: "Delivery saved, but warehouse sync failed", description: warehouseRes.error.message, variant: "destructive" });
-    }
-
-    const tripStops = tripQs.filter((x) => x.trip_id === stop.trip_id);
-    const allDelivered = tripStops.every((x) => x.id === stop.id || x.delivered_at);
-    const newStatus = allDelivered ? "delivered" : "in_transit";
-    const { error: tripError } = await supabase.from("trips").update({ status: newStatus }).eq("id", stop.trip_id);
-    if (tripError) toast({ title: "Stop delivered; trip status update failed", description: tripError.message, variant: "destructive" });
-    toast({ title: "Marked delivered", description: "Quotation, items and payment flow synced." });
+    toast({ title: "Selected items delivered", description: "Any remaining items stay pending for another delivery." });
+    setDeliveryStop(null);
+    setSelectedItems([]);
     load();
   };
 
@@ -381,7 +367,7 @@ const AdminMyTrips = () => {
                           <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}><Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing</Button>
                         )}
                         {!s.delivered_at && (
-                          <Button size="sm" onClick={() => markDelivered(s)} className="ml-auto"><Check className="mr-1.5 h-3.5 w-3.5" /> Mark delivered</Button>
+                          <Button size="sm" onClick={() => { setDeliveryStop(s); setSelectedItems([]); }} className="ml-auto"><Check className="mr-1.5 h-3.5 w-3.5" /> Record received items</Button>
                         )}
                       </div>
                     </CardContent>
@@ -392,6 +378,22 @@ const AdminMyTrips = () => {
           )}
         </div>
       )}
+
+      <Dialog open={!!deliveryStop} onOpenChange={(open) => !open && !savingDelivery && setDeliveryStop(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Which items were received?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Select only the items received in full. Unselected items stay pending. This records the full quantity shown for each row.</p>
+          <div className="max-h-[50vh] space-y-2 overflow-y-auto">
+            {deliveryItems.filter((item) => item.quotation_id === deliveryStop?.quotation_id && !item.delivered_at).map((item) => (
+              <label key={item.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <Checkbox disabled={savingDelivery} checked={selectedItems.includes(item.id)} onCheckedChange={(checked) => setSelectedItems((ids) => checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))} />
+                <span>{item.description} · Qty {item.quantity}</span>
+              </label>
+            ))}
+          </div>
+          <Button disabled={!selectedItems.length || savingDelivery} onClick={markDelivered}>{savingDelivery ? "Saving…" : `Confirm ${selectedItems.length} received item rows`}</Button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!pricingFor} onOpenChange={(o) => !o && setPricingFor(null)}>
         <DialogContent className="max-w-lg">
