@@ -1,5 +1,6 @@
+import { leadSourceLabel } from "@/lib/leadSource";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
@@ -67,7 +68,7 @@ const InboxPage = () => {
   const startChat = async (row: Row) => {
     setChatBusy((s) => new Set(s).add(row.id));
     const contactedAt = new Date().toISOString();
-    const { error } = await (supabase as any).from("sales_leads").update({ status: "contacted", contacted_at: contactedAt, updated_at: contactedAt }).eq("id", row.id);
+    const { error } = await (supabase as any).from("sales_leads").update({ status: "contacted", contacted_at: contactedAt, updated_at: contactedAt }).eq("id", row.id).is("converted_quotation_id",null).in("status",["pending","contacted"]).select("id").single();
     const data = { ok: !error };
     setChatBusy((s) => {
       const next = new Set(s);
@@ -215,10 +216,11 @@ const InboxPage = () => {
           <Inbox className="h-6 w-6 text-primary" /> Enquiries Inbox
         </h1>
         <p className="text-sm text-muted-foreground">
-          New website leads, complaints and service requests — chronological feed.
+          New enquiries, complaints and service requests. Manage lead ownership and follow-up in Leads.
         </p>
       </div>
 
+      <Button asChild variant="outline" className="mb-3"><Link to="/admin/leads">Leads & Follow-up →</Link></Button>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full sm:w-auto">
           <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
@@ -327,6 +329,7 @@ const RowCard = ({
                 </a>
               )}
               <span>· {timeAgo(r.created_at)}</span>
+              {r.kind === "lead" && <Badge variant="outline">{leadSourceLabel(r.raw.source)}</Badge>}
             </div>
             {r.preview && (
               <p className="mt-1.5 line-clamp-2 text-sm text-foreground/80">{r.preview}</p>
@@ -407,7 +410,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
     const { error } = await (supabase as any)
       .from("sales_leads")
       .update({ status: "contacted", contacted_at: now, updated_at: now })
-      .eq("id", row.id);
+      .eq("id", row.id).is("converted_quotation_id",null).in("status",["pending","contacted"]).select("id").single();
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Marked as contacted");
@@ -603,23 +606,7 @@ const EnquirySheet = ({ row, onClose, onChanged }: { row: Row | null; onClose: (
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Assign to Measurement Staff</p>
-                <Select value={assigneeId} onValueChange={setAssigneeId}>
-                  <SelectTrigger><SelectValue placeholder="Pick measurement staff" /></SelectTrigger>
-                  <SelectContent>
-                    {measurementStaff.map((s) => (
-                      <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
-                    ))}
-                    {measurementStaff.length === 0 && (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">No measurement staff yet</div>
-                    )}
-                  </SelectContent>
-                </Select>
-                <Button onClick={assignToMeasurement} disabled={busy || !assigneeId} className="w-full">
-                  <Ruler className="mr-2 h-4 w-4" /> Assign to Measurement
-                </Button>
-              </div>
+              <Button asChild variant="outline"><Link to={`/admin/leads?open=${row.id}`}>Assign salesman / Schedule follow-up</Link></Button>
               <Button variant="outline" onClick={markLeadContacted} disabled={busy} className="w-full">
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Contacted
               </Button>

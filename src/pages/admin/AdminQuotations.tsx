@@ -1,3 +1,4 @@
+import { leadSourceLabel } from "@/lib/leadSource";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeQuotations } from "@/hooks/useRealtimeQuotations";
@@ -110,6 +111,7 @@ const AdminQuotations = () => {
   const [jobAgg, setJobAgg] = useState<Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }>>({});
   const [tripAgg, setTripAgg] = useState<Record<string, { has: boolean; completed: boolean }>>({});
   const [itemAgg, setItemAgg] = useState<Record<string, { total: number; ready: number; custom: number }>>({});
+  const [sourceMap, setSourceMap] = useState<Record<string,string> | null>(null);
   const [creatorMap, setCreatorMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -222,7 +224,7 @@ const AdminQuotations = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data, error }, jRes, tqRes, itRes] = await Promise.all([
+    const [{ data, error }, jRes, tqRes, itRes, leadRes] = await Promise.all([
       supabase
         .from("quotations")
         .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage")
@@ -231,7 +233,9 @@ const AdminQuotations = () => {
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
       supabase.from("trip_quotations").select("quotation_id, delivered_at, trips:trip_id(status)") as any,
       supabase.from("quotation_items").select("quotation_id, fulfillment_route") as any,
+      (async()=>{ const data: any[]=[]; for(let offset=0;;offset+=500){ const r=await (supabase as any).from("sales_leads").select("id,converted_quotation_id,source").not("converted_quotation_id", "is", null).order("id").range(offset,offset+499); if(r.error)return {data:null,error:r.error};data.push(...r.data);if(r.data.length<500)return {data,error:null}; } })(),
     ]);
+    setSourceMap(leadRes.error ? null : Object.fromEntries((leadRes.data ?? []).map((lead: any) => [lead.converted_quotation_id, leadSourceLabel(lead.source)])));
     // Aggregate jobs per quotation
     const jobs: Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }> = {};
     ((jRes.data ?? []) as any[]).forEach((j) => {
@@ -772,6 +776,7 @@ const AdminQuotations = () => {
                   </>
                 )}
               </p>
+              {!isPO(q.document_type) && <p className="text-xs font-medium text-sky-800">Source: {sourceMap === null ? "Source unavailable" : sourceMap[q.id] || "Direct quotation · No linked lead"}</p>}
               <p className="text-xs text-muted-foreground">
                 {new Date(q.quotation_date).toLocaleDateString("en-IN")}
                 {q.created_by && (

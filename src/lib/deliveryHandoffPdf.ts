@@ -106,7 +106,7 @@ export async function createDeliveryHandoffPdf(data: DeliveryPdfData): Promise<B
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.text("ADVANCE RECEIVED", margin + 5, y + 6);
-  doc.text("BALANCE TO COLLECT", pageW / 2 + 5, y + 6);
+  doc.text("ORDER BALANCE OUTSTANDING", pageW / 2 + 5, y + 6);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.text(money(data.advanceAmount), margin + 5, y + 14);

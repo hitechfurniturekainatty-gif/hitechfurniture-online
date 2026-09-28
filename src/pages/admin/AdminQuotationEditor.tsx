@@ -1,3 +1,4 @@
+import { QuotationOrigin } from "@/components/leads/QuotationOrigin";
 import { MeasurementAssignment } from '@/components/admin/MeasurementAssignment';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -1660,6 +1661,7 @@ const AdminQuotationEditor = () => {
 
   const formBody = (
       <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
+      {!po && <QuotationOrigin quotationId={q.id} />}
       <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.055] to-background p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button variant="outline" size="sm" asChild className="h-10 shrink-0 px-2.5 sm:h-9">
