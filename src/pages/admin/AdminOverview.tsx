@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { openEnquiryForm } from "@/lib/enquiryForm";
+
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -304,7 +304,7 @@ const AdminOverview = () => {
           const runQuick = (event: React.MouseEvent) => {
             event.stopPropagation();
             if (!quickAction) return;
-            if ("kind" in quickAction && quickAction.kind === "enquiry") return openEnquiryForm({ source: "manual" });
+            if ("kind" in quickAction && quickAction.kind === "enquiry") return navigate("/admin/leads");
             if ("href" in quickAction && quickAction.href) navigate(quickAction.href);
           };
 
