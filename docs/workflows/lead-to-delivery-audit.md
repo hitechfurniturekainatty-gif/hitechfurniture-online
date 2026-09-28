@@ -50,3 +50,12 @@ Delivery planner now includes dated quotations before confirmation, labels uncon
 5. Confirm deployment of this patch and exercise same-day, mixed-stock, partial-delivery, cancellation and midnight scenarios in the live UI.
 
 No production customer data or database functions were modified by this audit.
+
+## Follow-up implemented, 28 September 2026
+
+- Trip stops now record explicit delivered item IDs in one database transaction. The driver page has an unchecked-by-default received-item selection and no longer writes every quotation item or attempts to update the warehouse view.
+- The database checks caller ownership/role, confirmed order, item membership, readiness and duplicate/replayed updates. A completed stop is immutable. The function is private and cannot be executed directly by anonymous/authenticated API callers.
+- A completed trip no longer hides remaining quotation items from route planning. Orders with some ready items can be scheduled, and a completed/cancelled trip does not permanently reserve a quotation.
+- The final-item notification was using stage 7 although both tables accept only stages 1–6. Delivery remains in stage 6; the completion status carries Delivered.
+- Transactional regression tests passed with rollback: blanket update blocked, unrelated item blocked, unfinished custom item blocked, unauthorized caller blocked, partial delivery preserves remaining items, identical retry preserves timestamp, final delivery closes the quotation/trip.
+- Limitation: selection records a whole quotation item row (all its displayed quantity). Splitting one row's quantity across receipts requires quantity-level delivery accounting; partially ordered/cancelled rows are blocked with an explanation. Historical incorrect delivery stamps are not inferred or rewritten.
