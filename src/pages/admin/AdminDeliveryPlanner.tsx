@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/brand";
+import { indiaDateKey, isDeliveryPlannable, isDeliveryComplete, isOrderConfirmed } from "@/lib/deliveryPlanning";
 
 type DeliveryRow = {
   id: string;
@@ -20,6 +21,7 @@ type DeliveryRow = {
   document_type: string | null;
   pipeline_stage: number | null;
   total: number | null;
+  salesperson_name: string | null;
 };
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -36,54 +38,58 @@ const dateFromKey = (key: string) => {
 const prettyDate = (key: string) =>
   dateFromKey(key).toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
-const isCancelled = (r: DeliveryRow) => {
-  const s = `${r.status ?? ""} ${r.commercial_status ?? ""}`.toLowerCase();
-  return /reject|cancel|void/.test(s);
-};
-
 export default function AdminDeliveryPlanner() {
-  const todayKey = localKey(new Date());
+  const [todayKey, setTodayKey] = useState(() => indiaDateKey());
+  const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [deliveredIds, setDeliveredIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [monthCursor, setMonthCursor] = useState(() => {
-    const n = new Date();
+    const n = dateFromKey(indiaDateKey());
     return new Date(n.getFullYear(), n.getMonth(), 1);
   });
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      setLoading(true);
-      const [qRes, tripRes] = await Promise.all([
-        supabase
-          .from("quotations")
-          .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, commercial_status, document_type, pipeline_stage, total")
-          .is("deleted_at", null),
-        supabase
-          .from("trip_quotations")
-          .select("quotation_id, delivered_at, trips:trip_id(status)")
-      ]);
-
-      if (!mounted) return;
-
-      const delivered = new Set<string>();
-      for (const item of (tripRes.data ?? []) as any[]) {
-        if (item.delivered_at || item.trips?.status === "delivered") delivered.add(item.quotation_id);
+    let inFlight = false;
+    let currentDay = indiaDateKey();
+    const load = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const qRes = await supabase.from("quotations")
+          .select("id, quotation_id, party_name, party_place, party_phone, expected_delivery_date, status, commercial_status, document_type, pipeline_stage, total, salesperson_name, quotation_items(delivered_at)")
+          .is("deleted_at", null);
+        if (qRes.error) throw qRes.error;
+        if (!mounted) return;
+        const clean = (qRes.data ?? []).filter(isDeliveryPlannable);
+        setRows(clean);
+        setDeliveredIds(new Set(clean.filter((q) => isDeliveryComplete(q.status, q.quotation_items)).map((q) => q.id)));
+        setError(null);
+      } catch {
+        if (mounted) setError("Delivery report could not be refreshed. Please retry; displayed data may be out of date.");
+      } finally {
+        inFlight = false;
+        if (mounted) setLoading(false);
       }
-
-      const clean = ((qRes.data ?? []) as DeliveryRow[])
-        .filter((r) => (r.document_type ?? "quotation") !== "po")
-        .filter((r) => !isCancelled(r))
-        .filter((r) => r.commercial_status === "confirmed" || r.status === "finalized" || Number(r.pipeline_stage ?? 0) >= 3);
-
-      setRows(clean);
-      setDeliveredIds(delivered);
-      setLoading(false);
-    })();
-
-    return () => { mounted = false; };
+    };
+    const refresh = () => {
+      const next = indiaDateKey();
+      if (currentDay !== next) {
+        const previous = currentDay;
+        currentDay = next;
+        setTodayKey(next);
+        setSelectedDate((selected) => selected === previous ? next : selected);
+        const date = dateFromKey(next);
+        setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+      }
+      void load();
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => { mounted = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
   }, []);
 
   const pendingRows = useMemo(() => rows.filter((r) => !deliveredIds.has(r.id)), [rows, deliveredIds]);
@@ -125,16 +131,18 @@ export default function AdminDeliveryPlanner() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold sm:text-3xl">Delivery</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Quotation delivery-date planner, pending report and daily schedule.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Delivery dates appear before confirmation. Confirm the order and check stock before dispatch.</p>
           </div>
           <Button variant="outline" onClick={() => {
-            const n = new Date();
+            const n = dateFromKey(todayKey);
             setSelectedDate(todayKey);
             setMonthCursor(new Date(n.getFullYear(), n.getMonth(), 1));
           }}>
             <CalendarDays className="mr-2 h-4 w-4" /> Today
           </Button>
         </div>
+
+        {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border-amber-300 bg-amber-50/70 dark:bg-amber-950/20">
@@ -288,6 +296,7 @@ export default function AdminDeliveryPlanner() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs font-bold">{r.quotation_id}</span>
+                          {!delivered && !isOrderConfirmed(r) && <Badge variant="outline">Awaiting confirmation · planning only</Badge>}
                           {delivered
                             ? <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />Delivered</Badge>
                             : <Badge variant={selectedDate < todayKey ? "destructive" : "outline"}>{selectedDate < todayKey ? "Pending / Overdue" : selectedDate === todayKey ? "Today" : "Pending"}</Badge>}
