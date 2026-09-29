@@ -12,24 +12,24 @@ const formatINR = (n: number | null | undefined) => {
 };
 
 const styles = StyleSheet.create({
-  page: { padding: 36, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FBF8F2" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #0E5C66", paddingBottom: 12, marginBottom: 18 },
+  page: { padding: 36, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FBF8F2" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #5E2D05", paddingBottom: 12, marginBottom: 18 },
   logo: { width: 110, height: 50, objectFit: "contain" },
-  brandLine: { fontSize: 9, color: "#0E5C66", letterSpacing: 1, textTransform: "uppercase" },
+  brandLine: { fontSize: 9, color: "#5E2D05", letterSpacing: 1, textTransform: "uppercase" },
   // Use "contain" so the entire furniture item is visible — no cropping/cut-off.
   hero: { width: "100%", height: 280, objectFit: "contain", marginBottom: 18, borderRadius: 4 },
-  title: { fontSize: 24, fontWeight: 700, marginBottom: 4, color: "#0E5C66" },
-  code: { fontSize: 9, color: "#6E7F82", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 12 },
-  desc: { fontSize: 11, lineHeight: 1.6, marginBottom: 16, color: "#1F3F44" },
+  title: { fontSize: 24, fontWeight: 700, marginBottom: 4, color: "#5E2D05" },
+  code: { fontSize: 9, color: "#655B52", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 12 },
+  desc: { fontSize: 11, lineHeight: 1.6, marginBottom: 16, color: "#493A2E" },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  label: { fontSize: 9, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 1 },
-  value: { fontSize: 12, color: "#0F2A2E", fontWeight: 600 },
-  priceBlock: { backgroundColor: "#0E5C66", color: "#FBF8F2", padding: 14, borderRadius: 6, marginBottom: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  label: { fontSize: 9, color: "#655B52", textTransform: "uppercase", letterSpacing: 1 },
+  value: { fontSize: 12, color: "#292522", fontWeight: 600 },
+  priceBlock: { backgroundColor: "#5E2D05", color: "#FBF8F2", padding: 14, borderRadius: 6, marginBottom: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   priceLabel: { fontSize: 9, color: "#FBF8F2", letterSpacing: 1.2, textTransform: "uppercase" },
   price: { fontSize: 22, color: "#FBF8F2", fontWeight: 700 },
   colors: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  colorChip: { fontSize: 9, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: "#F4A227", color: "#0F2A2E", borderRadius: 12 },
-  footer: { position: "absolute", bottom: 30, left: 36, right: 36, textAlign: "center", fontSize: 9, color: "#6E7F82", borderTop: "1pt solid #0E5C66", paddingTop: 8 },
+  colorChip: { fontSize: 9, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: "#F4A227", color: "#292522", borderRadius: 12 },
+  footer: { position: "absolute", bottom: 30, left: 36, right: 36, textAlign: "center", fontSize: 9, color: "#655B52", borderTop: "1pt solid #5E2D05", paddingTop: 8 },
 });
 
 type PdfProduct = {

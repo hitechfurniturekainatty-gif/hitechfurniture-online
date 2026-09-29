@@ -63,7 +63,7 @@ export const SiteFooter = () => {
       <div className="container-page grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.2fr_0.9fr_0.9fr_1.2fr]">
         <div>
           <div className="flex items-center gap-3">
-            <Logo className="h-12 w-12" />
+            <Logo className="h-12 w-[116px]" />
             <div>
               <p className="font-display text-lg leading-tight text-foreground">Hitech Furniture & Interiors</p>
               <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Kalpetta · Wayanad</p>

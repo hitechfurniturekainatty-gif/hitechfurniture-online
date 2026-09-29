@@ -14,25 +14,25 @@ const formatINR = (n: number | null | undefined) => {
 };
 
 const s = StyleSheet.create({
-  page: { padding: 28, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FBF8F2" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #0E5C66", paddingBottom: 10, marginBottom: 14 },
+  page: { padding: 28, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FBF8F2" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #5E2D05", paddingBottom: 10, marginBottom: 14 },
   logo: { width: 90, height: 40, objectFit: "contain" },
-  brandLine: { fontSize: 9, color: "#0E5C66", letterSpacing: 1, textTransform: "uppercase" },
+  brandLine: { fontSize: 9, color: "#5E2D05", letterSpacing: 1, textTransform: "uppercase" },
   coverWrap: { alignItems: "center", justifyContent: "center", height: 700 },
-  coverTitle: { fontSize: 36, color: "#0E5C66", fontWeight: 700, textAlign: "center", marginBottom: 8 },
-  coverSub: { fontSize: 13, color: "#1F3F44", textAlign: "center", marginBottom: 24 },
+  coverTitle: { fontSize: 36, color: "#5E2D05", fontWeight: 700, textAlign: "center", marginBottom: 8 },
+  coverSub: { fontSize: 13, color: "#493A2E", textAlign: "center", marginBottom: 24 },
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
   card: { width: "50%", padding: 6 },
   cardInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 10, backgroundColor: "#FFFFFF" },
   img: { width: "100%", height: 150, objectFit: "contain", marginBottom: 8 },
-  name: { fontSize: 11, fontWeight: 700, color: "#0E5C66", marginBottom: 2 },
-  code: { fontSize: 8, color: "#6E7F82", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
+  name: { fontSize: 11, fontWeight: 700, color: "#5E2D05", marginBottom: 2 },
+  code: { fontSize: 8, color: "#655B52", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  price: { fontSize: 12, fontWeight: 700, color: "#0E5C66" },
-  mrp: { fontSize: 8, color: "#6E7F82", textDecoration: "line-through" },
-  meta: { fontSize: 8, color: "#1F3F44", marginTop: 3 },
-  footer: { position: "absolute", bottom: 16, left: 28, right: 28, textAlign: "center", fontSize: 8, color: "#6E7F82", borderTop: "1pt solid #0E5C66", paddingTop: 6 },
-  pageLabel: { position: "absolute", bottom: 16, right: 28, fontSize: 8, color: "#6E7F82" },
+  price: { fontSize: 12, fontWeight: 700, color: "#5E2D05" },
+  mrp: { fontSize: 8, color: "#655B52", textDecoration: "line-through" },
+  meta: { fontSize: 8, color: "#493A2E", marginTop: 3 },
+  footer: { position: "absolute", bottom: 16, left: 28, right: 28, textAlign: "center", fontSize: 8, color: "#655B52", borderTop: "1pt solid #5E2D05", paddingTop: 6 },
+  pageLabel: { position: "absolute", bottom: 16, right: 28, fontSize: 8, color: "#655B52" },
 });
 
 export type CatalogPdfItem = {
@@ -64,7 +64,7 @@ const CatalogDoc = ({ items, title, subtitle }: { items: CatalogPdfItem[]; title
         <View style={s.coverWrap}>
           <Text style={s.coverTitle}>{title}</Text>
           <Text style={s.coverSub}>{subtitle}</Text>
-          <Text style={{ fontSize: 11, color: "#6E7F82" }}>{items.length} pieces in this catalog</Text>
+          <Text style={{ fontSize: 11, color: "#655B52" }}>{items.length} pieces in this catalog</Text>
         </View>
         <Text style={s.footer}>{CONTACT_LINE}</Text>
       </Page>
@@ -120,14 +120,14 @@ const sectionStyles = StyleSheet.create({
   sectionHeader: {
     fontSize: 16,
     fontWeight: 700,
-    color: "#0E5C66",
+    color: "#5E2D05",
     backgroundColor: "#EFE7D4",
     paddingVertical: 6,
     paddingHorizontal: 10,
     marginBottom: 10,
     borderLeft: "3pt solid #F4A227",
   },
-  sectionMeta: { fontSize: 9, color: "#6E7F82", marginBottom: 8 },
+  sectionMeta: { fontSize: 9, color: "#655B52", marginBottom: 8 },
 });
 
 const SectionedCatalogDoc = ({
@@ -151,7 +151,7 @@ const SectionedCatalogDoc = ({
         <View style={s.coverWrap}>
           <Text style={s.coverTitle}>{title}</Text>
           <Text style={s.coverSub}>{subtitle}</Text>
-          <Text style={{ fontSize: 11, color: "#6E7F82" }}>
+          <Text style={{ fontSize: 11, color: "#655B52" }}>
             {sections.length} sections · {totalItems} pieces
           </Text>
         </View>
@@ -177,7 +177,7 @@ const SectionedCatalogDoc = ({
               </>
             )}
             {chunk.length === 0 ? (
-              <Text style={{ fontSize: 10, color: "#6E7F82", marginTop: 20 }}>No items in this section.</Text>
+              <Text style={{ fontSize: 10, color: "#655B52", marginTop: 20 }}>No items in this section.</Text>
             ) : (
               <View style={s.grid}>
                 {chunk.map((p, i) => {
@@ -333,46 +333,46 @@ export async function resolveCatalogImages(
 }
 
 const cs = StyleSheet.create({
-  page: { padding: 28, paddingBottom: 44, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FBF8F2" },
+  page: { padding: 28, paddingBottom: 44, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FBF8F2" },
   // Cover
-  coverPage: { padding: 0, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FBF8F2" },
-  coverBand: { backgroundColor: "#0E5C66", height: 140, paddingHorizontal: 36, paddingTop: 36, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  coverPage: { padding: 0, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FBF8F2" },
+  coverBand: { backgroundColor: "#5E2D05", height: 140, paddingHorizontal: 36, paddingTop: 36, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   coverLogo: { width: 110, height: 50, objectFit: "contain", backgroundColor: "#FBF8F2", padding: 4, borderRadius: 4 },
   coverBandRight: { fontSize: 9, color: "#EFE7D4", letterSpacing: 2, textTransform: "uppercase", marginTop: 14 },
   coverBody: { paddingHorizontal: 48, paddingTop: 56 },
   coverEyebrow: { fontSize: 10, color: "#F4A227", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 },
-  coverTitle: { fontSize: 40, color: "#0E5C66", fontWeight: 700, marginBottom: 10, lineHeight: 1.15 },
-  coverBrand: { fontSize: 16, color: "#1F3F44", marginBottom: 6 },
-  coverTagline: { fontSize: 11, color: "#6E7F82", fontStyle: "italic", marginBottom: 32 },
-  coverDivider: { height: 1, backgroundColor: "#0E5C66", opacity: 0.25, marginVertical: 16, width: 80 },
-  coverAboutLabel: { fontSize: 9, color: "#0E5C66", letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 },
-  coverAbout: { fontSize: 11, color: "#1F3F44", lineHeight: 1.55, marginBottom: 36 },
-  coverContactBlock: { borderTop: "1pt solid #0E5C66", paddingTop: 14, marginTop: 18 },
-  coverContactLabel: { fontSize: 9, color: "#0E5C66", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 },
-  coverContactLine: { fontSize: 10, color: "#1F3F44", marginBottom: 2 },
+  coverTitle: { fontSize: 40, color: "#5E2D05", fontWeight: 700, marginBottom: 10, lineHeight: 1.15 },
+  coverBrand: { fontSize: 16, color: "#493A2E", marginBottom: 6 },
+  coverTagline: { fontSize: 11, color: "#655B52", fontStyle: "italic", marginBottom: 32 },
+  coverDivider: { height: 1, backgroundColor: "#5E2D05", opacity: 0.25, marginVertical: 16, width: 80 },
+  coverAboutLabel: { fontSize: 9, color: "#5E2D05", letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 },
+  coverAbout: { fontSize: 11, color: "#493A2E", lineHeight: 1.55, marginBottom: 36 },
+  coverContactBlock: { borderTop: "1pt solid #5E2D05", paddingTop: 14, marginTop: 18 },
+  coverContactLabel: { fontSize: 9, color: "#5E2D05", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 },
+  coverContactLine: { fontSize: 10, color: "#493A2E", marginBottom: 2 },
   coverFooterBar: { position: "absolute", bottom: 0, left: 0, right: 0, height: 24, backgroundColor: "#F4A227" },
 
   // Page chrome
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #0E5C66", paddingBottom: 8, marginBottom: 14 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1pt solid #5E2D05", paddingBottom: 8, marginBottom: 14 },
   headerLogo: { width: 70, height: 28, objectFit: "contain" },
-  headerCrumb: { fontSize: 9, color: "#0E5C66", letterSpacing: 1.5, textTransform: "uppercase" },
-  footer: { position: "absolute", bottom: 16, left: 28, right: 28, flexDirection: "row", justifyContent: "space-between", borderTop: "1pt solid #0E5C66", paddingTop: 6 },
-  footerText: { fontSize: 8, color: "#6E7F82" },
+  headerCrumb: { fontSize: 9, color: "#5E2D05", letterSpacing: 1.5, textTransform: "uppercase" },
+  footer: { position: "absolute", bottom: 16, left: 28, right: 28, flexDirection: "row", justifyContent: "space-between", borderTop: "1pt solid #5E2D05", paddingTop: 6 },
+  footerText: { fontSize: 8, color: "#655B52" },
 
   // Main category banner page
   mainBannerWrap: { marginTop: 30, alignItems: "center" },
   mainBannerImg: { width: "100%", height: 320, objectFit: "cover", borderRadius: 6 },
   mainBannerPlaceholder: { width: "100%", height: 320, backgroundColor: "#EFE7D4", borderRadius: 6, alignItems: "center", justifyContent: "center" },
   mainBannerEyebrow: { fontSize: 10, color: "#F4A227", letterSpacing: 4, textTransform: "uppercase", marginTop: 28, marginBottom: 8, textAlign: "center" },
-  mainBannerTitle: { fontSize: 30, color: "#0E5C66", fontWeight: 700, textAlign: "center", marginBottom: 6 },
-  mainBannerMeta: { fontSize: 10, color: "#6E7F82", textAlign: "center" },
+  mainBannerTitle: { fontSize: 30, color: "#5E2D05", fontWeight: 700, textAlign: "center", marginBottom: 6 },
+  mainBannerMeta: { fontSize: 10, color: "#655B52", textAlign: "center" },
 
   // Sub-category header
   subWrap: { marginBottom: 12 },
   subBannerImg: { width: "100%", height: 64, objectFit: "cover", borderRadius: 4, marginBottom: 8 },
   subHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#EFE7D4", borderLeft: "3pt solid #F4A227", paddingVertical: 6, paddingHorizontal: 10, marginBottom: 10 },
-  subTitle: { fontSize: 14, fontWeight: 700, color: "#0E5C66" },
-  subMeta: { fontSize: 9, color: "#6E7F82" },
+  subTitle: { fontSize: 14, fontWeight: 700, color: "#5E2D05" },
+  subMeta: { fontSize: 9, color: "#655B52" },
 
   // 10-product grid: 2 columns x 5 rows per product page (horizontal cards)
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -3 },
@@ -396,12 +396,12 @@ const cs = StyleSheet.create({
   img: { width: "100%", height: "100%", objectFit: "cover" },
   imgPlaceholder: { fontSize: 7, color: "#A8B1B3" },
   details: { flex: 1, paddingVertical: 6, paddingHorizontal: 8, justifyContent: "center" },
-  name: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66", marginBottom: 1, lineHeight: 1.15 },
-  code: { fontSize: 6.5, color: "#6E7F82", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 2 },
+  name: { fontSize: 8.5, fontWeight: 700, color: "#5E2D05", marginBottom: 1, lineHeight: 1.15 },
+  code: { fontSize: 6.5, color: "#655B52", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 2 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  price: { fontSize: 8.5, fontWeight: 700, color: "#0E5C66" },
-  mrp: { fontSize: 6.5, color: "#6E7F82", textDecoration: "line-through" },
-  meta: { fontSize: 6.5, color: "#1F3F44", marginTop: 1.5 },
+  price: { fontSize: 8.5, fontWeight: 700, color: "#5E2D05" },
+  mrp: { fontSize: 6.5, color: "#655B52", textDecoration: "line-through" },
+  meta: { fontSize: 6.5, color: "#493A2E", marginTop: 1.5 },
 });
 
 const PER_GRID = 10; // 2 x 5
@@ -484,7 +484,7 @@ const StructuredCatalogDoc = ({
               <Text style={cs.coverAbout}>{cover.about}</Text>
             </>
           )}
-          <Text style={{ fontSize: 10, color: "#6E7F82", marginBottom: 4 }}>
+          <Text style={{ fontSize: 10, color: "#655B52", marginBottom: 4 }}>
             {sections.length} categor{sections.length === 1 ? "y" : "ies"} · {totalItems} pieces
           </Text>
           <View style={cs.coverContactBlock}>
@@ -508,7 +508,7 @@ const StructuredCatalogDoc = ({
                 <Image src={main.main_banner} style={cs.mainBannerImg} />
               ) : (
                 <View style={cs.mainBannerPlaceholder}>
-                  <Text style={{ fontSize: 28, color: "#0E5C66", fontWeight: 700 }}>{main.main_name}</Text>
+                  <Text style={{ fontSize: 28, color: "#5E2D05", fontWeight: 700 }}>{main.main_name}</Text>
                 </View>
               )}
               <Text style={cs.mainBannerEyebrow}>Main Category</Text>
@@ -540,7 +540,7 @@ const StructuredCatalogDoc = ({
                     </View>
                   )}
                   {chunk.length === 0 ? (
-                    <Text style={{ fontSize: 10, color: "#6E7F82", marginTop: 20 }}>
+                    <Text style={{ fontSize: 10, color: "#655B52", marginTop: 20 }}>
                       No products in this sub-category.
                     </Text>
                   ) : (

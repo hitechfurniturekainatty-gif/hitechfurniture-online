@@ -44,13 +44,13 @@ export const SiteHeader = () => {
     setOpen(false);
   }, [location.pathname]);
 
-  const desktopLink = "text-sm font-semibold text-slate-700 transition-colors hover:text-[#0f5156]";
+  const desktopLink = "text-sm font-semibold text-slate-700 transition-colors hover:text-[#5e2d05]";
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl">
       <div ref={headerRef} className="container-page relative flex min-h-[72px] items-center justify-between gap-3 py-2.5 md:min-h-[82px]">
         <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex min-w-0 items-center gap-3">
-          <Logo className="h-11 w-11 shrink-0 sm:h-12 sm:w-12 md:h-14 md:w-14" />
+          <Logo className="h-11 w-[106px] shrink-0 sm:h-12 sm:w-[116px] md:h-14 md:w-[135px]" />
           <div className="hidden min-w-0 sm:block">
             <p className="truncate text-sm font-bold tracking-tight text-slate-900 md:text-base">Hitech Furniture & Interiors</p>
             <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">Kalpetta · Wayanad</p>
@@ -58,12 +58,12 @@ export const SiteHeader = () => {
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex" aria-label="Main navigation">
-          <Link to="/" className={cn(desktopLink, location.pathname === "/" && "text-[#0f5156]")}>Home</Link>
+          <Link to="/" className={cn(desktopLink, location.pathname === "/" && "text-[#5e2d05]")}>Home</Link>
           {catalogVisible || isStaff ? (
-            <Link to="/catalog" className={cn(desktopLink, location.pathname.startsWith("/catalog") && "text-[#0f5156]")}>Furniture</Link>
+            <Link to="/catalog" className={cn(desktopLink, location.pathname.startsWith("/catalog") && "text-[#5e2d05]")}>Furniture</Link>
           ) : null}
           <a href="/#interiors" className={desktopLink}>Interiors</a>
-          <Link to="/about" className={cn(desktopLink, location.pathname === "/about" && "text-[#0f5156]")}>About</Link>
+          <Link to="/about" className={cn(desktopLink, location.pathname === "/about" && "text-[#5e2d05]")}>About</Link>
           <a href="/#contact" className={desktopLink}>Showroom</a>
         </nav>
 
@@ -71,7 +71,7 @@ export const SiteHeader = () => {
           <button
             type="button"
             onClick={() => openEnquiryForm()}
-            className="hidden min-h-11 items-center gap-2 rounded-xl bg-[#0f5156] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0b3d41] active:scale-[0.98] sm:inline-flex"
+            className="hidden min-h-11 items-center gap-2 rounded-xl bg-[#5e2d05] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#482204] active:scale-[0.98] sm:inline-flex"
           >
             <MessageCircle className="h-4 w-4" />
             Enquire Now
@@ -81,7 +81,7 @@ export const SiteHeader = () => {
             type="button"
             onClick={() => openEnquiryForm()}
             aria-label="Open enquiry form"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0f5156] text-white sm:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#5e2d05] text-white sm:hidden"
           >
             <ClipboardList className="h-4 w-4" />
           </button>
@@ -91,7 +91,7 @@ export const SiteHeader = () => {
             aria-expanded={open}
             className={cn(
               "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 transition hover:bg-slate-50 active:scale-95 sm:h-11 sm:w-11",
-              open && "border-[#0f5156]/30 bg-slate-50 text-[#0f5156]",
+              open && "border-[#5e2d05]/30 bg-slate-50 text-[#5e2d05]",
             )}
             onClick={() => setOpen((value) => !value)}
           >
@@ -117,7 +117,7 @@ export const SiteHeader = () => {
                 setOpen(false);
                 openEnquiryForm();
               }}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0f5156] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0b3d41]"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#5e2d05] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#482204]"
             >
               <Phone className="h-4 w-4" />
               Send an Enquiry
@@ -127,7 +127,7 @@ export const SiteHeader = () => {
               <Link
                 to={staffDestination}
                 onClick={() => setOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl border border-[#0f5156]/20 bg-[#0f5156]/5 px-3 py-2.5 text-sm font-bold text-[#0f5156] transition hover:bg-[#0f5156]/10"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#5e2d05]/20 bg-[#5e2d05]/5 px-3 py-2.5 text-sm font-bold text-[#5e2d05] transition hover:bg-[#5e2d05]/10"
               >
                 {isStaff || user ? <LayoutDashboard className="h-4 w-4" /> : <User className="h-4 w-4" />}
                 {staffLabel}
@@ -156,7 +156,7 @@ const MobileLink = ({ to, icon: Icon, label, onClick, active = false }: MobileLi
     onClick={onClick}
     className={cn(
       "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-colors",
-      active ? "bg-slate-100 text-[#0f5156]" : "text-slate-800 hover:bg-slate-50 hover:text-[#0f5156]",
+      active ? "bg-slate-100 text-[#5e2d05]" : "text-slate-800 hover:bg-slate-50 hover:text-[#5e2d05]",
     )}
   >
     <Icon className="h-4 w-4" />
@@ -175,7 +175,7 @@ const MobileAnchor = ({ href, icon: Icon, label, onClick }: MobileAnchorProps) =
   <a
     href={href}
     onClick={onClick}
-    className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 hover:text-[#0f5156]"
+    className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 hover:text-[#5e2d05]"
   >
     <Icon className="h-4 w-4" />
     <span>{label}</span>
