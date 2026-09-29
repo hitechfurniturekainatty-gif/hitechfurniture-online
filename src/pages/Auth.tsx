@@ -149,7 +149,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/40 to-background flex flex-col">
-      <header className="container-page py-6"><Link to="/"><Logo className="h-10 w-10" /></Link></header>
+      <header className="container-page py-6"><Link to="/"><Logo className="h-10 w-24" /></Link></header>
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md shadow-elegant border-border/60">
           <CardHeader><CardTitle className="font-display text-2xl">{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>

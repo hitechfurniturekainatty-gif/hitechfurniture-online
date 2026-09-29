@@ -37,20 +37,20 @@
 /* Dense ERP dialogs/popovers stay bright, quiet and legible on mobile. */
 .admin-theme [role="dialog"],
 .admin-theme [data-radix-popper-content-wrapper] > div {
-  color: #263238;
+  color: #292522;
 }
 .admin-theme [role="dialog"] input,
 .admin-theme [role="dialog"] textarea,
 .admin-theme [role="dialog"] [role="combobox"] {
   background: #fff;
-  color: #263238;
+  color: #292522;
 }
 
 /* Preserve hierarchy without heavy colour blocks. */
 .admin-theme .admin-content h1,
 .admin-theme .admin-content h2,
 .admin-theme .admin-content h3 {
-  color: #263238;
+  color: #292522;
 }
 .admin-theme .admin-content button {
   font-weight: 500;

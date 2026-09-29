@@ -84,7 +84,7 @@ const OAuthConsent = () => {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-secondary/40 to-background">
       <header className="container-page py-6">
-        <Logo className="h-10 w-10" />
+        <Logo className="h-10 w-24" />
       </header>
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md border-border/60 shadow-elegant">

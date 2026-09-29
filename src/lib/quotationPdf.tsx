@@ -18,39 +18,39 @@ const formatINR = (n: number | null | undefined) => {
 
 // A4 = 595 x 842 pt. Side padding 22pt → usable width = 551pt
 const styles = StyleSheet.create({
-  page: { paddingTop: 24, paddingBottom: 36, paddingHorizontal: 22, fontFamily: "Helvetica", color: "#0F2A2E", backgroundColor: "#FFFFFF", fontSize: 12 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #0E5C66", paddingBottom: 12, marginBottom: 14 },
+  page: { paddingTop: 24, paddingBottom: 36, paddingHorizontal: 22, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FFFFFF", fontSize: 12 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #5E2D05", paddingBottom: 12, marginBottom: 14 },
   logo: { width: 120, height: 54, objectFit: "contain" },
   brandRight: { textAlign: "right" },
-  brandName: { fontSize: 16, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 10, color: "#6E7F82", marginTop: 2 },
-  hTitle: { fontSize: 22, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
+  brandName: { fontSize: 16, fontWeight: 700, color: "#5E2D05" },
+  brandLine: { fontSize: 10, color: "#655B52", marginTop: 2 },
+  hTitle: { fontSize: 22, fontWeight: 700, color: "#5E2D05", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
   partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14, gap: 12 },
   partyBox: { flex: 1, padding: 10, backgroundColor: "#F4F7F7", borderRadius: 4 },
-  partyLabel: { fontSize: 9, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  partyValue: { fontSize: 12, fontWeight: 600, color: "#0F2A2E" },
-  table: { borderWidth: 0.75, borderColor: "#0E5C66", marginBottom: 12 },
-  tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
+  partyLabel: { fontSize: 9, color: "#655B52", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
+  partyValue: { fontSize: 12, fontWeight: 600, color: "#292522" },
+  table: { borderWidth: 0.75, borderColor: "#5E2D05", marginBottom: 12 },
+  tHead: { flexDirection: "row", backgroundColor: "#5E2D05" },
   th: { color: "#FFFFFF", fontSize: 10.5, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
   tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 44 },
   tRowAlt: { backgroundColor: "#F4F7F7" },
   td: { fontSize: 11, padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
   tdImg: { width: 64, height: 64, objectFit: "contain" },
-  totalsWrap: { marginTop: 4, paddingTop: 8, borderTopWidth: 1.5, borderTopColor: "#0E5C66", backgroundColor: "#F4F7F7", paddingHorizontal: 8, paddingBottom: 8, borderRadius: 4 },
-  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FFFFFF" },
+  totalsWrap: { marginTop: 4, paddingTop: 8, borderTopWidth: 1.5, borderTopColor: "#5E2D05", backgroundColor: "#F4F7F7", paddingHorizontal: 8, paddingBottom: 8, borderRadius: 4 },
+  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4, backgroundColor: "#FFFFFF" },
   totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
-  totalLabel: { fontSize: 11, color: "#1F3F44" },
-  totalValue: { fontSize: 12, fontWeight: 600, color: "#0F2A2E" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 10, backgroundColor: "#0E5C66" },
+  totalLabel: { fontSize: 11, color: "#493A2E" },
+  totalValue: { fontSize: 12, fontWeight: 600, color: "#292522" },
+  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 10, backgroundColor: "#5E2D05" },
   grandLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
   grandValue: { color: "#FFFFFF", fontSize: 16, fontWeight: 700 },
-  bankBox: { marginTop: 16, padding: 12, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4 },
-  bankTitle: { fontSize: 12, fontWeight: 700, color: "#0E5C66", marginBottom: 5 },
-  bankLine: { fontSize: 11, color: "#1F3F44", marginBottom: 2 },
-  termsBox: { marginTop: 12, padding: 12, borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, backgroundColor: "#FAFCFC" },
-  termsTitle: { fontSize: 12, fontWeight: 700, color: "#0E5C66", marginBottom: 5 },
-  termsLine: { fontSize: 10.5, color: "#1F3F44", marginBottom: 3, lineHeight: 1.45 },
-  footer: { position: "absolute", bottom: 16, left: 22, right: 22, textAlign: "center", fontSize: 9, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 6 },
+  bankBox: { marginTop: 16, padding: 12, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4 },
+  bankTitle: { fontSize: 12, fontWeight: 700, color: "#5E2D05", marginBottom: 5 },
+  bankLine: { fontSize: 11, color: "#493A2E", marginBottom: 2 },
+  termsBox: { marginTop: 12, padding: 12, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4, backgroundColor: "#FAFCFC" },
+  termsTitle: { fontSize: 12, fontWeight: 700, color: "#5E2D05", marginBottom: 5 },
+  termsLine: { fontSize: 10.5, color: "#493A2E", marginBottom: 3, lineHeight: 1.45 },
+  footer: { position: "absolute", bottom: 16, left: 22, right: 22, textAlign: "center", fontSize: 9, color: "#655B52", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 6 },
 });
 
 // Sum = 549 (usable 551pt minus table borderWidth 0.75 × 2 sides = 1.5pt → floor to 549).
@@ -297,7 +297,7 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
 
       {q.notes && (
         <View style={{ marginTop: 10 }}>
-          <Text style={{ fontSize: 9, color: "#6E7F82" }}>Notes: {q.notes}</Text>
+          <Text style={{ fontSize: 9, color: "#655B52" }}>Notes: {q.notes}</Text>
         </View>
       )}
 
@@ -433,52 +433,52 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
 const JW_COLS = { sl: 22, item: 110, photo: 90, meas: 130, cat: 130, qty: 57 };
 
 const jwStyles = StyleSheet.create({
-  page: { paddingTop: 28, paddingBottom: 40, paddingHorizontal: 28, fontFamily: "Helvetica", color: "#0F2A2E", fontSize: 10, backgroundColor: "#FFFFFF" },
+  page: { paddingTop: 28, paddingBottom: 40, paddingHorizontal: 28, fontFamily: "Helvetica", color: "#292522", fontSize: 10, backgroundColor: "#FFFFFF" },
 
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: "#0E5C66", paddingBottom: 10, marginBottom: 12 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1.5, borderBottomColor: "#5E2D05", paddingBottom: 10, marginBottom: 12 },
   logo: { width: 100, height: 44, objectFit: "contain" },
   brandRight: { textAlign: "right" },
-  brandName: { fontSize: 13, fontWeight: 700, color: "#0E5C66" },
-  brandLine: { fontSize: 8, color: "#6E7F82", marginTop: 2 },
+  brandName: { fontSize: 13, fontWeight: 700, color: "#5E2D05" },
+  brandLine: { fontSize: 8, color: "#655B52", marginTop: 2 },
 
-  hTitle: { fontSize: 17, fontWeight: 700, color: "#0E5C66", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
+  hTitle: { fontSize: 17, fontWeight: 700, color: "#5E2D05", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
 
-  metaStrip: { flexDirection: "row", borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 4, marginBottom: 12 },
-  metaCell: { flex: 1, padding: 8, borderRightWidth: 0.5, borderRightColor: "#0E5C66" },
+  metaStrip: { flexDirection: "row", borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4, marginBottom: 12 },
+  metaCell: { flex: 1, padding: 8, borderRightWidth: 0.5, borderRightColor: "#5E2D05" },
   metaCellLast: { flex: 1, padding: 8 },
-  metaLabel: { fontSize: 7.5, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 },
-  metaValue: { fontSize: 11, fontWeight: 700, color: "#0F2A2E" },
+  metaLabel: { fontSize: 7.5, color: "#655B52", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 },
+  metaValue: { fontSize: 11, fontWeight: 700, color: "#292522" },
 
-  table: { borderWidth: 0.75, borderColor: "#0E5C66", borderRadius: 2, marginBottom: 10 },
-  tHead: { flexDirection: "row", backgroundColor: "#0E5C66" },
+  table: { borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 2, marginBottom: 10 },
+  tHead: { flexDirection: "row", backgroundColor: "#5E2D05" },
   th: { color: "#FFFFFF", fontSize: 9, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF", textTransform: "uppercase", letterSpacing: 0.4 },
-  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#0E5C66", alignItems: "stretch" },
+  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#5E2D05", alignItems: "stretch" },
   tRowAlt: { backgroundColor: "#FAFCFC" },
   td: { padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF", justifyContent: "flex-start" },
 
-  cellSl: { fontSize: 11, fontWeight: 700, color: "#0E5C66", textAlign: "center" },
-  cellItem: { fontSize: 10, color: "#0F2A2E", lineHeight: 1.35 },
-  cellQty: { fontSize: 14, fontWeight: 700, color: "#0E5C66", textAlign: "center" },
+  cellSl: { fontSize: 11, fontWeight: 700, color: "#5E2D05", textAlign: "center" },
+  cellItem: { fontSize: 10, color: "#292522", lineHeight: 1.35 },
+  cellQty: { fontSize: 14, fontWeight: 700, color: "#5E2D05", textAlign: "center" },
 
   photoBox: { width: 96, height: 96, alignSelf: "center", borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
   photoImg: { width: 92, height: 92, objectFit: "contain" },
   photoEmpty: { fontSize: 7.5, color: "#9AA8AA" },
 
-  measText: { fontSize: 10, color: "#0F2A2E", marginBottom: 4 },
-  sketchLabel: { fontSize: 7, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2, marginBottom: 2 },
+  measText: { fontSize: 10, color: "#292522", marginBottom: 4 },
+  sketchLabel: { fontSize: 7, color: "#655B52", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2, marginBottom: 2 },
   sketchBox: { width: "100%", height: 80, borderWidth: 0.5, borderColor: "#D8DEDF", alignItems: "center", justifyContent: "center", backgroundColor: "#FAFCFC" },
   sketchImg: { width: 178, height: 76, objectFit: "contain" },
 
   notesBox: { marginTop: 8, padding: 8, borderWidth: 0.5, borderColor: "#D8DEDF", borderRadius: 4, backgroundColor: "#FAFCFC" },
-  notesTitle: { fontSize: 9, fontWeight: 700, color: "#0E5C66", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 },
-  notesText: { fontSize: 9.5, color: "#0F2A2E", lineHeight: 1.4 },
+  notesTitle: { fontSize: 9, fontWeight: 700, color: "#5E2D05", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 },
+  notesText: { fontSize: 9.5, color: "#292522", lineHeight: 1.4 },
 
   signRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 30 },
   signCol: { width: 180, alignItems: "center" },
-  signLine: { borderTopWidth: 0.75, borderTopColor: "#0F2A2E", width: "100%", marginBottom: 4 },
-  signLabel: { fontSize: 8.5, color: "#6E7F82", textTransform: "uppercase", letterSpacing: 0.6 },
+  signLine: { borderTopWidth: 0.75, borderTopColor: "#292522", width: "100%", marginBottom: 4 },
+  signLabel: { fontSize: 8.5, color: "#655B52", textTransform: "uppercase", letterSpacing: 0.6 },
 
-  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#6E7F82", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
+  footer: { position: "absolute", bottom: 18, left: 28, right: 28, textAlign: "center", fontSize: 7.5, color: "#655B52", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 5 },
   pageNo: { position: "absolute", bottom: 6, right: 28, fontSize: 7.5, color: "#9AA8AA" },
 });
 
