@@ -31,3 +31,11 @@
 https://supabase.com/docs/guides/self-hosting/restore-from-platform
 
 **Warning:** This document and the accompanying frontend configuration PR improve preparedness but do not deploy a recovery server or provide zero-downtime guarantees.
+
+## Executable recovery tooling added in this branch
+
+- `scripts/backup-full-supabase.sh`: role/schema/data SQL exports with checksums. Run only on a secured server with protected `SUPABASE_DATABASE_URL` and `BACKUP_ROOT`.
+- `scripts/backup-storage.mjs`: downloads **private** and public Storage objects with a **server-side service-role secret** (never browser env) into path-preserving folders and writes a SHA-256 manifest. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `BACKUP_ROOT`, and an explicit `EXPECTED_BUCKETS`. Does not yet transfer to Hostinger; run with a secured backup runner and separately encrypt/replicate snapshots offsite. Verify local bucket count against database object inventory.
+- `scripts/verify-recovery.mjs`: fail-closed isolated recovery verification of DB reads, reversible writes, staff login roles, all restored objects against manifest checksums. Requires all `RECOVERY_*` test credentials, `STORAGE_SNAPSHOT` and explicit `RECOVERY_ISOLATED_TEST=yes`. Provision test-only `public.dr_smoke_test` on the isolated restore, never production. Test must be run with source Supabase disconnected before sign-off.
+
+**These scripts have been committed, not executed on Hostinger.** Verify version compatibility, checksum completeness, protected secrets, object counts, edge functions, realtime and WhatsApp independently before cutover. The existing n8n private-Storage download remains unauthenticated; a dedicated **Supabase server-side key credential** must first be configured and proven against one private object. Never reuse an uninspected generic header credential or change the quotations bucket to public.
