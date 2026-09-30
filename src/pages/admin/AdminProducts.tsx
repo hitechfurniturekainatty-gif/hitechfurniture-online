@@ -167,7 +167,7 @@ const AdminProducts = () => {
   const [filterPriceMax, setFilterPriceMax] = useState<string>("");
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
-    return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "list";
+    return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "grid";
   });
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [stockItemView, setStockItemView] = useState<"grid" | "list">("grid");
@@ -577,6 +577,12 @@ const AdminProducts = () => {
         payload.reviewed_by = payload.submitted_by;
         payload.reviewed_at = new Date().toISOString();
       }
+    } else if (isAdmin && payload.is_published) {
+      // Admin publishing an existing/pending product should make it visible
+      // in the public safe-search catalog immediately.
+      payload.review_status = "approved";
+      payload.reviewed_by = (await supabase.auth.getUser()).data.user?.id ?? null;
+      payload.reviewed_at = new Date().toISOString();
     }
     if (isOfficeStaff) payload.cost_price = form.cost_price ? Number(form.cost_price) : null;
     // primary_image_url = first image URL
@@ -1390,9 +1396,13 @@ const AdminProducts = () => {
                     key={p.id}
                     className={`group flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md ${isSelected ? "ring-2 ring-primary" : ""}`}
                   >
-                    <div className="relative aspect-square bg-muted">
+                    <div
+                      className="relative aspect-square cursor-pointer bg-muted"
+                      onDoubleClick={() => openEdit(p)}
+                      title="Double-click photo to edit product"
+                    >
                       {cover ? (
-                        <img src={cover} alt={p.product_name} className="h-full w-full object-contain p-2" />
+                        <img src={cover} alt={p.product_name} className="h-full w-full object-contain p-2" draggable={false} />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No image</div>
                       )}
@@ -1431,50 +1441,55 @@ const AdminProducts = () => {
                         On {p.stock_quantity} · Res {reservedOf(p.id)} · Avail {availableOf(p.id, p.stock_quantity)}
                       </button>
                     </div>
-                    <div className="flex items-stretch border-t">
+                    <div className="grid grid-cols-5 border-t bg-background/70">
                       <button
                         type="button"
                         onClick={() => setStockProduct(p)}
-                        className="flex flex-1 items-center justify-center gap-1 py-2 text-xs hover:bg-accent hover:text-accent-foreground"
-                        title="Manage inventory"
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
+                        title="Stock In / Out"
                       >
-                        <Boxes className="h-4 w-4" />
+                        <Boxes className="h-3.5 w-3.5" />
+                        <span>In / Out</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => downloadProductsPdf("all", { type: "product", id: p.id })}
                         disabled={pdfBusy}
-                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-                        title="Download PDF"
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 sm:text-[11px]"
+                        title="Download product PDF"
                       >
-                        <FileDown className="h-4 w-4" />
+                        <FileDown className="h-3.5 w-3.5" />
+                        <span>PDF</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
-                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
-                        title="Generate QR"
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
+                        title="Generate QR code"
                       >
-                        <QrCode className="h-4 w-4" />
+                        <QrCode className="h-3.5 w-3.5" />
+                        <span>QR</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => openEdit(p)}
-                        className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs hover:bg-accent hover:text-accent-foreground"
-                        title="Edit"
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
+                        title="Edit product"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span>Edit</span>
                       </button>
-                      {isOfficeStaff && (
+                      {isOfficeStaff ? (
                         <button
                           type="button"
                           onClick={() => remove(p)}
-                          className="flex flex-1 items-center justify-center gap-1 border-l py-2 text-xs text-destructive hover:bg-destructive/10"
-                          title="Delete"
+                          className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium text-destructive hover:bg-destructive/10 sm:text-[11px]"
+                          title="Delete product"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Delete</span>
                         </button>
-                      )}
+                      ) : <span className="border-l" />}
                     </div>
                   </div>
                 );
