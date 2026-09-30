@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode, EyeOff, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode, EyeOff, ArrowDownToLine, ArrowUpFromLine, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1429,81 +1429,57 @@ const AdminProducts = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-1 flex-col gap-1 p-3">
-                      <p className="line-clamp-2 text-sm font-medium leading-snug" title={toTitleCase(p.product_name)}>
+                    <div className="flex flex-1 flex-col gap-1.5 p-3">
+                      <p className="line-clamp-2 text-sm font-semibold leading-snug" title={toTitleCase(p.product_name)}>
                         {toTitleCase(p.product_name)}
                       </p>
-                      <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
-                      <p className="text-sm">
-                        <span className="font-semibold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
-                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
+                        <span className="shrink-0 text-sm font-bold text-primary">{formatINR(p.offer_price ?? p.mrp)}</span>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => openStock(p, "in")}
-                        className={`text-left text-xs underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-muted-foreground"}`}
-                        title="Manage stock"
+                        onClick={() => openStock(p, "history")}
+                        className={`mt-1 grid grid-cols-3 rounded-xl border bg-muted/35 px-2 py-2 text-center transition hover:bg-muted/60 ${isLow ? "border-destructive/30" : ""}`}
+                        title="View stock history"
                       >
-                        On {p.stock_quantity} · Res {reservedOf(p.id)} · Avail {availableOf(p.id, p.stock_quantity)}
+                        <span><b className="block text-sm">{p.stock_quantity}</b><small className="text-[9px] uppercase tracking-wide text-muted-foreground">Stock</small></span>
+                        <span className="border-x"><b className="block text-sm">{reservedOf(p.id)}</b><small className="text-[9px] uppercase tracking-wide text-muted-foreground">Reserved</small></span>
+                        <span><b className={`block text-sm ${isLow ? "text-destructive" : "text-primary"}`}>{availableOf(p.id, p.stock_quantity)}</b><small className="text-[9px] uppercase tracking-wide text-muted-foreground">Available</small></span>
                       </button>
                     </div>
-                    <div className="grid grid-cols-6 border-t bg-background/70">
-                      <button
-                        type="button"
-                        onClick={() => openStock(p, "in")}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-primary hover:bg-accent sm:text-[11px]"
-                        title="Stock In"
-                      >
-                        <ArrowDownToLine className="h-3.5 w-3.5" />
-                        <span>+ In</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openStock(p, "out")}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-semibold hover:bg-accent sm:text-[11px]"
-                        title="Stock Out"
-                      >
-                        <ArrowUpFromLine className="h-3.5 w-3.5" />
-                        <span>− Out</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadProductsPdf("all", { type: "product", id: p.id })}
-                        disabled={pdfBusy}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 sm:text-[11px]"
-                        title="Download product PDF"
-                      >
-                        <FileDown className="h-3.5 w-3.5" />
-                        <span>PDF</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
-                        title="Generate QR code"
-                      >
-                        <QrCode className="h-3.5 w-3.5" />
-                        <span>QR</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
-                        title="Edit product"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        <span>Edit</span>
-                      </button>
-                      {isOfficeStaff ? (
-                        <button
-                          type="button"
-                          onClick={() => remove(p)}
-                          className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-medium text-destructive hover:bg-destructive/10 sm:text-[11px]"
-                          title="Delete product"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Delete</span>
+                    <div className="border-t bg-muted/15 p-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => openStock(p, "in")} className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90" title="Stock In">
+                          <ArrowDownToLine className="h-3.5 w-3.5" /><span>Stock In</span>
                         </button>
-                      ) : <span className="border-l" />}
+                        <button type="button" onClick={() => openStock(p, "out")} className="flex h-9 items-center justify-center gap-1.5 rounded-lg border bg-background px-2 text-xs font-semibold shadow-sm transition hover:bg-accent" title="Stock Out">
+                          <ArrowUpFromLine className="h-3.5 w-3.5" /><span>Stock Out</span>
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center justify-center gap-1">
+                        <Button type="button" size="sm" variant="ghost" className="h-8 flex-1 gap-1 px-1 text-[11px]" onClick={() => downloadProductsPdf("all", { type: "product", id: p.id })} disabled={pdfBusy} title="Download product PDF">
+                          <FileDown className="h-3.5 w-3.5" /> PDF
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" className="h-8 flex-1 gap-1 px-1 text-[11px]" onClick={() => setQrTarget({ productId: p.id, productName: p.product_name, productCode: p.product_code })} title="Generate QR code">
+                          <QrCode className="h-3.5 w-3.5" /> QR
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" className="h-8 flex-1 gap-1 px-1 text-[11px]" onClick={() => openEdit(p)} title="Edit product">
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        {isOfficeStaff && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="More actions"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openStock(p, "history")}><Boxes className="mr-2 h-4 w-4" />Stock history</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => remove(p)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete product</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
