@@ -16,7 +16,8 @@ import { formatINR } from "@/lib/brand";
 import { toTitleCase } from "@/lib/textCase";
 import { FloorReorderDialog } from "@/components/admin/FloorReorderDialog";
 import { floorEntries, sortFloorEntries, locationLabel, partLabel, type FloorProduct, type FloorEntry, type FloorLocation } from "@/lib/staffFloorCatalog";
-import { ArrowLeft, ArrowRight, ArrowRightLeft, ArrowUpDown, ChevronLeft, ChevronRight, Grid2X2, List, Loader2, MapPin, Package, RefreshCw, Search } from "lucide-react";
+import { SnapSearchDialog } from "@/components/staff/SnapSearchDialog";
+import { Camera, ArrowLeft, ArrowRight, ArrowRightLeft, ArrowUpDown, ChevronLeft, ChevronRight, Grid2X2, List, Loader2, MapPin, Package, RefreshCw, Search } from "lucide-react";
 
 const db = supabase as any;
 const PRODUCT_FIELDS = "id,product_name,product_code,description,mrp,material,dimensions,primary_image_url,stock_quantity,stock_status,location_id,floor_display_order,main_category_id,sub_category_id,review_status,product_images(image_url,display_order),product_variants(id,color_name,color_hex,image_url,stock_quantity,location_id,floor_display_order,product_variant_stock(id,location_id,quantity,floor_display_order))";
@@ -37,6 +38,11 @@ async function allPages(query: (start: number, end: number) => PromiseLike<{data
 export default function StaffCatalog() {
   const { user, loading: authLoading, isOfficeStaff, isAdmin, isWarehouse, isDelivery, isMeasurementStaff } = useAuth();
   const allowed = !!user && (isOfficeStaff || isWarehouse || isDelivery || isMeasurementStaff);
+  const [snapOpen,setSnapOpen]=useState(false);
+  const [snapPinOpen,setSnapPinOpen]=useState(false);
+  const [snapPin,setSnapPin]=useState("");
+  const [verifiedSnapPin,setVerifiedSnapPin]=useState("");
+  const [verifyingSnap,setVerifyingSnap]=useState(false);
   const [products,setProducts] = useState<FloorProduct[]>([]);
   const [locations,setLocations] = useState<FloorLocation[]>([]);
   const [categories,setCategories] = useState<Category[]>([]);
@@ -60,7 +66,7 @@ export default function StaffCatalog() {
   const revision = useRef(0);
   const busy = useRef(false);
   const interacting = useRef(false);
-  interacting.current=arrangeOpen||moveEntries.length>0||!!stockEntry||selecting||!!viewerKey;
+  interacting.current=snapOpen||snapPinOpen||arrangeOpen||moveEntries.length>0||!!stockEntry||selecting||!!viewerKey;
   const load = useCallback(async () => {
     if (!allowed || busy.current) return;
     busy.current = true;
@@ -148,11 +154,12 @@ export default function StaffCatalog() {
               <div><h1 className="font-display text-2xl font-semibold text-stone-900">Staff Catalog</h1><p className="text-xs text-stone-600 sm:text-sm">ഷോറൂമിലെ ക്രമത്തിൽ · Floor-wise items & MRP</p></div>
             </div>
           </div>
+          {isOfficeStaff&&<Button variant="outline" size="sm" onClick={()=>verifiedSnapPin?setSnapOpen(true):setSnapPinOpen(true)} className="bg-white"><Camera className="mr-1.5 h-4 w-4" />SnapSearch</Button>}
           <Button variant="outline" size="sm" onClick={()=>void load()} disabled={loading} className="bg-white"><RefreshCw className={"mr-1.5 h-4 w-4 "+(loading?"animate-spin":"")} /> Refresh</Button>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Picker label="Shop / Godown" value={building} onChange={v=>{setBuilding(v);setFloor(ALL);setSection(ALL);}} options={buildings.map(b=>({id:b,label:b})) allLabel="All locations" />
-          <Picker label="Floor" value={floor} onChange={v=>{setFloor(v);setSection(ALL);}} options={floors.map(f=>({id:f,label:f})) allLabel="All floors" />
+          <Picker label="Shop / Godown" value={building} onChange={v=>{setBuilding(v);setFloor(ALL);setSection(ALL);}} options={buildings.map(b=>({id:b,label:b}))} allLabel="All locations" />
+          <Picker label="Floor" value={floor} onChange={v=>{setFloor(v);setSection(ALL);}} options={floors.map(f=>({id:f,label:f}))} allLabel="All floors" />
           <Picker label="Section / Part" value={section} onChange={setSection} options={sections.map(l=>({id:l.id,label:partLabel(l)+(building===ALL||floor===ALL?" · "+l.building+" · "+l.floor:"")}))} allLabel="All sections" />
         </div>
       </div>
@@ -200,6 +207,8 @@ export default function StaffCatalog() {
       </DialogContent>
     </Dialog>
     <MoveDialog entries={moveEntries} locations={locations} onClose={()=>setMoveEntries([])} onSaved={updated} />
+    <SnapSearchDialog open={snapOpen} onOpenChange={setSnapOpen} catalogPin={verifiedSnapPin} />
+    <Dialog open={snapPinOpen} onOpenChange={o=>{if(!verifyingSnap){setSnapPinOpen(o);if(!o)setSnapPin("");}}}><DialogContent className="max-w-sm rounded-2xl"><DialogHeader><DialogTitle>SnapSearch access</DialogTitle></DialogHeader><p className="text-sm text-muted-foreground">Photo search uses the existing Catalog PIN. Floor browsing opens with your staff login.</p><Input type="password" value={snapPin} onChange={e=>setSnapPin(e.target.value)} placeholder="Photo search PIN" aria-label="Photo search PIN" /><Button disabled={!snapPin||verifyingSnap} onClick={async()=>{setVerifyingSnap(true);try{const {data,error}=await supabase.rpc("verify_catalog_pin",{_pin:snapPin});if(error||!data){toast({title:"Wrong PIN",variant:"destructive"});return;}setVerifiedSnapPin(snapPin);setSnapPin("");setSnapPinOpen(false);setSnapOpen(true);}finally{setVerifyingSnap(false);}}}>{verifyingSnap&&<Loader2 className="mr-2 h-4 w-4 animate-spin" />}Open photo search</Button></DialogContent></Dialog>
     <FloorStockDialog entry={stockEntry} onClose={()=>setStockEntry(null)} onSaved={updated} />
   </AdminShell>;
 }

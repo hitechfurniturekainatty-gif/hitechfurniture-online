@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 const mocks=vi.hoisted(()=>({auth:{user:{id:"staff"} as {id:string}|null,loading:false,isOfficeStaff:true,isAdmin:false,isWarehouse:false,isDelivery:false,isMeasurementStaff:false},select:vi.fn()}));
 vi.mock("@/hooks/useAuth",()=>({useAuth:()=>mocks.auth}));
 vi.mock("@/components/admin/AdminShell",()=>({AdminShell:({children}:any)=>children}));
+vi.mock("@/components/staff/SnapSearchDialog",()=>({SnapSearchDialog:()=>null}));
 vi.mock("@/components/admin/FloorReorderDialog",()=>({FloorReorderDialog:()=>null}));
 const data:Record<string,unknown[]>={
   products:[{id:"p",product_name:"Sofa",product_code:"S1",mrp:25000,stock_quantity:2,stock_status:"in_stock",location_id:"a",floor_display_order:10,product_images:[],product_variants:[]}],

@@ -26,7 +26,7 @@ const payload = (i: ReorderItem) => ({id:i.id,kind:i.kind||"product",location_id
 
 function Row({item,index,count,selected,onToggle,onMove,disabled}:{item:ReorderItem;index:number;count:number;selected:boolean;onToggle:()=>void;onMove:(delta:number)=>void;disabled:boolean}) {
   const {attributes,listeners,setNodeRef,setActivatorNodeRef,transform,transition,isDragging}=useSortable({id:key(item),disabled});
-  return <li ref={setNodeRef} style={{transform:CSS.Transform.toString(transform),transition,opacity:isDragging?.6:1}} className="flex items-center gap-2 rounded-xl border bg-white p-2 shadow-sm">
+  return <li ref={setNodeRef} style={{transform:CSS.Transform.toString(transform),transition,opacity:isDragging ? 0.6 : 1}} className="flex items-center gap-2 rounded-xl border bg-white p-2 shadow-sm">
     <button ref={setActivatorNodeRef} type="button" disabled={disabled} className="touch-none rounded-lg p-2 text-stone-500 active:cursor-grabbing" aria-label={"Drag "+item.product_name} {...attributes} {...listeners}><GripVertical className="h-5 w-5" /></button>
     <Checkbox checked={selected} onCheckedChange={onToggle} disabled={disabled} aria-label={"Select "+item.product_name} />
     <span className="w-5 shrink-0 text-center text-xs text-stone-500">{index+1}</span>
