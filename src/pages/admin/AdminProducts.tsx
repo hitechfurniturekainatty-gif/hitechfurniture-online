@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode, EyeOff } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, Boxes, Tag, Printer, AlertTriangle, X, MapPin, KeyRound, LayoutGrid, List as ListIcon, Upload, Package, ChevronRight, ChevronDown, FileDown, QrCode, EyeOff, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -146,6 +146,11 @@ const AdminProducts = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
+  const [stockInitialTab, setStockInitialTab] = useState<"in" | "out" | "history">("in");
+  const openStock = (p: Product, tab: "in" | "out" | "history" = "in") => {
+    setStockInitialTab(tab);
+    setStockProduct(p);
+  };
   const [qrTarget, setQrTarget] = useState<QrTarget | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
@@ -1333,7 +1338,7 @@ const AdminProducts = () => {
                       {" · "}
                       <button
                         type="button"
-                        onClick={() => setStockProduct(p)}
+                        onClick={() => openStock(p, "in")}
                         className={`underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-foreground/70"}`}
                         title="Manage stock"
                       >
@@ -1342,7 +1347,7 @@ const AdminProducts = () => {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center">
-                    <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setStockProduct(p)} title="Manage inventory">
+                    <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openStock(p, "in")} title="Manage inventory">
                       <Boxes className="h-4 w-4" />
                     </Button>
                     <Button
@@ -1434,22 +1439,31 @@ const AdminProducts = () => {
                       </p>
                       <button
                         type="button"
-                        onClick={() => setStockProduct(p)}
+                        onClick={() => openStock(p, "in")}
                         className={`text-left text-xs underline-offset-2 hover:underline ${isLow ? "text-destructive font-semibold" : "text-muted-foreground"}`}
                         title="Manage stock"
                       >
                         On {p.stock_quantity} · Res {reservedOf(p.id)} · Avail {availableOf(p.id, p.stock_quantity)}
                       </button>
                     </div>
-                    <div className="grid grid-cols-5 border-t bg-background/70">
+                    <div className="grid grid-cols-6 border-t bg-background/70">
                       <button
                         type="button"
-                        onClick={() => setStockProduct(p)}
-                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium hover:bg-accent hover:text-accent-foreground sm:text-[11px]"
-                        title="Stock In / Out"
+                        onClick={() => openStock(p, "in")}
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-primary hover:bg-accent sm:text-[11px]"
+                        title="Stock In"
                       >
-                        <Boxes className="h-3.5 w-3.5" />
-                        <span>In / Out</span>
+                        <ArrowDownToLine className="h-3.5 w-3.5" />
+                        <span>+ In</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openStock(p, "out")}
+                        className="flex min-w-0 flex-col items-center justify-center gap-0.5 border-l py-2 text-[10px] font-semibold hover:bg-accent sm:text-[11px]"
+                        title="Stock Out"
+                      >
+                        <ArrowUpFromLine className="h-3.5 w-3.5" />
+                        <span>− Out</span>
                       </button>
                       <button
                         type="button"
@@ -1812,6 +1826,7 @@ const AdminProducts = () => {
         open={!!stockProduct}
         onOpenChange={(o) => { if (!o) setStockProduct(null); }}
         onChanged={load}
+        initialTab={stockInitialTab}
       />
       <PriceLabelPrintDialog
         open={labelDialogOpen}
