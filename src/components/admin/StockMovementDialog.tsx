@@ -44,11 +44,13 @@ export const StockMovementDialog = ({
   open,
   onOpenChange,
   onChanged,
+  initialTab = "in",
 }: {
   product: Product | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onChanged: () => void;
+  initialTab?: "in" | "out" | "history";
 }) => {
   const [tab, setTab] = useState<"in" | "out" | "history">("in");
   const [qty, setQty] = useState("");
@@ -60,13 +62,13 @@ export const StockMovementDialog = ({
 
   useEffect(() => {
     if (!open || !product) return;
-    setTab("in");
+    setTab(initialTab);
     setQty("");
-    setReason("purchase");
+    setReason(initialTab === "out" ? "sale" : "purchase");
     setNote("");
     void loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, product?.id]);
+  }, [open, product?.id, initialTab]);
 
   useEffect(() => {
     // Pick a sensible default reason when switching tab
@@ -131,7 +133,7 @@ export const StockMovementDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 rounded-none p-0 sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-lg">
         <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4">
-          <DialogTitle className="font-display text-xl">Inventory · {product.product_name}</DialogTitle>
+          <DialogTitle className="font-display text-xl">Stock · {product.product_name}</DialogTitle>
           <p className="text-xs text-muted-foreground">{product.product_code}</p>
         </DialogHeader>
 
@@ -229,7 +231,7 @@ export const StockMovementDialog = ({
             <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Close</Button>
             <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tab === "in" ? "Add stock" : "Remove stock"}
+              {tab === "in" ? `+ Add ${qty || "0"} to stock` : `− Remove ${qty || "0"} from stock`}
             </Button>
           </DialogFooter>
         )}
