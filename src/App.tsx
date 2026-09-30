@@ -106,7 +106,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/catalog" element={<Catalog />} />
-            <Route path="/staff-catalog" element={<StaffCatalog />} />
+            <Route path="/staff-catalog" element={<Navigate to="/admin/staff-catalog" replace />} />
+            <Route path="/admin/staff-catalog" element={<StaffCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
