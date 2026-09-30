@@ -295,6 +295,8 @@ const AdminOverview = () => {
         <SummaryStat label="Pending Payments" value={formatINR(snapshot.paymentAmount)} loading={loading} />
       </div>
 
+      {(isOfficeStaff || isWarehouse || isDelivery) && <Card className="mb-5 rounded-2xl border-stone-200 bg-white shadow-sm"><CardContent className="p-4"><button type="button" onClick={()=>navigate("/catalog")} className="flex w-full items-center justify-between gap-3 text-left"><div className="flex items-center gap-3"><span className="rounded-xl bg-stone-100 p-2.5 text-stone-700"><PackageSearch className="h-5 w-5" /></span><div><h2 className="text-sm font-semibold">Total Catalog</h2><p className="text-xs text-muted-foreground">Browse furniture and product details</p></div></div><ArrowRight className="h-4 w-4" /></button><Button type="button" size="sm" className="mt-3 border border-amber-200 bg-amber-100 text-amber-950 hover:bg-amber-200" onClick={()=>navigate("/admin/staff-catalog")}>Staff Catalog <ArrowRight className="ml-2 h-3.5 w-3.5" /></Button></CardContent></Card>}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
