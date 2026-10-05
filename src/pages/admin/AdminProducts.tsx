@@ -376,6 +376,25 @@ const AdminProducts = () => {
 
   const subsForForm = subCats.filter((s) => s.main_category_id === form.main_category_id);
 
+  // Duplicate guard: product codes are unique business identifiers. Keep this
+  // visible while typing so staff can open the existing item instead of
+  // discovering the collision only after pressing Create.
+  const duplicateCodeProduct = useMemo(() => {
+    const code = form.product_code.trim().toLowerCase();
+    if (!code) return null;
+    return products.find(
+      (p) => p.id !== editing?.id && p.product_code.trim().toLowerCase() === code,
+    ) ?? null;
+  }, [products, form.product_code, editing?.id]);
+
+  const possibleNameDuplicates = useMemo(() => {
+    const name = form.product_name.trim().toLowerCase();
+    if (name.length < 3) return [];
+    return products
+      .filter((p) => p.id !== editing?.id && p.product_name.trim().toLowerCase().includes(name))
+      .slice(0, 3);
+  }, [products, form.product_name, editing?.id]);
+
   // Derive the physical location from location_id. The current shop setup is
   // Building/Godown → Floor → Part. Older rows used `section` for Part A/B,
   // so keep a fallback for those records while treating `part` as canonical.
@@ -533,8 +552,34 @@ const AdminProducts = () => {
       }
     }
     const autoCode =
-      titleCaseTrim(form.product_code) ||
+      form.product_code.trim() ||
       `Auto-${Date.now().toString(36)}`;
+
+    // Preflight against the live database, not only the locally loaded list.
+    // This keeps duplicate prevention accurate even when another staff member
+    // created a product after this page was opened.
+    let duplicateQuery = supabase
+      .from("products")
+      .select("id, product_name, product_code")
+      .ilike("product_code", autoCode)
+      .is("deleted_at", null)
+      .limit(1);
+    if (editing?.id) duplicateQuery = duplicateQuery.neq("id", editing.id);
+    const { data: duplicateRows, error: duplicateCheckError } = await duplicateQuery;
+    if (duplicateCheckError) {
+      toast({ title: "Could not verify product code", description: "Please try again. No product was saved.", variant: "destructive" });
+      return;
+    }
+    if (duplicateRows && duplicateRows.length > 0) {
+      const existing = duplicateRows[0] as { id: string; product_name: string; product_code: string };
+      toast({
+        title: "Product code already exists",
+        description: `${existing.product_code} is already used by ${existing.product_name}. Open the existing product instead of creating a duplicate.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     // Approval logic: new products go to pending_supervision unless admin approves immediately
     const isNew = !editing;
@@ -599,7 +644,17 @@ const AdminProducts = () => {
       if (error) { setSaving(false); return toast({ title: "Failed", description: error.message, variant: "destructive" }); }
     } else {
       const { data, error } = await supabase.from("products").insert(payload).select("id").single();
-      if (error || !data) { setSaving(false); return toast({ title: "Failed", description: error?.message, variant: "destructive" }); }
+      if (error || !data) {
+        setSaving(false);
+        if ((error as any)?.code === "23505") {
+          return toast({
+            title: "Product code already exists",
+            description: "Another product is already using this code. Nothing was overwritten. Search and open the existing product.",
+            variant: "destructive",
+          });
+        }
+        return toast({ title: "Failed", description: error?.message, variant: "destructive" });
+      }
       productId = data.id;
     }
 
@@ -1001,7 +1056,7 @@ const AdminProducts = () => {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search anything: name, code, material, color, description…" className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search product name, code, model/material, color…" className="pl-9" />
         </div>
         <div className="w-44">
           <SearchableSelect
@@ -1543,17 +1598,54 @@ const AdminProducts = () => {
               />
             </Field>
             <Field label="Product code">
-              <Input
-                value={form.product_code}
-                onChange={(e) => setForm({ ...form, product_code: e.target.value })}
-                onBlur={(e) => setForm((prev) => ({ ...prev, product_code: toTitleCase(e.target.value) }))}
-                placeholder="e.g. HS-234"
-                className="tracking-wide"
-                autoCapitalize="words"
-                autoComplete="off"
-                spellCheck={false}
-              />
+              <div className="space-y-2">
+                <Input
+                  value={form.product_code}
+                  onChange={(e) => setForm({ ...form, product_code: e.target.value })}
+                  onBlur={(e) => setForm((prev) => ({ ...prev, product_code: e.target.value.trim() }))}
+                  placeholder="e.g. HS-234"
+                  className={`tracking-wide ${duplicateCodeProduct ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                {duplicateCodeProduct && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="text-sm font-semibold text-destructive">This product code already exists</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {duplicateCodeProduct.product_code} · {duplicateCodeProduct.product_name}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => { setOpen(false); void openEdit(duplicateCodeProduct); }}
+                    >
+                      Open existing product
+                    </Button>
+                  </div>
+                )}
+              </div>
             </Field>
+            {!editing && possibleNameDuplicates.length > 0 && (
+              <div className="sm:col-span-2 rounded-md border border-amber-300 bg-amber-50 p-3">
+                <p className="text-sm font-medium text-amber-900">Possible existing product</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {possibleNameDuplicates.map((p) => (
+                    <Button
+                      key={p.id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setOpen(false); void openEdit(p); }}
+                    >
+                      {p.product_name} · {p.product_code}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Field label="Main category">
               <SearchableSelect
                 value={form.main_category_id}
@@ -1788,7 +1880,7 @@ const AdminProducts = () => {
 
           <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
+            <Button onClick={save} disabled={saving || !!duplicateCodeProduct} className="w-full sm:w-auto">
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editing ? "Save changes" : "Create product"}
             </Button>
