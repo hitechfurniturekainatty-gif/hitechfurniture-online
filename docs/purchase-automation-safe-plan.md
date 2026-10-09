@@ -51,3 +51,22 @@ Gate B: Independently verified backups.
 Gate C: Code and n8n implementation in isolated development context.
 Gate D: Simulated test fixtures and manual QA.
 Gate E: User-authorized production deployment, initially disabled/dry-run.
+
+## Confirmed rollout scope — Phase 1 (9 October 2026)
+Business owner confirmed: **deliver invoice-to-catalogue automation first**. BUSY is the current accounting software, but integration may be replaced later. **Do not implement or enable BUSY sales/purchase/returns synchronization in Phase 1.** No manual purchase/sales entry on the website.
+
+Phase 1: supplier invoice and product photos through Telegram/Google Drive -> AI OCR with original document evidence -> supplier/invoice/line extraction -> exclude freight and non-merchandise -> exact supplier+SKU candidate matching -> image selection and suggested description/category -> configurable markup (initial default 50%) and round-up (initial default INR 10) -> admin review/edit/reject -> approved catalogue publish.
+
+**Critical stock isolation:** Phase 1 is catalogue-only. Approval and publishing must NOT insert stock movements, increment stock, or set opening quantities based on OCR invoices. Preserve the extracted invoice quantity as review metadata for future reconciliation, not live available stock. Existing products' stock must remain unchanged. New products should not be advertised as in stock until a separately verified stock source is available. Keep purchase costs admin-only.
+
+**Required implementation changes before Phase 1 release:**
+- Remove/bypass n8n `stage_or_autoupdate_item` and `upsert_catalog_item` stock-writing paths; neither can be called in the Phase 1 catalogue publishing flow.
+- Replace nontransactional website approval and receiving paths with a secure, idempotent **catalogue-only** approval/publish operation, gated by admin authorization and backed by an immutable approval audit.
+- Preserve source file/checksum, supplier, invoice number, line number, original photos, selected images, AI suggestions, price inputs, and human edits; unique intake keys prevent duplicate products and review submissions.
+- Product image matching is suggestion-only; manual correction and approval are required. Do not replace existing approved product imagery without explicit selection.
+- Implement tests proving invoice upload, duplicate retry, approval retry, rejection, image mismatch, price calculation, and publishing **never change stock**.
+- Confirm database and Storage backup/restore independently before any production schema/workflow modification. Deploy only after explicit authorization and a successful dry-run.
+
+Phase 2 (deferred): source-agnostic connector interface with BUSY adapter first and future ERP adapters; import purchases (+), purchase returns (-), sales (-), sales returns (+ only when resellable), edits/cancellations/reversals; ledger, reconciliation, deduplication, source-of-truth rules, and alerting. A Phase 1 invoice must not be re-posted as a purchase when Phase 2 is enabled.
+
+**Status:** scope confirmed; this section is a development specification, not a claim that production changes or end-to-end tests are complete.
