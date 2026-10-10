@@ -22,9 +22,9 @@ const s = StyleSheet.create({
   coverTitle: { fontSize: 36, color: "#5E2D05", fontWeight: 700, textAlign: "center", marginBottom: 8 },
   coverSub: { fontSize: 13, color: "#493A2E", textAlign: "center", marginBottom: 24 },
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
-  card: { width: "50%", padding: 6 },
-  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 10, backgroundColor: "#FFFFFF" },
-  img: { width: "100%", height: 150, objectFit: "contain", marginBottom: 8 },
+  card: { width: "50%", height: 218, padding: 5 },
+  cardInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 8, backgroundColor: "#FFFFFF", height: 208, overflow: "hidden" },
+  img: { width: "100%", height: 119, objectFit: "contain", marginBottom: 5 },
   name: { fontSize: 11, fontWeight: 700, color: "#5E2D05", marginBottom: 2 },
   code: { fontSize: 8, color: "#655B52", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
@@ -84,15 +84,15 @@ const CatalogDoc = ({ items, title, subtitle }: { items: CatalogPdfItem[]; title
                 <View key={i} style={s.card} wrap={false}>
                   <View style={s.cardInner}>
                     {p.cover_image && <Image src={p.cover_image} style={s.img} />}
-                    <Text style={s.name}>{p.product_name}</Text>
+                    <Text style={s.name}>{p.product_name.slice(0, 72)}</Text>
                     <Text style={s.code}>Code · {p.product_code}</Text>
                     <View style={s.priceRow}>
                       <Text style={s.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
                       {onOffer && <Text style={s.mrp}>{formatINR(p.mrp)}</Text>}
                     </View>
-                    {p.material && <Text style={s.meta}>Material: {p.material}</Text>}
-                    {p.dimensions && <Text style={s.meta}>Size: {p.dimensions}</Text>}
-                    {p.location_label && <Text style={s.meta}>Location: {p.location_label}</Text>}
+                    {p.material && <Text style={s.meta}>Material: {p.material.slice(0, 46)}</Text>}
+                    {p.dimensions && <Text style={s.meta}>Size: {p.dimensions.slice(0, 40)}</Text>}
+                    {p.location_label && <Text style={s.meta}>Location: {p.location_label.slice(0, 65)}</Text>}
                     {p.stock_quantity != null && <Text style={s.meta}>Stock here: {p.stock_quantity} {p.stock_status === "out_of_stock" ? "(out of stock)" : ""}</Text>}
                   </View>
                 </View>
