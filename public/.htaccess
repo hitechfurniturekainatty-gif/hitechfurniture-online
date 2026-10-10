@@ -13,32 +13,35 @@
   RewriteRule ^(.*)$ https://hitechfurniture.online/$1 [R=301,L]
 
   # --- Dynamic rendering for crawlers that don't execute JavaScript ---
+  # Link-preview bots (WhatsApp, Facebook/Instagram, Telegram, X, LinkedIn) are
+  # included so a shared product link shows that product's photo and price
+  # instead of the generic site logo.
   # GPTBot/ClaudeBot/PerplexityBot/Google-Extended/CCBot etc. feed AI answer
   # engines (ChatGPT, Claude, Perplexity, Google AI Overview) but never run the
   # React app's JS, so they'd otherwise see an empty <div id="root">. Route
   # them to the pre-generated static snapshots in /_snapshots instead. Real
   # browsers and JS-executing crawlers (Googlebot, Bingbot) are unaffected.
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/$
   RewriteRule ^$ /_snapshots/index.html [L]
 
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/catalog/?$
   RewriteRule ^ /_snapshots/catalog.html [L]
 
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/about/?$
   RewriteRule ^ /_snapshots/about.html [L]
 
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/faq/?$
   RewriteRule ^ /_snapshots/faq.html [L]
 
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/product/([0-9a-fA-F-]+)/?$
   RewriteRule ^ /_snapshots/product/%1.html [L]
 
-  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/bundle/([0-9a-fA-F-]+)/?$
   RewriteRule ^ /_snapshots/bundle/%1.html [L]
 

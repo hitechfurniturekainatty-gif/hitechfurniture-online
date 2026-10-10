@@ -121,7 +121,19 @@ const faqJsonLd = (items) => ({
   })),
 });
 
-const page = ({ title, description, canonical, jsonLd, bodyHtml }) => `<!doctype html>
+const PHONE_DISPLAY = "+91 98951 34482";
+const PHONE_TEL = "+919895134482";
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.jpg`;
+
+// Social link previews (WhatsApp, Facebook, Instagram DMs, Telegram) are read
+// from these tags. Product pages pass their own photo + price so a shared
+// product link shows the product, not the generic logo.
+const imageType = (url) =>
+  /\.webp(\?|$)/i.test(url) ? "image/webp" : /\.png(\?|$)/i.test(url) ? "image/png" : "image/jpeg";
+
+const page = ({ title, description, canonical, jsonLd, bodyHtml, image, imageAlt, ogType = "website", price }) => {
+  const ogImage = image || DEFAULT_OG_IMAGE;
+  return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -129,10 +141,22 @@ const page = ({ title, description, canonical, jsonLd, bodyHtml }) => `<!doctype
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${canonical}" />
-<meta property="og:type" content="website" />
+<meta property="og:site_name" content="${esc(BRAND)}">
+<meta property="og:locale" content="en_IN">
+<meta property="og:type" content="${ogType}" />
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${canonical}">
+<meta property="og:image" content="${esc(ogImage)}">
+<meta property="og:image:secure_url" content="${esc(ogImage)}">
+<meta property="og:image:type" content="${imageType(ogImage)}">
+<meta property="og:image:alt" content="${esc(imageAlt || title)}">
+${price ? `<meta property="product:price:amount" content="${price}">
+<meta property="product:price:currency" content="INR">` : ""}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(description)}">
+<meta name="twitter:image" content="${esc(ogImage)}">
 ${(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).map((j) => `<script type="application/ld+json">${JSON.stringify(j)}</script>`).join("\n")}
 </head>
 <body>
@@ -141,11 +165,12 @@ ${(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).map((j) => `<script type="applicat
 ${bodyHtml}
 </main>
 <footer>
-<p>${BRAND} — Edappetty, Kalpetta, Wayanad, Kerala. <a href="${SITE_URL}">Visit the full interactive site</a>.</p>
+<p>${esc(BRAND)} — Edappetty, Kalpetta, Wayanad, Kerala. Phone / WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a>. <a href="${SITE_URL}">Visit the full interactive site</a>.</p>
 </footer>
 </body>
 </html>
 `;
+};
 
 async function main() {
   mkdirSync("public/_snapshots/product", { recursive: true });
@@ -162,6 +187,7 @@ async function main() {
       jsonLd: [LOCAL_BUSINESS_JSONLD, faqJsonLd(GENERAL_FAQ)],
       bodyHtml: `
 <p>Hitech Furniture &amp; Interiors is a furniture retailer, wholesaler and interior design business in Edappetty, Kalpetta, Wayanad, Kerala, operating for over 14 years. Browse the full catalog at <a href="${SITE_URL}/catalog">hitechfurniture.online/catalog</a>.</p>
+<p>Call or WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a> · <a href="https://wa.me/${PHONE_TEL.slice(1)}">Chat on WhatsApp</a></p>
 <p>Serving customers across Kalpetta, Sulthan Bathery, Mananthavady, Vythiri, Meppadi, Pulpally and the wider Wayanad district.</p>
 ${faqBlockHtml(GENERAL_FAQ)}`,
     })
@@ -274,7 +300,12 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
           description,
           canonical,
           jsonLd: productJsonLd,
+          image: p.primary_image_url,
+          imageAlt: `${p.product_name}${categoryName ? ` — ${categoryName}` : ""}`,
+          ogType: "product",
+          price: hasPrice ? price : undefined,
           bodyHtml: `
+${p.primary_image_url ? `<img src="${esc(p.primary_image_url)}" alt="${esc(p.product_name)}" width="800" loading="lazy">` : ""}
 ${p.description ? `<p>${esc(p.description)}</p>` : ""}
 ${facts.length ? `<ul>${facts.join("\n")}</ul>` : ""}
 <p>See photos, colors and place an enquiry on the <a href="${canonical}">full product page</a>.</p>`,
@@ -327,7 +358,12 @@ ${facts.length ? `<ul>${facts.join("\n")}</ul>` : ""}
           description,
           canonical,
           jsonLd: bundleJsonLd,
+          image: b.main_image_url,
+          imageAlt: b.name,
+          ogType: "product",
+          price: hasPrice ? price : undefined,
           bodyHtml: `
+${b.main_image_url ? `<img src="${esc(b.main_image_url)}" alt="${esc(b.name)}" width="800" loading="lazy">` : ""}
 ${b.description ? `<p>${esc(b.description)}</p>` : ""}
 ${b.material ? `<p>Material: ${esc(b.material)}</p>` : ""}
 ${b.dimensions ? `<p>Dimensions: ${esc(b.dimensions)}</p>` : ""}
