@@ -32,6 +32,10 @@ jobs:
         continue-on-error: true
         run: npm run lint
 
+      - name: Diagnose React dependency versions
+        run: |
+          npm ls react react-dom --all || true
+          node -e "for(const p of ['react','react-dom']) console.log(p,require(p+'/package.json').version,require.resolve(p))"
       - name: Run tests
         run: npm test -- --passWithNoTests
 
