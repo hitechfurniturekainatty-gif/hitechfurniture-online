@@ -23,6 +23,7 @@ const db = supabase as any;
 const PRODUCT_FIELDS = "id,product_name,product_code,description,mrp,material,dimensions,primary_image_url,stock_quantity,stock_status,location_id,floor_display_order,main_category_id,sub_category_id,review_status,product_images(image_url,display_order),product_variants(id,color_name,color_hex,image_url,stock_quantity,location_id,floor_display_order,product_variant_stock(id,location_id,quantity,floor_display_order))";
 const BUNDLE_FIELDS = "id,name,bundle_code,description,mrp,material,dimensions,main_image_url,stock_status,location_id,floor_display_order,main_category_id,sub_category_id";
 type Category = { id: string; name: string };
+type SubCategory = { id: string; name: string; main_category_id: string };
 const ALL = "__all";
 const snapshot = (e: FloorEntry) => ({ id: e.refId, kind: e.kind, location_id: e.location_id, floor_display_order: e.floor_display_order });
 async function allPages(query: (start: number, end: number) => PromiseLike<{data: unknown[] | null; error: any}>) {
@@ -46,6 +47,7 @@ export default function StaffCatalog() {
   const [products,setProducts] = useState<FloorProduct[]>([]);
   const [locations,setLocations] = useState<FloorLocation[]>([]);
   const [categories,setCategories] = useState<Category[]>([]);
+  const [subCategories,setSubCategories] = useState<SubCategory[]>([]);
   const [loading,setLoading] = useState(true);
   const [downloadingPdf,setDownloadingPdf] = useState(false);
   const [error,setError] = useState("");
@@ -53,6 +55,10 @@ export default function StaffCatalog() {
   const [floor,setFloor] = useState(ALL);
   const [section,setSection] = useState(ALL);
   const [category,setCategory] = useState(ALL);
+  const [subCategory,setSubCategory] = useState(ALL);
+  const [pdfOpen,setPdfOpen] = useState(false);
+  const [pdfScope,setPdfScope] = useState("filtered");
+  const [pdfItemSearch,setPdfItemSearch] = useState("");
   const [stockView,setStockView] = useState("available");
   const [search,setSearch] = useState("");
   const [reverse,setReverse] = useState(false);
@@ -75,11 +81,12 @@ export default function StaffCatalog() {
     setLoading(true);
     setError("");
     try {
-      const [ps,bs,ls,cs] = await Promise.all([
+      const [ps,bs,ls,cs,sc] = await Promise.all([
         allPages((start,end)=>db.from("products").select(PRODUCT_FIELDS).is("deleted_at",null).order("id").range(start,end)),
         allPages((start,end)=>db.from("product_bundles").select(BUNDLE_FIELDS).is("deleted_at",null).order("id").range(start,end)),
         allPages((start,end)=>db.from("product_locations").select("id,building,floor,section,part").eq("is_active",true).order("display_order").order("id").range(start,end)),
         allPages((start,end)=>db.from("main_categories").select("id,name").is("deleted_at",null).order("display_order").order("id").range(start,end)),
+        allPages((start,end)=>db.from("sub_categories").select("id,name,main_category_id").order("display_order").order("id").range(start,end)),
       ]);
       if (ticket !== revision.current) return;
       const bundles = bs.map(b => ({
@@ -89,6 +96,7 @@ export default function StaffCatalog() {
       setProducts([...ps,...bundles] as FloorProduct[]);
       setLocations(ls as FloorLocation[]);
       setCategories(cs as Category[]);
+      setSubCategories(sc as SubCategory[]);
       setLoadedAt(new Date());
     } catch (e) {
       if (ticket===revision.current) setError(e instanceof Error ? e.message : (e as any)?.message || "Could not load Staff Catalog");
@@ -107,6 +115,7 @@ export default function StaffCatalog() {
   },[load]);
   const buildings = useMemo(()=>[...new Set(locations.map(l=>l.building))],[locations]);
   const floors = useMemo(()=>[...new Set(locations.filter(l=>building===ALL||l.building===building).map(l=>l.floor))],[locations,building]);
+  const availableSubs = useMemo(()=>subCategories.filter(c=>category===ALL||c.main_category_id===category),[subCategories,category]);
   const sections = useMemo(()=>locations.filter(l=>(building===ALL||l.building===building)&&(floor===ALL||l.floor===floor)),[locations,building,floor]);
   const entries = useMemo(()=>sortFloorEntries(floorEntries(products),locations),[products,locations]);
   const inScope = useCallback((e:FloorEntry)=>{
@@ -120,17 +129,18 @@ export default function StaffCatalog() {
     const rows=entries.filter(e=>{
       if(!inScope(e)) return false;
       if(category!==ALL&&e.product.main_category_id!==category) return false;
+      if(subCategory!==ALL&&e.product.sub_category_id!==subCategory) return false;
       const available=e.stock>0&&e.product.stock_status!=="out_of_stock";
       if(stockView==="available"&&!available||stockView==="out"&&available) return false;
       return !q||[e.product.product_name,e.product.product_code,e.variant?.color_name].filter(Boolean).join(" ").toLowerCase().includes(q);
     });
     return reverse ? rows.reverse() : rows;
-  },[entries,inScope,category,stockView,search,reverse]);
+  },[entries,inScope,category,subCategory,stockView,search,reverse]);
   const scopeLabel = section!==ALL ? locationLabel(locations.find(l=>l.id===section))
     : [building===ALL?"All locations":building,floor===ALL?null:floor].filter(Boolean).join(" / ");
   const viewerIndex=shown.findIndex(e=>e.key===viewerKey);
   const viewed=viewerIndex<0?null:shown[viewerIndex];
-  useEffect(()=>{setSelected(new Set());setSelecting(false);setViewerKey(null);},[building,floor,section,search,category,stockView,reverse]);
+  useEffect(()=>{setSelected(new Set());setSelecting(false);setViewerKey(null);},[building,floor,section,search,category,subCategory,stockView,reverse]);
   useEffect(()=>{
     if(section!==ALL&&!sections.some(l=>l.id===section)) setSection(ALL);
   },[sections,section]);
@@ -140,7 +150,8 @@ export default function StaffCatalog() {
   };
   const selectedRows=shown.filter(e=>selected.has(e.key));
   const downloadFloorPdf = async () => {
-    if (!shown.length) {
+    const pdfRows = pdfScope==="all" ? entries : pdfScope==="item" ? shown.filter(e=>[e.product.product_name,e.product.product_code,e.variant?.color_name].filter(Boolean).join(" ").toLowerCase().includes(pdfItemSearch.trim().toLowerCase())) : shown;
+    if (!pdfRows.length) {
       toast({title:"No products to download",description:"Adjust the catalog filters and try again."});
       return;
     }
@@ -149,7 +160,7 @@ export default function StaffCatalog() {
       const [{generateCatalogPdf}, {downloadBlob}] = await Promise.all([
         import("@/lib/catalogPdf"), import("@/lib/downloadBlob"),
       ]);
-      const items = shown.map(e => ({
+      const items = pdfRows.map(e => ({
         product_name: e.product.product_name + (e.variant ? " - " + e.variant.color_name : ""),
         product_code: e.product.product_code,
         mrp: Number(e.product.mrp ?? 0),
@@ -161,12 +172,13 @@ export default function StaffCatalog() {
         stock_status: e.stock > 0 && e.product.stock_status !== "out_of_stock" ? "in_stock" as const : "out_of_stock" as const,
         location_label: locationLabel(locations.find(l => l.id === e.location_id)),
       }));
-      const title = category === ALL ? "Floor & Section Catalog" : (categories.find(c => c.id === category)?.name ?? "Product") + " Catalog";
-      const subtitle = [scopeLabel, stockView === "available" ? "Ready stock" : stockView === "out" ? "No stock" : "All stock", "HITECH Furniture & Interiors"].join(" | ");
+      const title = pdfScope==="all" ? "Complete Showroom Catalog" : category === ALL ? "Floor & Section Catalog" : (categories.find(c => c.id === category)?.name ?? "Product") + " Catalog";
+      const subtitle = [pdfScope==="all" ? "All locations and products" : scopeLabel, pdfScope==="all" ? "All stock" : stockView === "available" ? "Ready stock" : stockView === "out" ? "No stock" : "All stock", "HITECH Furniture & Interiors"].join(" | ");
       const blob = await generateCatalogPdf(items, title, subtitle);
       const slug = [building, floor, section === ALL ? "all-sections" : partLabel(locations.find(l => l.id === section)!), category === ALL ? "all-categories" : "category", stockView]
         .filter(v => v !== ALL).join("-").toLowerCase().replace(/[^a-z0-9-]+/g,"-").slice(0,110);
       downloadBlob(blob, "hitech-floor-catalog-" + (slug || "all") + ".pdf");
+      setPdfOpen(false);
       toast({title:"PDF downloaded",description:items.length+" catalog items exported with their location and stock."});
     } catch (e) {
       toast({title:"PDF download failed",description:e instanceof Error ? e.message : "Please try again.",variant:"destructive"});
@@ -202,14 +214,15 @@ export default function StaffCatalog() {
       <Card className="rounded-2xl border-stone-200 shadow-sm"><CardContent className="space-y-3 p-3 sm:p-4">
         <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, code or colour…" aria-label="Search Staff Catalog" className="h-11 rounded-xl pl-9" /></div>
         <div className="grid grid-cols-2 gap-2">
-          <Picker label="Category" value={category} onChange={setCategory} options={categories.map(c=>({id:c.id,label:toTitleCase(c.name)}))} allLabel="All categories" />
+          <Picker label="Category" value={category} onChange={v=>{setCategory(v);setSubCategory(ALL);}} options={categories.map(c=>({id:c.id,label:toTitleCase(c.name)}))} allLabel="All categories" />
+          <Picker label="Sub-category" value={subCategory} onChange={setSubCategory} options={availableSubs.map(c=>({id:c.id,label:toTitleCase(c.name)}))} allLabel="All sub-categories" />
           <Picker label="Stock" value={stockView} onChange={setStockView} options={[{id:"available",label:"Available now"},{id:"out",label:"Out of stock"},{id:"all",label:"All items"}]} />
         </div>
       </CardContent></Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0"><p className="text-sm font-semibold text-stone-800">{scopeLabel}</p><p className="text-xs text-muted-foreground">{shown.length} items{loadedAt?" · Updated "+loadedAt.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}):""}</p></div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={()=>void downloadFloorPdf()} disabled={loading||downloadingPdf||!shown.length}>{downloadingPdf?<Loader2 className="mr-1.5 h-4 w-4 animate-spin" />:<FileDown className="mr-1.5 h-4 w-4" />}{downloadingPdf?"Generating PDF…":"Download filtered PDF"}</Button>
+          <Button variant="outline" size="sm" onClick={()=>setPdfOpen(true)} disabled={loading}><FileDown className="mr-1.5 h-4 w-4" /> PDF Export Options</Button>
           <Button variant="outline" size="sm" onClick={()=>setReverse(v=>!v)} aria-pressed={reverse}><ArrowRightLeft className="mr-1.5 h-4 w-4" />{reverse?"Reverse order":"Forward order"}</Button>
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={()=>setListView(v=>!v)} aria-label={listView?"Show grid":"Show list"}>{listView?<Grid2X2 className="h-4 w-4" />:<List className="h-4 w-4" />}</Button>
           {isAdmin&&<Button size="sm" variant="outline" onClick={()=>setSelecting(v=>!v)} disabled={loading}>{selecting?"Done selecting":"Select to move"}</Button>}
@@ -227,6 +240,24 @@ export default function StaffCatalog() {
         {shown.map((e,i)=><EntryCard key={e.key} entry={e} location={locations.find(l=>l.id===e.location_id)} index={i} list={listView} selecting={selecting} selected={selected.has(e.key)} onSelect={()=>setSelected(prev=>{const next=new Set(prev);next.has(e.key)?next.delete(e.key):next.add(e.key);return next;})} onOpen={()=>setViewerKey(e.key)} />)}
       </div>}
     </div>
+    <Dialog open={pdfOpen} onOpenChange={setPdfOpen}>
+      <DialogContent className="max-w-lg rounded-2xl">
+        <DialogHeader><DialogTitle>Professional Catalog PDF Export</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Choose your export. Use the Shop, Floor, Section / Part, Category, Sub-category and Stock filters on the Staff Catalog to narrow the selection. PDF pages contain six product cards (except the final page).</p>
+        <Picker label="Export selection" value={pdfScope} onChange={setPdfScope} options={[
+          {id:"filtered",label:"Current filters (floor / section / category / stock)"},
+          {id:"item",label:"Individual item(s) by product name or code"},
+          {id:"all",label:"Complete catalog — all locations and stock"},
+        ]} />
+        {pdfScope==="item"&&<div className="space-y-1.5"><Label htmlFor="pdf-item-search">Product name / code / colour</Label><Input id="pdf-item-search" value={pdfItemSearch} onChange={e=>setPdfItemSearch(e.target.value)} placeholder="Enter item name or code…" /></div>}
+        <div className="rounded-xl bg-stone-50 border p-3 text-sm">
+          <p className="font-semibold">{pdfScope==="all"?"All locations":scopeLabel}</p>
+          <p className="text-muted-foreground">{pdfScope==="all"?entries.length:pdfScope==="item"?shown.filter(e=>[e.product.product_name,e.product.product_code,e.variant?.color_name].filter(Boolean).join(" ").toLowerCase().includes(pdfItemSearch.trim().toLowerCase())).length:shown.length} items to export</p>
+          {pdfScope!=="all"&&<p className="text-xs text-muted-foreground">Category: {categories.find(c=>c.id===category)?.name||"All"} · Sub-category: {subCategories.find(c=>c.id===subCategory)?.name||"All"} · Stock: {stockView}</p>}
+        </div>
+        <DialogFooter><Button variant="outline" onClick={()=>setPdfOpen(false)} disabled={downloadingPdf}>Cancel</Button><Button onClick={()=>void downloadFloorPdf()} disabled={downloadingPdf||loading}>{downloadingPdf?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<FileDown className="mr-2 h-4 w-4"/>}{downloadingPdf?"Preparing images…":"Download PDF"}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
     <FloorReorderDialog open={arrangeOpen&&isAdmin} onOpenChange={setArrangeOpen} locationLabel={scopeLabel} items={sectionEntries.map(e=>({id:e.refId,kind:e.kind,product_name:e.product.product_name,product_code:e.product.product_code,cover_url:e.cover,color_label:e.variant?.color_name,stock:e.stock,location_id:e.location_id,floor_display_order:e.floor_display_order}))} onSaved={()=>void updated()} allLocations={locations} />
     <Dialog open={!!viewed} onOpenChange={o=>{if(!o)setViewerKey(null);}}>
       <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:p-6">
