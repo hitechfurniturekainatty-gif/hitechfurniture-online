@@ -17,7 +17,7 @@ import { toTitleCase } from "@/lib/textCase";
 import { FloorReorderDialog } from "@/components/admin/FloorReorderDialog";
 import { floorEntries, sortFloorEntries, locationLabel, partLabel, type FloorProduct, type FloorEntry, type FloorLocation } from "@/lib/staffFloorCatalog";
 import { SnapSearchDialog } from "@/components/staff/SnapSearchDialog";
-import { Camera, ArrowLeft, ArrowRight, ArrowRightLeft, ArrowUpDown, ChevronLeft, ChevronRight, Grid2X2, List, Loader2, MapPin, Package, RefreshCw, Search } from "lucide-react";
+import { Camera, ArrowLeft, ArrowRight, ArrowRightLeft, ArrowUpDown, ChevronLeft, ChevronRight, Grid2X2, List, FileDown, Loader2, MapPin, Package, RefreshCw, Search } from "lucide-react";
 
 const db = supabase as any;
 const PRODUCT_FIELDS = "id,product_name,product_code,description,mrp,material,dimensions,primary_image_url,stock_quantity,stock_status,location_id,floor_display_order,main_category_id,sub_category_id,review_status,product_images(image_url,display_order),product_variants(id,color_name,color_hex,image_url,stock_quantity,location_id,floor_display_order,product_variant_stock(id,location_id,quantity,floor_display_order))";
@@ -47,6 +47,7 @@ export default function StaffCatalog() {
   const [locations,setLocations] = useState<FloorLocation[]>([]);
   const [categories,setCategories] = useState<Category[]>([]);
   const [loading,setLoading] = useState(true);
+  const [downloadingPdf,setDownloadingPdf] = useState(false);
   const [error,setError] = useState("");
   const [building,setBuilding] = useState(ALL);
   const [floor,setFloor] = useState(ALL);
@@ -138,6 +139,41 @@ export default function StaffCatalog() {
     await load();
   };
   const selectedRows=shown.filter(e=>selected.has(e.key));
+  const downloadFloorPdf = async () => {
+    if (!shown.length) {
+      toast({title:"No products to download",description:"Adjust the catalog filters and try again."});
+      return;
+    }
+    setDownloadingPdf(true);
+    try {
+      const [{generateCatalogPdf}, {downloadBlob}] = await Promise.all([
+        import("@/lib/catalogPdf"), import("@/lib/downloadBlob"),
+      ]);
+      const items = shown.map(e => ({
+        product_name: e.product.product_name + (e.variant ? " - " + e.variant.color_name : ""),
+        product_code: e.product.product_code,
+        mrp: Number(e.product.mrp ?? 0),
+        offer_price: null,
+        material: e.product.material ?? null,
+        dimensions: e.product.dimensions ?? null,
+        cover_image: e.cover,
+        stock_quantity: e.stock,
+        stock_status: e.stock > 0 && e.product.stock_status !== "out_of_stock" ? "in_stock" as const : "out_of_stock" as const,
+        location_label: locationLabel(locations.find(l => l.id === e.location_id)),
+      }));
+      const title = category === ALL ? "Floor & Section Catalog" : (categories.find(c => c.id === category)?.name ?? "Product") + " Catalog";
+      const subtitle = [scopeLabel, stockView === "available" ? "Ready stock" : stockView === "out" ? "No stock" : "All stock", "HITECH Furniture & Interiors"].join(" | ");
+      const blob = await generateCatalogPdf(items, title, subtitle);
+      const slug = [building, floor, section === ALL ? "all-sections" : partLabel(locations.find(l => l.id === section)!), category === ALL ? "all-categories" : "category", stockView]
+        .filter(v => v !== ALL).join("-").toLowerCase().replace(/[^a-z0-9-]+/g,"-").slice(0,110);
+      downloadBlob(blob, "hitech-floor-catalog-" + (slug || "all") + ".pdf");
+      toast({title:"PDF downloaded",description:items.length+" catalog items exported with their location and stock."});
+    } catch (e) {
+      toast({title:"PDF download failed",description:e instanceof Error ? e.message : "Please try again.",variant:"destructive"});
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   if(authLoading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-7 w-7 animate-spin" /></div>;
   if(!user) return <Navigate to="/auth" replace />;
@@ -173,6 +209,7 @@ export default function StaffCatalog() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0"><p className="text-sm font-semibold text-stone-800">{scopeLabel}</p><p className="text-xs text-muted-foreground">{shown.length} items{loadedAt?" · Updated "+loadedAt.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}):""}</p></div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={()=>void downloadFloorPdf()} disabled={loading||downloadingPdf||!shown.length}>{downloadingPdf?<Loader2 className="mr-1.5 h-4 w-4 animate-spin" />:<FileDown className="mr-1.5 h-4 w-4" />}{downloadingPdf?"Generating PDF…":"Download filtered PDF"}</Button>
           <Button variant="outline" size="sm" onClick={()=>setReverse(v=>!v)} aria-pressed={reverse}><ArrowRightLeft className="mr-1.5 h-4 w-4" />{reverse?"Reverse order":"Forward order"}</Button>
           <Button variant="outline" size="icon" className="h-9 w-9" onClick={()=>setListView(v=>!v)} aria-label={listView?"Show grid":"Show list"}>{listView?<Grid2X2 className="h-4 w-4" />:<List className="h-4 w-4" />}</Button>
           {isAdmin&&<Button size="sm" variant="outline" onClick={()=>setSelecting(v=>!v)} disabled={loading}>{selecting?"Done selecting":"Select to move"}</Button>}
