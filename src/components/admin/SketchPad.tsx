@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fabric } from "fabric";
+import * as fabric from "fabric";
+
+// Fabric v7 changed the default object origin to "center". This component's
+// geometry (rects, ellipses, background image) was written for the classic
+// top-left origin, so restore it once for all objects created here.
+fabric.FabricObject.ownDefaults.originX = "left";
+fabric.FabricObject.ownDefaults.originY = "top";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase, uploadedMediaUrl } from "@/integrations/supabase/client";
@@ -65,8 +71,8 @@ function snapAngle(dx: number, dy: number) {
 function buildDimensionGroup(
   x1: number, y1: number, x2: number, y2: number,
   stroke: string, strokeWidth: number, label?: string,
-): fabric.Object[] {
-  const objs: fabric.Object[] = [];
+): fabric.FabricObject[] {
+  const objs: fabric.FabricObject[] = [];
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -323,17 +329,19 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
         enableRetinaScaling: true,
         allowTouchScrolling: false,
       });
-      canvas.freeDrawingBrush.color = colorRef.current;
-      canvas.freeDrawingBrush.width = sizeRef.current;
-      // Smoother strokes (less shakiness) — PencilBrush in fabric 5 supports decimate
-      (canvas.freeDrawingBrush as unknown as { decimate?: number }).decimate = 4;
+      // Fabric v6+ no longer creates a default brush.
+      const brush = new fabric.PencilBrush(canvas);
+      brush.color = colorRef.current;
+      brush.width = sizeRef.current;
+      // Smoother strokes (less shakiness)
+      brush.decimate = 4;
+      canvas.freeDrawingBrush = brush;
       fabricRef.current = canvas;
 
       if (initialUrl) {
-        fabric.Image.fromURL(
-          initialUrl,
-          (img) => {
-            if (!img || !canvas) return;
+        fabric.FabricImage.fromURL(initialUrl, { crossOrigin: "anonymous" })
+          .then((img) => {
+            if (!img || !canvas || cancelled) return;
             const scale = Math.min(w / (img.width ?? w), h / (img.height ?? h), 1);
             img.set({
               scaleX: scale,
@@ -344,19 +352,20 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
               top: ((h - (img.height ?? h) * scale) / 2),
             });
             canvas.add(img);
-            canvas.sendToBack(img);
+            canvas.sendObjectToBack(img);
             canvas.requestRenderAll();
             snapshot();
-          },
-          { crossOrigin: "anonymous" },
-        );
+          })
+          .catch(() => {
+            if (!cancelled) snapshot();
+          });
       } else {
         snapshot();
       }
 
-      canvas.on("path:created", (e: fabric.IEvent & { path?: fabric.Path }) => {
+      canvas.on("path:created", (e) => {
         const path = e.path;
-        if (path && canvas) {
+        if (path instanceof fabric.Path && canvas) {
           recognizeShape(canvas, path, { dimension: toolRef.current === "dimension" });
         }
         snapshot();
@@ -395,8 +404,10 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     if (tool === "draw" || tool === "dimension") {
       c.isDrawingMode = true;
       c.selection = false;
-      c.freeDrawingBrush.color = color;
-      c.freeDrawingBrush.width = size;
+      if (c.freeDrawingBrush) {
+        c.freeDrawingBrush.color = color;
+        c.freeDrawingBrush.width = size;
+      }
       c.defaultCursor = "crosshair";
     } else if (tool === "erase") {
       c.isDrawingMode = false;
@@ -413,13 +424,13 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
   useEffect(() => {
     const c = fabricRef.current;
     if (!c) return;
-    const onDown = (e: fabric.IEvent) => {
+    const onDown = (e: fabric.TPointerEventInfo) => {
       if (toolRef.current === "erase" && e.target) {
         c.remove(e.target);
         c.requestRenderAll();
         snapshot();
       } else if (toolRef.current === "text" && !e.target) {
-        const p = c.getPointer(e.e);
+        const p = c.getScenePoint(e.e);
         pendingPoint.current = { x: p.x, y: p.y };
         setTextValue("");
         setTextOpen(true);
@@ -477,7 +488,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     redoStack.current.push(current);
     const prev = undoStack.current[undoStack.current.length - 1];
     isRestoring.current = true;
-    c.loadFromJSON(prev, () => {
+    c.loadFromJSON(prev).then(() => {
       c.requestRenderAll();
       isRestoring.current = false;
       force((n) => n + 1);
@@ -490,7 +501,7 @@ export const SketchPad = ({ open, onOpenChange, initialUrl, onSave }: SketchPadP
     const next = redoStack.current.pop()!;
     undoStack.current.push(next);
     isRestoring.current = true;
-    c.loadFromJSON(next, () => {
+    c.loadFromJSON(next).then(() => {
       c.requestRenderAll();
       isRestoring.current = false;
       force((n) => n + 1);
