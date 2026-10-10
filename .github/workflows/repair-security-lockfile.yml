@@ -1,0 +1,53 @@
+name: Repair dependency lockfile (security PR)
+
+on:
+  push:
+    branches:
+      - fix/patch-vulnerabilities-3b776025-1791284180
+    paths:
+      - .github/workflows/repair-security-lockfile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout security patch branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Regenerate npm lockfile
+        run: npm install --package-lock-only --legacy-peer-deps --ignore-scripts
+      - name: Apply compatible security patches without major upgrades
+        run: npm audit fix --legacy-peer-deps --ignore-scripts || true
+      - name: Upgrade vulnerable testing and router packages
+        run: |
+          npm install --save-dev vitest@^5 --legacy-peer-deps --ignore-scripts
+          npm install react-router-dom@^7 --legacy-peer-deps --ignore-scripts
+      - name: Verify clean dependency installation
+        run: npm ci --legacy-peer-deps
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+      - name: Verify production build
+        run: npm run build
+      - name: Commit tested dependency improvements
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Lockfile already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "fix: synchronize and patch compatible npm dependencies"
+          git push origin HEAD:fix/patch-vulnerabilities-3b776025-1791284180
+      - name: Enforce high and critical vulnerability audit
+        run: npm audit --audit-level=high
