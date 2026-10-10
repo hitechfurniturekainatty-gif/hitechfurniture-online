@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@capacitor-community/contacts": "^7.1.0",
+    "@capacitor-community/contacts": "^8.0.0",
     "@capacitor/android": "^8.4.3",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
