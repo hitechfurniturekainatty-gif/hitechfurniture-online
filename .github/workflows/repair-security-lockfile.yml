@@ -28,6 +28,10 @@ jobs:
         run: npm install --package-lock-only --legacy-peer-deps --ignore-scripts
       - name: Apply compatible security patches without major upgrades
         run: npm audit fix --legacy-peer-deps --ignore-scripts || true
+      - name: Upgrade vulnerable testing and router packages
+        run: |
+          npm install --save-dev vitest@^5 --legacy-peer-deps --ignore-scripts
+          npm install react-router-dom@^7 --legacy-peer-deps --ignore-scripts
       - name: Verify clean dependency installation
         run: npm ci --legacy-peer-deps
       - name: Run tests
