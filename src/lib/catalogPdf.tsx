@@ -108,7 +108,29 @@ const CatalogDoc = ({ items, title, subtitle }: { items: CatalogPdfItem[]; title
 };
 
 export async function generateCatalogPdf(items: CatalogPdfItem[], title: string, subtitle: string): Promise<Blob> {
-  const doc = <CatalogDoc items={items} title={title} subtitle={subtitle} />;
+  // React PDF cannot reliably embed remote product image URLs directly.
+  // Fetch and normalize each distinct image before rendering; never silently
+  // export a catalog with missing photos when the source has an image URL.
+  const uniqueUrls = [...new Set(items.map(item => item.cover_image).filter((url): url is string => !!url))];
+  const images = new Map<string, string>();
+  const failed: string[] = [];
+  for (let i = 0; i < uniqueUrls.length; i += 6) {
+    await Promise.all(uniqueUrls.slice(i, i + 6).map(async url => {
+      const dataUrl = await urlToDataUrl(url);
+      if (dataUrl && dataUrl.startsWith("data:image/")) images.set(url, dataUrl);
+      else failed.push(url);
+    }));
+  }
+  if (failed.length) {
+    const codes = items.filter(item => item.cover_image && failed.includes(item.cover_image))
+      .map(item => item.product_code).slice(0, 8).join(", ");
+    throw new Error(`Could not load ${failed.length} product photo(s) for PDF (${codes}). Check image access or re-upload these photos, then retry.`);
+  }
+  const ready = items.map(item => ({
+    ...item,
+    cover_image: item.cover_image ? images.get(item.cover_image) ?? null : null,
+  }));
+  const doc = <CatalogDoc items={ready} title={title} subtitle={subtitle} />;
   return await pdf(doc).toBlob();
 }
 
