@@ -45,6 +45,7 @@ export type CatalogPdfItem = {
   cover_image: string | null;
   stock_quantity?: number;
   stock_status?: "in_stock" | "out_of_stock";
+  location_label?: string;
 };
 
 const PER_PAGE = 6; // 2 cols x 3 rows
@@ -91,6 +92,8 @@ const CatalogDoc = ({ items, title, subtitle }: { items: CatalogPdfItem[]; title
                     </View>
                     {p.material && <Text style={s.meta}>Material: {p.material}</Text>}
                     {p.dimensions && <Text style={s.meta}>Size: {p.dimensions}</Text>}
+                    {p.location_label && <Text style={s.meta}>Location: {p.location_label}</Text>}
+                    {p.stock_quantity != null && <Text style={s.meta}>Stock here: {p.stock_quantity} {p.stock_status === "out_of_stock" ? "(out of stock)" : ""}</Text>}
                   </View>
                 </View>
               );
