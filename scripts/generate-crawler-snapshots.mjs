@@ -57,9 +57,12 @@ const LOCAL_BUSINESS_JSONLD = {
   telephone: "+91 98951 34482",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Edappetty",
+    // Canonical NAP address — keep identical to Google Business Profile,
+    // Justdial, Instagram, Facebook and the footer (homepage_settings.address_lines).
+    streetAddress: "Edapetty Shopping Centre, Edapetty",
     addressLocality: "Kalpetta",
     addressRegion: "Wayanad, Kerala",
+    postalCode: "673122",
     addressCountry: "IN",
   },
   url: SITE_URL,
@@ -85,7 +88,7 @@ const LOCAL_BUSINESS_JSONLD = {
 const GENERAL_FAQ = [
   {
     q: "Where is Hitech Furniture & Interiors located?",
-    a: "Hitech Furniture & Interiors is located in Edappetty, Kalpetta, Wayanad, Kerala. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
+    a: "Hitech Furniture & Interiors is located at Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122, Kerala. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
   },
   {
     q: "What does Hitech Furniture & Interiors sell?",
@@ -173,7 +176,7 @@ ${(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).map((j) => `<script type="applicat
 ${bodyHtml}
 </main>
 <footer>
-<p>${esc(BRAND)} — Edappetty, Kalpetta, Wayanad, Kerala. Phone / WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a>. <a href="${SITE_URL}">Visit the full interactive site</a>.</p>
+<p>${esc(BRAND)} — Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122. Phone / WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a>. <a href="${SITE_URL}">Visit the full interactive site</a>.</p>
 </footer>
 </body>
 </html>
@@ -194,7 +197,7 @@ async function main() {
       canonical: `${SITE_URL}/`,
       jsonLd: [LOCAL_BUSINESS_JSONLD, faqJsonLd(GENERAL_FAQ)],
       bodyHtml: `
-<p>Hitech Furniture &amp; Interiors is a furniture retailer, wholesaler and interior design business in Edappetty, Kalpetta, Wayanad, Kerala, operating for over 14 years. Browse the full catalog at <a href="${SITE_URL}/catalog">hitechfurniture.online/catalog</a>.</p>
+<p>Hitech Furniture &amp; Interiors is a furniture retailer, wholesaler and interior design business at Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122, Kerala, operating for over 14 years. Browse the full catalog at <a href="${SITE_URL}/catalog">hitechfurniture.online/catalog</a>.</p>
 <p>Call or WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a> · <a href="https://wa.me/${PHONE_TEL.slice(1)}">Chat on WhatsApp</a></p>
 <p>Showroom in Kalpetta, Wayanad. Sales and delivery across Kerala including the Malabar region, Bengaluru and Tamil Nadu.</p>
 ${faqBlockHtml(GENERAL_FAQ)}`,

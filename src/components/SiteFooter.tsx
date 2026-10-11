@@ -7,12 +7,12 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
 
 const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/hy5mbzYsFP2c3vx27?g_st=iw";
 const FALLBACK_ADDRESS_LINES = [
-  "Edappetty Shopping Centre",
-  "Near Amrid, Edappetty",
-  "Kalpetta, Wayanad - 673122",
+  "Edapetty Shopping Centre",
+  "Edapetty, Kalpetta",
+  "Wayanad, PIN 673122",
 ];
 const FALLBACK_EMBED_URL =
-  "https://www.google.com/maps?q=Edappetty+Shopping+Centre+Kalpetta+Wayanad&output=embed";
+  "https://www.google.com/maps?q=Edapetty+Shopping+Centre+Kalpetta+Wayanad&output=embed";
 
 export const SiteFooter = () => {
   const s = useHomepageSettings();

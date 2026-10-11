@@ -15,7 +15,7 @@ const PrivacyPolicy = () => {
             <h2 className="font-display text-xl mb-2">1. Who We Are</h2>
             <p>
               {BRAND_NAME} ("we", "us", "our") is a furniture retail, wholesale, and interior
-              design business based in Edappetty, Kalpetta, Wayanad, Kerala. This policy explains
+              design business based in Edapetty, Kalpetta, Wayanad, Kerala. This policy explains
               how we collect, use, and protect information when you interact with us through our
               website, WhatsApp, Instagram, or Facebook.
             </p>

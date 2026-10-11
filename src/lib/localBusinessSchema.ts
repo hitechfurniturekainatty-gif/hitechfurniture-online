@@ -16,9 +16,12 @@ export const LOCAL_BUSINESS_JSONLD = {
   telephone: "+91 98951 34482",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Edappetty",
+    // Canonical NAP address — keep identical to Google Business Profile,
+    // Justdial, Instagram, Facebook and the footer (homepage_settings.address_lines).
+    streetAddress: "Edapetty Shopping Centre, Edapetty",
     addressLocality: "Kalpetta",
     addressRegion: "Wayanad, Kerala",
+    postalCode: "673122",
     addressCountry: "IN",
   },
   url: typeof window !== "undefined" ? window.location.origin : "https://hitechfurniture.online",
