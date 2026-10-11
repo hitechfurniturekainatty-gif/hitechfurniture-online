@@ -50,6 +50,12 @@ export async function shareLiveLink(opts: {
   const url = await ensureShareUrl(opts.kind, opts.rowId, opts.path);
   if (!url) return;
 
+  // Sharing the customer quotation link = "Quote Sent". The database then
+  // schedules a follow-up call 2 days later. Fire-and-forget; never blocks sharing.
+  if (opts.kind === "quotation" && !opts.path) {
+    void (supabase as any).rpc("mark_quotation_sent", { p_quotation_id: opts.rowId }).then(() => undefined, () => undefined);
+  }
+
   const fullMessage = `${opts.message}\n${url}`;
 
   // Always copy so user has it on the clipboard for any other channel.

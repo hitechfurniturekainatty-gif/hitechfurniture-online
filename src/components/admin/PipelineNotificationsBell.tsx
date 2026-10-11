@@ -54,6 +54,7 @@ export const PipelineNotificationsBell = () => {
 
   const destination = (n: Notif) => {
     if (n.source_type === "receivable_followup_due" && n.source_id) return `/admin/backlog?followup=${n.source_id}`;
+    if (n.source_type === "sales_lead_reminder" && n.source_id) return `/admin/leads?open=${n.source_id}`;
     if (n.quotation_id) return `/admin/quotations/${n.quotation_id}`;
     return `/admin/quotations?stage=${n.stage}`;
   };

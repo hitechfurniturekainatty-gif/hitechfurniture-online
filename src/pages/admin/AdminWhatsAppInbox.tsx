@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Input } from "@/components/ui/input";
-import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -43,6 +45,13 @@ const InboxPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [q, setQ] = useState("");
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
+  const navigate = useNavigate();
+  // Open the Leads page with this chat pre-filled (it reuses an existing open lead for the same number).
+  const makeLead = (c: { phone: string; customer_name: string | null; messages: Message[] }) => {
+    const lastText = [...c.messages].reverse().find((m) => m.direction === "incoming" && m.message_text && !/^I received a \w+ message/i.test(m.message_text))?.message_text ?? "";
+    const q = new URLSearchParams({ new: "1", source: "whatsapp", phone: c.phone, name: c.customer_name ?? "", req: lastText.slice(0, 500) });
+    navigate(`/admin/leads?${q.toString()}`);
+  };
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -291,6 +300,9 @@ const InboxPage = () => {
                       <Phone className="h-3 w-3" /> {active.phone}
                     </a>
                   </div>
+                  <Button size="sm" variant="outline" onClick={() => makeLead(active)}>
+                    <UserPlus className="mr-1.5 h-4 w-4" /> Lead ആക്കുക
+                  </Button>
                 </div>
                 <div className="flex-1 space-y-2 overflow-y-auto p-4">
                   {active.messages.map((m) => (

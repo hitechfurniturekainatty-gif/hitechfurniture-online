@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.3";
-export const GUIDE_LAST_UPDATED = "2026-05-11";
+export const APP_VERSION = "1.4";
+export const GUIDE_LAST_UPDATED = "2026-10-11";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -338,12 +338,14 @@ export const CHAPTERS: GuideChapter[] = [
         title: "Daily flow",
         audience: ["office"],
         steps: [
-          "Open My Work → Awaiting Pricing.",
-          "Open a quotation → fill rates, GST, discount, terms.",
-          "Save — status moves to Quotation Sent.",
-          "Share PDF on WhatsApp.",
-          "When advance is received → click Assign Work, pick workers and items.",
-          "When delivery is done → mark Delivery Complete.",
+          "Start in Operations → 1 · Leads & Follow-up. Website enquiries and new WhatsApp chats arrive here automatically; walk-ins and phone calls are added with + Add manual lead.",
+          "Assign a salesman and a next call time. A lead not contacted within 4 hours raises a bell alert.",
+          "When the customer wants a price → Convert to quotation. Older leads saved as quotations are listed at the bottom of the Leads page (\"പഴയ ലീഡുകൾ\").",
+          "Open the quotation → fill items, rates, GST, discount, terms. Set Ready stock / Custom for every item.",
+          "Share the live quotation link on WhatsApp. This marks it Quote Sent and schedules a follow-up call 2 days later (10:30 AM).",
+          "The customer can tap Approve on the link — staff get a bell alert and a green banner on the quotation. Collect the advance, then press Confirm Order.",
+          "Custom items of confirmed orders appear on 4 · Production Board under \"വർക്കറെ ഏൽപ്പിക്കാൻ ബാക്കി\" until a worker job is assigned.",
+          "Ready items → 5 · Warehouse → 6 · Delivery. After delivery the balance becomes a receivable automatically.",
         ],
       },
       {
@@ -649,6 +651,21 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-4",
+        title: "v1.4 — 2026-10-11",
+        audience: ["everyone"],
+        bullets: [
+          "Fixed: website enquiry form had stopped saving new leads since 28-Sep (duplicate lead code). Lead codes now run LD-2026-0001, 0002…",
+          "WhatsApp chats from new numbers become leads automatically (source: WhatsApp). Staff, workers and existing customers are skipped. WhatsApp Inbox has a \"Lead ആക്കുക\" button.",
+          "Leads page: WhatsApp button on every lead, and a \"പഴയ ലീഡുകൾ\" section listing older leads that were saved as quotations.",
+          "Bell alert when a new lead is not contacted within 4 hours.",
+          "Sharing a quotation link marks it Quote Sent and auto-schedules a follow-up call 2 days later.",
+          "Customers can Approve a quotation from the shared link; staff are alerted and the quotation shows a green approval banner.",
+          "Production Board lists confirmed custom items that have not been assigned to any worker.",
+          "Side menu reordered to follow the pipeline: Leads → Measurement → Quotations & Orders → Production → Warehouse → Delivery.",
+        ],
+      },
       {
         id: "v1-3",
         title: "v1.3 — 2026-05-11",

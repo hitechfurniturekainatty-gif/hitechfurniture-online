@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Hash, Ruler, FileText, Camera, Image as ImageIcon, Phone, MapPin, User as UserIcon } from "lucide-react";
+import { Loader2, Hash, Ruler, FileText, Camera, Image as ImageIcon, Phone, MapPin, User as UserIcon, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { firstUrl } from "@/lib/firstUrl";
 
 type Item = {
@@ -33,6 +34,67 @@ type Quotation = {
   advance_amount: number | null;
   notes: string | null;
   updated_at: string | null;
+  commercial_status?: string | null;
+  customer_approved_at?: string | null;
+};
+
+// Quotations still open for the customer's decision.
+const APPROVABLE = new Set(["lead", "quote_preparation", "quote_sent", "follow_up"]);
+
+const CustomerApproval = ({ token, q, onApproved }: { token: string; q: Quotation; onApproved: (at: string) => void }) => {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (q.customer_approved_at) {
+    return (
+      <div className="flex items-start gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+        <div>
+          <p className="font-semibold">ക്വട്ടേഷൻ അംഗീകരിച്ചു · Quotation approved</p>
+          <p className="mt-0.5 text-xs">
+            {new Date(q.customer_approved_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} — ഞങ്ങളുടെ ടീം ഉടൻ ബന്ധപ്പെടും. Our team will contact you shortly.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (!APPROVABLE.has(q.commercial_status ?? "")) return null;
+
+  const approve = async () => {
+    if (busy) return;
+    if (!window.confirm("ഈ ക്വട്ടേഷൻ അംഗീകരിക്കട്ടേ? · Approve this quotation?")) return;
+    setBusy(true);
+    setErr(null);
+    const { data, error } = await (supabase as any).rpc("approve_shared_quotation", { p_token: token, p_note: note.trim() || null });
+    setBusy(false);
+    if (error || !data?.ok) {
+      setErr(data?.error === "closed" ? "This quotation is closed. Please contact the showroom." : "Could not record approval. Please try again or call us.");
+      return;
+    }
+    onApproved(data.approved_at ?? new Date().toISOString());
+  };
+
+  return (
+    <div className="space-y-2 rounded-xl border border-primary/30 bg-card p-3 shadow-sm">
+      <p className="text-sm font-semibold">ഈ ക്വട്ടേഷൻ ഇഷ്ടപ്പെട്ടോ? · Happy with this quotation?</p>
+      <p className="text-xs text-muted-foreground">
+        Approve ചെയ്താൽ ഞങ്ങളുടെ ടീം അഡ്വാൻസ്, ഡെലിവറി തീയതി എന്നിവ ഉറപ്പിക്കാൻ ബന്ധപ്പെടും. Approving lets our team contact you to fix the advance and delivery date.
+      </p>
+      <Textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder="മാറ്റങ്ങൾ / കുറിപ്പ് (optional) · Any changes or note"
+      />
+      {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
+      <Button className="w-full" onClick={approve} disabled={busy}>
+        {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+        Approve quotation · അംഗീകരിക്കുന്നു
+      </Button>
+    </div>
+  );
 };
 
 const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } = {}) => {
@@ -232,6 +294,14 @@ const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } 
               </div>
             )}
           </div>
+        )}
+
+        {!hideAmounts && token && (
+          <CustomerApproval
+            token={token}
+            q={q}
+            onApproved={(at) => setData((d) => (d ? { ...d, quotation: { ...d.quotation, customer_approved_at: at } } : d))}
+          />
         )}
 
         <p className="pb-6 pt-2 text-center text-[10px] text-muted-foreground">

@@ -3,10 +3,10 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.26.3";
 
 // src/lib/mcp/tools/search-products.ts
-import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
@@ -84,7 +84,7 @@ var search_products_default = defineTool({
 });
 
 // src/lib/mcp/tools/low-stock-products.ts
-import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z2 } from "npm:zod@^3.25.76";
 var low_stock_products_default = defineTool2({
   name: "low_stock_products",
@@ -108,7 +108,7 @@ var low_stock_products_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-quotations.ts
-import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z3 } from "npm:zod@^3.25.76";
 var list_quotations_default = defineTool3({
   name: "list_quotations",
@@ -140,7 +140,7 @@ var list_quotations_default = defineTool3({
 });
 
 // src/lib/mcp/tools/get-quotation.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z4 } from "npm:zod@^3.25.76";
 var get_quotation_default = defineTool4({
   name: "get_quotation",
@@ -169,7 +169,7 @@ var get_quotation_default = defineTool4({
 });
 
 // src/lib/mcp/tools/list-open-enquiries.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z5 } from "npm:zod@^3.25.76";
 var list_open_enquiries_default = defineTool5({
   name: "list_open_enquiries",
@@ -204,7 +204,7 @@ var list_open_enquiries_default = defineTool5({
 });
 
 // src/lib/mcp/tools/resolve-enquiry.ts
-import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.26.3";
 import { z as z6 } from "npm:zod@^3.25.76";
 var resolve_enquiry_default = defineTool6({
   name: "resolve_enquiry",
@@ -254,5 +254,5 @@ var mcp_default = defineMcp({
 });
 
 // lovable-mcp-supabase-entry.ts
-import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.26.2/stacks/supabase";
+import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.26.3/stacks/supabase";
 Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
