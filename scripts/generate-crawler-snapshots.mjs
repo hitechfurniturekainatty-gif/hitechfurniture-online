@@ -64,14 +64,18 @@ const LOCAL_BUSINESS_JSONLD = {
   },
   url: SITE_URL,
   sameAs: ["https://www.instagram.com/hitech_furniture_wayanad"],
+  // Showroom is in Kalpetta, but sales and delivery go well beyond Wayanad:
+  // across Kerala (incl. the Malabar region), Bengaluru and Tamil Nadu.
   areaServed: [
     { "@type": "City", name: "Kalpetta" },
     { "@type": "City", name: "Sulthan Bathery" },
     { "@type": "City", name: "Mananthavady" },
-    { "@type": "City", name: "Vythiri" },
-    { "@type": "City", name: "Meppadi" },
-    { "@type": "City", name: "Pulpally" },
     { "@type": "AdministrativeArea", name: "Wayanad" },
+    { "@type": "AdministrativeArea", name: "Malabar, Kerala" },
+    { "@type": "State", name: "Kerala" },
+    { "@type": "City", name: "Bengaluru" },
+    { "@type": "State", name: "Karnataka" },
+    { "@type": "State", name: "Tamil Nadu" },
   ],
 };
 
@@ -81,7 +85,7 @@ const LOCAL_BUSINESS_JSONLD = {
 const GENERAL_FAQ = [
   {
     q: "Where is Hitech Furniture & Interiors located?",
-    a: "Hitech Furniture & Interiors is located in Edappetty, Kalpetta, Wayanad, Kerala. The showroom serves customers across Wayanad district and beyond.",
+    a: "Hitech Furniture & Interiors is located in Edappetty, Kalpetta, Wayanad, Kerala. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
   },
   {
     q: "What does Hitech Furniture & Interiors sell?",
@@ -94,6 +98,10 @@ const GENERAL_FAQ = [
   {
     q: "How long has Hitech Furniture & Interiors been operating?",
     a: "Hitech Furniture & Interiors has been operating in Wayanad, Kerala for over 14 years.",
+  },
+  {
+    q: "Do you deliver outside Wayanad?",
+    a: "Yes. Hitech Furniture & Interiors delivers across Kerala including the Malabar region, and also to Bengaluru and Tamil Nadu. Enquire on WhatsApp for delivery charges and timelines to your location.",
   },
   {
     q: "Is EMI available?",
@@ -188,7 +196,7 @@ async function main() {
       bodyHtml: `
 <p>Hitech Furniture &amp; Interiors is a furniture retailer, wholesaler and interior design business in Edappetty, Kalpetta, Wayanad, Kerala, operating for over 14 years. Browse the full catalog at <a href="${SITE_URL}/catalog">hitechfurniture.online/catalog</a>.</p>
 <p>Call or WhatsApp: <a href="tel:${PHONE_TEL}">${PHONE_DISPLAY}</a> · <a href="https://wa.me/${PHONE_TEL.slice(1)}">Chat on WhatsApp</a></p>
-<p>Serving customers across Kalpetta, Sulthan Bathery, Mananthavady, Vythiri, Meppadi, Pulpally and the wider Wayanad district.</p>
+<p>Showroom in Kalpetta, Wayanad. Sales and delivery across Kerala including the Malabar region, Bengaluru and Tamil Nadu.</p>
 ${faqBlockHtml(GENERAL_FAQ)}`,
     })
   );
@@ -230,7 +238,7 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
     "public/_snapshots/faq.html",
     page({
       title: `Frequently Asked Questions — ${BRAND}`,
-      description: "Answers about location, product range, pricing, EMI and warranty for Hitech Furniture & Interiors, Kalpetta, Wayanad.",
+      description: "Answers about location, delivery areas, product range, pricing, EMI and warranty for Hitech Furniture & Interiors, Kalpetta, Wayanad.",
       canonical: `${SITE_URL}/faq`,
       jsonLd: faqJsonLd(GENERAL_FAQ),
       bodyHtml: faqBlockHtml(GENERAL_FAQ),

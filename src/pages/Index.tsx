@@ -140,9 +140,11 @@ const Index = () => {
       <section className="container-page pb-5">
         <div className="mx-auto max-w-4xl rounded-2xl bg-muted/55 px-5 py-4 text-center">
           <p className="text-xs leading-6 text-muted-foreground sm:text-sm">
-            Serving <strong className="text-foreground">Kalpetta</strong>, <strong className="text-foreground">Sulthan Bathery</strong>,{" "}
-            <strong className="text-foreground">Mananthavady</strong>, <strong className="text-foreground">Vythiri</strong>,{" "}
-            <strong className="text-foreground">Meppadi</strong>, <strong className="text-foreground">Pulpally</strong> and the wider Wayanad district.
+            Showroom in <strong className="text-foreground">Kalpetta, Wayanad</strong>. We deliver across{" "}
+            <strong className="text-foreground">Kerala</strong> including the{" "}
+            <strong className="text-foreground">Malabar region</strong>, to{" "}
+            <strong className="text-foreground">Bengaluru</strong> and{" "}
+            <strong className="text-foreground">Tamil Nadu</strong>. Enquire on WhatsApp for delivery to your location.
           </p>
         </div>
       </section>

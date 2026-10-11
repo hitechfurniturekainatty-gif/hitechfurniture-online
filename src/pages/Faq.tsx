@@ -9,7 +9,7 @@ import { SEO_BRAND_NAME } from "@/lib/localBusinessSchema";
 const FAQ_ITEMS = [
   {
     q: "Where is Hitech Furniture & Interiors located?",
-    a: "Hitech Furniture & Interiors is located in Edappetty, Kalpetta, Wayanad, Kerala. The showroom serves customers across Wayanad district and beyond.",
+    a: "Hitech Furniture & Interiors is located in Edappetty, Kalpetta, Wayanad, Kerala. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
   },
   {
     q: "What does Hitech Furniture & Interiors sell?",
@@ -22,6 +22,10 @@ const FAQ_ITEMS = [
   {
     q: "How long has Hitech Furniture & Interiors been operating?",
     a: "Hitech Furniture & Interiors has been operating in Wayanad, Kerala for over 14 years.",
+  },
+  {
+    q: "Do you deliver outside Wayanad?",
+    a: "Yes. Hitech Furniture & Interiors delivers across Kerala including the Malabar region, and also to Bengaluru and Tamil Nadu. Enquire on WhatsApp for delivery charges and timelines to your location.",
   },
   {
     q: "Is EMI available?",
@@ -37,7 +41,7 @@ const Faq = () => (
   <>
     <Seo
       title={`Frequently Asked Questions — ${SEO_BRAND_NAME}`}
-      description="Answers about location, product range, pricing, EMI and warranty for Hitech Furniture & Interiors, Kalpetta, Wayanad."
+      description="Answers about location, delivery areas, product range, pricing, EMI and warranty for Hitech Furniture & Interiors, Kalpetta, Wayanad."
       jsonLd={{
         "@context": "https://schema.org",
         "@type": "FAQPage",
