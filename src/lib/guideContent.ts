@@ -657,6 +657,7 @@ export const CHAPTERS: GuideChapter[] = [
         audience: ["everyone"],
         bullets: [
           "Fixed: website enquiry form had stopped saving new leads since 28-Sep (duplicate lead code). Lead codes now run LD-2026-0001, 0002…",
+          "AI (Claude, via n8n every 10 min) reads each WhatsApp lead's chat and fills name, place, requirement, enquiry type and budget. Names/places typed by staff are never overwritten; chats that look like suppliers or spam get a note \"AI: may not be a sales enquiry\".",
           "WhatsApp chats from new numbers become leads automatically (source: WhatsApp). Staff, workers and existing customers are skipped. WhatsApp Inbox has a \"Lead ആക്കുക\" button.",
           "Leads page: WhatsApp button on every lead, and a \"പഴയ ലീഡുകൾ\" section listing older leads that were saved as quotations.",
           "Bell alert when a new lead is not contacted within 4 hours.",
