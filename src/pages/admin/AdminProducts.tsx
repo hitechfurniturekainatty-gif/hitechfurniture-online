@@ -1556,8 +1556,14 @@ const AdminProducts = () => {
             className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 sm:grid-cols-2 sm:px-6"
             onFocusCapture={scrollFocusedIntoView}
           >
-            {/* ── 1. Identity ─────────────────────────────────────────── */}
-            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Identity</div>
+            {/* ── 1. Images ───────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Images</div>
+            <Field label="Images *" wide>
+              <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
+            </Field>
+
+            {/* ── 2. Identity ─────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Identity</div>
             <Field label="Product name *">
               <AutoSuggestInput
                 value={form.product_name}
@@ -1666,65 +1672,8 @@ const AdminProducts = () => {
             <Field label="Description" wide>
               <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </Field>
-            <Field label="Images *" wide>
-              <ImageUploader value={form.images} onChange={(images) => setForm({ ...form, images })} />
-            </Field>
 
-            {/* ── 2. Pricing & tax ────────────────────────────────────── */}
-            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Pricing &amp; tax</div>
-            <Field label="MRP (₹)">
-              <Input type="number" min={0} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
-            </Field>
-            <Field label="Offer price (₹)">
-              <Input type="number" min={0} value={form.offer_price} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} />
-            </Field>
-            {isOfficeStaff && (
-              <Field label="Cost price (₹) — staff only">
-                <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
-              </Field>
-            )}
-            {editing && (
-              <Field label="Price effective from">
-                <Input
-                  type="date"
-                  value={priceEffectiveDate}
-                  onChange={(e) => setPriceEffectiveDate(e.target.value)}
-                />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Used only when MRP / Selling / Cost is changed. Catalog always shows the current price.
-                </p>
-              </Field>
-            )}
-            {isOfficeStaff && (
-              <Field label="HSN code">
-                <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} placeholder="e.g. 94036000" />
-              </Field>
-            )}
-            {isOfficeStaff && (
-              <Field label="GST rate (%)">
-                <Input type="number" min={0} max={100} value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} placeholder="e.g. 12" />
-              </Field>
-            )}
-
-            {/* ── 3. Stock ────────────────────────────────────────────── */}
-            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Stock</div>
-            <Field label="Stock quantity">
-              <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
-            </Field>
-            <Field label="Stock status">
-              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Reorder level (low-stock alert)">
-              <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
-            </Field>
-
-            {/* ── 4. Location ─────────────────────────────────────────── */}
+            {/* ── 3. Location ─────────────────────────────────────────── */}
             <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Location</div>
             <Field label="Building" >
               <SearchableSelect
@@ -1771,7 +1720,61 @@ const AdminProducts = () => {
               </div>
             </Field>
 
-            {/* ── 5. Physical details ─────────────────────────────────── */}
+            {/* ── 4. Pricing & tax ────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Pricing &amp; tax</div>
+            <Field label="MRP (₹)">
+              <Input type="number" min={0} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
+            </Field>
+            <Field label="Offer price (₹)">
+              <Input type="number" min={0} value={form.offer_price} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} />
+            </Field>
+            {isOfficeStaff && (
+              <Field label="Cost price (₹) — staff only">
+                <Input type="number" min={0} value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
+              </Field>
+            )}
+            {editing && (
+              <Field label="Price effective from">
+                <Input
+                  type="date"
+                  value={priceEffectiveDate}
+                  onChange={(e) => setPriceEffectiveDate(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Used only when MRP / Selling / Cost is changed. Catalog always shows the current price.
+                </p>
+              </Field>
+            )}
+            {isOfficeStaff && (
+              <Field label="HSN code">
+                <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} placeholder="e.g. 94036000" />
+              </Field>
+            )}
+            {isOfficeStaff && (
+              <Field label="GST rate (%)">
+                <Input type="number" min={0} max={100} value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} placeholder="e.g. 12" />
+              </Field>
+            )}
+
+            {/* ── 5. Stock ────────────────────────────────────────────── */}
+            <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Stock</div>
+            <Field label="Stock quantity">
+              <Input type="number" min={0} value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} />
+            </Field>
+            <Field label="Stock status">
+              <Select value={form.stock_status} onValueChange={(v: "in_stock" | "out_of_stock") => setForm({ ...form, stock_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_stock">In Stock — available for sale</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock — keep as showcase</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Reorder level (low-stock alert)">
+              <Input type="number" min={0} value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} />
+            </Field>
+
+            {/* ── 6. Physical details ─────────────────────────────────── */}
             <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Physical details</div>
             <Field label="Primary material">
               <Select value={form.primary_material || "__none"} onValueChange={(v) => setForm({ ...form, primary_material: v === "__none" ? "" : v })}>
@@ -1819,7 +1822,7 @@ const AdminProducts = () => {
               </Select>
             </Field>
 
-            {/* ── 6. Variants ─────────────────────────────────────────── */}
+            {/* ── 7. Variants ─────────────────────────────────────────── */}
             <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Color variants</div>
             <Field label="Color variants & per-color stock" wide>
               <ProductVariantsEditor
@@ -1833,7 +1836,7 @@ const AdminProducts = () => {
               </p>
             </Field>
 
-            {/* ── 7. Visibility ───────────────────────────────────────── */}
+            {/* ── 8. Visibility ───────────────────────────────────────── */}
             <div className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Visibility</div>
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
