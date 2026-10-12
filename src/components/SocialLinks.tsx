@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine, ArrowRight } from "lucide-react";
+import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine, ArrowRight, Share2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FancyQr } from "@/components/FancyQr";
+import { FancyQr, svgToPng } from "@/components/FancyQr";
+import { shareAllLinks } from "@/lib/shareLinks";
 import { CONNECT_PAGE_URL, type SocialLink, type SocialType } from "@/lib/socialLinks";
 
 const GoogleG = ({ className }: { className?: string }) => (
@@ -75,6 +76,32 @@ export function SocialBadge({ k, iconUrl, size = "md" }: { k: SocialType; iconUr
   );
 }
 
+/** Shares the QR picture + every link (and the website) — WhatsApp etc. */
+export function ShareLinksButton({ links, qrRef, className, variant = "dark" }: {
+  links: SocialLink[]; qrRef?: RefObject<SVGSVGElement>; className?: string; variant?: "dark" | "light";
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try { await shareAllLinks(links, qrRef?.current ? () => svgToPng(qrRef.current!, 900) : undefined); }
+        finally { setBusy(false); }
+      }}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition disabled:opacity-60",
+        variant === "dark" ? "border border-[#5E2D05]/30 bg-white text-[#5E2D05] hover:bg-[#fbf3e6]" : "bg-[#25D366] text-white hover:bg-[#1ebe5b]",
+        className,
+      )}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+      Share
+    </button>
+  );
+}
+
 /** Thumb-friendly list of every link — used in the QR popup and on /connect. */
 export function SocialLinkList({ links }: { links: SocialLink[] }) {
   return (
@@ -100,6 +127,7 @@ export function SocialLinkList({ links }: { links: SocialLink[] }) {
  */
 export function ConnectSection({ links }: { links: SocialLink[] }) {
   const [open, setOpen] = useState(false);
+  const qrRef = useRef<SVGSVGElement>(null);
   if (!links.length) return null;
   return (
     <section className="container-page py-12 md:py-16" aria-labelledby="connect-heading">
@@ -112,7 +140,8 @@ export function ConnectSection({ links }: { links: SocialLink[] }) {
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground md:mx-0 md:text-base">
               All our pages in one code — Instagram, Facebook, WhatsApp and Google reviews. Scan it with your phone camera, or tap it to open the list.
             </p>
-            <button type="button" onClick={() => setOpen(true)} className="mt-6 inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4a2304]">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+            <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4a2304]">
               <span className="flex -space-x-2">
                 {links.slice(0, 4).map((l) => (
                   <span key={l.id} className="rounded-full ring-2 ring-[#5E2D05]"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
@@ -120,11 +149,13 @@ export function ConnectSection({ links }: { links: SocialLink[] }) {
               </span>
               View all links
             </button>
+            <ShareLinksButton links={links} qrRef={qrRef} />
+            </div>
           </div>
           <button type="button" onClick={() => setOpen(true)} aria-label="Open all our links" className="group mx-auto block">
             <div className="rounded-[2.5rem] bg-gradient-to-br from-[#5E2D05] via-[#8a4a10] to-[#F4A227] p-[3px] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
               <div className="flex flex-col items-center rounded-[calc(2.5rem-3px)] bg-white px-6 pb-4 pt-6">
-                <FancyQr value={CONNECT_PAGE_URL} size={188} title="Scan to connect with Hitech Furniture" />
+                <FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={188} title="Scan to connect with Hitech Furniture" />
                 <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#5E2D05] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                   <ScanLine className="h-3.5 w-3.5" /> Scan or tap
                 </span>
@@ -140,6 +171,7 @@ export function ConnectSection({ links }: { links: SocialLink[] }) {
             <p className="text-sm text-muted-foreground">Tap to open — follow us, chat, or leave a review.</p>
           </DialogHeader>
           <SocialLinkList links={links} />
+          <ShareLinksButton links={links} qrRef={qrRef} variant="light" className="w-full" />
           <Link to="/connect" onClick={() => setOpen(false)} className="block text-center text-xs font-semibold text-primary hover:underline">Open as a page</Link>
         </DialogContent>
       </Dialog>

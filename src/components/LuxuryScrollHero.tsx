@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, ClipboardList, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import livingRoomImage from "@/assets/living-room-hero.png";
@@ -51,7 +51,8 @@ const SCENES: Scene[] = [
 const clamp = (n: number, min = 0, max = 1) => Math.min(Math.max(n, min), max);
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
-export const LuxuryScrollHero = () => {
+/** `afterHero` renders right after the trust strip — the first thing seen once the hero is scrolled past. */
+export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) => {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
@@ -130,7 +131,7 @@ export const LuxuryScrollHero = () => {
         style={{ height: reduceMotion ? "100vh" : `${SCENES.length * 80}vh` }}
         aria-label="Hitech Furniture and Interiors visual journey"
       >
-        <div className="sticky top-0 h-screen overflow-hidden bg-background">
+        <div className="sticky top-0 h-screen overflow-hidden bg-[#1c1009]">
           <div className="absolute inset-0">
             {sceneMetrics.map((scene) => {
               const depthShift = reduceMotion ? 0 : (scene.index - activeIndex) * 24 - scene.reveal * 18;
@@ -172,8 +173,11 @@ export const LuxuryScrollHero = () => {
             })}
           </div>
 
+          {/* Fixed shade behind the text: stays put while photos change, so bright photos never wash the text out. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-[5] bg-gradient-to-b from-black/55 via-black/35 to-black/45 md:bg-gradient-to-r md:from-black/60 md:via-black/25 md:to-transparent" />
+
           <div className="absolute inset-0 z-10 flex flex-col justify-between px-5 pb-10 pt-24 sm:px-8 md:px-12 md:pt-28 lg:px-20">
-            <div className="max-w-4xl" style={{ opacity: Math.max(introFade, 0.42) }}>
+            <div className="max-w-4xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white backdrop-blur-md sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5" />
                 Hitech Furniture & Interiors
@@ -260,6 +264,8 @@ export const LuxuryScrollHero = () => {
           <TrustItem icon={ClipboardList} title="Complete Interiors" subtitle="Design to installation" />
         </div>
       </section>
+
+      {afterHero}
 
       <section className="container-page py-14 md:py-20" aria-labelledby="shop-by-room-title">
         <div className="mb-8 flex items-end justify-between gap-5 md:mb-10">

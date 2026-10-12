@@ -2,7 +2,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ClipboardList, LayoutGrid, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
-import { SocialLinkList } from "@/components/SocialLinks";
+import { SocialLinkList, ShareLinksButton } from "@/components/SocialLinks";
+import { FancyQr } from "@/components/FancyQr";
+import { useRef } from "react";
+import { CONNECT_PAGE_URL } from "@/lib/socialLinks";
 import { useSocialLinks } from "@/hooks/useSocialLinks";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 
@@ -12,6 +15,7 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
  */
 const Connect = () => {
   const { links, ready, settings } = useSocialLinks();
+  const qrRef = useRef<SVGSVGElement>(null);
   const address = settings?.address_lines?.filter(Boolean).join(", ") || "Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122";
 
   return (
@@ -40,6 +44,16 @@ const Connect = () => {
             </>
           )}
         </div>
+        {ready && links.length > 0 && (
+          <div className="mt-8 flex w-full flex-col items-center gap-3 rounded-3xl border border-border bg-card p-5 text-center shadow-sm">
+            <p className="text-sm font-semibold text-foreground">Share with family &amp; friends</p>
+            <div className="rounded-[1.6rem] bg-gradient-to-br from-[#5E2D05] via-[#8a4a10] to-[#F4A227] p-[3px]">
+              <div className="rounded-[calc(1.6rem-3px)] bg-white p-3"><FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={150} title="QR code for this page" /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Let them scan this, or send every link on WhatsApp in one tap.</p>
+            <ShareLinksButton links={links} qrRef={qrRef} variant="light" className="w-full" />
+          </div>
+        )}
         <Link to="/" className="mt-8 text-xs font-semibold text-primary hover:underline">hitechfurniture.online</Link>
       </main>
     </div>

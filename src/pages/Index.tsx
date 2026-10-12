@@ -106,7 +106,7 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-      <LuxuryScrollHero />
+      <LuxuryScrollHero afterHero={social.ready && social.config.show_on_home ? <ConnectSection links={social.links} /> : null} />
 
       <section id="about" className="container-page py-14 md:py-20">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft">
@@ -387,8 +387,6 @@ const Index = () => {
       </section>
 
       {settings?.show_google_review !== false && <GoogleReviewCta reviewUrl={social.links.find((l) => l.key === "google")?.url || GOOGLE_REVIEW_URL} />}
-
-      {social.ready && social.config.show_on_home && <ConnectSection links={social.links} />}
 
       <Suspense fallback={null}>
         <SiteFooter />

@@ -49,7 +49,7 @@ export const SiteHeader = () => {
   const desktopLink = "text-sm font-semibold text-slate-700 transition-colors hover:text-[#5e2d05]";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_12px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white shadow-[0_1px_12px_rgba(15,23,42,0.06)]">
       <div ref={headerRef} className="container-page relative flex min-h-[72px] items-center justify-between gap-3 py-2.5 md:min-h-[82px]">
         <Link to="/" aria-label="Hitech Furniture & Interiors — Home" className="flex min-w-0 items-center gap-3">
           <Logo className="h-11 w-[106px] shrink-0 sm:h-12 sm:w-[116px] md:h-14 md:w-[135px]" />

@@ -45,3 +45,14 @@ describe("social links", () => {
     expect(resolveItemUrl({ type: "whatsapp", url: "https://wa.me/919895134482" })).toBe("https://wa.me/919895134482");
   });
 });
+
+import { buildShareText } from "./shareLinks";
+describe("share text", () => {
+  it("lists every link plus the website and the links page", () => {
+    const links = buildSocialLinks(parseSocialConfig(null, settings), "Hi");
+    const t = buildShareText(links);
+    expect(t).toContain("Instagram: https://www.instagram.com/hitech");
+    expect(t).toContain("Website: https://hitechfurniture.online");
+    expect(t).toContain("https://hitechfurniture.online/connect");
+  });
+});
