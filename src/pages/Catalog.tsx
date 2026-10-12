@@ -174,9 +174,10 @@ const Catalog = () => {
         const cover = [...(p.product_images ?? [])].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
         return { product_name: p.product_name, product_code: p.product_code, mrp: Number(p.mrp), offer_price: p.offer_price ? Number(p.offer_price) : null, material: p.material ?? null, dimensions: p.dimensions ?? null, cover_image: cover };
       });
-      const title = activeCat ? `${activeCat.name} Catalog` : "Product Catalog";
+      const activeSub = activeSubSlug && activeSubSlug !== "__all__" ? subsForActive.find((s) => s.slug === activeSubSlug) : undefined;
+      const title = activeSub ? `${toTitleCase(activeSub.name)} Catalog` : activeCat ? `${toTitleCase(activeCat.name)} Catalog` : "Product Catalog";
       const blob = await generateCatalogPdf(items, title, "Hitech Furniture & Interiors · Wayanad");
-      downloadBlob(blob, `hitech-${activeCat?.slug ?? "catalog"}.pdf`);
+      downloadBlob(blob, `hitech-${[activeCat?.slug, activeSub?.slug].filter(Boolean).join("-") || "catalog"}.pdf`);
       toast({ title: "Catalog downloaded", description: "Share it on WhatsApp anytime." });
     } catch (e) {
       console.error(e);

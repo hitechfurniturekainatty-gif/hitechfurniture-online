@@ -598,3 +598,209 @@ export async function generateStructuredCatalogPdf(
   );
   return await pdf(doc).toBlob();
 }
+/* ============================================================
+ * Grouped staff catalog (Shop / Floor / Section / Category /
+ * Sub-category). Used by the Staff Catalog PDF export dialog.
+ * ============================================================ */
+
+export type GroupedPdfGroup = { key: string; title: string; items: CatalogPdfItem[]; children?: GroupedPdfGroup[] };
+
+export type GroupedPdfOptions = {
+  title: string;
+  subtitle: string;
+  filterLines: string[];
+  layout: "large" | "compact";
+  showLocation: boolean;
+  showStock: boolean;
+};
+
+type GroupedHeading = { text: string; level: 1 | 2; count: number };
+type GroupedPageSpec = { crumb: string; headings: GroupedHeading[]; items: CatalogPdfItem[]; continued: boolean };
+
+const gs = StyleSheet.create({
+  h1: { fontSize: 15, fontWeight: 700, color: "#FBF8F2", backgroundColor: "#5E2D05", paddingVertical: 6, paddingHorizontal: 10, marginBottom: 8, borderRadius: 3 },
+  h2: { fontSize: 12.5, fontWeight: 700, color: "#5E2D05", backgroundColor: "#EFE7D4", borderLeft: "3pt solid #F4A227", paddingVertical: 5, paddingHorizontal: 10, marginBottom: 8 },
+  hCount: { fontSize: 8.5, fontWeight: 400 },
+  cont: { fontSize: 8.5, color: "#655B52", marginBottom: 6 },
+  lgCard: { width: "50%", height: 230, padding: 5 },
+  lgInner: { border: "1pt solid #E5DFD2", borderRadius: 6, padding: 8, backgroundColor: "#FFFFFF", height: 220, overflow: "hidden" },
+  lgImgBox: { width: "100%", height: 112, marginBottom: 5, alignItems: "center", justifyContent: "center", backgroundColor: "#F8F5EE" },
+  lgImg: { width: "100%", height: 112, objectFit: "contain" },
+  tocRow: { flexDirection: "row", justifyContent: "space-between", borderBottom: "0.5pt solid #E5DFD2", paddingVertical: 3 },
+  tocText: { fontSize: 9.5, color: "#493A2E" },
+  tocSub: { fontSize: 8.5, color: "#655B52", paddingLeft: 12 },
+});
+
+const countLabel = (n: number) => `${n} item${n === 1 ? "" : "s"}`;
+
+function groupedPages(groups: GroupedPdfGroup[], layout: GroupedPdfOptions["layout"]): GroupedPageSpec[] {
+  const full = layout === "compact" ? 10 : 6;
+  const withHeading = layout === "compact" ? 10 : 4;
+  const out: GroupedPageSpec[] = [];
+  const single = groups.length === 1 && groups[0].key === "all";
+  const push = (crumb: string, headings: GroupedHeading[], items: CatalogPdfItem[]) => {
+    let i = 0;
+    let first = true;
+    while (first || i < items.length) {
+      const cap = first && headings.length ? withHeading : full;
+      out.push({ crumb, headings: first ? headings : [], items: items.slice(i, i + cap), continued: !first });
+      i += cap;
+      first = false;
+    }
+  };
+  for (const g of groups) {
+    const total = g.items.length;
+    if (single) { push("", [], g.items); continue; }
+    if (!g.children?.length) { push(g.title, [{ text: g.title, level: 1, count: total }], g.items); continue; }
+    g.children.forEach((c, ci) => {
+      const heads: GroupedHeading[] = ci === 0 ? [{ text: g.title, level: 1, count: total }] : [];
+      heads.push({ text: c.title, level: 2, count: c.items.length });
+      push(`${g.title} › ${c.title}`, heads, c.items);
+    });
+  }
+  return out;
+}
+
+const GroupedCard = ({ p, opts }: { p: CatalogPdfItem; opts: GroupedPdfOptions }) => {
+  const onOffer = p.offer_price != null && p.offer_price < p.mrp;
+  const stockText = typeof p.stock_quantity === "number"
+    ? (p.stock_status === "out_of_stock" || p.stock_quantity <= 0 ? "No stock" : `${p.stock_quantity} in stock`)
+    : null;
+  if (opts.layout === "compact") {
+    return (
+      <View style={cs.card} wrap={false}>
+        <View style={cs.cardInner}>
+          <View style={cs.imgBox}>
+            {p.cover_image ? <Image src={p.cover_image} style={{ ...cs.img, objectFit: "contain" }} /> : <Text style={cs.imgPlaceholder}>No image</Text>}
+          </View>
+          <View style={cs.details}>
+            <Text style={cs.name}>{p.product_name.slice(0, 70)}</Text>
+            <Text style={cs.code}>Code · {p.product_code}</Text>
+            <View style={cs.priceRow}>
+              <Text style={cs.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
+              {onOffer && <Text style={cs.mrp}>{formatINR(p.mrp)}</Text>}
+            </View>
+            {opts.showStock && stockText && <Text style={cs.meta}>Stock: {stockText}</Text>}
+            {p.material && <Text style={cs.meta}>Material: {p.material.slice(0, 40)}</Text>}
+            {p.dimensions && <Text style={cs.meta}>Size: {p.dimensions.slice(0, 40)}</Text>}
+            {opts.showLocation && p.location_label && <Text style={cs.meta}>{p.location_label.slice(0, 60)}</Text>}
+          </View>
+        </View>
+      </View>
+    );
+  }
+  return (
+    <View style={gs.lgCard} wrap={false}>
+      <View style={gs.lgInner}>
+        <View style={gs.lgImgBox}>
+          {p.cover_image ? <Image src={p.cover_image} style={gs.lgImg} /> : <Text style={cs.imgPlaceholder}>No image</Text>}
+        </View>
+        <Text style={s.name}>{p.product_name.slice(0, 72)}</Text>
+        <Text style={s.code}>Code · {p.product_code}</Text>
+        <View style={s.priceRow}>
+          <Text style={s.price}>{formatINR(onOffer ? p.offer_price : p.mrp)}</Text>
+          {onOffer && <Text style={s.mrp}>{formatINR(p.mrp)}</Text>}
+        </View>
+        {p.material && <Text style={s.meta}>Material: {p.material.slice(0, 46)}</Text>}
+        {p.dimensions && <Text style={s.meta}>Size: {p.dimensions.slice(0, 40)}</Text>}
+        {opts.showLocation && p.location_label && <Text style={s.meta}>Location: {p.location_label.slice(0, 60)}</Text>}
+        {opts.showStock && stockText && <Text style={s.meta}>Stock: {stockText}</Text>}
+      </View>
+    </View>
+  );
+};
+
+const GroupedCatalogDoc = ({ groups, opts }: { groups: GroupedPdfGroup[]; opts: GroupedPdfOptions }) => {
+  const total = groups.reduce((a, g) => a + g.items.length, 0);
+  const pages = groupedPages(groups, opts.layout);
+  const showToc = !(groups.length === 1 && groups[0].key === "all");
+  const tocRows: { text: string; count: number; sub: boolean }[] = [];
+  for (const g of groups) {
+    tocRows.push({ text: g.title, count: g.items.length, sub: false });
+    for (const c of g.children ?? []) tocRows.push({ text: c.title, count: c.items.length, sub: true });
+  }
+  const TOC_MAX = 28;
+  return (
+    <Document title={opts.title} author="HITECH Furniture & Interiors">
+      <Page size="A4" style={s.page}>
+        <View style={s.header}>
+          <Image src={logo} style={s.logo} />
+          <Text style={s.brandLine}>Furniture & Interiors</Text>
+        </View>
+        <View style={{ alignItems: "center", marginTop: showToc ? 60 : 220 }}>
+          <Text style={s.coverTitle}>{opts.title}</Text>
+          <Text style={s.coverSub}>{opts.subtitle}</Text>
+          {opts.filterLines.map((l, i) => <Text key={i} style={{ fontSize: 9.5, color: "#655B52", marginBottom: 2 }}>{l}</Text>)}
+          <Text style={{ fontSize: 11, color: "#5E2D05", marginTop: 8 }}>{total} pieces{showToc ? ` · ${groups.length} group${groups.length === 1 ? "" : "s"}` : ""}</Text>
+        </View>
+        {showToc && (
+          <View style={{ marginTop: 22, marginHorizontal: 30 }}>
+            <Text style={{ fontSize: 9, color: "#5E2D05", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Contents</Text>
+            {tocRows.slice(0, TOC_MAX).map((r, i) => (
+              <View key={i} style={gs.tocRow}>
+                <Text style={r.sub ? gs.tocSub : gs.tocText}>{r.text}</Text>
+                <Text style={r.sub ? gs.tocSub : gs.tocText}>{r.count}</Text>
+              </View>
+            ))}
+            {tocRows.length > TOC_MAX && <Text style={{ fontSize: 8.5, color: "#655B52", marginTop: 4 }}>+ {tocRows.length - TOC_MAX} more groups inside</Text>}
+          </View>
+        )}
+        <Text style={s.footer}>{CONTACT_LINE}</Text>
+      </Page>
+      {pages.map((pg, pi) => (
+        <Page key={pi} size="A4" style={s.page}>
+          <View style={s.header}>
+            <Image src={logo} style={s.logo} />
+            <Text style={s.brandLine}>{(pg.crumb || opts.title).slice(0, 70)}</Text>
+          </View>
+          {pg.headings.map((h, hi) => (
+            <Text key={hi} style={h.level === 1 ? gs.h1 : gs.h2}>
+              {h.text}  <Text style={gs.hCount}>({countLabel(h.count)})</Text>
+            </Text>
+          ))}
+          {pg.continued && pg.crumb && <Text style={gs.cont}>{pg.crumb} (continued)</Text>}
+          {pg.items.length === 0 ? (
+            <Text style={{ fontSize: 10, color: "#655B52", marginTop: 20 }}>No items here.</Text>
+          ) : (
+            <View style={opts.layout === "compact" ? cs.grid : s.grid}>
+              {pg.items.map((p, i) => <GroupedCard key={i} p={p} opts={opts} />)}
+            </View>
+          )}
+          <Text style={s.footer}>{CONTACT_LINE}</Text>
+          <Text style={s.pageLabel} render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`} fixed />
+        </Page>
+      ))}
+    </Document>
+  );
+};
+
+/** Resolve product photos once for many PDFs. Missing photos never block the export. */
+export async function prepareCatalogImages(urls: (string | null | undefined)[]): Promise<{ map: Map<string, string>; failed: number }> {
+  const unique = [...new Set(urls.filter((u): u is string => !!u))];
+  const map = new Map<string, string>();
+  let failed = 0;
+  for (let i = 0; i < unique.length; i += 6) {
+    await Promise.all(unique.slice(i, i + 6).map(async url => {
+      const data = await urlToDataUrl(url);
+      if (data && data.startsWith("data:image/")) map.set(url, data);
+      else failed++;
+    }));
+  }
+  return { map, failed };
+}
+
+const swapGroupImages = (groups: GroupedPdfGroup[], map: Map<string, string>): GroupedPdfGroup[] =>
+  groups.map(g => ({
+    ...g,
+    items: g.items.map(it => ({ ...it, cover_image: it.cover_image ? map.get(it.cover_image) ?? null : null })),
+    children: g.children ? swapGroupImages(g.children, map) : undefined,
+  }));
+
+export async function generateGroupedCatalogPdf(
+  groups: GroupedPdfGroup[],
+  opts: GroupedPdfOptions,
+  images: Map<string, string>,
+): Promise<Blob> {
+  const doc = <GroupedCatalogDoc groups={swapGroupImages(groups, images)} opts={opts} />;
+  return await pdf(doc).toBlob();
+}
