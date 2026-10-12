@@ -15,7 +15,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   const { user, loading, isStaff, isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWorker, isWarehouse, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({catalog:true});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // all groups closed; the current page's group opens itself
   const [backlogUnlocked, setBacklogUnlocked] = useState<boolean>(() => isBacklogMenuRevealed());
   useEffect(() => { const tick=()=>setBacklogUnlocked(isBacklogMenuRevealed()); tick(); const id=window.setInterval(tick,5000); const onVis=()=>tick(); const onStorage=(e:StorageEvent)=>{if(e.key==="backlog_unlock_until")tick()}; document.addEventListener("visibilitychange",onVis); window.addEventListener("storage",onStorage); return()=>{window.clearInterval(id);document.removeEventListener("visibilitychange",onVis);window.removeEventListener("storage",onStorage)}; },[]);
   const tapsRef=useRef<number[]>([]),tapTimerRef=useRef<number|null>(null);

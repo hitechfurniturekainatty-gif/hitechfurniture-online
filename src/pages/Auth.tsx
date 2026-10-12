@@ -127,10 +127,8 @@ const Auth = () => {
           const isAdmin = roles.includes("admin");
           const isOffice = roles.includes("staff") || isAdmin;
           const isWorker = roles.includes("worker");
+          // Everyone (except field workers) starts on the Overview and picks where to go.
           if (isWorker && !isOffice && !isAdmin) navigate("/worker");
-          else if (isAdmin) navigate("/admin");
-          else if (isOffice || roles.includes("measurement_staff")) navigate("/admin/my-work");
-          else if (roles.includes("delivery")) navigate("/admin/my-trips");
           else navigate("/admin");
         } else {
           toast({ title: `Hi ${displayName}`, description: "Welcome to My Hitech 👋" });
