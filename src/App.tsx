@@ -1,6 +1,7 @@
 import { pageLoaders } from "@/lib/routePreload";
 import { RouteIntentPreloader } from "@/components/RouteIntentPreloader";
 import { AuthProvider } from "@/hooks/useAuth";
+import { IdleLogout } from "@/components/IdleLogout";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
@@ -22,6 +23,7 @@ const EnquiryRedirect = ({ kind }: { kind: "complaint" | "service" }) => {
 };
 
 const Catalog = lazy(pageLoaders.Catalog);
+const Connect = lazy(pageLoaders.Connect);
 const Faq = lazy(pageLoaders.Faq);
 const ProductDetail = lazy(pageLoaders.ProductDetail);
 const Auth = lazy(pageLoaders.Auth);
@@ -101,12 +103,14 @@ const App = () => (
       <BrowserRouter>
         <RouteIntentPreloader />
         <BacklogShortcut />
+        <IdleLogout />
         <GlobalNotesWindow />
         <EnquiryForm />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/catalog" element={<Catalog />} />
+            <Route path="/connect" element={<Connect />} />
             <Route path="/staff-catalog" element={<Navigate to="/admin/staff-catalog" replace />} />
             <Route path="/admin/staff-catalog" element={<StaffCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />

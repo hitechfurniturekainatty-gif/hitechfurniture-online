@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { VISIBILITY_SECTION_KEY } from "@/lib/publicCatalogVisibility";
+import { SOCIAL_SECTION_KEY } from "@/lib/socialLinks";
+import { SocialLinksAdminCard } from "@/components/admin/SocialLinksAdminCard";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -74,7 +76,7 @@ const AdminHomePage = () => {
     }
     setSlides((slidesRes.data ?? []) as HeroSlide[]);
     // The public-catalog visibility rules live in a hidden system row — keep it out of the editor.
-    setSections(((sectionsRes.data ?? []) as HomepageSection[]).filter((x) => x.section_key !== VISIBILITY_SECTION_KEY));
+    setSections(((sectionsRes.data ?? []) as HomepageSection[]).filter((x) => x.section_key !== VISIBILITY_SECTION_KEY && x.section_key !== SOCIAL_SECTION_KEY));
     setLoading(false);
   };
 
@@ -703,6 +705,7 @@ const AdminHomePage = () => {
               </div>
             </CardContent>
           </Card>
+          <SocialLinksAdminCard settings={settings} />
         </TabsContent>
       </Tabs>
     </AdminShell>

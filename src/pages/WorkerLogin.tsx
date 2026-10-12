@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { markActivity } from "@/lib/idleSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +61,7 @@ const WorkerLogin = () => {
       return;
     }
     setLoading(true);
+    markActivity(); // new session starts with a fresh idle timer
     const { error } = await supabase.auth.signInWithPassword({
       email: phoneToEmail(cleanPhone),
       password: pinToPassword(cleanPin),

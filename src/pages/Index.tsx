@@ -10,6 +10,8 @@ import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
+import { useSocialLinks } from "@/hooks/useSocialLinks";
+import { SocialLinksStrip } from "@/components/SocialLinks";
 
 import { Seo } from "@/components/Seo";
 import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
@@ -35,6 +37,7 @@ const Index = () => {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [featured, setFeatured] = useState<(ProductCardData & { main_category_id?: string | null; sub_category_id?: string | null })[]>([]);
   const vis = usePublicCatalogVisibility();
+  const social = useSocialLinks();
   // Categories always stay visible; only products inside hidden ones are left out.
   const shownCategories = categories;
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
@@ -383,7 +386,9 @@ const Index = () => {
         </div>
       </section>
 
-      {settings?.show_google_review !== false && <GoogleReviewCta />}
+      {social.ready && social.extras.show_on_home && <SocialLinksStrip links={social.links} />}
+
+      {settings?.show_google_review !== false && <GoogleReviewCta reviewUrl={social.links.find((l) => l.key === "google")?.url || GOOGLE_REVIEW_URL} />}
 
       <Suspense fallback={null}>
         <SiteFooter />
@@ -429,7 +434,8 @@ const MiniTrust = ({ title, text }: { title: string; text: string }) => (
 const GOOGLE_REVIEW_URL =
   "https://search.google.com/local/writereview?placeid=ChIJh4fFy6kMpjsR9mGrdWARwXo";
 
-const GoogleReviewCta = () => {
+const GoogleReviewCta = ({ reviewUrl }: { reviewUrl: string }) => {
+  const GOOGLE_REVIEW_URL = reviewUrl;
   const qrUrl =
     "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=2&data=" +
     encodeURIComponent(GOOGLE_REVIEW_URL);
