@@ -9,7 +9,7 @@ import { SEO_BRAND_NAME } from "@/lib/localBusinessSchema";
 const FAQ_ITEMS = [
   {
     q: "Where is Hitech Furniture & Interiors located?",
-    a: "Hitech Furniture & Interiors is located at Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122, Kerala. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
+    a: "Hitech Furniture & Interiors is located at Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, PIN 673122, Kerala, on the Kozhikode–Kollegal Highway next to Kachery Honda. The showroom is open Monday to Saturday, 9:30 AM to 8:30 PM, and closed on Sunday. Sales and delivery cover customers across Kerala, Bengaluru and Tamil Nadu, not only Wayanad.",
   },
   {
     q: "What does Hitech Furniture & Interiors sell?",

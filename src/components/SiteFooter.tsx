@@ -5,14 +5,14 @@ import { Link } from "react-router-dom";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 
-const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/hy5mbzYsFP2c3vx27?g_st=iw";
+const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/NunMAUxeDXC2yq8C6";
 const FALLBACK_ADDRESS_LINES = [
   "Edapetty Shopping Centre",
   "Edapetty, Kalpetta",
   "Wayanad, PIN 673122",
 ];
 const FALLBACK_EMBED_URL =
-  "https://www.google.com/maps?q=Edapetty+Shopping+Centre+Kalpetta+Wayanad&output=embed";
+  "https://www.google.com/maps?q=11.637805,76.094218&z=17&output=embed";
 
 export const SiteFooter = () => {
   const s = useHomepageSettings();
@@ -115,6 +115,7 @@ export const SiteFooter = () => {
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>
                 {addressLines.map((l) => <span key={l} className="block">{l}</span>)}
+                <span className="mt-2 block text-xs text-muted-foreground">Mon–Sat 9:30 AM – 8:30 PM · Sunday closed</span>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary">Open in Google Maps <ArrowUpRight className="h-3.5 w-3.5" /></span>
               </span>
             </div>

@@ -25,7 +25,20 @@ export const LOCAL_BUSINESS_JSONLD = {
     addressCountry: "IN",
   },
   url: typeof window !== "undefined" ? window.location.origin : "https://hitechfurniture.online",
-  sameAs: ["https://www.instagram.com/hitech_furniture_wayanad"],
+  geo: { "@type": "GeoCoordinates", latitude: 11.637805, longitude: 76.094218 },
+  hasMap: "https://maps.app.goo.gl/NunMAUxeDXC2yq8C6",
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "09:30",
+      closes: "20:30",
+    },
+  ],
+  sameAs: [
+    "https://www.instagram.com/hitech_furniture_wayanad",
+    "https://www.facebook.com/634075729791776",
+  ],
   // Showroom is in Kalpetta, but sales and delivery go well beyond Wayanad:
   // across Kerala (incl. the Malabar region), Bengaluru and Tamil Nadu.
   areaServed: [
