@@ -26,7 +26,7 @@ export const LOCAL_BUSINESS_JSONLD = {
   },
   url: typeof window !== "undefined" ? window.location.origin : "https://hitechfurniture.online",
   geo: { "@type": "GeoCoordinates", latitude: 11.637805, longitude: 76.094218 },
-  hasMap: "https://maps.app.goo.gl/NunMAUxeDXC2yq8C6",
+  hasMap: "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56",
   openingHoursSpecification: [
     {
       "@type": "OpeningHoursSpecification",

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 
-const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/NunMAUxeDXC2yq8C6";
+const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56";
 const FALLBACK_ADDRESS_LINES = [
   "Edapetty Shopping Centre",
   "Edapetty, Kalpetta",
