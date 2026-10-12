@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
-import { SOCIAL_SECTION_KEY, buildSocialLinks, defaultSocialExtras, parseSocialExtras, type SocialExtras } from "@/lib/socialLinks";
+import { SOCIAL_SECTION_KEY, buildSocialLinks, parseSocialConfig } from "@/lib/socialLinks";
 
-let cache: Promise<SocialExtras> | null = null;
+let cache: Promise<string | null> | null = null;
 
-export function loadSocialExtras(force = false): Promise<SocialExtras> {
+/** Raw saved JSON of the social list (null = never saved). */
+export function loadSocialBody(force = false): Promise<string | null> {
   if (!cache || force) {
     cache = Promise.resolve(
       supabase.from("homepage_sections").select("body").eq("section_key", SOCIAL_SECTION_KEY).maybeSingle(),
-    ).then(({ data, error }) => (error ? defaultSocialExtras() : parseSocialExtras(data?.body ?? null)))
-      .catch(() => defaultSocialExtras());
+    ).then(({ data, error }) => (error ? null : data?.body ?? null)).catch(() => null);
   }
   return cache;
 }
@@ -18,18 +18,19 @@ export function loadSocialExtras(force = false): Promise<SocialExtras> {
 /** Live social/review links (admin edits show without a redeploy). */
 export function useSocialLinks() {
   const settings = useHomepageSettings();
-  const [extras, setExtras] = useState<SocialExtras | null>(null);
+  const [body, setBody] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
-    void loadSocialExtras().then(x => { if (alive) setExtras(x); });
+    void loadSocialBody().then(b => { if (alive) setBody(b); });
     return () => { alive = false; };
   }, []);
-  const ready = !!settings && !!extras;
-  const ex = extras ?? defaultSocialExtras();
-  return {
-    ready,
-    extras: ex,
-    settings,
-    links: buildSocialLinks(settings, ex, settings?.whatsapp_default_message || undefined),
-  };
+  return useMemo(() => {
+    const config = parseSocialConfig(body ?? null, settings);
+    return {
+      ready: !!settings && body !== undefined,
+      config,
+      settings,
+      links: buildSocialLinks(config, settings?.whatsapp_default_message || undefined),
+    };
+  }, [body, settings]);
 }

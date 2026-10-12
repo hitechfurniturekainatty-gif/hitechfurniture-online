@@ -11,7 +11,7 @@ import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 import { useSocialLinks } from "@/hooks/useSocialLinks";
-import { SocialLinksStrip } from "@/components/SocialLinks";
+import { ConnectSection } from "@/components/SocialLinks";
 
 import { Seo } from "@/components/Seo";
 import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
@@ -386,9 +386,9 @@ const Index = () => {
         </div>
       </section>
 
-      {social.ready && social.extras.show_on_home && <SocialLinksStrip links={social.links} />}
-
       {settings?.show_google_review !== false && <GoogleReviewCta reviewUrl={social.links.find((l) => l.key === "google")?.url || GOOGLE_REVIEW_URL} />}
+
+      {social.ready && social.config.show_on_home && <ConnectSection links={social.links} />}
 
       <Suspense fallback={null}>
         <SiteFooter />

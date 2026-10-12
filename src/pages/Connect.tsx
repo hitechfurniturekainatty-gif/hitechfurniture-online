@@ -25,9 +25,9 @@ const Connect = () => {
         <div className="mt-7 w-full space-y-3">
           {!ready && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
           {ready && links.map((l) => (
-            <a key={l.key} href={l.url} target="_blank" rel="noopener noreferrer"
+            <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer"
                className="flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-3 pr-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <SocialBadge k={l.key} size="lg" />
+              <SocialBadge k={l.key} iconUrl={l.icon_url} size="md" />
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold text-foreground">{l.action}</span>
                 <span className="block text-xs text-muted-foreground">{l.label}</span>

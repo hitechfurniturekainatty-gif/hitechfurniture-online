@@ -689,14 +689,7 @@ const AdminHomePage = () => {
                   <Label className="text-xs">WhatsApp default message</Label>
                   <Input value={settings.whatsapp_default_message} onChange={(e) => setSettings({ ...settings, whatsapp_default_message: e.target.value })} />
                 </div>
-                <div>
-                  <Label className="text-xs">Instagram URL</Label>
-                  <Input value={settings.instagram_url ?? ""} onChange={(e) => setSettings({ ...settings, instagram_url: e.target.value })} placeholder="https://instagram.com/..." />
-                </div>
-                <div>
-                  <Label className="text-xs">Facebook URL</Label>
-                  <Input value={settings.facebook_url ?? ""} onChange={(e) => setSettings({ ...settings, facebook_url: e.target.value })} placeholder="https://facebook.com/..." />
-                </div>
+                <p className="text-xs text-muted-foreground md:col-span-2">Instagram, Facebook, Google review and other social links are managed in the list below.</p>
               </div>
               <div className="flex justify-end">
                 <Button onClick={saveSettings} disabled={saving}>
@@ -705,7 +698,7 @@ const AdminHomePage = () => {
               </div>
             </CardContent>
           </Card>
-          <SocialLinksAdminCard settings={settings} />
+          <SocialLinksAdminCard settings={settings} onSettingsSynced={(patch) => setSettings((prev) => (prev ? { ...prev, ...patch } : prev))} />
         </TabsContent>
       </Tabs>
     </AdminShell>
