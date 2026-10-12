@@ -6,6 +6,7 @@
 // exists. Run automatically via `npm run build` (see package.json "prebuild").
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, readFileSync, existsSync } from "fs";
+import { loadCatalogVisibility } from "./catalog-visibility.mjs";
 
 // Minimal .env loader (avoids adding a new dependency just for this script).
 // Build hosts (Hostinger CI, local `npm run build`) may already export these
@@ -54,12 +55,15 @@ async function main() {
     urlEntry(r.path, new Date().toISOString().split("T")[0], r.changefreq, r.priority)
   );
 
-  const { data: products, error: productsError } = await supabase
+  const vis = await loadCatalogVisibility(supabase);
+  const { data: productsRaw, error: productsError } = await supabase
     .from("products")
-    .select("id, updated_at")
+    .select("id, updated_at, main_category_id, sub_category_id")
     .eq("is_published", true)
     .is("deleted_at", null);
 
+  // Items hidden from the public catalog (admin → Public Visibility) are left out.
+  const products = (productsRaw ?? []).filter((p) => !vis.itemHidden(p));
   if (productsError) {
     console.error("[sitemap] Failed to fetch products:", productsError.message);
   } else {
@@ -70,12 +74,13 @@ async function main() {
     }
   }
 
-  const { data: bundles, error: bundlesError } = await supabase
+  const { data: bundlesRaw, error: bundlesError } = await supabase
     .from("product_bundles")
-    .select("id, updated_at")
+    .select("id, updated_at, main_category_id, sub_category_id")
     .eq("is_published", true)
     .is("deleted_at", null);
 
+  const bundles = (bundlesRaw ?? []).filter((b) => !vis.itemHidden({ ...b, isBundle: true }));
   if (bundlesError) {
     console.error("[sitemap] Failed to fetch bundles:", bundlesError.message);
   } else {

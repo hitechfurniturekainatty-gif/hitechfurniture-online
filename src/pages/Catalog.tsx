@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -18,6 +18,8 @@ import { toTitleCase } from "@/lib/textCase";
 import { toast } from "@/hooks/use-toast";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { useAuth } from "@/hooks/useAuth";
+import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
+import { openEnquiryForm } from "@/lib/enquiryForm";
 
 type MainCat = { id: string; name: string; slug: string; image_url: string | null };
 type SubCat = { id: string; main_category_id: string; name: string; slug: string; image_url: string | null };
@@ -37,11 +39,17 @@ const Catalog = () => {
   const [params, setParams] = useSearchParams();
   const homeSettings = useHomepageSettings();
   const hidePrices = !!homeSettings?.hide_public_prices;
-  const { isStaff } = useAuth();
-  const catalogHidden = homeSettings?.show_public_catalog === false && !isStaff;
-  const [mainCats, setMainCats] = useState<MainCat[]>([]);
-  const [subCats, setSubCats] = useState<SubCat[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { isStaff, isAdmin } = useAuth();
+  const vis = usePublicCatalogVisibility();
+  const [allMainCats, setMainCats] = useState<MainCat[]>([]);
+  const [allSubCats, setSubCats] = useState<SubCat[]>([]);
+  const [allProducts, setProducts] = useState<Product[]>([]);
+  // Admin "Public Visibility" rules: hidden categories / sub-categories / items
+  // drop out for the public. Staff always see everything.
+  const mainCats = useMemo(() => allMainCats.filter((c) => !vis.mainHidden(c.id)), [allMainCats, vis]);
+  const subCats = useMemo(() => allSubCats.filter((s) => !vis.subHidden(s)), [allSubCats, vis]);
+  const products = useMemo(() => allProducts.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id, isBundle: !!p.__isBundle })), [allProducts, vis]);
+  const hiddenForPublicCount = useMemo(() => vis.isStaffViewer ? allProducts.filter((p) => vis.itemHiddenForPublic({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id, isBundle: !!p.__isBundle })).length : 0, [allProducts, vis]);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -58,6 +66,9 @@ const Catalog = () => {
   const activeCat = mainCats.find((c) => c.slug === activeCatSlug);
 
   useEffect(() => {
+    if (!vis.ready) return;
+    // Whole catalog switched off for the public: don't download any product data.
+    if (vis.allHidden) { setLoading(false); return; }
     let cancelled = false;
     Promise.all([
       supabase.from("main_categories").select("id, name, slug, image_url").order("display_order"),
@@ -88,7 +99,7 @@ const Catalog = () => {
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [vis.ready, vis.allHidden]);
 
   const subsForActive = useMemo(() => activeCat ? subCats.filter((s) => s.main_category_id === activeCat.id) : [], [activeCat, subCats]);
 
@@ -189,7 +200,6 @@ const Catalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {catalogHidden && <Navigate to="/" replace />}
       <Seo
         title={activeCat ? `${activeCat.name} — Hitech Furniture Catalog` : "Furniture Catalog — Sofas, Beds, Wardrobes | Hitech Furniture"}
         description={activeCat ? `Browse ${activeCat.name.toLowerCase()} from Hitech Furniture & Interiors, Wayanad. Filter by price, material and stock. Download PDF or enquire on WhatsApp.` : "Live furniture catalog — sofas, beds, wardrobes, dining and more from Hitech Furniture & Interiors, Wayanad."}
@@ -210,6 +220,22 @@ const Catalog = () => {
       </section>
 
       <main className="container-page py-8 md:py-10">
+        {vis.isStaffViewer && (vis.allHiddenForPublic || hiddenForPublicCount > 0) && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <span>{vis.allHiddenForPublic ? "Staff view: the public catalog is OFF for customers right now." : `Staff view: ${hiddenForPublicCount} item(s) on this page are hidden from the public.`}</span>
+            {isAdmin && <a href="/admin/catalog-visibility" className="font-semibold underline underline-offset-2">Public Visibility settings</a>}
+          </div>
+        )}
+        {vis.allHidden ? (
+          <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center shadow-sm md:p-12">
+            <p className="font-display text-2xl text-foreground">Visit our showroom</p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">{vis.message}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button className="rounded-xl" onClick={() => openEnquiryForm({})}>Send an enquiry</Button>
+              <Button variant="outline" className="rounded-xl" asChild><a href={homeSettings?.google_maps_url || "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56"} target="_blank" rel="noopener noreferrer">Showroom location</a></Button>
+            </div>
+          </div>
+        ) : (<>
         <div className="mb-8 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-xl">
@@ -308,6 +334,7 @@ const Catalog = () => {
           : filtered.length === 0 ? <EmptyState title="No products found" text="Try a different search, category or filter." />
           : <><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{visibleProducts.map((p) => <ProductCard key={(p.__isBundle ? "b-" : "p-") + p.id} product={p} hidePrice={hidePrices} linkPrefix={p.__isBundle ? "bundle" : "product"} />)}</div>{hasMore && <div className="mt-10 flex justify-center"><Button variant="outline" size="lg" className="rounded-xl" onClick={() => setVisible((v) => v + PAGE_SIZE)}>Load more ({filtered.length - visible})</Button></div>}</>
         )}
+        </>)}
       </main>
 
       {isStaff && <div className="mx-auto w-full max-w-7xl px-4 pb-6"><a href="/admin/staff-catalog" className="inline-flex min-h-11 items-center rounded-xl border border-amber-200 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-200">Staff Catalog →</a></div>}

@@ -16,7 +16,8 @@
 //
 // Run automatically via `npm run build` (see package.json "prebuild").
 import { createClient } from "@supabase/supabase-js";
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from "fs";
+import { loadCatalogVisibility } from "./catalog-visibility.mjs";
+import { writeFileSync, readFileSync, existsSync, mkdirSync, rmSync } from "fs";
 
 if (existsSync(".env")) {
   for (const line of readFileSync(".env", "utf-8").split("\n")) {
@@ -197,6 +198,9 @@ ${bodyHtml}
 };
 
 async function main() {
+  // Start clean so items that were hidden or removed since the last build don't linger.
+  rmSync("public/_snapshots/product", { recursive: true, force: true });
+  rmSync("public/_snapshots/bundle", { recursive: true, force: true });
   mkdirSync("public/_snapshots/product", { recursive: true });
   mkdirSync("public/_snapshots/bundle", { recursive: true });
 
@@ -218,11 +222,14 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
   );
 
   // ---- Catalog ----
-  const { data: categories } = await supabase
+  const vis = await loadCatalogVisibility(supabase);
+  const { data: categoriesRaw } = await supabase
     .from("main_categories")
-    .select("name")
+    .select("id, name")
     .is("deleted_at", null)
     .order("display_order", { ascending: true });
+  // Categories / items hidden from the public catalog are left out of snapshots.
+  const categories = (categoriesRaw ?? []).filter((c) => !vis.mainHidden(c.id));
 
   writeFileSync(
     "public/_snapshots/catalog.html",
@@ -262,14 +269,15 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
   );
 
   // ---- Products ----
-  const { data: products, error: productsError } = await supabase
+  const { data: productsRaw, error: productsError } = await supabase
     .from("products")
     .select(
-      "id, product_name, product_code, description, mrp, offer_price, material, primary_material, secondary_material, dimensions, color_finish, warranty_period, delivery_condition, primary_image_url, stock_status, main_categories(name), sub_categories(name)"
+      "id, main_category_id, sub_category_id, product_name, product_code, description, mrp, offer_price, material, primary_material, secondary_material, dimensions, color_finish, warranty_period, delivery_condition, primary_image_url, stock_status, main_categories(name), sub_categories(name)"
     )
     .eq("is_published", true)
     .is("deleted_at", null);
 
+  const products = (productsRaw ?? []).filter((p) => !vis.itemHidden(p));
   if (productsError) {
     console.error("[snapshots] Failed to fetch products:", productsError.message);
   } else {
@@ -339,12 +347,13 @@ ${facts.length ? `<ul>${facts.join("\n")}</ul>` : ""}
   }
 
   // ---- Bundles ----
-  const { data: bundles, error: bundlesError } = await supabase
+  const { data: bundlesRaw, error: bundlesError } = await supabase
     .from("product_bundles")
-    .select("id, name, description, mrp, offer_price, material, dimensions, main_image_url, stock_status, main_categories(name)")
+    .select("id, main_category_id, sub_category_id, name, description, mrp, offer_price, material, dimensions, main_image_url, stock_status, main_categories(name)")
     .eq("is_published", true)
     .is("deleted_at", null);
 
+  const bundles = (bundlesRaw ?? []).filter((b) => !vis.itemHidden({ ...b, isBundle: true }));
   if (bundlesError) {
     console.error("[snapshots] Failed to fetch bundles:", bundlesError.message);
   } else {

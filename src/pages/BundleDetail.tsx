@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, MessageCircle, Loader2, Package } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { SEO_BRAND_NAME } from "@/lib/localBusinessSchema";
+import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
+import { PublicCatalogHiddenNotice } from "@/components/PublicCatalogHiddenNotice";
 
 type B = {
   id: string; bundle_code: string; name: string; description: string | null;
@@ -33,6 +35,7 @@ const BundleDetail = () => {
   const settings = useHomepageSettings();
   const hidePrice = !!settings?.hide_public_prices;
   const { isStaff } = useAuth();
+  const vis = usePublicCatalogVisibility();
   const [b, setB] = useState<B | null>(null);
   const [items, setItems] = useState<Linked[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ const BundleDetail = () => {
     if (!id) return;
     (async () => {
       const [b1, b2] = await Promise.all([
-        (supabase as any).from("product_bundles").select("id, bundle_code, name, description, main_image_url, mrp, offer_price, available_colors, material, dimensions, stock_status, show_item_prices_public, show_item_prices_staff").eq("id", id).eq("is_published", true).is("deleted_at", null).maybeSingle(),
+        (supabase as any).from("product_bundles").select("id, bundle_code, name, main_category_id, sub_category_id, description, main_image_url, mrp, offer_price, available_colors, material, dimensions, stock_status, show_item_prices_public, show_item_prices_staff").eq("id", id).eq("is_published", true).is("deleted_at", null).maybeSingle(),
         (supabase as any).from("bundle_items").select("product_id, quantity").eq("bundle_id", id).order("display_order"),
       ]);
       setB(b1.data as B | null);
@@ -84,7 +87,11 @@ const BundleDetail = () => {
     window.open(buildWhatsAppUrl(msg), "_blank", "noopener");
   };
 
-  if (loading) return (
+  if (b && vis.ready && vis.itemHidden({ id: b.id, main_category_id: (b as any).main_category_id, sub_category_id: (b as any).sub_category_id, isBundle: true })) {
+    return <PublicCatalogHiddenNotice message={vis.message} />;
+  }
+
+  if (loading || !vis.ready) return (
     <><SiteHeader /><div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin" /></div><SiteFooter /></>
   );
   if (!b) return (

@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
 import { openEnquiryForm } from "@/lib/enquiryForm";
+import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 
 import { Seo } from "@/components/Seo";
 import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
@@ -32,7 +33,10 @@ type Cat = { id: string; name: string; slug: string; image_url: string | null };
 
 const Index = () => {
   const [categories, setCategories] = useState<Cat[]>([]);
-  const [featured, setFeatured] = useState<ProductCardData[]>([]);
+  const [featured, setFeatured] = useState<(ProductCardData & { main_category_id?: string | null; sub_category_id?: string | null })[]>([]);
+  const vis = usePublicCatalogVisibility();
+  const shownCategories = categories.filter((c) => !vis.mainHidden(c.id));
+  const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
 
@@ -51,7 +55,7 @@ const Index = () => {
     void (async()=>{
       try{
         const {data}=await supabase.from("products")
-          .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, product_images(image_url, display_order)")
+          .select("id, product_name, product_code, mrp, offer_price, available_colors, stock_quantity, main_category_id, sub_category_id, product_images(image_url, display_order)")
           .eq("is_published",true).eq("is_featured",true).is("deleted_at",null)
           .order("created_at",{ascending:false}).limit(8);
         if(!cancelled)setFeatured((data||[]) as ProductCardData[]);
@@ -149,6 +153,7 @@ const Index = () => {
         </div>
       </section>
 
+      {!vis.allHidden && (<>
       <section className="container-page py-14 md:py-20">
         <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
           <div>
@@ -163,13 +168,13 @@ const Index = () => {
           </Link>
         </div>
 
-        {categories.length === 0 ? (
+        {shownCategories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
             <p className="text-muted-foreground">Our furniture categories will appear here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {categories.map((c) => (
+            {shownCategories.map((c) => (
               <Link
                 key={c.id}
                 to={`/catalog?cat=${c.slug}`}
@@ -227,7 +232,7 @@ const Index = () => {
             </Link>
           </div>
 
-          {featured.length === 0 ? (
+          {shownFeatured.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
               <p className="text-muted-foreground">Featured products will appear here.</p>
               <Button asChild variant="link" className="mt-2">
@@ -236,7 +241,7 @@ const Index = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-              {featured.map((p) => (
+              {shownFeatured.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
@@ -247,6 +252,7 @@ const Index = () => {
           </Link>
         </div>
       </section>
+      </>)}
 
       <section className="container-page py-16 md:py-24">
         <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-2">

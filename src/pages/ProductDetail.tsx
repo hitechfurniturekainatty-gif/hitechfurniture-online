@@ -12,6 +12,8 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { Seo } from "@/components/Seo";
+import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
+import { PublicCatalogHiddenNotice } from "@/components/PublicCatalogHiddenNotice";
 
 type Product = {
   id: string;
@@ -30,6 +32,7 @@ type Product = {
   dimensions: string | null;
   stock_quantity: number;
   main_category_id: string;
+  sub_category_id?: string | null;
   product_images: { image_url: string; display_order: number }[];
   main_categories: { name: string; slug: string } | null;
 };
@@ -41,6 +44,7 @@ const ProductDetail = () => {
   const [activeImg, setActiveImg] = useState(0);
   const homepage = useHomepageSettings();
   const hidePrices = !!homepage?.hide_public_prices;
+  const vis = usePublicCatalogVisibility();
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, align: "start" });
 
   useEffect(() => {
@@ -62,7 +66,7 @@ const ProductDetail = () => {
     if (!id) return;
     (supabase as any)
       .from("products_safe_search")
-      .select("id, product_name, product_code, description, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, material, dimensions, stock_quantity, main_category_id, product_images(image_url, display_order), main_categories(name, slug)")
+      .select("id, product_name, product_code, description, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, material, dimensions, stock_quantity, main_category_id, sub_category_id, product_images(image_url, display_order), main_categories(name, slug)")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
@@ -71,7 +75,7 @@ const ProductDetail = () => {
       });
   }, [id]);
 
-  if (loading) {
+  if (loading || !vis.ready) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
@@ -81,6 +85,10 @@ const ProductDetail = () => {
         </div>
       </div>
     );
+  }
+
+  if (product && vis.itemHidden({ id: product.id, main_category_id: product.main_category_id, sub_category_id: product.sub_category_id })) {
+    return <PublicCatalogHiddenNotice message={vis.message} productId={product.id} />;
   }
 
   if (!product) {

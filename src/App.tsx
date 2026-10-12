@@ -65,6 +65,7 @@ const AdminMyTrips = lazy(pageLoaders.AdminMyTrips);
 const AdminServices = lazy(pageLoaders.AdminServices);
 const AdminTrash = lazy(pageLoaders.AdminTrash);
 const AdminHomePage = lazy(pageLoaders.AdminHomePage);
+const AdminCatalogVisibility = lazy(pageLoaders.AdminCatalogVisibility);
 const AdminReceivables = lazy(pageLoaders.AdminReceivables);
 const AdminBacklog = lazy(pageLoaders.AdminBacklog);
 const AdminStaffMonitor = lazy(pageLoaders.AdminStaffMonitor);
@@ -164,6 +165,7 @@ const App = () => (
             <Route path="/admin/complaints/:id" element={<EnquiryRedirect kind="complaint" />} />
             <Route path="/admin/trash" element={<AdminOnly><AdminTrash /></AdminOnly>} />
             <Route path="/admin/home-page" element={<AdminOnly><AdminHomePage /></AdminOnly>} />
+            <Route path="/admin/catalog-visibility" element={<AdminOnly><AdminCatalogVisibility /></AdminOnly>} />
             <Route path="/admin/backlog" element={<AdminBacklog />} />
             <Route path="/admin/vault" element={<AdminOnly><AdminVault /></AdminOnly>} />
             <Route path="/admin/receivables" element={<AdminBacklog />} />

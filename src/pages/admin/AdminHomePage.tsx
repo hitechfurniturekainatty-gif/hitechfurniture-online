@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { VISIBILITY_SECTION_KEY } from "@/lib/publicCatalogVisibility";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,8 @@ const AdminHomePage = () => {
       setSettings({ id: "", ...DEFAULT_SETTINGS, isNew: true });
     }
     setSlides((slidesRes.data ?? []) as HeroSlide[]);
-    setSections((sectionsRes.data ?? []) as HomepageSection[]);
+    // The public-catalog visibility rules live in a hidden system row — keep it out of the editor.
+    setSections(((sectionsRes.data ?? []) as HomepageSection[]).filter((x) => x.section_key !== VISIBILITY_SECTION_KEY));
     setLoading(false);
   };
 
@@ -790,7 +792,8 @@ const PublicCatalogMasterControls = ({
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Public Catalog — Master Controls (Admin only)</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Use these two switches to instantly show or hide what visitors see on the public catalog. Changes save automatically.
+          Use these two switches to instantly show or hide what visitors see on the public catalog. Changes save automatically.{" "}
+          <a href="/admin/catalog-visibility" className="font-semibold text-primary underline underline-offset-2">Hide by category, sub-category or item →</a>
         </p>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
