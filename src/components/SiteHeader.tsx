@@ -18,7 +18,6 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
 import { openEnquiryForm } from "@/lib/enquiryForm";
-import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 
 export const SiteHeader = () => {
   const { user, isStaff } = useAuth();
@@ -27,9 +26,9 @@ export const SiteHeader = () => {
   const settings = useHomepageSettings();
   const headerRef = useRef<HTMLDivElement>(null);
 
-  const catalogVisibility = usePublicCatalogVisibility();
-  // Hidden for the public when an admin switches the public catalog off (staff still see it).
-  const catalogVisible = !catalogVisibility.allHidden;
+  // Categories stay browsable even when products are hidden from the public
+  // (admin → Public Visibility), so the catalog link is always shown.
+  const catalogVisible = true;
   const staffDestination = isStaff || user ? "/admin" : "/auth";
   const staffLabel = isStaff || user ? "Staff Dashboard" : "Staff Login";
 

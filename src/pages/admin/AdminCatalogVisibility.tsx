@@ -240,7 +240,7 @@ export default function AdminCatalogVisibility() {
         <div>
           <h1 className="font-display text-2xl text-foreground sm:text-3xl">Public Catalog Visibility</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            പബ്ലിക് കാറ്റലോഗിൽ എന്ത് കാണിക്കണം എന്ന് ഇവിടെ തീരുമാനിക്കാം. Products are never deleted or unpublished — they only stop showing to the public.
+            പബ്ലിക് കാറ്റലോഗിൽ എന്ത് കാണിക്കണം എന്ന് ഇവിടെ തീരുമാനിക്കാം. Categories and sub-categories always stay visible (customers still see what kinds of furniture we have) — only the products inside are hidden. Products are never deleted or unpublished.
             Staff Catalog and logged-in staff always see everything.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -274,11 +274,11 @@ export default function AdminCatalogVisibility() {
 
         {/* 1. Whole catalog */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">1. Whole public catalog (എല്ലാം)</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">1. All products (എല്ലാ പ്രൊഡക്റ്റുകളും)</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
               <div className="min-w-0">
-                <p className="font-semibold">{allHidden ? "OFF — public sees a message instead of products" : "ON — public can browse the catalog"}</p>
+                <p className="font-semibold">{allHidden ? "OFF — public sees categories & sub-categories, but no products" : "ON — public can see all products"}</p>
                 <p className="text-xs text-muted-foreground">
                   {cfg.all ? entryText(cfg.all) : legacyShow === false ? "Turned off from Home Page settings" : entryScheduled(cfg.all) ? entryText(cfg.all) : "Visible"}
                 </p>
@@ -286,7 +286,7 @@ export default function AdminCatalogVisibility() {
               <Switch checked={!allHidden && !entryScheduled(cfg.all)} disabled={saving} onCheckedChange={v => void setAll(v)} aria-label="Public catalog on or off" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pcv-msg" className="text-xs">Message shown to the public while OFF</Label>
+              <Label htmlFor="pcv-msg" className="text-xs">Message shown where products are hidden</Label>
               <Textarea id="pcv-msg" value={message} onChange={e => setMessage(e.target.value)} placeholder={DEFAULT_PUBLIC_MESSAGE} rows={2} />
               <Button size="sm" variant="outline" disabled={saving || message.trim() === (cfg.message || "")} onClick={() => void save(c => ({ ...c, message: message.trim() }), "Message saved")}>Save message</Button>
             </div>
@@ -297,7 +297,7 @@ export default function AdminCatalogVisibility() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">2. Main category & 3. Sub-category (കാറ്റഗറി / സബ് കാറ്റഗറി)</CardTitle>
-            <p className="text-xs text-muted-foreground">Switch OFF to hide. Tap a category to see its sub-categories.</p>
+            <p className="text-xs text-muted-foreground">Switch OFF to hide the products inside. The category / sub-category itself stays visible with a "See at our showroom" message. Tap a category to see its sub-categories.</p>
           </CardHeader>
           <CardContent className="divide-y rounded-xl border p-0">
             {cats.map(c => {
@@ -412,7 +412,7 @@ export default function AdminCatalogVisibility() {
         </Card>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" />Hidden items are removed from the public catalog, home page, product pages, PDF download and the sitemap (from the next deploy).</span>
+          <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" />Hidden products are removed from the public catalog, home page, product pages, PDF download and the sitemap (from the next deploy). Categories stay.</span>
           <Button size="sm" variant="outline" disabled={saving} onClick={() => void showEverything()}>Show everything again</Button>
         </div>
       </div>

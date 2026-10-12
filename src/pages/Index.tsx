@@ -35,7 +35,8 @@ const Index = () => {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [featured, setFeatured] = useState<(ProductCardData & { main_category_id?: string | null; sub_category_id?: string | null })[]>([]);
   const vis = usePublicCatalogVisibility();
-  const shownCategories = categories.filter((c) => !vis.mainHidden(c.id));
+  // Categories always stay visible; only products inside hidden ones are left out.
+  const shownCategories = categories;
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
@@ -153,7 +154,6 @@ const Index = () => {
         </div>
       </section>
 
-      {!vis.allHidden && (<>
       <section className="container-page py-14 md:py-20">
         <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
           <div>
@@ -217,6 +217,7 @@ const Index = () => {
         </Link>
       </section>
 
+      {!vis.allHidden && (<>
       <section className="border-y border-border bg-muted/30">
         <div className="container-page py-14 md:py-20">
           <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">

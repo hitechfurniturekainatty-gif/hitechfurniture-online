@@ -44,10 +44,11 @@ const Catalog = () => {
   const [allMainCats, setMainCats] = useState<MainCat[]>([]);
   const [allSubCats, setSubCats] = useState<SubCat[]>([]);
   const [allProducts, setProducts] = useState<Product[]>([]);
-  // Admin "Public Visibility" rules: hidden categories / sub-categories / items
-  // drop out for the public. Staff always see everything.
-  const mainCats = useMemo(() => allMainCats.filter((c) => !vis.mainHidden(c.id)), [allMainCats, vis]);
-  const subCats = useMemo(() => allSubCats.filter((s) => !vis.subHidden(s)), [allSubCats, vis]);
+  // Admin "Public Visibility" rules: categories and sub-categories always stay
+  // visible (so customers see what kinds of furniture we have); only the
+  // products inside hidden ones drop out for the public. Staff see everything.
+  const mainCats = allMainCats;
+  const subCats = allSubCats;
   const products = useMemo(() => allProducts.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id, isBundle: !!p.__isBundle })), [allProducts, vis]);
   const hiddenForPublicCount = useMemo(() => vis.isStaffViewer ? allProducts.filter((p) => vis.itemHiddenForPublic({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id, isBundle: !!p.__isBundle })).length : 0, [allProducts, vis]);
   const [search, setSearch] = useState("");
@@ -67,14 +68,15 @@ const Catalog = () => {
 
   useEffect(() => {
     if (!vis.ready) return;
-    // Whole catalog switched off for the public: don't download any product data.
-    if (vis.allHidden) { setLoading(false); return; }
+    // Whole catalog switched off for the public: load categories only, no product data.
+    const noProducts = vis.allHidden;
+    const none = Promise.resolve({ data: [] as any[] });
     let cancelled = false;
     Promise.all([
       supabase.from("main_categories").select("id, name, slug, image_url").order("display_order"),
       supabase.from("sub_categories").select("id, main_category_id, name, slug, image_url").order("display_order"),
-      (supabase as any).from("products_safe_search").select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)").order("created_at", { ascending: false }),
-      (supabase as any).from("product_bundles").select("id, main_category_id, sub_category_id, bundle_code, name, mrp, offer_price, available_colors, stock_status, material, dimensions, main_image_url").eq("is_published", true).is("deleted_at", null).order("created_at", { ascending: false }),
+      noProducts ? none : (supabase as any).from("products_safe_search").select("id, main_category_id, sub_category_id, product_name, product_code, mrp, offer_price, discount_percent, availability_status, primary_image_url, primary_material, color_finish, available_colors, stock_quantity, material, dimensions, product_images(image_url, display_order), product_variants(id, color_name, color_hex, image_url, stock_quantity, display_order)").order("created_at", { ascending: false }),
+      noProducts ? none : (supabase as any).from("product_bundles").select("id, main_category_id, sub_category_id, bundle_code, name, mrp, offer_price, available_colors, stock_status, material, dimensions, main_image_url").eq("is_published", true).is("deleted_at", null).order("created_at", { ascending: false }),
     ]).then(([mc, sc, pr, bn]) => {
       if (cancelled) return;
       setMainCats(mc.data ?? []);
@@ -101,6 +103,9 @@ const Catalog = () => {
     return () => { cancelled = true; };
   }, [vis.ready, vis.allHidden]);
 
+  const activeSubObj = activeSubSlug && activeSubSlug !== "__all__" ? subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id) : undefined;
+  // Products here are hidden from the public by an admin rule (whole catalog, this category or sub-category).
+  const scopeHidden = vis.allHidden || (!!activeCat && vis.mainHidden(activeCat.id)) || (!!activeSubObj && vis.subHidden(activeSubObj));
   const subsForActive = useMemo(() => activeCat ? subCats.filter((s) => s.main_category_id === activeCat.id) : [], [activeCat, subCats]);
 
   const filtered = useMemo(() => {
@@ -226,16 +231,6 @@ const Catalog = () => {
             {isAdmin && <a href="/admin/catalog-visibility" className="font-semibold underline underline-offset-2">Public Visibility settings</a>}
           </div>
         )}
-        {vis.allHidden ? (
-          <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center shadow-sm md:p-12">
-            <p className="font-display text-2xl text-foreground">Visit our showroom</p>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">{vis.message}</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button className="rounded-xl" onClick={() => openEnquiryForm({})}>Send an enquiry</Button>
-              <Button variant="outline" className="rounded-xl" asChild><a href={homeSettings?.google_maps_url || "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56"} target="_blank" rel="noopener noreferrer">Showroom location</a></Button>
-            </div>
-          </div>
-        ) : (<>
         <div className="mb-8 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-xl">
@@ -306,7 +301,7 @@ const Catalog = () => {
               {mainCats.map((c) => (
                 <button key={c.id} type="button" onClick={() => setCat(c.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
                   <div className="aspect-[4/3] overflow-hidden bg-muted/30">{c.image_url ? <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-4xl text-primary">{c.name[0]}</span></div>}</div>
-                  <div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg text-foreground">{toTitleCase(c.name)}</p><p className="mt-1 text-xs text-muted-foreground">{productCountByCat[c.id] ?? 0} pieces</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
+                  <div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg text-foreground">{toTitleCase(c.name)}</p><p className="mt-1 text-xs text-muted-foreground">{vis.mainHidden(c.id) ? "See at our showroom" : `${productCountByCat[c.id] ?? 0} pieces`}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
                 </button>
               ))}
             </div>
@@ -315,9 +310,9 @@ const Catalog = () => {
           <>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" size="sm" onClick={() => setCat(null)}><ArrowLeft className="mr-1.5 h-4 w-4" /> All categories</Button><Button variant="outline" size="sm" onClick={() => setSub("__all__")}>View all {toTitleCase(activeCat?.name ?? "")}</Button></div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              <button type="button" onClick={() => { const next = new URLSearchParams(params); next.set("cat", activeCatSlug!); next.set("sub", "__all__"); setParams(next, { replace: true }); }} className="group flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-border bg-gradient-to-br from-primary/10 to-accent/10 p-5 text-center transition hover:-translate-y-1 hover:shadow-product"><span className="font-display text-2xl text-primary">All {toTitleCase(activeCat?.name ?? "")}</span><span className="mt-2 text-xs text-muted-foreground">{productCountByCat[activeCat?.id ?? ""] ?? 0} pieces</span></button>
+              <button type="button" onClick={() => { const next = new URLSearchParams(params); next.set("cat", activeCatSlug!); next.set("sub", "__all__"); setParams(next, { replace: true }); }} className="group flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-border bg-gradient-to-br from-primary/10 to-accent/10 p-5 text-center transition hover:-translate-y-1 hover:shadow-product"><span className="font-display text-2xl text-primary">All {toTitleCase(activeCat?.name ?? "")}</span><span className="mt-2 text-xs text-muted-foreground">{activeCat && vis.mainHidden(activeCat.id) ? "See at our showroom" : `${productCountByCat[activeCat?.id ?? ""] ?? 0} pieces`}</span></button>
               {subsForActive.map((s) => (
-                <button key={s.id} type="button" onClick={() => setSub(s.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-1 hover:shadow-product"><div className="aspect-[4/3] bg-muted/25">{s.image_url ? <img src={s.image_url} alt={s.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-3xl text-primary">{s.name[0]}</span></div>}</div><div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg">{toTitleCase(s.name)}</p><p className="mt-1 text-xs text-muted-foreground">{productCountBySub[s.id] ?? 0} pieces</p></div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div></button>
+                <button key={s.id} type="button" onClick={() => setSub(s.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-1 hover:shadow-product"><div className="aspect-[4/3] bg-muted/25">{s.image_url ? <img src={s.image_url} alt={s.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-3xl text-primary">{s.name[0]}</span></div>}</div><div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg">{toTitleCase(s.name)}</p><p className="mt-1 text-xs text-muted-foreground">{vis.subHidden(s) ? "See at our showroom" : `${productCountBySub[s.id] ?? 0} pieces`}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div></button>
               ))}
             </div>
           </>
@@ -331,10 +326,19 @@ const Catalog = () => {
 
         {!isLandingView && !isSubPickerView && (
           loading ? <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-muted" />)}</div>
+          : filtered.length === 0 && scopeHidden ? (
+            <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-8 text-center shadow-sm md:p-12">
+              <p className="font-display text-2xl text-foreground">{activeSubObj ? toTitleCase(activeSubObj.name) : activeCat ? toTitleCase(activeCat.name) : "Our collection"} — see it at our showroom</p>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">{vis.message}</p>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <Button className="rounded-xl" onClick={() => openEnquiryForm({ productName: activeSubObj?.name ?? activeCat?.name })}>Ask for photos / enquire</Button>
+                <Button variant="outline" className="rounded-xl" asChild><a href={homeSettings?.google_maps_url || "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56"} target="_blank" rel="noopener noreferrer">Showroom location</a></Button>
+              </div>
+            </div>
+          )
           : filtered.length === 0 ? <EmptyState title="No products found" text="Try a different search, category or filter." />
           : <><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{visibleProducts.map((p) => <ProductCard key={(p.__isBundle ? "b-" : "p-") + p.id} product={p} hidePrice={hidePrices} linkPrefix={p.__isBundle ? "bundle" : "product"} />)}</div>{hasMore && <div className="mt-10 flex justify-center"><Button variant="outline" size="lg" className="rounded-xl" onClick={() => setVisible((v) => v + PAGE_SIZE)}>Load more ({filtered.length - visible})</Button></div>}</>
         )}
-        </>)}
       </main>
 
       {isStaff && <div className="mx-auto w-full max-w-7xl px-4 pb-6"><a href="/admin/staff-catalog" className="inline-flex min-h-11 items-center rounded-xl border border-amber-200 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-200">Staff Catalog →</a></div>}

@@ -228,8 +228,8 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
     .select("id, name")
     .is("deleted_at", null)
     .order("display_order", { ascending: true });
-  // Categories / items hidden from the public catalog are left out of snapshots.
-  const categories = (categoriesRaw ?? []).filter((c) => !vis.mainHidden(c.id));
+  // Category names always stay public; hidden products are left out below.
+  const categories = categoriesRaw ?? [];
 
   writeFileSync(
     "public/_snapshots/catalog.html",
