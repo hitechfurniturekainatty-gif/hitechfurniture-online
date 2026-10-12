@@ -7,6 +7,7 @@ import kitchenImage from "@/assets/kitchen-hero.png";
 import masterBedroomImage from "@/assets/master-bedroom-hero.png";
 import balconyImage from "@/assets/balcony-hero.png";
 import { openEnquiryForm } from "@/lib/enquiryForm";
+import { blockImage, blockText, emptyHomeLayout, heroText, type HomeLayout } from "@/lib/homeLayout";
 
 type Scene = {
   id: string;
@@ -51,8 +52,12 @@ const SCENES: Scene[] = [
 const clamp = (n: number, min = 0, max = 1) => Math.min(Math.max(n, min), max);
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
-/** `afterHero` renders right after the trust strip — the first thing seen once the hero is scrolled past. */
-export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) => {
+/** The big sticky photo hero (always first on the home page). Text comes from the admin Page Layout. */
+export const LuxuryScrollHero = ({ layout }: { layout?: HomeLayout } = {}) => {
+  const L = layout ?? emptyHomeLayout();
+  const h = heroText(L);
+  const rt = blockText(L, "rooms");
+  const sceneLabel = (i: number) => rt(`r${i + 1}`) || SCENES[i]?.label;
   const sectionRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
@@ -180,21 +185,21 @@ export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) 
             <div className="max-w-4xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white backdrop-blur-md sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5" />
-                Hitech Furniture & Interiors
+                {h("badge")}
               </div>
 
               <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.02] text-white [text-shadow:0_3px_18px_rgba(0,0,0,0.65)] sm:text-5xl md:text-6xl lg:text-7xl">
-                Furniture crafted for the way you live.
+                {h("title")}
               </h1>
 
               <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white sm:text-xs">
-                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Custom Furniture</span>
-                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Premium Collections</span>
-                <span className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">Complete Interiors</span>
+                {["chip1", "chip2", "chip3"].map((k) => h(k)).filter(Boolean).map((c) => (
+                  <span key={c} className="rounded-full border border-white/25 bg-black/35 px-3 py-1.5 backdrop-blur-sm">{c}</span>
+                ))}
               </div>
 
               <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.75)] sm:text-base md:text-lg">
-                Custom furniture, premium collections and complete interior solutions for homes and businesses across Wayanad.
+                {h("body")}
               </p>
 
               <div className="pointer-events-auto mt-7 flex flex-col gap-3 sm:flex-row">
@@ -202,7 +207,7 @@ export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) 
                   href="/catalog"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-slate-100"
                 >
-                  Explore Collection
+                  {h("btn1")}
                   <ArrowRight className="h-4 w-4" />
                 </a>
                 <button
@@ -211,7 +216,7 @@ export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) 
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/50 bg-black/35 px-6 py-3 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-black/50"
                 >
                   <ClipboardList className="h-4 w-4" />
-                  Get Free Consultation
+                  {h("btn2")}
                 </button>
               </div>
             </div>
@@ -219,7 +224,7 @@ export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) 
             <div className="flex items-end justify-between gap-6">
               <div className="rounded-xl border border-white/25 bg-black/40 px-4 py-3 text-white shadow-lg backdrop-blur-md">
                 <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/80">Explore</p>
-                <p className="mt-1 font-display text-xl text-white md:text-2xl">{SCENES[activeIndex]?.label}</p>
+                <p className="mt-1 font-display text-xl text-white md:text-2xl">{sceneLabel(activeIndex)}</p>
               </div>
 
               <div className="hidden items-center gap-3 md:flex">
@@ -256,92 +261,6 @@ export const LuxuryScrollHero = ({ afterHero }: { afterHero?: ReactNode } = {}) 
         </div>
       </section>
 
-      <section className="border-b border-border bg-card" aria-label="Why choose Hitech">
-        <div className="container-page grid grid-cols-2 gap-px py-3 sm:grid-cols-4 sm:py-4">
-          <TrustItem icon={ShieldCheck} title="14+ Years" subtitle="Trusted craftsmanship" />
-          <TrustItem icon={Sparkles} title="Custom Made" subtitle="Built for your space" />
-          <TrustItem icon={MapPin} title="Wayanad" subtitle="Local showroom & service" />
-          <TrustItem icon={ClipboardList} title="Complete Interiors" subtitle="Design to installation" />
-        </div>
-      </section>
-
-      {afterHero}
-
-      <section className="container-page py-14 md:py-20" aria-labelledby="shop-by-room-title">
-        <div className="mb-8 flex items-end justify-between gap-5 md:mb-10">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Explore your space</p>
-            <h2 id="shop-by-room-title" className="font-display text-3xl text-foreground md:text-4xl">Shop by room</h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Discover furniture and interior inspiration room by room, then browse our live collection for available designs.
-            </p>
-          </div>
-          <Link to="/catalog" className="hidden items-center gap-2 text-sm font-semibold text-primary hover:underline sm:flex">
-            View full catalog <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
-          {SCENES.map((scene) => (
-            <Link
-              key={scene.id}
-              to="/catalog"
-              className="group relative min-h-[190px] overflow-hidden rounded-2xl bg-muted sm:min-h-[240px] md:min-h-[300px]"
-            >
-              <img
-                src={scene.imageUrl}
-                alt={scene.alt}
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                <p className="font-display text-lg font-semibold md:text-xl">{scene.label}</p>
-                <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-white/80">
-                  Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section id="interiors" className="container-page pb-14 md:pb-20">
-        <div className="grid overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="order-2 flex flex-col justify-center p-7 sm:p-10 lg:order-1 lg:p-14">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Interior solutions</p>
-            <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">From an empty room to a complete living space.</h2>
-            <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              We handle custom furniture and complete interiors for living rooms, bedrooms, kitchens and more — from planning and material selection to production and installation.
-            </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => openEnquiryForm()}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
-              >
-                Start an Interior Enquiry
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <Link
-                to="/about"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
-              >
-                About Hitech
-              </Link>
-            </div>
-          </div>
-
-          <div className="order-1 grid min-h-[320px] grid-cols-2 lg:order-2 lg:min-h-[470px]">
-            <img src={kitchenImage} alt="Hitech kitchen interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-            <div className="grid grid-rows-2">
-              <img src={masterBedroomImage} alt="Hitech bedroom interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-              <img src={livingRoomImage} alt="Hitech living room interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </section>
     </>
   );
 };
@@ -363,3 +282,109 @@ const TrustItem = ({ icon: Icon, title, subtitle }: TrustItemProps) => (
     </div>
   </div>
 );
+
+export const TrustStrip = ({ layout }: { layout: HomeLayout }) => {
+  const L = layout;
+  const t = blockText(L, "trust");
+  void L;
+  return (
+      <section className="border-b border-border bg-card" aria-label="Why choose Hitech">
+        <div className="container-page grid grid-cols-2 gap-px py-3 sm:grid-cols-4 sm:py-4">
+          <TrustItem icon={ShieldCheck} title={t("i1_title")} subtitle={t("i1_text")} />
+          <TrustItem icon={Sparkles} title={t("i2_title")} subtitle={t("i2_text")} />
+          <TrustItem icon={MapPin} title={t("i3_title")} subtitle={t("i3_text")} />
+          <TrustItem icon={ClipboardList} title={t("i4_title")} subtitle={t("i4_text")} />
+        </div>
+      </section>
+  );
+};
+
+export const ShopByRoom = ({ layout }: { layout: HomeLayout }) => {
+  const L = layout;
+  const t = blockText(L, "rooms");
+  void L;
+  return (
+      <section className="container-page py-14 md:py-20" aria-labelledby="shop-by-room-title">
+        <div className="mb-8 flex items-end justify-between gap-5 md:mb-10">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">{t("eyebrow")}</p>
+            <h2 id="shop-by-room-title" className="font-display text-3xl text-foreground md:text-4xl">{t("title")}</h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              {t("body")}
+            </p>
+          </div>
+          <Link to="/catalog" className="hidden items-center gap-2 text-sm font-semibold text-primary hover:underline sm:flex">
+            {t("link")} <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+          {SCENES.map((scene, i) => (
+            <Link
+              key={scene.id}
+              to="/catalog"
+              className="group relative min-h-[190px] overflow-hidden rounded-2xl bg-muted sm:min-h-[240px] md:min-h-[300px]"
+            >
+              <img
+                src={blockImage(L, "rooms", `r${i + 1}`, scene.imageUrl)}
+                alt={scene.alt}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                <p className="font-display text-lg font-semibold md:text-xl">{t(`r${i + 1}`) || scene.label}</p>
+                <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-white/80">
+                  Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+  );
+};
+
+export const InteriorIntro = ({ layout }: { layout: HomeLayout }) => {
+  const L = layout;
+  const t = blockText(L, "interior_intro");
+  void L;
+  return (
+      <section id="interiors" className="container-page pb-14 md:pb-20">
+        <div className="grid overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="order-2 flex flex-col justify-center p-7 sm:p-10 lg:order-1 lg:p-14">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-accent">{t("eyebrow")}</p>
+            <h2 className="font-display text-3xl leading-tight text-foreground md:text-4xl">{t("title")}</h2>
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              {t("body")}
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => openEnquiryForm()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
+              >
+                {t("btn1")}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <Link
+                to="/about"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                {t("btn2")}
+              </Link>
+            </div>
+          </div>
+
+          <div className="order-1 grid min-h-[320px] grid-cols-2 lg:order-2 lg:min-h-[470px]">
+            <img src={blockImage(L, "interior_intro", "a", kitchenImage)} alt="Hitech kitchen interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <div className="grid grid-rows-2">
+              <img src={blockImage(L, "interior_intro", "b", masterBedroomImage)} alt="Hitech bedroom interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <img src={blockImage(L, "interior_intro", "c", livingRoomImage)} alt="Hitech living room interior inspiration" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            </div>
+          </div>
+        </div>
+      </section>
+  );
+};

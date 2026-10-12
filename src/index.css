@@ -173,3 +173,13 @@
 a:focus-visible, button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .admin-theme .admin-nav :focus-visible { outline-color: #f49902; }
 .admin-theme .admin-content [role="tab"][data-state="active"] { font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+/* Gentle floating for the home "Follow us" bubbles. Off when the visitor prefers reduced motion. */
+@keyframes hitech-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-9px) rotate(-3deg); }
+}
+.hitech-float { animation: hitech-float 4.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .hitech-float { animation: none; }
+}

@@ -101,7 +101,8 @@ export async function fetchHomepageData() {
     slides: ((slidesRes.data ?? []) as HeroSlide[]).filter(
       (s) => s.is_visible && typeof s.image_url === "string" && s.image_url.trim().length > 0,
     ),
-    sections: ((sectionsRes.data ?? []) as HomepageSection[]).filter((s) => s.is_visible),
+    // "__" rows are hidden system settings (layout, social links, visibility), never page sections.
+    sections: ((sectionsRes.data ?? []) as HomepageSection[]).filter((s) => s.is_visible && !s.section_key?.startsWith("__")),
   };
 }
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { VISIBILITY_SECTION_KEY } from "@/lib/publicCatalogVisibility";
-import { SOCIAL_SECTION_KEY } from "@/lib/socialLinks";
 import { SocialLinksAdminCard } from "@/components/admin/SocialLinksAdminCard";
+import { HomeLayoutEditor } from "@/components/admin/HomeLayoutEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
@@ -76,7 +75,7 @@ const AdminHomePage = () => {
     }
     setSlides((slidesRes.data ?? []) as HeroSlide[]);
     // The public-catalog visibility rules live in a hidden system row — keep it out of the editor.
-    setSections(((sectionsRes.data ?? []) as HomepageSection[]).filter((x) => x.section_key !== VISIBILITY_SECTION_KEY && x.section_key !== SOCIAL_SECTION_KEY));
+    setSections(((sectionsRes.data ?? []) as HomepageSection[]).filter((x) => !x.section_key.startsWith("__")));
     setLoading(false);
   };
 
@@ -261,8 +260,9 @@ const AdminHomePage = () => {
         onChanged={(patch) => setSettings({ ...settings, ...patch })}
       />
 
-      <Tabs defaultValue="hero">
+      <Tabs defaultValue="layout">
         <TabsList className="mb-4 w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
+          <TabsTrigger value="layout" className="whitespace-nowrap">Page Layout</TabsTrigger>
           <TabsTrigger value="hero" className="whitespace-nowrap">Hero Slider</TabsTrigger>
           <TabsTrigger value="hero_images" className="whitespace-nowrap">Main Images</TabsTrigger>
           <TabsTrigger value="sections" className="whitespace-nowrap">Sections</TabsTrigger>
@@ -271,6 +271,10 @@ const AdminHomePage = () => {
         </TabsList>
 
         {/* HERO */}
+        <TabsContent value="layout" className="space-y-4">
+          <HomeLayoutEditor />
+        </TabsContent>
+
         <TabsContent value="hero" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2">

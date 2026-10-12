@@ -121,53 +121,78 @@ export function SocialLinkList({ links }: { links: SocialLink[] }) {
   );
 }
 
+/** Spots around the QR card where the little social bubbles float (up to 6). */
+const BUBBLE_SPOTS = [
+  "left-0 top-6", "right-1 top-0", "-right-2 top-1/2", "right-6 bottom-0", "left-3 bottom-4", "-left-3 top-1/2",
+];
+
 /**
- * Home page "Scan & connect" section: ONE branded QR. Scanning opens /connect
- * on the phone; tapping it here opens the same list of links in a popup.
+ * Home page "Follow us & rate us" section: ONE branded QR in a playful card,
+ * with the social icons floating around it. Scanning opens /connect on the
+ * phone; tapping the QR, a bubble or "View all links" opens the list here.
  */
-export function ConnectSection({ links }: { links: SocialLink[] }) {
+export function ConnectSection({ links, eyebrow = "Stay connected", title = "Let's stay in touch", body }: {
+  links: SocialLink[]; eyebrow?: string; title?: string; body?: string;
+}) {
   const [open, setOpen] = useState(false);
   const qrRef = useRef<SVGSVGElement>(null);
   if (!links.length) return null;
   return (
     <section className="container-page py-12 md:py-16" aria-labelledby="connect-heading">
-      <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-[#fbf3e6] via-card to-[#f6ead6] p-6 shadow-sm md:p-10">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative grid items-center gap-8 md:grid-cols-[1fr_auto] md:gap-12">
+      <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2.5rem] bg-[#fff8ef] p-6 shadow-[0_24px_60px_-34px_rgba(94,45,5,0.55)] ring-1 ring-[#f1dcc2] sm:p-8 md:p-10">
+        <div aria-hidden className="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-[#ffd7b5]/70 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-10 h-64 w-64 rounded-full bg-[#cfeee0]/70 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute right-1/3 top-1/4 h-40 w-40 rounded-full bg-[#eadfff]/60 blur-3xl" />
+
+        <div className="relative grid items-center gap-8 md:grid-cols-[1fr_auto] md:gap-10">
           <div className="text-center md:text-left">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Stay connected</p>
-            <h2 id="connect-heading" className="font-display text-3xl text-foreground md:text-4xl">Follow us &amp; rate us</h2>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground md:mx-0 md:text-base">
-              All our pages in one code — Instagram, Facebook, WhatsApp and Google reviews. Scan it with your phone camera, or tap it to open the list.
-            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9C5B10] shadow-sm ring-1 ring-[#f1dcc2]">
+              <span aria-hidden>✨</span>{eyebrow}
+            </span>
+            <h2 id="connect-heading" className="mt-4 font-display text-3xl leading-tight text-[#3b1d06] md:text-[2.6rem]">
+              {title}
+            </h2>
+            <svg aria-hidden viewBox="0 0 160 12" className="mx-auto mt-1 h-3 w-36 text-[#F4A227] md:mx-0"><path d="M2 8c18-7 30 5 48-1s30-7 48 0 30 6 60-2" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+            {body && <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#6b4a2f] md:mx-0 md:text-base">{body}</p>}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-            <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4a2304]">
-              <span className="flex -space-x-2">
-                {links.slice(0, 4).map((l) => (
-                  <span key={l.id} className="rounded-full ring-2 ring-[#5E2D05]"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
-                ))}
-              </span>
-              View all links
-            </button>
-            <ShareLinksButton links={links} qrRef={qrRef} />
+              <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-[#4a2304]">
+                <span className="flex -space-x-2">
+                  {links.slice(0, 4).map((l) => (
+                    <span key={l.id} className="rounded-full ring-2 ring-[#5E2D05]"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
+                  ))}
+                </span>
+                View all links
+              </button>
+              <ShareLinksButton links={links} qrRef={qrRef} />
             </div>
           </div>
-          <button type="button" onClick={() => setOpen(true)} aria-label="Open all our links" className="group mx-auto block">
-            <div className="rounded-[2.5rem] bg-gradient-to-br from-[#5E2D05] via-[#8a4a10] to-[#F4A227] p-[3px] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
-              <div className="flex flex-col items-center rounded-[calc(2.5rem-3px)] bg-white px-6 pb-4 pt-6">
-                <FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={188} title="Scan to connect with Hitech Furniture" />
-                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#5E2D05] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  <ScanLine className="h-3.5 w-3.5" /> Scan or tap
-                </span>
+
+          <div className="relative mx-auto h-[290px] w-[290px] sm:h-[310px] sm:w-[310px]">
+            {links.slice(0, BUBBLE_SPOTS.length).map((l, i) => (
+              <button key={l.id} type="button" onClick={() => setOpen(true)} aria-label={l.action}
+                className={cn("hitech-float absolute z-20 rounded-full bg-white p-1 shadow-lg ring-1 ring-black/5 transition hover:scale-110", BUBBLE_SPOTS[i])}
+                style={{ animationDelay: `${i * 0.7}s` }}>
+                <SocialBadge k={l.key} iconUrl={l.icon_url} size="sm" />
+              </button>
+            ))}
+            <button type="button" onClick={() => setOpen(true)} aria-label="Open all our links"
+              className="group absolute inset-0 m-auto h-fit w-fit -rotate-2 transition duration-300 hover:rotate-0 hover:scale-[1.02]">
+              <div className="rounded-[2.2rem] bg-gradient-to-br from-[#5E2D05] via-[#b06a17] to-[#F4A227] p-[3px] shadow-xl">
+                <div className="flex flex-col items-center rounded-[calc(2.2rem-3px)] bg-white px-5 pb-3.5 pt-5">
+                  <FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={168} title="Scan to connect with Hitech Furniture" />
+                  <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#fff1df] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#5E2D05]">
+                    <ScanLine className="h-3.5 w-3.5" /> Scan or tap
+                  </span>
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-md overflow-y-auto rounded-3xl p-5 sm:p-6">
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-md overflow-y-auto rounded-3xl bg-[#fffaf4] p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Connect with Hitech</DialogTitle>
+            <DialogTitle className="font-display text-2xl text-[#3b1d06]">Connect with Hitech 💛</DialogTitle>
             <p className="text-sm text-muted-foreground">Tap to open — follow us, chat, or leave a review.</p>
           </DialogHeader>
           <SocialLinkList links={links} />

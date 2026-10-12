@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { Fragment, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Copy, Check, QrCode, Star, MapPin, Phone, ClipboardList, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SectionSlideshow } from "@/components/SectionSlideshow";
-import { LuxuryScrollHero } from "@/components/LuxuryScrollHero";
+import { LuxuryScrollHero, TrustStrip, ShopByRoom, InteriorIntro } from "@/components/LuxuryScrollHero";
+import { useHomeLayout } from "@/hooks/useHomeLayout";
+import { blockText, type BlockId } from "@/lib/homeLayout";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 import { useSocialLinks } from "@/hooks/useSocialLinks";
@@ -38,6 +40,7 @@ const Index = () => {
   const [featured, setFeatured] = useState<(ProductCardData & { main_category_id?: string | null; sub_category_id?: string | null })[]>([]);
   const vis = usePublicCatalogVisibility();
   const social = useSocialLinks();
+  const layout = useHomeLayout();
   // Categories always stay visible; only products inside hidden ones are left out.
   const shownCategories = categories;
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
@@ -94,6 +97,238 @@ const Index = () => {
 
   const brandStory = sections.find((s) => s.section_key === "brand_story");
   const belowSections = sections.filter((s) => s.section_key !== "hero_intro" && s.section_key !== "brand_story");
+  const reviewUrl = social.links.find((l) => l.key === "google")?.url || GOOGLE_REVIEW_URL;
+
+  const renderBlock = (id: BlockId) => {
+    const t = blockText(layout, id);
+    switch (id) {
+      case "trust":
+        return <TrustStrip layout={layout} />;
+      case "connect":
+        return social.ready && social.config.show_on_home ? <ConnectSection links={social.links} eyebrow={t("eyebrow")} title={t("title")} body={t("body")} /> : null;
+      case "rooms":
+        return <ShopByRoom layout={layout} />;
+      case "interior_intro":
+        return <InteriorIntro layout={layout} />;
+      case "story": {
+        // Older "brand_story" section text still applies unless the layout overrides it.
+        const st = (k: string, legacy?: string | null) => (layout.text[`story.${k}`]?.trim() ? t(k) : legacy || t(k));
+        return (
+          <section id="about" className="container-page py-14 md:py-20">
+            <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft">
+              <div className="grid md:grid-cols-[0.8fr_1.2fr]">
+                <div className="flex flex-col justify-between bg-primary px-7 py-9 text-primary-foreground md:px-10 md:py-12">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary-foreground/70">{st("badge", brandStory?.eyebrow)}</p>
+                    <p className="mt-5 font-display text-4xl leading-none md:text-5xl">{t("number")}</p>
+                    <p className="mt-2 max-w-[14rem] text-sm leading-relaxed text-primary-foreground/75">{t("number_text")}</p>
+                  </div>
+                  <p className="mt-10 text-xs uppercase tracking-[0.22em] text-primary-foreground/60">{t("place")}</p>
+                </div>
+                <div className="p-7 sm:p-9 md:p-12">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">{t("eyebrow")}</p>
+                  <h2 className="mt-3 max-w-2xl font-display text-3xl leading-tight text-foreground md:text-4xl">{st("title", brandStory?.title)}</h2>
+                  <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">{st("body", brandStory?.body)}</p>
+                  <div className="mt-7 flex flex-wrap gap-3">
+                    <Link to="/about" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">{t("link1")} <ArrowRight className="h-4 w-4" /></Link>
+                    <a href="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">{t("link2")} <ArrowRight className="h-4 w-4" /></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      }
+      case "delivery":
+        return (
+          <section className="container-page pb-5">
+            <div className="mx-auto max-w-4xl rounded-2xl bg-muted/55 px-5 py-4 text-center">
+              <p className="whitespace-pre-line text-xs leading-6 text-muted-foreground sm:text-sm">
+                {t("text") ? t("text") : (<>
+                  Showroom in <strong className="text-foreground">Kalpetta, Wayanad</strong>. We deliver across{" "}
+                  <strong className="text-foreground">Kerala</strong> including the{" "}
+                  <strong className="text-foreground">Malabar region</strong>, to{" "}
+                  <strong className="text-foreground">Bengaluru</strong> and{" "}
+                  <strong className="text-foreground">Tamil Nadu</strong>. Enquire on WhatsApp for delivery to your location.
+                </>)}
+              </p>
+            </div>
+          </section>
+        );
+      case "categories":
+        return (
+          <section className="container-page py-14 md:py-20">
+            <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">{t("eyebrow")}</p>
+                <h2 className="font-display text-3xl text-foreground md:text-4xl">{t("title")}</h2>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">{t("body")}</p>
+              </div>
+              <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">{t("link")} <ArrowRight className="h-4 w-4" /></Link>
+            </div>
+            {shownCategories.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
+                <p className="text-muted-foreground">Our furniture categories will appear here.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
+                {shownCategories.map((c) => (
+                  <Link key={c.id} to={`/catalog?cat=${c.slug}`} className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
+                    <div className="relative aspect-[1/0.88] overflow-hidden bg-muted/40">
+                      {c.image_url ? (
+                        <img
+                          src={c.image_url.includes("/storage/v1/object/public/") ? c.image_url.replace("/object/public/", "/render/image/public/") + (c.image_url.includes("?") ? "&" : "?") + "width=360&quality=76&resize=contain" : c.image_url}
+                          alt={c.name} loading="lazy" decoding="async" width={360} height={320}
+                          className="h-full w-full object-contain p-4 transition duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-3xl text-primary">{c.name[0]}</span></div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 px-4 py-3.5">
+                      <span className="text-sm font-bold text-foreground">{c.name}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <Link to="/catalog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">{t("link")} <ArrowRight className="h-4 w-4" /></Link>
+          </section>
+        );
+      case "featured":
+        if (vis.allHidden) return null;
+        return (
+          <section className="border-y border-border bg-muted/30">
+            <div className="container-page py-14 md:py-20">
+              <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">{t("eyebrow")}</p>
+                  <h2 className="font-display text-3xl text-foreground md:text-4xl">{t("title")}</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">{t("body")}</p>
+                </div>
+                <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">{t("link")} <ArrowRight className="h-4 w-4" /></Link>
+              </div>
+              {shownFeatured.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
+                  <p className="text-muted-foreground">Featured products will appear here.</p>
+                  <Button asChild variant="link" className="mt-2"><Link to="/catalog">Browse the catalog →</Link></Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
+                  {shownFeatured.map((p) => <ProductCard key={p.id} product={p} />)}
+                </div>
+              )}
+              <Link to="/catalog" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">{t("link")} <ArrowRight className="h-4 w-4" /></Link>
+            </div>
+          </section>
+        );
+      case "custom":
+        return (
+          <section className="container-page py-16 md:py-24">
+            <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-2">
+              <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-14">
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">{t("eyebrow")}</p>
+                <h2 className="mt-4 max-w-xl font-display text-3xl leading-tight text-foreground md:text-5xl">{t("title")}</h2>
+                <p className="mt-5 max-w-xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">{t("body")}</p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}><ClipboardList className="mr-2 h-5 w-5" /> {t("btn1")}</Button>
+                  <Button asChild size="lg" variant="outline" className="rounded-xl"><a href="/catalog">{t("btn2")} <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-border">
+                {[1, 2, 3, 4].map((n) => <PremiumFeature key={n} number={`0${n}`} title={t(`f${n}_title`)} text={t(`f${n}_text`)} />)}
+              </div>
+            </div>
+          </section>
+        );
+      case "interiors":
+        return (
+          <section id="interiors" className="border-y border-border bg-primary text-primary-foreground">
+            <div className="container-page py-16 md:py-24">
+              <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/60">{t("eyebrow")}</p>
+                  <h2 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-5xl">{t("title")}</h2>
+                  <p className="mt-5 max-w-xl whitespace-pre-line text-sm leading-7 text-primary-foreground/72 md:text-base">{t("body")}</p>
+                  <Button size="lg" variant="secondary" className="mt-8 rounded-xl" onClick={() => openEnquiryForm()}>{t("btn")} <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((n) => <InteriorStep key={n} number={`0${n}`} title={t(`s${n}_title`)} text={t(`s${n}_text`)} />)}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      case "why":
+        return (
+          <section className="container-page py-16 md:py-24">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">{t("eyebrow")}</p>
+              <h2 className="mt-4 font-display text-3xl leading-tight text-foreground md:text-5xl">{t("title")}</h2>
+              <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">{t("body")}</p>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[1, 2, 3, 4].map((n) => <WhyCard key={n} title={t(`c${n}_title`)} text={t(`c${n}_text`)} />)}
+            </div>
+          </section>
+        );
+      case "extra":
+        return belowSections.length > 0 ? (
+          <div className="container-page space-y-16 py-16 md:space-y-20 md:py-20">
+            {belowSections.map((sec) => <DynamicSection key={sec.id} section={sec} />)}
+          </div>
+        ) : null;
+      case "contact":
+        return (
+          <section id="contact" className="container-page pb-16 pt-4 md:pb-20">
+            <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="bg-primary p-8 text-primary-foreground sm:p-10 lg:p-12">
+                <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/65">{t("eyebrow")}</p>
+                <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">{t("title")}</h2>
+                <p className="mt-5 max-w-md whitespace-pre-line text-sm leading-7 text-primary-foreground/75">{t("body")}</p>
+                <div className="mt-8 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold">{t("place")}</p>
+                      <p className="mt-1 text-xs text-primary-foreground/65">{t("place_sub")}</p>
+                    </div>
+                  </div>
+                  {settings?.contact_phone && (
+                    <a href={`tel:${settings.contact_phone}`} className="flex items-start gap-3 transition hover:opacity-80">
+                      <Phone className="mt-0.5 h-5 w-5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-bold">{settings.contact_phone}</p>
+                        <p className="mt-1 text-xs text-primary-foreground/65">{t("phone_sub")}</p>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent">
+                  <Sparkles className="h-3.5 w-3.5" /> {t("badge")}
+                </div>
+                <h3 className="mt-5 max-w-xl font-display text-3xl leading-tight text-foreground md:text-4xl">{t("title2")}</h3>
+                <p className="mt-4 max-w-xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">{t("body2")}</p>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}><ClipboardList className="mr-2 h-5 w-5" /> {t("btn1")}</Button>
+                  <Button asChild size="lg" variant="outline" className="rounded-xl"><a href="/catalog">{t("btn2")} <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                </div>
+                <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[1, 2, 3, 4].map((n) => <MiniTrust key={n} title={t(`m${n}_title`)} text={t(`m${n}_text`)} />)}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      case "google_review":
+        return settings?.show_google_review !== false ? <GoogleReviewCta reviewUrl={reviewUrl} eyebrow={t("eyebrow")} title={t("title")} body={t("body")} btn={t("btn")} /> : null;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,287 +341,9 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-      <LuxuryScrollHero afterHero={social.ready && social.config.show_on_home ? <ConnectSection links={social.links} /> : null} />
+      <LuxuryScrollHero layout={layout} />
 
-      <section id="about" className="container-page py-14 md:py-20">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft">
-          <div className="grid md:grid-cols-[0.8fr_1.2fr]">
-            <div className="flex flex-col justify-between bg-primary px-7 py-9 text-primary-foreground md:px-10 md:py-12">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary-foreground/70">
-                  {brandStory?.eyebrow ?? "14+ Years of Craftsmanship"}
-                </p>
-                <p className="mt-5 font-display text-4xl leading-none md:text-5xl">14+</p>
-                <p className="mt-2 max-w-[14rem] text-sm leading-relaxed text-primary-foreground/75">
-                  Years serving homes and businesses across Wayanad.
-                </p>
-              </div>
-              <p className="mt-10 text-xs uppercase tracking-[0.22em] text-primary-foreground/60">Kalpetta · Wayanad</p>
-            </div>
-
-            <div className="p-7 sm:p-9 md:p-12">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">Our story</p>
-              <h2 className="mt-3 max-w-2xl font-display text-3xl leading-tight text-foreground md:text-4xl">
-                {brandStory?.title ?? "Designed for your home. Crafted for your life."}
-              </h2>
-              <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">
-                {brandStory?.body ?? "From custom sofas and solid-wood dining sets to wardrobes and complete interior solutions, Hitech brings together craftsmanship, comfort and thoughtful design. We create furniture around your space, your needs and the way you live — with local support from our Wayanad team."}
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/about" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-                  Discover Hitech <ArrowRight className="h-4 w-4" />
-                </Link>
-                <a href="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
-                  Browse furniture <ArrowRight className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-page pb-5">
-        <div className="mx-auto max-w-4xl rounded-2xl bg-muted/55 px-5 py-4 text-center">
-          <p className="text-xs leading-6 text-muted-foreground sm:text-sm">
-            Showroom in <strong className="text-foreground">Kalpetta, Wayanad</strong>. We deliver across{" "}
-            <strong className="text-foreground">Kerala</strong> including the{" "}
-            <strong className="text-foreground">Malabar region</strong>, to{" "}
-            <strong className="text-foreground">Bengaluru</strong> and{" "}
-            <strong className="text-foreground">Tamil Nadu</strong>. Enquire on WhatsApp for delivery to your location.
-          </p>
-        </div>
-      </section>
-
-      <section className="container-page py-14 md:py-20">
-        <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Furniture collection</p>
-            <h2 className="font-display text-3xl text-foreground md:text-4xl">Explore by category</h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Browse our live collection and find pieces for every room, style and requirement.
-            </p>
-          </div>
-          <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
-            View all <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        {shownCategories.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-            <p className="text-muted-foreground">Our furniture categories will appear here.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {shownCategories.map((c) => (
-              <Link
-                key={c.id}
-                to={`/catalog?cat=${c.slug}`}
-                className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product"
-              >
-                <div className="relative aspect-[1/0.88] overflow-hidden bg-muted/40">
-                  {c.image_url ? (
-                    <img
-                      src={
-                        c.image_url.includes("/storage/v1/object/public/")
-                          ? c.image_url.replace("/object/public/", "/render/image/public/") +
-                            (c.image_url.includes("?") ? "&" : "?") +
-                            "width=360&quality=76&resize=contain"
-                          : c.image_url
-                      }
-                      alt={c.name}
-                      loading="lazy"
-                      decoding="async"
-                      width={360}
-                      height={320}
-                      className="h-full w-full object-contain p-4 transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
-                      <span className="font-display text-3xl text-primary">{c.name[0]}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-2 px-4 py-3.5">
-                  <span className="text-sm font-bold text-foreground">{c.name}</span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <Link to="/catalog" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
-          View full catalog <ArrowRight className="h-4 w-4" />
-        </Link>
-      </section>
-
-      {!vis.allHidden && (<>
-      <section className="border-y border-border bg-muted/30">
-        <div className="container-page py-14 md:py-20">
-          <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Featured collection</p>
-              <h2 className="font-display text-3xl text-foreground md:text-4xl">Selected pieces for your home</h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                A curated selection from our current furniture catalog, chosen to help you start exploring.
-              </p>
-            </div>
-            <Link to="/catalog" className="hidden items-center gap-2 text-sm font-bold text-primary hover:underline sm:flex">
-              Shop all furniture <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {shownFeatured.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-              <p className="text-muted-foreground">Featured products will appear here.</p>
-              <Button asChild variant="link" className="mt-2">
-                <Link to="/catalog">Browse the catalog →</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-              {shownFeatured.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          )}
-
-          <Link to="/catalog" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary sm:hidden">
-            Shop all furniture <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
-      </>)}
-
-      <section className="container-page py-16 md:py-24">
-        <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-2">
-          <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-14">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">Custom furniture</p>
-            <h2 className="mt-4 max-w-xl font-display text-3xl leading-tight text-foreground md:text-5xl">Made for your space, not just any space.</h2>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-              Choose the size, layout, finish, material and comfort that suit your home. From sofas and dining sets to beds, wardrobes and storage, our team helps shape furniture around the way you live.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}>
-                <ClipboardList className="mr-2 h-5 w-5" /> Start a custom order
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-xl">
-                <a href="/catalog">Explore furniture <ArrowRight className="ml-2 h-4 w-4" /></a>
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-px bg-border">
-            <PremiumFeature number="01" title="Designed to fit" text="Furniture planned around your room dimensions and practical needs." />
-            <PremiumFeature number="02" title="Your finish" text="Select materials, colours and finishes that match your interior style." />
-            <PremiumFeature number="03" title="Comfort first" text="Choose proportions and configurations that work for everyday living." />
-            <PremiumFeature number="04" title="Local support" text="Discuss, customise and follow up with our Wayanad-based team." />
-          </div>
-        </div>
-      </section>
-
-      <section id="interiors" className="border-y border-border bg-primary text-primary-foreground">
-        <div className="container-page py-16 md:py-24">
-          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/60">Complete interiors</p>
-              <h2 className="mt-4 max-w-2xl font-display text-4xl leading-tight md:text-5xl">From an empty room to a finished home.</h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-primary-foreground/72 md:text-base">
-                Hitech brings furniture and interiors together under one roof — helping you plan spaces, customise storage and furniture, coordinate finishes and complete installation with a more seamless experience.
-              </p>
-              <Button size="lg" variant="secondary" className="mt-8 rounded-xl" onClick={() => openEnquiryForm()}>
-                Discuss your interior project <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InteriorStep number="01" title="Plan" text="Understand the room, requirement, style and practical priorities." />
-              <InteriorStep number="02" title="Design" text="Develop furniture, storage and finish choices around the space." />
-              <InteriorStep number="03" title="Build" text="Coordinate custom furniture and interior elements with attention to detail." />
-              <InteriorStep number="04" title="Install" text="Bring the pieces together on site for a finished, usable space." />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-page py-16 md:py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-accent">Why Hitech</p>
-          <h2 className="mt-4 font-display text-3xl leading-tight text-foreground md:text-5xl">Premium choices, with a local team you can reach.</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-            More than a catalog — we combine product choice, customisation, interior guidance and local after-sales support for homes and businesses across Wayanad.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <WhyCard title="14+ Years" text="Experience serving furniture and interior customers across Wayanad." />
-          <WhyCard title="Custom Made" text="Furniture can be tailored around space, finish and usage requirements." />
-          <WhyCard title="Furniture + Interiors" text="A simpler journey from individual products to complete room solutions." />
-          <WhyCard title="Local Support" text="A Kalpetta-area team for showroom visits, enquiries and follow-up." />
-        </div>
-      </section>
-
-      {belowSections.length > 0 && (
-        <div className="container-page space-y-16 py-16 md:space-y-20 md:py-20">
-          {belowSections.map((sec) => (
-            <DynamicSection key={sec.id} section={sec} />
-          ))}
-        </div>
-      )}
-
-      <section id="contact" className="container-page pb-16 pt-4 md:pb-20">
-        <div className="grid overflow-hidden rounded-[2rem] border border-border bg-card shadow-card-soft lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="bg-primary p-8 text-primary-foreground sm:p-10 lg:p-12">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary-foreground/65">Visit our showroom</p>
-            <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">See the furniture. Feel the finish. Plan your space.</h2>
-            <p className="mt-5 max-w-md text-sm leading-7 text-primary-foreground/75">
-              Visit Hitech Furniture & Interiors in the Kalpetta area to explore furniture, discuss custom requirements and plan complete interior solutions with our team.
-            </p>
-
-            <div className="mt-8 space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
-                <div>
-                  <p className="text-sm font-bold">Kalpetta · Wayanad</p>
-                  <p className="mt-1 text-xs text-primary-foreground/65">Furniture showroom & interior consultation</p>
-                </div>
-              </div>
-              {settings?.contact_phone && (
-                <a href={`tel:${settings.contact_phone}`} className="flex items-start gap-3 transition hover:opacity-80">
-                  <Phone className="mt-0.5 h-5 w-5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold">{settings.contact_phone}</p>
-                    <p className="mt-1 text-xs text-primary-foreground/65">Call our showroom team</p>
-                  </div>
-                </a>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent">
-              <Sparkles className="h-3.5 w-3.5" /> Furniture & Interiors
-            </div>
-            <h3 className="mt-5 max-w-xl font-display text-3xl leading-tight text-foreground md:text-4xl">Have a room, project or furniture idea in mind?</h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-              Tell us what you need. Share your room details, preferred style or product requirement and our team can guide you with suitable options.
-            </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="rounded-xl" onClick={() => openEnquiryForm()}>
-                <ClipboardList className="mr-2 h-5 w-5" /> Start an enquiry
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-xl">
-                <a href="/catalog">Browse furniture <ArrowRight className="ml-2 h-4 w-4" /></a>
-              </Button>
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <MiniTrust title="14+ Years" text="Local experience" />
-              <MiniTrust title="Custom Made" text="Built for your space" />
-              <MiniTrust title="Interiors" text="Design to install" />
-              <MiniTrust title="Wayanad" text="Local support" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {settings?.show_google_review !== false && <GoogleReviewCta reviewUrl={social.links.find((l) => l.key === "google")?.url || GOOGLE_REVIEW_URL} />}
+      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <Fragment key={id}>{renderBlock(id)}</Fragment>)}
 
       <Suspense fallback={null}>
         <SiteFooter />
@@ -432,7 +389,7 @@ const MiniTrust = ({ title, text }: { title: string; text: string }) => (
 const GOOGLE_REVIEW_URL =
   "https://search.google.com/local/writereview?placeid=ChIJh4fFy6kMpjsR9mGrdWARwXo";
 
-const GoogleReviewCta = ({ reviewUrl }: { reviewUrl: string }) => {
+const GoogleReviewCta = ({ reviewUrl, eyebrow, title, body, btn }: { reviewUrl: string; eyebrow: string; title: string; body: string; btn: string }) => {
   const GOOGLE_REVIEW_URL = reviewUrl;
   const qrUrl =
     "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=2&data=" +
@@ -461,8 +418,8 @@ const GoogleReviewCta = ({ reviewUrl }: { reviewUrl: string }) => {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 shadow-sm">
             <Star className="h-7 w-7 fill-current" />
           </div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Loved your experience?</p>
-          <h2 className="font-display text-3xl text-foreground md:text-4xl">Rate us on Google</h2>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">{eyebrow}</p>
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">{title}</h2>
           <div className="mt-3 flex items-center justify-center gap-1 text-amber-500">
             {Array.from({ length: 5 }).map((_, i) => (
               <svg key={i} viewBox="0 0 24 24" className="h-6 w-6 fill-current drop-shadow-sm">
@@ -471,13 +428,13 @@ const GoogleReviewCta = ({ reviewUrl }: { reviewUrl: string }) => {
             ))}
           </div>
           <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground md:text-base">
-            One tap opens the star-rating page — or copy the link to share with friends & family.
+            {body}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="group shadow-md">
               <a href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener">
-                Rate us on Google
+                {btn}
                 <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </a>
             </Button>
