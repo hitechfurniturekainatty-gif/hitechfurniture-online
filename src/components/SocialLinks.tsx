@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FancyQr } from "@/components/FancyQr";
 import { CONNECT_PAGE_URL, type SocialLink, type SocialType } from "@/lib/socialLinks";
@@ -58,8 +60,8 @@ export function SocialIcon({ k, className }: { k: SocialType; className?: string
   }
 }
 
-const SIZES = { sm: "h-11 w-11", md: "h-12 w-12", lg: "h-14 w-14 sm:h-16 sm:w-16" } as const;
-const ICON = { sm: "h-5 w-5", md: "h-6 w-6", lg: "h-7 w-7" } as const;
+const SIZES = { xs: "h-7 w-7", sm: "h-11 w-11", md: "h-12 w-12", lg: "h-14 w-14 sm:h-16 sm:w-16" } as const;
+const ICON = { xs: "h-3.5 w-3.5", sm: "h-5 w-5", md: "h-6 w-6", lg: "h-7 w-7" } as const;
 
 /** Round brand badge; an uploaded icon picture replaces the built-in one. */
 export function SocialBadge({ k, iconUrl, size = "md" }: { k: SocialType; iconUrl?: string | null; size?: keyof typeof SIZES }) {
@@ -73,46 +75,74 @@ export function SocialBadge({ k, iconUrl, size = "md" }: { k: SocialType; iconUr
   );
 }
 
+/** Thumb-friendly list of every link — used in the QR popup and on /connect. */
+export function SocialLinkList({ links }: { links: SocialLink[] }) {
+  return (
+    <div className="space-y-2.5">
+      {links.map((l) => (
+        <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer"
+           className="flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-3 pr-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <SocialBadge k={l.key} iconUrl={l.icon_url} size="md" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-foreground">{l.action}</span>
+            <span className="block text-xs text-muted-foreground">{l.label}</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /**
- * Home page "Scan & connect" section: a branded QR (opens /connect, where all
- * links are listed) beside small round icons that open each page directly.
+ * Home page "Scan & connect" section: ONE branded QR. Scanning opens /connect
+ * on the phone; tapping it here opens the same list of links in a popup.
  */
 export function ConnectSection({ links }: { links: SocialLink[] }) {
+  const [open, setOpen] = useState(false);
   if (!links.length) return null;
   return (
     <section className="container-page py-12 md:py-16" aria-labelledby="connect-heading">
-      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-[#fbf3e6] via-card to-[#f6ead6] p-6 shadow-sm md:p-10">
+      <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-[#fbf3e6] via-card to-[#f6ead6] p-6 shadow-sm md:p-10">
         <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative grid items-center gap-8 md:grid-cols-[1fr_auto] md:gap-12">
           <div className="text-center md:text-left">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent">Stay connected</p>
             <h2 id="connect-heading" className="font-display text-3xl text-foreground md:text-4xl">Follow us &amp; rate us</h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground md:mx-0 md:text-base">
-              New designs, showroom updates and happy homes. Tap an icon, or scan the code to keep every link on your phone.
+              All our pages in one code — Instagram, Facebook, WhatsApp and Google reviews. Scan it with your phone camera, or tap it to open the list.
             </p>
-            <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-4 md:justify-start">
-              {links.map((l) => (
-                <li key={l.id}>
-                  <a href={l.url} target="_blank" rel="noopener noreferrer" aria-label={l.action} className="group flex w-[4.5rem] flex-col items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                    <span className="transition duration-200 group-hover:-translate-y-1 group-hover:drop-shadow-md"><SocialBadge k={l.key} iconUrl={l.icon_url} size="md" /></span>
-                    <span className="line-clamp-2 text-center leading-tight">{l.label}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <button type="button" onClick={() => setOpen(true)} className="mt-6 inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4a2304]">
+              <span className="flex -space-x-2">
+                {links.slice(0, 4).map((l) => (
+                  <span key={l.id} className="rounded-full ring-2 ring-[#5E2D05]"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
+                ))}
+              </span>
+              View all links
+            </button>
           </div>
-          <Link to="/connect" aria-label="Open all our links" className="group mx-auto block">
+          <button type="button" onClick={() => setOpen(true)} aria-label="Open all our links" className="group mx-auto block">
             <div className="rounded-[2.5rem] bg-gradient-to-br from-[#5E2D05] via-[#8a4a10] to-[#F4A227] p-[3px] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
               <div className="flex flex-col items-center rounded-[calc(2.5rem-3px)] bg-white px-6 pb-4 pt-6">
-                <FancyQr value={CONNECT_PAGE_URL} size={176} title="Scan to connect with Hitech Furniture" />
+                <FancyQr value={CONNECT_PAGE_URL} size={188} title="Scan to connect with Hitech Furniture" />
                 <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#5E2D05] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  <ScanLine className="h-3.5 w-3.5" /> Scan to connect
+                  <ScanLine className="h-3.5 w-3.5" /> Scan or tap
                 </span>
               </div>
             </div>
-          </Link>
+          </button>
         </div>
       </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-md overflow-y-auto rounded-3xl p-5 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Connect with Hitech</DialogTitle>
+            <p className="text-sm text-muted-foreground">Tap to open — follow us, chat, or leave a review.</p>
+          </DialogHeader>
+          <SocialLinkList links={links} />
+          <Link to="/connect" onClick={() => setOpen(false)} className="block text-center text-xs font-semibold text-primary hover:underline">Open as a page</Link>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

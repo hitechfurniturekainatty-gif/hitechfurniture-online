@@ -1,7 +1,12 @@
-import { MessageCircle, Instagram, Facebook } from "lucide-react";
 import { buildWhatsAppUrl, WHATSAPP_NUMBER } from "@/lib/brand";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
+import { SocialIcon } from "@/components/SocialLinks";
 
+/**
+ * Single floating WhatsApp button. Instagram / Facebook used to float here
+ * too, but three stacked buttons covered page content — they now live in
+ * the home page "Scan & connect" QR and the /connect links page.
+ */
 export const WhatsAppFab = () => {
   const settings = useHomepageSettings();
   const number = settings?.whatsapp_number || WHATSAPP_NUMBER;
@@ -11,38 +16,14 @@ export const WhatsAppFab = () => {
   const waUrl = buildWhatsAppUrl(message).replace(WHATSAPP_NUMBER, number);
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2.5">
-      {settings?.instagram_url && (
-        <a
-          href={settings.instagram_url}
-          target="_blank"
-          rel="noopener"
-          aria-label="Follow us on Instagram"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white shadow-elegant transition-smooth hover:scale-110"
-        >
-          <Instagram className="h-5 w-5" />
-        </a>
-      )}
-      {settings?.facebook_url && (
-        <a
-          href={settings.facebook_url}
-          target="_blank"
-          rel="noopener"
-          aria-label="Visit our Facebook page"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-elegant transition-smooth hover:scale-110"
-        >
-          <Facebook className="h-5 w-5" />
-        </a>
-      )}
-      <a
-        href={waUrl}
-        target="_blank"
-        rel="noopener"
-        aria-label="Chat with us on WhatsApp"
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-elegant transition-smooth hover:scale-110"
-      >
-        <MessageCircle className="h-7 w-7" />
-      </a>
-    </div>
+    <a
+      href={waUrl}
+      target="_blank"
+      rel="noopener"
+      aria-label="Chat with us on WhatsApp"
+      className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-elegant transition-smooth hover:scale-110"
+    >
+      <SocialIcon k="whatsapp" className="h-7 w-7" />
+    </a>
   );
 };
