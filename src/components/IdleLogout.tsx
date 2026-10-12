@@ -11,12 +11,12 @@ const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart", "scrol
 const isLoginPath = (p: string) => p.startsWith("/auth") || p.startsWith("/worker/login");
 
 /**
- * Signs a logged-in user out of THIS device after 30 minutes with no taps,
+ * Signs a logged-in STAFF user (not field workers) out of THIS device after 30 minutes with no taps,
  * typing or scrolling. Shows a one-minute warning first. Other devices of the
  * same user stay signed in (local scope).
  */
 export function IdleLogout() {
-  const { user, isWorker, isOfficeStaff, isAdmin } = useAuth();
+  const { user, loading, isWorker, isOfficeStaff, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [warn, setWarn] = useState(false);
@@ -24,6 +24,8 @@ export function IdleLogout() {
   const lastWrite = useRef(0);
   const loggingOut = useRef(false);
   const workerOnly = isWorker && !isOfficeStaff && !isAdmin;
+  // Staff / admin logins only — field workers (phone + PIN) and public visitors are never logged out.
+  const active = !!user && !loading && !workerOnly;
 
   const logout = useCallback(async () => {
     if (loggingOut.current) return;
@@ -32,25 +34,25 @@ export function IdleLogout() {
     clearActivity();
     try { await supabase.auth.signOut({ scope: "local" }); } catch { /* session may already be gone */ }
     toast({ title: "Logged out", description: `No activity for ${Math.round(IDLE_LIMIT_MS / 60000)} minutes — please sign in again.` });
-    navigate(workerOnly ? "/worker/login" : "/auth", { replace: true });
+    navigate("/auth", { replace: true });
     loggingOut.current = false;
-  }, [navigate, workerOnly]);
+  }, [navigate]);
 
   const check = useCallback(() => {
-    if (!user || isLoginPath(location.pathname)) return;
+    if (!active || isLoginPath(location.pathname)) return;
     const last = lastActivity();
     if (last == null) { markActivity(); return; }
     const st = idleState(last);
     if (st === "expired") { void logout(); return; }
     setWarn(st === "warn");
     if (st === "warn") setSecondsLeft(Math.max(0, Math.ceil((last + IDLE_LIMIT_MS - Date.now()) / 1000)));
-  }, [user, location.pathname, logout]);
+  }, [active, location.pathname, logout]);
 
   // On login pages, keep the timer fresh so a just-created session starts at zero.
   useEffect(() => { if (isLoginPath(location.pathname)) markActivity(); }, [location.pathname, user?.id]);
 
   useEffect(() => {
-    if (!user) { setWarn(false); return; }
+    if (!active) { setWarn(false); return; }
     const onActivity = () => {
       const now = Date.now();
       // If the device was idle past the limit (e.g. phone asleep), this first tap must not revive the session.
@@ -70,9 +72,9 @@ export function IdleLogout() {
       window.removeEventListener("focus", check);
       window.clearInterval(t);
     };
-  }, [user, check, logout, location.pathname]);
+  }, [active, check, logout, location.pathname]);
 
-  if (!user || !warn) return null;
+  if (!active || !warn) return null;
   return (
     <div role="alertdialog" aria-live="assertive" className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-md rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-xl sm:bottom-6">
       <p className="text-sm font-semibold text-amber-950">You'll be logged out in {secondsLeft}s</p>
