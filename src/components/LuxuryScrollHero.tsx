@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, ClipboardList, MapPin, ShieldCheck, Sparkles } from "lucide-react";
-import livingRoomImage from "@/assets/living-room-hero.png";
-import diningRoomImage from "@/assets/dining-room-hero.png";
-import kitchenImage from "@/assets/kitchen-hero.png";
-import masterBedroomImage from "@/assets/master-bedroom-hero.png";
-import balconyImage from "@/assets/balcony-hero.png";
+import livingRoomImage from "@/assets/living-room-hero.webp";
+import livingRoomImageM from "@/assets/living-room-hero-m.webp";
+import diningRoomImage from "@/assets/dining-room-hero.webp";
+import diningRoomImageM from "@/assets/dining-room-hero-m.webp";
+import kitchenImage from "@/assets/kitchen-hero.webp";
+import kitchenImageM from "@/assets/kitchen-hero-m.webp";
+import masterBedroomImage from "@/assets/master-bedroom-hero.webp";
+import masterBedroomImageM from "@/assets/master-bedroom-hero-m.webp";
+import balconyImage from "@/assets/balcony-hero.webp";
+import balconyImageM from "@/assets/balcony-hero-m.webp";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { blockImage, blockText, emptyHomeLayout, heroText, type HomeLayout } from "@/lib/homeLayout";
 
@@ -13,6 +18,7 @@ type Scene = {
   id: string;
   label: string;
   imageUrl: string;
+  mobileUrl: string;
   alt: string;
 };
 
@@ -21,30 +27,35 @@ const SCENES: Scene[] = [
     id: "living-room",
     label: "Living Room",
     imageUrl: livingRoomImage,
+    mobileUrl: livingRoomImageM,
     alt: "Luxury living room interior with marble, walnut, chandelier and daylight flooding through tall glass windows",
   },
   {
     id: "dining-room",
     label: "Dining Room",
     imageUrl: diningRoomImage,
+    mobileUrl: diningRoomImageM,
     alt: "Luxury dining room interior with sculptural lighting, walnut finishes and soft beige seating",
   },
   {
     id: "kitchen",
     label: "Kitchen",
     imageUrl: kitchenImage,
+    mobileUrl: kitchenImageM,
     alt: "Premium kitchen with marble island, walnut cabinetry and warm daylight",
   },
   {
     id: "master-bedroom",
     label: "Master Bedroom",
     imageUrl: masterBedroomImage,
+    mobileUrl: masterBedroomImageM,
     alt: "Luxury master bedroom with upholstered bed, marble wall and floor-to-ceiling tropical view",
   },
   {
     id: "balcony",
     label: "Balcony",
     imageUrl: balconyImage,
+    mobileUrl: balconyImageM,
     alt: "Luxury balcony lounge with soft sectional seating, marble table and mountain view",
   },
 ];
@@ -159,6 +170,8 @@ export const LuxuryScrollHero = ({ layout }: { layout?: HomeLayout } = {}) => {
                   {shouldRenderImage && (
                     <img
                       src={scene.imageUrl}
+                      srcSet={`${scene.mobileUrl} 900w, ${scene.imageUrl} 1600w`}
+                      sizes="100vw"
                       alt={scene.alt}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading={scene.index === 0 ? "eager" : "lazy"}

@@ -68,3 +68,8 @@
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
+
+# Compress text assets (JS/CSS/HTML/JSON/SVG) — ~70% smaller downloads on mobile
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript text/javascript application/json image/svg+xml application/xml
+</IfModule>

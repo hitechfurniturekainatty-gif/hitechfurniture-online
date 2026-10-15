@@ -29,12 +29,10 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: (id) => {
           if (!id.includes("node_modules")) return;
-          if (id.includes("@react-pdf")) return "pdf";
           if (id.includes("@supabase")) return "supabase";
           if (id.includes("@radix-ui") || id.includes("cmdk") || id.includes("vaul")) return "ui";
           if (id.includes("react-router")) return "router";
           if (id.includes("@tanstack")) return "query";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts";
         },
         // pdf.js workers imported via `new URL(..., import.meta.url)` are
         // emitted as assets. Some hosts serve `.mjs` worker assets with the
