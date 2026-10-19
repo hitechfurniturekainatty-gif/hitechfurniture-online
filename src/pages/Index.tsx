@@ -68,9 +68,10 @@ const Index = () => {
         if(!cancelled)setFeatured((data||[]) as ProductCardData[]);
       }catch{ /* optional featured section */ }
     })();
-    void fetchHomepageData().then(hp=>{
+    const reloadHome = () => { void fetchHomepageData().then(hp=>{
       if(!cancelled){setSections(hp.sections);setSettings(hp.settings);}
-    }).catch(()=>{ /* default hero remains available */ });
+    }).catch(()=>{ /* default hero remains available */ }); };
+    reloadHome();
 
     type IdleCb = (cb: () => void, opts?: { timeout: number }) => number;
     const idle = (window as unknown as { requestIdleCallback?: IdleCb }).requestIdleCallback;
@@ -84,6 +85,9 @@ const Index = () => {
           { event: "*", schema: "public", table: "main_categories" },
           () => { loadCategories(); },
         )
+        .on("postgres_changes", { event: "*", schema: "public", table: "homepage_settings" }, reloadHome)
+        .on("postgres_changes", { event: "*", schema: "public", table: "homepage_hero_slides" }, reloadHome)
+        .on("postgres_changes", { event: "*", schema: "public", table: "homepage_sections" }, reloadHome)
         .subscribe();
       import("./Catalog.tsx"); import("./ProductDetail.tsx");
     };

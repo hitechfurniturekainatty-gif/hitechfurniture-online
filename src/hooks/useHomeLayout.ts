@@ -20,7 +20,13 @@ export function useHomeLayout(): HomeLayout {
   useEffect(() => {
     let alive = true;
     void loadHomeLayoutBody().then(b => { if (alive) setLayout(parseHomeLayout(b)); });
-    return () => { alive = false; };
+    // Live: admin saves show up on open pages without a refresh.
+    const ch = supabase
+      .channel(`home-layout-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "homepage_sections", filter: `section_key=eq.${HOME_LAYOUT_KEY}` },
+        () => { void loadHomeLayoutBody(true).then(b => { if (alive) setLayout(parseHomeLayout(b)); }); })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(ch); };
   }, []);
   return layout;
 }

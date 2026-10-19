@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,9 @@ export function HomeLayoutEditor() {
   }, []);
 
   const dirty = useMemo(() => JSON.stringify(layout) !== saved, [layout, saved]);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
 
   const move = (i: number, d: -1 | 1) => setLayout(l => {
     const j = i + d;
@@ -74,7 +77,8 @@ export function HomeLayoutEditor() {
   const save = async () => {
     setSaving(true);
     try {
-      const clean: HomeLayout = { ...layout, text: Object.fromEntries(Object.entries(layout.text).filter(([, v]) => v.trim())) };
+      const current = layoutRef.current;
+      const clean: HomeLayout = { ...current, text: Object.fromEntries(Object.entries(layout.text).filter(([, v]) => v.trim())) };
       const body = JSON.stringify(clean);
       const { data: cur, error: readErr } = await db.from("homepage_sections").select("id").eq("section_key", HOME_LAYOUT_KEY).maybeSingle();
       if (readErr) throw readErr;
@@ -83,15 +87,22 @@ export function HomeLayoutEditor() {
         : await db.from("homepage_sections").insert({ section_key: HOME_LAYOUT_KEY, body, is_visible: false, display_order: 9997, title: "Home page layout (system — do not edit)" });
       if (res.error) throw res.error;
       await loadHomeLayoutBody(true);
-      setLayout(clean);
-      setSaved(body);
-      toast({ title: "Home page saved", description: "Changes are live on the website now." });
+      setSaved(JSON.stringify(current) === JSON.stringify(clean) ? body : JSON.stringify(current));
+      setSavedAt(new Date());
     } catch (e) {
       toast({ title: "Save failed", description: e instanceof Error ? e.message : (e as { message?: string })?.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
+
+  // Auto-save: every change goes live ~1s after the last edit (photos right away).
+  useEffect(() => {
+    if (loading || !dirty || saving) return;
+    const t = window.setTimeout(() => void save(), 1000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, dirty, saving, loading]);
 
   const fieldsEditor = (block: string, fields: FieldDef[], images?: { key: string; label: string }[]) => (
     <div className="space-y-3 border-t bg-muted/20 p-3 sm:p-4">
@@ -133,7 +144,7 @@ export function HomeLayoutEditor() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Home page sections</CardTitle>
           <p className="text-xs text-muted-foreground">
-            ഓരോ ഭാഗവും ഓൺ/ഓഫ് ചെയ്യാം, ↑↓ കൊണ്ട് ക്രമം മാറ്റാം, "Edit" തുറന്ന് എഴുത്തും ഫോട്ടോയും മാറ്റാം. Empty boxes keep the original text. Press <b>Save</b> to publish.
+            ഓരോ ഭാഗവും ഓൺ/ഓഫ് ചെയ്യാം, ↑↓ കൊണ്ട് മേലോട്ടും താഴോട്ടും മാറ്റാം, പേരിൽ തൊട്ടാൽ എഴുത്തും ഫോട്ടോയും മാറ്റാം. <b>മാറ്റങ്ങൾ തനിയെ save ആകും, ഉടനെ വെബ്സൈറ്റിൽ വരും.</b> ഒഴിഞ്ഞ box ആണെങ്കിൽ പഴയ എഴുത്ത് തന്നെ കാണിക്കും.
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -181,11 +192,10 @@ export function HomeLayoutEditor() {
       </Card>
 
       <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-        <span className="text-xs text-muted-foreground">{dirty ? "You have unsaved changes." : "All changes saved."}</span>
+        <span className={`text-xs font-medium ${saving || dirty ? "text-amber-600" : "text-emerald-600"}`}>{saving ? "Saving…" : dirty ? "Saving soon…" : savedAt ? `✓ Saved & live (${savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})` : "✓ All changes live"}</span>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" asChild><a href="/" target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-4 w-4" />View home page</a></Button>
-          <Button size="sm" variant="ghost" disabled={!dirty || saving} onClick={() => { setLayout(parseHomeLayout(saved)); }}>Undo changes</Button>
-          <Button size="sm" onClick={() => void save()} disabled={!dirty || saving}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}Save</Button>
+          <Button size="sm" onClick={() => void save()} disabled={!dirty || saving}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}Save now</Button>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">Sections: {BLOCKS.length + 1}. New sections with your own text and photos can be added in the "Sections" tab — they appear where "Your extra sections" sits in this list.</p>
