@@ -7,7 +7,7 @@ import { WhatsAppFab } from "@/components/WhatsAppFab";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, X, ArrowLeft, SlidersHorizontal, FileDown, Loader2, ArrowRight } from "lucide-react";
+import { Search, X, ArrowLeft, SlidersHorizontal, FileDown, Loader2, ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 import { LOCAL_BUSINESS_JSONLD } from "@/lib/localBusinessSchema";
@@ -320,9 +320,19 @@ const Catalog = () => {
           </>
         ) : (
           <>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-2"><Button variant="ghost" size="sm" onClick={() => { setCat(null); setSearch(""); }}><ArrowLeft className="mr-1.5 h-4 w-4" /> All categories</Button>{activeCat && subsForActive.length > 0 && <Button variant="ghost" size="sm" onClick={() => setSub(null)}><ArrowLeft className="mr-1.5 h-4 w-4" /> {activeCat.name} sub-categories</Button>}</div>{(activeSubSlug || search) && <Button variant="ghost" size="sm" onClick={() => { setSub(null); setSearch(""); }}><X className="mr-1 h-3 w-3" /> Clear</Button>}</div>
-            <div className="mb-3 flex flex-wrap gap-2"><Chip active={!activeCatSlug || activeCatSlug === "__all__"} onClick={() => setCat("__all__")}>All</Chip>{mainCats.map((c) => <Chip key={c.id} active={activeCatSlug === c.slug} onClick={() => setCat(c.slug)}>{toTitleCase(c.name)}</Chip>)}</div>
-            {activeCat && subsForActive.length > 0 && <div className="mb-8 flex flex-wrap gap-2"><Chip subtle active={!activeSubSlug || activeSubSlug === "__all__"} onClick={() => setSub("__all__")}>All {toTitleCase(activeCat.name)}</Chip>{subsForActive.map((s) => <Chip subtle key={s.id} active={activeSubSlug === s.slug} onClick={() => setSub(s.slug)}>{toTitleCase(s.name)}</Chip>)}</div>}
+            {(() => {
+              const sub = activeSubSlug && activeSubSlug !== "__all__" ? subsForActive.find((s) => s.slug === activeSubSlug) : undefined;
+              const subLabel = sub ? toTitleCase(sub.name) : activeSubSlug === "__all__" && activeCat ? `All ${toTitleCase(activeCat.name)}` : null;
+              const crumbBtn = "rounded-full px-2 py-1 text-muted-foreground transition hover:bg-muted hover:text-foreground";
+              return (
+                <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-1 text-sm">
+                  <button type="button" className={crumbBtn} onClick={() => { setCat(null); setSearch(""); }}>Catalog</button>
+                  {activeCat && <><ChevronRight className="h-4 w-4 text-muted-foreground/60" />{subLabel && subsForActive.length > 0 ? <button type="button" className={crumbBtn} onClick={() => setSub(null)}>{toTitleCase(activeCat.name)}</button> : <span className="px-2 py-1 font-medium text-foreground">{toTitleCase(activeCat.name)}</span>}</>}
+                  {activeCat && subLabel && <><ChevronRight className="h-4 w-4 text-muted-foreground/60" /><span className="px-2 py-1 font-medium text-foreground">{subLabel}</span></>}
+                  {search && <button type="button" className={`${crumbBtn} ml-auto inline-flex items-center`} onClick={() => setSearch("")}><X className="mr-1 h-3 w-3" /> Clear search</button>}
+                </nav>
+              );
+            })()}
           </>
         )}
 
