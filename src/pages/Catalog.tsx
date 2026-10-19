@@ -143,6 +143,8 @@ const Catalog = () => {
 
   const activeFilterCount = (priceMin ? 1 : 0) + (priceMax ? 1 : 0) + (material !== "__all__" ? 1 : 0) + (inStockOnly ? 1 : 0);
   useEffect(() => { setVisible(PAGE_SIZE); }, [activeCatSlug, activeSubSlug, deferredSearch, priceMin, priceMax, material, inStockOnly, sort]);
+  // Category / sub-category change swaps the whole view — start it from the top.
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }, [activeCatSlug, activeSubSlug]);
 
   const visibleProducts = filtered.slice(0, visible);
   const hasMore = visible < filtered.length;
