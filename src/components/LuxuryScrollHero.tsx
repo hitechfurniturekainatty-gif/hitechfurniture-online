@@ -13,16 +13,21 @@ import balconyImage from "@/assets/balcony-hero.webp";
 import balconyImageM from "@/assets/balcony-hero-m.webp";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { blockImage, blockText, emptyHomeLayout, heroText, type HomeLayout } from "@/lib/homeLayout";
+import type { HeroSlide, HomepageSettings } from "@/lib/homepage";
 
 type Scene = {
   id: string;
   label: string;
   imageUrl: string;
+  /** Admin Hero Slider extras (offers etc.) */
+  subtitle?: string | null;
+  ctaLabel?: string | null;
+  ctaLink?: string | null;
   mobileUrl: string;
   alt: string;
 };
 
-const SCENES: Scene[] = [
+const DEFAULT_SCENES: Scene[] = [
   {
     id: "living-room",
     label: "Living Room",
@@ -64,11 +69,31 @@ const clamp = (n: number, min = 0, max = 1) => Math.min(Math.max(n, min), max);
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /** The big sticky photo hero (always first on the home page). Text comes from the admin Page Layout. */
-export const LuxuryScrollHero = ({ layout }: { layout?: HomeLayout } = {}) => {
+export const LuxuryScrollHero = ({ layout, slides, settings }: { layout?: HomeLayout; slides?: HeroSlide[]; settings?: HomepageSettings | null } = {}) => {
   const L = layout ?? emptyHomeLayout();
   const h = heroText(L);
   const rt = blockText(L, "rooms");
-  const sceneLabel = (i: number) => rt(`r${i + 1}`) || SCENES[i]?.label;
+  // Photos come from admin: Hero Slider slides first; otherwise built-in scenes
+  // with the "Main Images" uploads replacing the first three.
+  const SCENES = useMemo<Scene[]>(() => {
+    const live = (slides ?? []).filter((s) => s.is_visible && s.image_url);
+    if (live.length) {
+      return live.map((s, i) => ({
+        id: s.id,
+        label: s.headline || DEFAULT_SCENES[i % DEFAULT_SCENES.length].label,
+        imageUrl: s.image_url,
+        mobileUrl: s.image_url,
+        alt: s.headline || "Hitech Furniture and Interiors",
+        subtitle: s.subheadline,
+        ctaLabel: s.cta_label,
+        ctaLink: s.cta_link,
+      }));
+    }
+    const over = [settings?.hero_arch_image_url, settings?.hero_glass_door_image_url, settings?.hero_interior_image_url];
+    return DEFAULT_SCENES.map((sc, i) => (over[i] ? { ...sc, imageUrl: over[i]!, mobileUrl: over[i]! } : sc));
+  }, [slides, settings]);
+  const fromSlides = !!(slides ?? []).some((s) => s.is_visible && s.image_url);
+  const sceneLabel = (i: number) => (fromSlides ? SCENES[i]?.label : rt(`r${i + 1}`) || SCENES[i]?.label);
   const sectionRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
@@ -134,7 +159,7 @@ export const LuxuryScrollHero = ({ layout }: { layout?: HomeLayout } = {}) => {
         opacity: index === 0 && progress < start + 0.02 ? 1 : opacity,
       };
     });
-  }, [progress, reduceMotion]);
+  }, [progress, reduceMotion, SCENES]);
 
   const activeIndex = Math.min(Math.floor(progress * SCENES.length), SCENES.length - 1);
   const introFade = clamp(1 - progress * 1.45);
@@ -238,6 +263,10 @@ export const LuxuryScrollHero = ({ layout }: { layout?: HomeLayout } = {}) => {
               <div className="rounded-xl border border-white/25 bg-black/40 px-4 py-3 text-white shadow-lg backdrop-blur-md">
                 <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/80">Explore</p>
                 <p className="mt-1 font-display text-xl text-white md:text-2xl">{sceneLabel(activeIndex)}</p>
+                {SCENES[activeIndex]?.subtitle && <p className="mt-1 max-w-xs text-xs text-white/85 md:text-sm">{SCENES[activeIndex].subtitle}</p>}
+                {SCENES[activeIndex]?.ctaLabel && SCENES[activeIndex]?.ctaLink && (
+                  <a href={SCENES[activeIndex].ctaLink!} className="pointer-events-auto mt-2 inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-900">{SCENES[activeIndex].ctaLabel} <ArrowRight className="h-3 w-3" /></a>
+                )}
               </div>
 
               <div className="hidden items-center gap-3 md:flex">
@@ -332,7 +361,7 @@ export const ShopByRoom = ({ layout }: { layout: HomeLayout }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
-          {SCENES.map((scene, i) => (
+          {DEFAULT_SCENES.map((scene, i) => (
             <Link
               key={scene.id}
               to="/catalog"

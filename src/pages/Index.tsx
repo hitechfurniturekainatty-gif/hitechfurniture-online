@@ -22,6 +22,7 @@ import {
   fetchHomepageData,
   HomepageSection,
   HomepageSettings,
+  type HeroSlide,
   presetClasses,
 } from "@/lib/homepage";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const Index = () => {
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +71,7 @@ const Index = () => {
       }catch{ /* optional featured section */ }
     })();
     const reloadHome = () => { void fetchHomepageData().then(hp=>{
-      if(!cancelled){setSections(hp.sections);setSettings(hp.settings);}
+      if(!cancelled){setSections(hp.sections);setSettings(hp.settings);setSlides(hp.slides);}
     }).catch(()=>{ /* default hero remains available */ }); };
     reloadHome();
 
@@ -345,7 +347,7 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-      <LuxuryScrollHero layout={layout} />
+      <LuxuryScrollHero layout={layout} slides={slides} settings={settings} />
 
       {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <Fragment key={id}>{renderBlock(id)}</Fragment>)}
 
