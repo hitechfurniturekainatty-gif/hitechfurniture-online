@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Fragment, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,9 +11,6 @@ import { LuxuryScrollHero, TrustStrip, ShopByRoom, InteriorIntro } from "@/compo
 import { useHomeLayout } from "@/hooks/useHomeLayout";
 import { blockText, type BlockId } from "@/lib/homeLayout";
 import { SectionStyleWrap } from "@/components/SectionStyleWrap";
-import { useAuth } from "@/hooks/useAuth";
-import type { HomeLayout } from "@/lib/homeLayout";
-const LiveSiteEditor = lazy(() => import("@/components/live/LiveSiteEditor"));
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 import { useSocialLinks } from "@/hooks/useSocialLinks";
@@ -46,19 +42,7 @@ const Index = () => {
   const [featured, setFeatured] = useState<(ProductCardData & { main_category_id?: string | null; sub_category_id?: string | null })[]>([]);
   const vis = usePublicCatalogVisibility();
   const social = useSocialLinks();
-  const liveLayout = useHomeLayout();
-  const { roles } = useAuth();
-  const isAdmin = roles.includes("admin");
-  // Admin live editing: draft shows instantly on this page, Save makes it public.
-  const [edit, setEdit] = useState<{ draft: HomeLayout; saved: HomeLayout } | null>(null);
-  const [target, setTarget] = useState<string | null>(null);
-  const layout = edit?.draft ?? liveLayout;
-  const editWrap = (id: string, node: ReactNode) => !edit ? node : (
-    <div className={`relative ${target === id ? "outline outline-[3px] outline-[#f39b02]" : "outline-dashed outline-2 outline-[#f39b02]/50 hover:outline-[#f39b02]"} -outline-offset-4`}>
-      <button type="button" onClick={() => setTarget(id)} className="absolute left-3 top-3 z-[55] rounded-full bg-[#292522] px-3 py-1.5 text-xs font-semibold text-white shadow-lg">✏ Edit</button>
-      {node}
-    </div>
-  );
+  const layout = useHomeLayout();
   // Categories always stay visible; only products inside hidden ones are left out.
   const shownCategories = categories;
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
@@ -364,25 +348,9 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-      {editWrap("hero", <SectionStyleWrap style={layout.styles?.hero}><LuxuryScrollHero layout={layout} slides={slides} settings={settings} /></SectionStyleWrap>)}
+      <SectionStyleWrap style={layout.styles?.hero}><LuxuryScrollHero layout={layout} slides={slides} settings={settings} /></SectionStyleWrap>
 
-      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <Fragment key={id}>{editWrap(id, <SectionStyleWrap style={layout.styles?.[id]}>{renderBlock(id)}</SectionStyleWrap>)}</Fragment>)}
-
-      {isAdmin && !edit && (
-        <button type="button" onClick={() => setEdit({ draft: liveLayout, saved: liveLayout })}
-          className="fixed bottom-24 left-4 z-[60] rounded-full bg-[#292522] px-4 py-3 text-sm font-semibold text-white shadow-xl">✏ Edit website</button>
-      )}
-      {edit && (
-        <Suspense fallback={null}>
-          <LiveSiteEditor
-            draft={edit.draft} saved={edit.saved} target={target} setTarget={setTarget}
-            setDraft={(fn) => setEdit((e) => (e ? { ...e, draft: fn(e.draft) } : e))}
-            onSaved={(l) => setEdit((e) => (e ? { ...e, saved: l } : e))}
-            onExit={() => { setEdit(null); setTarget(null); }}
-          />
-          <div className="h-[60vh] sm:hidden" />
-        </Suspense>
-      )}
+      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <SectionStyleWrap key={id} style={layout.styles?.[id]}>{renderBlock(id)}</SectionStyleWrap>)}
 
       <Suspense fallback={null}>
         <SiteFooter />
