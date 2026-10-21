@@ -92,7 +92,7 @@ export function ShareLinksButton({ links, qrRef, className, variant = "dark" }: 
       }}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-sm transition disabled:opacity-60",
-        variant === "dark" ? "border border-[#5E2D05]/30 bg-white text-[#5E2D05] hover:bg-[#fbf3e6]" : "bg-[#25D366] text-white hover:bg-[#1ebe5b]",
+        variant === "dark" ? "border border-primary/30 bg-white text-primary hover:bg-[#fbf3e6]" : "bg-[#25D366] text-white hover:bg-[#1ebe5b]",
         className,
       )}
     >
@@ -149,16 +149,16 @@ export function ConnectSection({ links, eyebrow = "Stay connected", title = "Let
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9C5B10] shadow-sm ring-1 ring-[#f1dcc2]">
               <span aria-hidden>✨</span>{eyebrow}
             </span>
-            <h2 id="connect-heading" className="mt-4 font-display text-3xl leading-tight text-[#3b1d06] md:text-[2.6rem]">
+            <h2 id="connect-heading" className="mt-4 font-display text-3xl leading-tight text-primary md:text-[2.6rem]">
               {title}
             </h2>
-            <svg aria-hidden viewBox="0 0 160 12" className="mx-auto mt-1 h-3 w-36 text-[#F4A227] md:mx-0"><path d="M2 8c18-7 30 5 48-1s30-7 48 0 30 6 60-2" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+            <svg aria-hidden viewBox="0 0 160 12" className="mx-auto mt-1 h-3 w-36 text-accent md:mx-0"><path d="M2 8c18-7 30 5 48-1s30-7 48 0 30 6 60-2" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
             {body && <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#6b4a2f] md:mx-0 md:text-base">{body}</p>}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-              <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-3 rounded-full bg-[#5E2D05] py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-[#4a2304]">
+              <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-3 rounded-full bg-primary py-2 pl-2 pr-5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-primary/90">
                 <span className="flex -space-x-2">
                   {links.slice(0, 4).map((l) => (
-                    <span key={l.id} className="rounded-full ring-2 ring-[#5E2D05]"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
+                    <span key={l.id} className="rounded-full ring-2 ring-primary"><SocialBadge k={l.key} iconUrl={l.icon_url} size="xs" /></span>
                   ))}
                 </span>
                 View all links
@@ -177,10 +177,10 @@ export function ConnectSection({ links, eyebrow = "Stay connected", title = "Let
             ))}
             <button type="button" onClick={() => setOpen(true)} aria-label="Open all our links"
               className="group absolute inset-0 m-auto h-fit w-fit -rotate-2 transition duration-300 hover:rotate-0 hover:scale-[1.02]">
-              <div className="rounded-[2.2rem] bg-gradient-to-br from-[#5E2D05] via-[#b06a17] to-[#F4A227] p-[3px] shadow-xl">
+              <div className="rounded-[2.2rem] bg-gradient-to-br from-primary via-[#b06a17] to-accent p-[3px] shadow-xl">
                 <div className="flex flex-col items-center rounded-[calc(2.2rem-3px)] bg-white px-5 pb-3.5 pt-5">
                   <FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={168} title="Scan to connect with Hitech Furniture" />
-                  <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#fff1df] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#5E2D05]">
+                  <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#fff1df] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
                     <ScanLine className="h-3.5 w-3.5" /> Scan or tap
                   </span>
                 </div>
@@ -192,7 +192,7 @@ export function ConnectSection({ links, eyebrow = "Stay connected", title = "Let
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-md overflow-y-auto rounded-3xl bg-[#fffaf4] p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-[#3b1d06]">Connect with Hitech 💛</DialogTitle>
+            <DialogTitle className="font-display text-2xl text-primary">Connect with Hitech 💛</DialogTitle>
             <p className="text-sm text-muted-foreground">Tap to open — follow us, chat, or leave a review.</p>
           </DialogHeader>
           <SocialLinkList links={links} />

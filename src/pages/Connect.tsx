@@ -47,7 +47,7 @@ const Connect = () => {
         {ready && links.length > 0 && (
           <div className="mt-8 flex w-full flex-col items-center gap-3 rounded-3xl border border-border bg-card p-5 text-center shadow-sm">
             <p className="text-sm font-semibold text-foreground">Share with family &amp; friends</p>
-            <div className="rounded-[1.6rem] bg-gradient-to-br from-[#5E2D05] via-[#8a4a10] to-[#F4A227] p-[3px]">
+            <div className="rounded-[1.6rem] bg-gradient-to-br from-primary via-[#8a4a10] to-accent p-[3px]">
               <div className="rounded-[calc(1.6rem-3px)] bg-white p-3"><FancyQr ref={qrRef} value={CONNECT_PAGE_URL} size={150} title="QR code for this page" /></div>
             </div>
             <p className="text-xs text-muted-foreground">Let them scan this, or send every link on WhatsApp in one tap.</p>
