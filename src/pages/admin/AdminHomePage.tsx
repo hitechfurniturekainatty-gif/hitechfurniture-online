@@ -88,7 +88,10 @@ const AdminHomePage = () => {
   const saveSettings = async () => {
     if (!settings) return;
     setSaving(true);
-    const { id, isNew, ...rest } = settings;
+    // theme is saved only by the Theme tab — never overwrite it from here
+    // (stale `theme: {}` here was wiping saved colours).
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, isNew, theme: _theme, ...rest } = settings as typeof settings & { theme?: unknown };
     const payload = {
       ...rest,
       address_lines: rest.address_lines ?? [],

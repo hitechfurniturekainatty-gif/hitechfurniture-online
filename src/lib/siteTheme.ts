@@ -98,3 +98,14 @@ export async function loadAndApplySiteTheme() {
   applySiteTheme(theme);
   cacheTheme(theme);
 }
+
+/** Keep other open tabs of the website in sync when an admin saves a theme. */
+export function listenForThemeChanges() {
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key === CACHE_KEY && e.newValue) {
+        try { applySiteTheme(JSON.parse(e.newValue)); } catch { /* ignore */ }
+      }
+    });
+  } catch { /* ignore */ }
+}

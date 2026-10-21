@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { DEFAULT_THEME, SiteTheme, cacheTheme } from "@/lib/siteTheme";
+import { DEFAULT_THEME, SiteTheme, applySiteTheme, cacheTheme } from "@/lib/siteTheme";
 
 const COLORS: [keyof SiteTheme, string][] = [
   ["background", "Page background"],
@@ -29,12 +29,24 @@ const PRESETS: { name: string; theme: SiteTheme }[] = [
 export default function ThemeEditor({ settingsId }: { settingsId: string }) {
   const [theme, setTheme] = useState<SiteTheme>({});
   const [saving, setSaving] = useState(false);
+  const saved = useRef<SiteTheme>({});
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     supabase.from("homepage_settings").select("theme").limit(1).maybeSingle().then(({ data }) => {
-      setTheme(((data as { theme?: SiteTheme } | null)?.theme ?? {}) as SiteTheme);
+      const t = ((data as { theme?: SiteTheme } | null)?.theme ?? {}) as SiteTheme;
+      saved.current = t;
+      setTheme(t);
     });
+    // leaving the tab without saving → put the live site theme back
+    return () => applySiteTheme(saved.current);
   }, []);
+
+  // live: every change applies to the site immediately (admin panel keeps its own look)
+  useEffect(() => {
+    applySiteTheme(theme);
+    setDirty(JSON.stringify(theme) !== JSON.stringify(saved.current));
+  }, [theme]);
 
   const val = <K extends keyof SiteTheme>(k: K) => (theme[k] ?? DEFAULT_THEME[k]) as NonNullable<SiteTheme[K]>;
   const set = (patch: SiteTheme) => setTheme((t) => ({ ...t, ...patch }));
@@ -45,11 +57,15 @@ export default function ThemeEditor({ settingsId }: { settingsId: string }) {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("homepage_settings").update({ theme: next } as never).eq("id", settingsId);
+    const { data, error } = await supabase.from("homepage_settings").update({ theme: next } as never).eq("id", settingsId).select("id");
     setSaving(false);
     if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    else if (!data || data.length === 0) toast({ title: "Not saved — admin login needed", description: "Only Admin role can change the website theme. Log out and log in again.", variant: "destructive" });
     else {
+      saved.current = next;
       cacheTheme(next);
+      applySiteTheme(next);
+      setDirty(false);
       toast({ title: "Theme saved — live on website now" });
     }
   };
@@ -129,9 +145,12 @@ export default function ThemeEditor({ settingsId }: { settingsId: string }) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => save()} disabled={saving}>{saving ? "Saving…" : "Save theme"}</Button>
-        <Button variant="outline" onClick={() => { setTheme({}); save({}); }} disabled={saving}>Reset to original</Button>
+      <div className="sticky bottom-0 z-20 -mx-2 flex flex-wrap items-center gap-2 border-t bg-background/95 p-3 backdrop-blur">
+        <span className="mr-auto text-sm text-muted-foreground">{dirty ? "● Unsaved changes" : "All changes saved"}</span>
+        <Button variant="outline" size="sm" onClick={() => window.open("/", "_blank")}>View website</Button>
+        <Button variant="outline" size="sm" onClick={() => setTheme(saved.current)} disabled={!dirty || saving}>Undo</Button>
+        <Button variant="outline" size="sm" onClick={() => { setTheme({}); save({}); }} disabled={saving}>Reset to original</Button>
+        <Button onClick={() => save()} disabled={saving || !dirty}>{saving ? "Saving…" : "Save theme"}</Button>
       </div>
     </div>
   );
