@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { ColorCodeInput } from "@/components/admin/ColorCodeInput";
+import { loadHomeLayoutBody, saveHomeLayout } from "@/hooks/useHomeLayout";
+import { emptyHomeLayout, parseHomeLayout } from "@/lib/homeLayout";
+
+const BACKUP_KEY = "__home_backup";
+const dbx = supabase as any;
 import { DEFAULT_THEME, SiteTheme, applySiteTheme, cacheTheme } from "@/lib/siteTheme";
 
 const COLORS: [keyof SiteTheme, string][] = [
@@ -68,6 +73,57 @@ export default function ThemeEditor({ settingsId }: { settingsId: string }) {
       applySiteTheme(next);
       setDirty(false);
       toast({ title: "Theme saved — live on website now" });
+    }
+  };
+
+  // Reset ALL: theme + every home section (text, photos, colours, order, hidden) → original.
+  // A backup is kept first so "Undo reset all" can bring the edits back.
+  const [hasBackup, setHasBackup] = useState(false);
+  useEffect(() => {
+    dbx.from("homepage_sections").select("id").eq("section_key", BACKUP_KEY).maybeSingle().then(({ data }: { data: unknown }) => setHasBackup(!!data));
+  }, []);
+  const writeBackup = async (body: string) => {
+    const { data: cur } = await dbx.from("homepage_sections").select("id").eq("section_key", BACKUP_KEY).maybeSingle();
+    const res = cur?.id
+      ? await dbx.from("homepage_sections").update({ body }).eq("id", cur.id).select("id")
+      : await dbx.from("homepage_sections").insert({ section_key: BACKUP_KEY, body, is_visible: false, display_order: 9998, title: "Backup before Reset all (system — do not edit)" }).select("id");
+    if (res.error) throw res.error;
+    if (!res.data?.length) throw new Error("Not saved — admin login needed");
+  };
+  const resetAll = async () => {
+    if (!settingsId) { toast({ title: "Save Contact settings once first", variant: "destructive" }); return; }
+    if (!window.confirm("എല്ലാം (theme colours + home page-ലെ എല്ലാ section-ന്റെയും എഴുത്ത്, ഫോട്ടോ, colour, order) original design-ലേക്ക് മാറ്റണോ?\n\nഇപ്പോഴത്തേത് backup ആയി വെക്കും — 'Undo reset all' കൊണ്ട് തിരിച്ചു കൊണ്ടുവരാം.")) return;
+    setSaving(true);
+    try {
+      const layoutBody = await loadHomeLayoutBody(true);
+      await writeBackup(JSON.stringify({ theme: saved.current, layout: layoutBody }));
+      setHasBackup(true);
+      await saveHomeLayout(emptyHomeLayout());
+      setSaving(false);
+      setTheme({});
+      await save({});
+      toast({ title: "എല്ലാം original ആക്കി — live on website" });
+    } catch (e) {
+      setSaving(false);
+      toast({ title: "Reset failed", description: e instanceof Error ? e.message : (e as { message?: string })?.message, variant: "destructive" });
+    }
+  };
+  const undoResetAll = async () => {
+    if (!window.confirm("Reset all-ന് മുമ്പുള്ള design തിരിച്ചു കൊണ്ടുവരണോ?")) return;
+    setSaving(true);
+    try {
+      const { data, error } = await dbx.from("homepage_sections").select("body").eq("section_key", BACKUP_KEY).maybeSingle();
+      if (error || !data?.body) throw error ?? new Error("Backup not found");
+      const b = JSON.parse(data.body) as { theme?: SiteTheme; layout?: string | null };
+      await saveHomeLayout(parseHomeLayout(b.layout ?? null));
+      setSaving(false);
+      const t = b.theme ?? {};
+      setTheme(t);
+      await save(t);
+      toast({ title: "പഴയ design തിരിച്ചു വന്നു" });
+    } catch (e) {
+      setSaving(false);
+      toast({ title: "Undo failed", description: e instanceof Error ? e.message : (e as { message?: string })?.message, variant: "destructive" });
     }
   };
 
@@ -149,7 +205,9 @@ export default function ThemeEditor({ settingsId }: { settingsId: string }) {
         <span className="mr-auto text-sm text-muted-foreground">{dirty ? "● Unsaved changes" : "All changes saved"}</span>
         <Button variant="outline" size="sm" onClick={() => window.open("/", "_blank")}>View website</Button>
         <Button variant="outline" size="sm" onClick={() => setTheme(saved.current)} disabled={!dirty || saving}>Undo</Button>
-        <Button variant="outline" size="sm" onClick={() => { setTheme({}); save({}); }} disabled={saving}>Reset to original</Button>
+        <Button variant="outline" size="sm" onClick={() => { setTheme({}); save({}); }} disabled={saving}>Reset colours to original</Button>
+        <Button variant="destructive" size="sm" onClick={resetAll} disabled={saving}>Reset ALL to original</Button>
+        {hasBackup && <Button variant="outline" size="sm" onClick={undoResetAll} disabled={saving}>Undo reset all</Button>}
         <Button onClick={() => save()} disabled={saving || !dirty}>{saving ? "Saving…" : "Save theme"}</Button>
       </div>
     </div>
