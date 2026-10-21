@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ThemeEditor from "@/components/admin/ThemeEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
@@ -263,6 +264,7 @@ const AdminHomePage = () => {
       <Tabs defaultValue="layout">
         <TabsList className="mb-4 w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
           <TabsTrigger value="layout" className="whitespace-nowrap">Page Layout</TabsTrigger>
+          <TabsTrigger value="theme" className="whitespace-nowrap">Theme &amp; Colours</TabsTrigger>
           <TabsTrigger value="hero" className="whitespace-nowrap">Hero Slider</TabsTrigger>
           <TabsTrigger value="hero_images" className="whitespace-nowrap">Main Images</TabsTrigger>
           <TabsTrigger value="sections" className="whitespace-nowrap">Sections</TabsTrigger>
@@ -273,6 +275,10 @@ const AdminHomePage = () => {
         {/* HERO */}
         <TabsContent value="layout" className="space-y-4">
           <HomeLayoutEditor />
+        </TabsContent>
+
+        <TabsContent value="theme" className="space-y-4">
+          <ThemeEditor settingsId={settings.isNew ? "" : settings.id} />
         </TabsContent>
 
         <TabsContent value="hero" className="space-y-4">

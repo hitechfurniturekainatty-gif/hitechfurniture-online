@@ -183,3 +183,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid hsl(var(--ring)); out
 @media (prefers-reduced-motion: reduce) {
   .hitech-float { animation: none; }
 }
+
+/* Admin theme editor: border thickness + alignment (public site only, never staff portal). */
+body:not(:has(.admin-theme)) .product-card,body:not(:has(.admin-theme)) .img-frame-sm,body:not(:has(.admin-theme)) main .border{border-width:var(--site-border-width,1px)}
+html[data-heading-align="center"] body:not(:has(.admin-theme)) main :is(h1,h2){text-align:center;margin-left:auto;margin-right:auto}
+html[data-heading-align="left"] body:not(:has(.admin-theme)) main :is(h1,h2){text-align:left;margin-left:0;margin-right:auto}
+html[data-text-align="center"] body:not(:has(.admin-theme)) main section p{text-align:center;margin-left:auto;margin-right:auto}
+html[data-text-align="left"] body:not(:has(.admin-theme)) main section p{text-align:left}

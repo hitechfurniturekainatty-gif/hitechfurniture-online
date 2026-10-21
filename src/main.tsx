@@ -7,6 +7,10 @@ import App from "./App.tsx";
 import "./index.css";
 import "./admin-theme-overrides.css";
 import { initSessionTimeout } from "./lib/sessionTimeout";
+import { loadAndApplySiteTheme } from "./lib/siteTheme";
+
+// Admin-editable public colour theme (Home Page admin → Theme tab).
+loadAndApplySiteTheme();
 
 // 24h hard session cap (security): sign user out + redirect after 24h of login.
 initSessionTimeout();
