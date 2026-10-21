@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { ColorCodeInput } from "@/components/admin/ColorCodeInput";
 import { DEFAULT_THEME, SiteTheme, applySiteTheme, cacheTheme } from "@/lib/siteTheme";
 
 const COLORS: [keyof SiteTheme, string][] = [
@@ -98,11 +99,10 @@ export default function ThemeEditor({ settingsId }: { settingsId: string }) {
         <CardHeader><CardTitle>Colours</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
           {COLORS.map(([k, label]) => (
-            <label key={k} className="flex items-center gap-3 rounded-lg border p-2">
-              <input type="color" value={val(k) as string} onChange={(e) => set({ [k]: e.target.value })} className="h-10 w-14 cursor-pointer rounded border-0 bg-transparent p-0" />
+            <div key={k} className="flex items-center gap-3 rounded-lg border p-2">
               <span className="flex-1 text-sm">{label}</span>
-              <code className="text-xs text-muted-foreground">{val(k) as string}</code>
-            </label>
+              <ColorCodeInput value={val(k) as string} onChange={(hex) => set({ [k]: hex })} />
+            </div>
           ))}
         </CardContent>
       </Card>

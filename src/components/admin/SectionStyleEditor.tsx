@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ColorCodeInput } from "@/components/admin/ColorCodeInput";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Palette, RotateCcw } from "lucide-react";
@@ -37,12 +38,12 @@ export function SectionStyleEditor({ value, onChange }: { value?: BlockStyle; on
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onChange(undefined)}><RotateCcw className="mr-1 h-3 w-3" />Original style</Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2">
         {COLORS.map(([k, label, def]) => {
           const cur = s[k] as string | undefined;
           return (
             <div key={k} className="flex items-center gap-2 rounded-md border p-1.5">
-              <input type="color" value={cur ?? def} onChange={(e) => set({ [k]: e.target.value })} className="h-8 w-9 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0" />
+              <ColorCodeInput size="sm" value={cur ?? def} onChange={(hex) => set({ [k]: hex })} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[11px] font-medium">{label}</div>
                 {cur ? <button type="button" className="text-[10px] text-muted-foreground underline" onClick={() => set({ [k]: undefined })}>clear</button>
