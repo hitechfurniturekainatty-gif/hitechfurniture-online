@@ -1603,6 +1603,14 @@ const AdminQuotationEditor = () => {
       toast({ title: "Add and save at least one quotation item first", variant: "destructive" });
       return;
     }
+    if (!q.delivery_route_id) {
+      toast({
+        title: "ഡെലിവറി റൂട്ട് തിരഞ്ഞെടുക്കുക",
+        description: "ഓർഡർ കൺഫേം ചെയ്യുന്നതിന് മുമ്പ് Delivery place / route സെറ്റ് ചെയ്യണം (ഡെലിവറി ഗ്രൂപ്പിങ്ങിന് വേണ്ടി).",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const ok = window.confirm(
       "Customer accepted this quotation?\n\nThis will confirm the quotation and move the SAME record to the existing Order / OPS stage."
