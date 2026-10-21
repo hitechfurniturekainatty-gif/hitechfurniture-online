@@ -9,11 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, Loader2, RotateCcw, Save } from "lucide-react";
+import { SectionStyleEditor } from "@/components/admin/SectionStyleEditor";
 import { SingleImagePicker } from "@/components/admin/SingleImagePicker";
 import { loadHomeLayoutBody } from "@/hooks/useHomeLayout";
 import {
   BLOCKS, HERO_FIELDS, HOME_LAYOUT_KEY, blockDef, emptyHomeLayout, parseHomeLayout,
-  type BlockId, type FieldDef, type HomeLayout,
+  type BlockId, type BlockStyle, type FieldDef, type HomeLayout,
 } from "@/lib/homeLayout";
 
 const db = supabase as any;
@@ -63,6 +64,11 @@ export function HomeLayoutEditor() {
     if (url) images[k] = url; else delete images[k];
     return { ...l, images };
   });
+  const setStyle = (block: string, st: BlockStyle | undefined) => setLayout(l => {
+    const styles = { ...(l.styles ?? {}) };
+    if (st) styles[block] = st; else delete styles[block];
+    return { ...l, styles };
+  });
   const resetBlock = (block: string) => {
     if (!window.confirm("Bring back the original text and pictures for this section?")) return;
     setLayout(l => ({
@@ -72,7 +78,7 @@ export function HomeLayoutEditor() {
     }));
   };
   const changedCount = (block: string) =>
-    Object.keys(layout.text).filter(k => k.startsWith(`${block}.`)).length + Object.keys(layout.images).filter(k => k.startsWith(`${block}.`)).length;
+    Object.keys(layout.text).filter(k => k.startsWith(`${block}.`)).length + Object.keys(layout.images).filter(k => k.startsWith(`${block}.`)).length + (layout.styles?.[block] ? 1 : 0);
 
   const save = async () => {
     setSaving(true);
@@ -106,6 +112,7 @@ export function HomeLayoutEditor() {
 
   const fieldsEditor = (block: string, fields: FieldDef[], images?: { key: string; label: string }[]) => (
     <div className="space-y-3 border-t bg-muted/20 p-3 sm:p-4">
+      <SectionStyleEditor value={layout.styles?.[block]} onChange={st => setStyle(block, st)} />
       <div className="grid gap-3 sm:grid-cols-2">
         {fields.map(fd => {
           const v = layout.text[`${block}.${fd.key}`] ?? fd.def;
@@ -170,9 +177,9 @@ export function HomeLayoutEditor() {
               <div key={id} className={`overflow-hidden rounded-xl border ${visible ? "bg-card" : "bg-muted/40"}`}>
                 <div className="flex flex-wrap items-center gap-2 p-3">
                   <span className="w-6 text-center text-xs font-bold text-muted-foreground">{i + 2}</span>
-                  <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default" disabled={!def.fields.length}
+                  <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default" 
                     onClick={() => setOpen(open === id ? null : id)}>
-                    {def.fields.length ? (open === id ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />) : <span className="w-4" />}
+                    {open === id ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                     <span className={`truncate text-sm font-semibold ${visible ? "" : "text-muted-foreground line-through"}`}>{def.name}</span>
                     {n > 0 && <Badge className="text-[10px]">Edited</Badge>}
                     {!visible && <Badge variant="outline" className="text-[10px]">Hidden</Badge>}
@@ -184,7 +191,7 @@ export function HomeLayoutEditor() {
                     <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i === layout.order.length - 1} onClick={() => move(i, 1)} aria-label="Move down"><ArrowDown className="h-4 w-4" /></Button>
                   </div>
                 </div>
-                {open === id && def.fields.length > 0 && fieldsEditor(id, def.fields, def.images)}
+                {open === id && fieldsEditor(id, def.fields, def.images)}
               </div>
             );
           })}

@@ -190,3 +190,6 @@ html[data-heading-align="center"] body:not(:has(.admin-theme)) main :is(h1,h2){t
 html[data-heading-align="left"] body:not(:has(.admin-theme)) main :is(h1,h2){text-align:left;margin-left:0;margin-right:auto}
 html[data-text-align="center"] body:not(:has(.admin-theme)) main section p{text-align:center;margin-left:auto;margin-right:auto}
 html[data-text-align="left"] body:not(:has(.admin-theme)) main section p{text-align:left}
+[data-section-align="center"]>.section-align :is(h1,h2,h3,h4,p){text-align:center;margin-left:auto;margin-right:auto}
+[data-section-align="left"]>.section-align :is(h1,h2,h3,h4,p){text-align:left;margin-left:0;margin-right:auto}
+[data-section-align="right"]>.section-align :is(h1,h2,h3,h4,p){text-align:right;margin-left:auto;margin-right:0}

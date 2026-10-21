@@ -161,9 +161,18 @@ export type HomeLayout = {
   text: Record<string, string>;
   /** "blockId.imageKey" → url */
   images: Record<string, string>;
+  /** "blockId" (or "hero") → per-section colours, border, alignment */
+  styles: Record<string, BlockStyle>;
 };
 
-export const emptyHomeLayout = (): HomeLayout => ({ v: 1, order: [...DEFAULT_ORDER], hidden: [], text: {}, images: {} });
+export type BlockStyle = {
+  bg?: string; text?: string; brand?: string; brandText?: string; highlight?: string;
+  card?: string; borderColor?: string; borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted" | "double";
+  radius?: number; align?: "left" | "center" | "right"; padY?: number; boxed?: boolean;
+};
+
+export const emptyHomeLayout = (): HomeLayout => ({ v: 1, order: [...DEFAULT_ORDER], hidden: [], text: {}, images: {}, styles: {} });
 
 const IDS = new Set<BlockId>(DEFAULT_ORDER);
 
@@ -183,6 +192,7 @@ export function parseHomeLayout(body: string | null | undefined): HomeLayout {
       hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((x): x is BlockId => IDS.has(x as BlockId)) : [],
       text: strMap(raw.text),
       images: strMap(raw.images),
+      styles: raw.styles && typeof raw.styles === "object" ? (Object.fromEntries(Object.entries(raw.styles).filter(([, v]) => v && typeof v === "object")) as Record<string, BlockStyle>) : {},
     };
   } catch {
     return d;

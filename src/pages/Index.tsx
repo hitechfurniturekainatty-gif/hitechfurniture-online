@@ -10,6 +10,7 @@ import { SectionSlideshow } from "@/components/SectionSlideshow";
 import { LuxuryScrollHero, TrustStrip, ShopByRoom, InteriorIntro } from "@/components/LuxuryScrollHero";
 import { useHomeLayout } from "@/hooks/useHomeLayout";
 import { blockText, type BlockId } from "@/lib/homeLayout";
+import { SectionStyleWrap } from "@/components/SectionStyleWrap";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { usePublicCatalogVisibility } from "@/hooks/usePublicCatalogVisibility";
 import { useSocialLinks } from "@/hooks/useSocialLinks";
@@ -347,9 +348,9 @@ const Index = () => {
         }}
       />
       <SiteHeader />
-      <LuxuryScrollHero layout={layout} slides={slides} settings={settings} />
+      <SectionStyleWrap style={layout.styles?.hero}><LuxuryScrollHero layout={layout} slides={slides} settings={settings} /></SectionStyleWrap>
 
-      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <Fragment key={id}>{renderBlock(id)}</Fragment>)}
+      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <SectionStyleWrap key={id} style={layout.styles?.[id]}>{renderBlock(id)}</SectionStyleWrap>)}
 
       <Suspense fallback={null}>
         <SiteFooter />

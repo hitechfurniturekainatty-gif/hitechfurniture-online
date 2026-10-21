@@ -260,14 +260,8 @@ export const LuxuryScrollHero = ({ layout, slides, settings }: { layout?: HomeLa
             </div>
 
             <div className="flex items-end justify-between gap-6">
-              <div className="rounded-xl border border-white/25 bg-black/40 px-4 py-3 text-white shadow-lg backdrop-blur-md">
-                <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/80">Explore</p>
-                <p className="mt-1 font-display text-xl text-white md:text-2xl">{sceneLabel(activeIndex)}</p>
-                {SCENES[activeIndex]?.subtitle && <p className="mt-1 max-w-xs text-xs text-white/85 md:text-sm">{SCENES[activeIndex].subtitle}</p>}
-                {SCENES[activeIndex]?.ctaLabel && SCENES[activeIndex]?.ctaLink && (
-                  <a href={SCENES[activeIndex].ctaLink!} className="pointer-events-auto mt-2 inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-900">{SCENES[activeIndex].ctaLabel} <ArrowRight className="h-3 w-3" /></a>
-                )}
-              </div>
+              {/* "Explore <room>" label removed on request — keeps the hero clean. */}
+              <div />
 
               <div className="hidden items-center gap-3 md:flex">
                 <div className="flex gap-2">
