@@ -1,11 +1,42 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
+// Speed: the homepage hero (LCP image) comes from Supabase and was only
+// requested after ~270KB of JS ran + a DB query. At build time we look up the
+// first visible hero slide and inject a tiny inline script that preloads it
+// on "/" only, so the browser fetches it in parallel with the JS.
+function heroPreloadPlugin() {
+  return {
+    name: "hero-preload",
+    apply: "build" as const,
+    async transformIndexHtml(html: string) {
+      const url = process.env.VITE_SUPABASE_URL;
+      const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!url || !key) return html;
+      try {
+        const r = await fetch(
+          `${url}/rest/v1/homepage_hero_slides?select=image_url&is_visible=eq.true&image_url=not.is.null&order=display_order.asc&limit=1`,
+          { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+        );
+        const rows = (await r.json()) as { image_url?: string }[];
+        const img = Array.isArray(rows) && rows[0]?.image_url;
+        if (!img || !/^https:\/\//.test(img)) return html;
+        const tag = `<script>if(location.pathname==="/"){var l=document.createElement("link");l.rel="preload";l.as="image";l.href=${JSON.stringify(img)};l.setAttribute("fetchpriority","high");document.head.appendChild(l);}</script>`;
+        return html.replace("</title>", "</title>\n    " + tag);
+      } catch {
+        return html;
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  Object.assign(process.env, { ...loadEnv(mode, process.cwd(), "VITE_"), ...process.env });
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -13,7 +44,7 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mcpPlugin(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mcpPlugin(), heroPreloadPlugin(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -49,4 +80,5 @@ export default defineConfig(({ mode }) => ({
     // Don't warn until a chunk is genuinely huge
     chunkSizeWarningLimit: 1200,
   },
-}));
+};
+});
