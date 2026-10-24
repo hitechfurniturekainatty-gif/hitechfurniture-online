@@ -284,7 +284,9 @@ const AdminProducts = () => {
         return true;
       });
     }
-    if (filterBuilding !== "__all__" || filterFloor !== "__all__" || filterLocId !== "__all__") {
+    if (filterBuilding === "__none__") {
+      list = list.filter((p) => !locations.some((x) => x.id === p.location_id));
+    } else if (filterBuilding !== "__all__" || filterFloor !== "__all__" || filterLocId !== "__all__") {
       list = list.filter((p) => {
         const l = locations.find((x) => x.id === p.location_id);
         if (!l) return false;
@@ -313,8 +315,8 @@ const AdminProducts = () => {
     return list;
   }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode, filterBuilding, filterFloor, filterLocId, locations]);
   const fBuildings = useMemo(() => Array.from(new Set(locations.map((l) => l.building))), [locations]);
-  const fFloors = useMemo(() => Array.from(new Set(locations.filter((l) => filterBuilding === "__all__" || l.building === filterBuilding).map((l) => l.floor))), [locations, filterBuilding]);
-  const fParts = useMemo(() => locations.filter((l) => (filterBuilding === "__all__" || l.building === filterBuilding) && (filterFloor === "__all__" || l.floor === filterFloor)), [locations, filterBuilding, filterFloor]);
+  const fFloors = useMemo(() => filterBuilding === "__none__" ? [] : Array.from(new Set(locations.filter((l) => filterBuilding === "__all__" || l.building === filterBuilding).map((l) => l.floor))), [locations, filterBuilding]);
+  const fParts = useMemo(() => filterBuilding === "__none__" ? [] : locations.filter((l) => (filterBuilding === "__all__" || l.building === filterBuilding) && (filterFloor === "__all__" || l.floor === filterFloor)), [locations, filterBuilding, filterFloor]);
 
   // Unique product names/codes, for the dropdown filters
   const allProductNames = useMemo(() => {
@@ -1145,7 +1147,7 @@ const AdminProducts = () => {
           <SearchableSelect
             value={filterBuilding}
             onChange={(v) => { setFilterBuilding(v); setFilterFloor("__all__"); setFilterLocId("__all__"); }}
-            options={[{ value: "__all__", label: "All shops" }, ...fBuildings.map((b) => ({ value: b, label: b }))]}
+            options={[{ value: "__all__", label: "All shops" }, { value: "__none__", label: `No location (${products.filter((p) => !locations.some((x) => x.id === p.location_id)).length})` }, ...fBuildings.map((b) => ({ value: b, label: b }))]}
             placeholder="Shop"
           />
         </div>
