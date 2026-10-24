@@ -200,16 +200,25 @@ const AdminProducts = () => {
   const clearSelection = () => setSelected(new Set());
 
   const load = async () => {
-    const { data } = await supabase
-      .from("products")
-      .select("*, product_images(id, image_url, display_order)")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(500);
-    // Defensive: filter out anything with a deleted_at timestamp at the
-    // client level too, so a stale cache or replication lag can never
-    // inflate the catalog count.
-    const safe = ((data ?? []) as Product[]).filter((p) => !p.deleted_at);
+    // Page through ALL products (no silent cap). On any network error keep
+    // the list already on screen instead of blanking it.
+    const all: Product[] = [];
+    for (let from = 0; ; from += 500) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, product_images(id, image_url, display_order)")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + 499);
+      if (error) {
+        toast({ title: "Products load failed", description: "Network problem — showing last loaded list. Try again.", variant: "destructive" });
+        return;
+      }
+      all.push(...((data ?? []) as Product[]));
+      if (!data || data.length < 500) break;
+    }
+    const safe = all.filter((p) => !p.deleted_at);
     setProducts(safe);
     // Refresh reserved totals alongside products — kept best-effort so a
     // function/permission glitch never blocks the catalog from rendering.

@@ -39,10 +39,14 @@ export function AuthProvider({children}:{children:ReactNode}) {
         try{
           const {data,error}=await supabase.from("user_roles").select("role").eq("user_id",id);
           if(disposed||ticket!==revision)return;
-          pending=null;loaded=error?null:id;
-          setState(s=>({...s,roles:error?[]:(data||[]).map(r=>r.role as AppRole),loading:false}));
+          pending=null;
+          // A transient error during background re-check must NOT wipe roles
+          // (that kicked staff off pages / looked like a random refresh).
+          if(error){setState(s=>({...s,loading:false}));return;}
+          loaded=id;
+          setState(s=>({...s,roles:(data||[]).map(r=>r.role as AppRole),loading:false}));
         }catch{
-          if(!disposed&&ticket===revision){pending=null;loaded=null;setState(s=>({...s,roles:[],loading:false}));}
+          if(!disposed&&ticket===revision){pending=null;setState(s=>({...s,loading:false}));}
         }
       },0);
     };
