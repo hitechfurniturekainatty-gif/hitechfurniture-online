@@ -170,6 +170,9 @@ const AdminProducts = () => {
   const [filterColor, setFilterColor] = useState<string>("__all__");
   const [filterPriceMin, setFilterPriceMin] = useState<string>("");
   const [filterPriceMax, setFilterPriceMax] = useState<string>("");
+  const [filterBuilding, setFilterBuilding] = useState<string>("__all__");
+  const [filterFloor, setFilterFloor] = useState<string>("__all__");
+  const [filterLocId, setFilterLocId] = useState<string>("__all__");
   const [viewMode, setViewMode] = useState<"list" | "grid" | "stock">(() => {
     if (typeof window === "undefined") return "list";
     return (localStorage.getItem("admin_products_view") as "list" | "grid" | "stock") || "grid";
@@ -272,6 +275,16 @@ const AdminProducts = () => {
         return true;
       });
     }
+    if (filterBuilding !== "__all__" || filterFloor !== "__all__" || filterLocId !== "__all__") {
+      list = list.filter((p) => {
+        const l = locations.find((x) => x.id === p.location_id);
+        if (!l) return false;
+        if (filterLocId !== "__all__") return l.id === filterLocId;
+        if (filterBuilding !== "__all__" && l.building !== filterBuilding) return false;
+        if (filterFloor !== "__all__" && l.floor !== filterFloor) return false;
+        return true;
+      });
+    }
     if (filterProductName !== "__all__") {
       list = list.filter((p) => p.product_name === filterProductName);
     }
@@ -289,7 +302,10 @@ const AdminProducts = () => {
       );
     }
     return list;
-  }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode]);
+  }, [products, search, showLowStockOnly, showDraftsOnly, filterMainCat, filterSubCat, filterColor, filterPriceMin, filterPriceMax, filterProductName, filterProductCode, filterBuilding, filterFloor, filterLocId, locations]);
+  const fBuildings = useMemo(() => Array.from(new Set(locations.map((l) => l.building))), [locations]);
+  const fFloors = useMemo(() => Array.from(new Set(locations.filter((l) => filterBuilding === "__all__" || l.building === filterBuilding).map((l) => l.floor))), [locations, filterBuilding]);
+  const fParts = useMemo(() => locations.filter((l) => (filterBuilding === "__all__" || l.building === filterBuilding) && (filterFloor === "__all__" || l.floor === filterFloor)), [locations, filterBuilding, filterFloor]);
 
   // Unique product names/codes, for the dropdown filters
   const allProductNames = useMemo(() => {
@@ -319,7 +335,8 @@ const AdminProducts = () => {
     !!search || showLowStockOnly || showDraftsOnly ||
     filterMainCat !== "__all__" || filterSubCat !== "__all__" || filterColor !== "__all__" ||
     filterProductName !== "__all__" || filterProductCode !== "__all__" ||
-    !!filterPriceMin || !!filterPriceMax;
+    !!filterPriceMin || !!filterPriceMax ||
+    filterBuilding !== "__all__" || filterFloor !== "__all__" || filterLocId !== "__all__";
 
   const clearAllFilters = () => {
     setSearch("");
@@ -327,6 +344,7 @@ const AdminProducts = () => {
     setFilterMainCat("__all__"); setFilterSubCat("__all__"); setFilterColor("__all__");
     setFilterProductName("__all__"); setFilterProductCode("__all__");
     setFilterPriceMin(""); setFilterPriceMax("");
+    setFilterBuilding("__all__"); setFilterFloor("__all__"); setFilterLocId("__all__");
   };
 
   const lowStockCount = useMemo(
@@ -346,7 +364,7 @@ const AdminProducts = () => {
     const catName = (id: string) =>
       mainCats.find((c) => c.id === id)?.name || "Uncategorised";
     const groups = new Map<string, { id: string; name: string; items: Product[]; qty: number; amount: number }>();
-    for (const p of products) {
+    for (const p of filtered) {
       const key = p.main_category_id || "__none";
       const g = groups.get(key) ?? { id: key, name: catName(p.main_category_id), items: [], qty: 0, amount: 0 };
       const unit = Number(p.cost_price ?? p.offer_price ?? p.mrp ?? 0);
@@ -359,7 +377,7 @@ const AdminProducts = () => {
     if (stockFilter === "with_stock") list = list.filter((g) => g.qty > 1);
     if (stockFilter === "without_stock") list = list.filter((g) => g.qty <= 1);
     return list.sort((a, b) => b.amount - a.amount);
-  }, [products, mainCats, stockFilter]);
+  }, [filtered, mainCats, stockFilter]);
   const stockTotals = useMemo(
     () => stockByCategory.reduce(
       (a, g) => ({ qty: a.qty + g.qty, amount: a.amount + g.amount }),
@@ -1114,6 +1132,30 @@ const AdminProducts = () => {
             disabled={filterMainCat === "__all__" && subCatsForFilter.length === 0}
           />
         </div>
+        <div className="w-40">
+          <SearchableSelect
+            value={filterBuilding}
+            onChange={(v) => { setFilterBuilding(v); setFilterFloor("__all__"); setFilterLocId("__all__"); }}
+            options={[{ value: "__all__", label: "All shops" }, ...fBuildings.map((b) => ({ value: b, label: b }))]}
+            placeholder="Shop"
+          />
+        </div>
+        <div className="w-36">
+          <SearchableSelect
+            value={filterFloor}
+            onChange={(v) => { setFilterFloor(v); setFilterLocId("__all__"); }}
+            options={[{ value: "__all__", label: "All floors" }, ...fFloors.map((f) => ({ value: f, label: f }))]}
+            placeholder="Floor"
+          />
+        </div>
+        <div className="w-40">
+          <SearchableSelect
+            value={filterLocId}
+            onChange={(v) => setFilterLocId(v)}
+            options={[{ value: "__all__", label: "All parts" }, ...fParts.map((l) => ({ value: l.id, label: [filterFloor === "__all__" ? l.floor : null, l.part || l.section || "Main"].filter(Boolean).join(" · ") }))]}
+            placeholder="Part"
+          />
+        </div>
         <div className="w-36">
           <SearchableSelect
             value={filterColor}
@@ -1288,6 +1330,7 @@ const AdminProducts = () => {
                                     <div className="flex flex-1 flex-col gap-0.5 p-3">
                                       <p className="line-clamp-2 text-sm font-medium leading-snug">{toTitleCase(p.product_name)}</p>
                                       <p className="truncate text-[11px] text-muted-foreground">Code · {p.product_code}</p>
+                                      <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium text-primary"><Pencil className="h-3 w-3" /> Edit</span>
                                       <div className="mt-1 flex items-end justify-between gap-2">
                                         <div>
                                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Qty</p>
@@ -1337,6 +1380,7 @@ const AdminProducts = () => {
                                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Value</p>
                                         <p className="font-display text-sm text-primary">{formatINR(unit * (p.stock_quantity || 0))}</p>
                                       </div>
+                                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-primary" title="Edit"><Pencil className="h-4 w-4" /></span>
                                     </button>
                                   </li>
                                 );
