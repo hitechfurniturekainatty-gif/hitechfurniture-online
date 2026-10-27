@@ -1,0 +1,47 @@
+name: catalog-backup
+on:
+  push:
+    branches: [catalog-backup]
+    paths: ['.github/workflows/backup.yml']
+permissions:
+  contents: write
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: fetch
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,os,hashlib,concurrent.futures as cf
+          K="sb_publishable_NDjWvTxfOE7KIuzEqjRZLA_YUrWpSPB"
+          req=urllib.request.Request("https://ejxautrxbcemrncpzjyg.supabase.co/rest/v1/rpc/tmp_catalog_export_x7q",data=b'{"tok":"hX9kQ2vLm8pR4tZw"}',headers={"apikey":K,"Authorization":"Bearer "+K,"Content-Type":"application/json"})
+          D=json.load(urllib.request.urlopen(req,timeout=60))
+          os.makedirs("backup/img",exist_ok=True)
+          json.dump(D,open("backup/data.json","w"),ensure_ascii=False,indent=1)
+          urls=set()
+          for p in D['p']:
+            if p.get('primary_image_url'): urls.add(p['primary_image_url'])
+          for i in D['pi']:
+            if i.get('image_url'): urls.add(i['image_url'])
+          for c in (D['mc'] or [])+(D['sc'] or []):
+            if c.get('image_url'): urls.add(c['image_url'])
+          bad=[]
+          def dl(u):
+            f="backup/img/"+hashlib.md5(u.encode()).hexdigest()
+            for _ in range(3):
+              try:
+                open(f,"wb").write(urllib.request.urlopen(u,timeout=60).read()); return
+              except Exception: pass
+            bad.append(u)
+          with cf.ThreadPoolExecutor(16) as ex: list(ex.map(dl,urls))
+          json.dump({"urls":len(urls),"failed":bad},open("backup/report.json","w"))
+          print(len(urls),len(bad))
+          PY
+      - name: commit
+        run: |
+          git config user.name "catalog-backup-bot"
+          git config user.email "noreply@github.com"
+          git add backup
+          git commit -m "Add catalog backup data and images"
+          git push
