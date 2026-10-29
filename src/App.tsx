@@ -39,6 +39,7 @@ const AdminProductBulkCreate = lazy(pageLoaders.AdminProductBulkCreate);
 const AdminProductApproval = lazy(pageLoaders.AdminProductApproval);
 const AdminInventoryLedger = lazy(pageLoaders.AdminInventoryLedger);
 const AdminInventoryReorder = lazy(pageLoaders.AdminInventoryReorder);
+const AdminBarcodeLabels = lazy(pageLoaders.AdminBarcodeLabels);
 const AdminInventoryReceiving = lazy(pageLoaders.AdminInventoryReceiving);
 const AdminInventoryStockTake = lazy(pageLoaders.AdminInventoryStockTake);
 const AdminInventoryTransfers = lazy(pageLoaders.AdminInventoryTransfers);
@@ -141,6 +142,7 @@ const App = () => (
             <Route path="/admin/products/bulk" element={<OfficeStaffOnly><AdminProductBulkCreate /></OfficeStaffOnly>} />
             <Route path="/admin/products/approval" element={<AdminProductApproval />} />
             <Route path="/admin/inventory/ledger" element={<OfficeStaffOnly><AdminInventoryLedger /></OfficeStaffOnly>} />
+            <Route path="/admin/inventory/barcodes" element={<OfficeStaffOnly><AdminBarcodeLabels /></OfficeStaffOnly>} />
             <Route path="/admin/inventory/reorder" element={<OfficeStaffOnly><AdminInventoryReorder /></OfficeStaffOnly>} />
             <Route path="/admin/inventory/receiving" element={<OfficeStaffOnly><AdminInventoryReceiving /></OfficeStaffOnly>} />
             <Route path="/admin/inventory/stock-take" element={<OfficeStaffOnly><AdminInventoryStockTake /></OfficeStaffOnly>} />
