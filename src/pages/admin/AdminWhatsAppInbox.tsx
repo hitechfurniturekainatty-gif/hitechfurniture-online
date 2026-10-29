@@ -52,7 +52,7 @@ const isOverdue = (m?: ConvMeta) =>
   !!m &&
   ["open", "follow_up"].includes(m.status) &&
   !!m.last_inbound_at &&
-  new Date(m.last_inbound_at) > new Date(m.last_outbound_at ?? 0) &&
+  new Date(m.last_inbound_at).getTime() > new Date(m.last_outbound_at ?? 0).getTime() + 60 * 1000 &&
   Date.now() - new Date(m.last_inbound_at).getTime() > 24 * 3600 * 1000;
 
 type Conversation = {
