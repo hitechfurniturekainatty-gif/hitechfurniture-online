@@ -1,8 +1,9 @@
+import { trackPageView, installContactTracking } from "@/lib/track";
 import { pageLoaders } from "@/lib/routePreload";
 import { RouteIntentPreloader } from "@/components/RouteIntentPreloader";
 import { AuthProvider } from "@/hooks/useAuth";
 import { IdleLogout } from "@/components/IdleLogout";
-import { lazy, Suspense, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -101,6 +102,8 @@ const RouteFallback = () => (
 const ScrollToTopOnRoute = () => {
   const { pathname } = useLocation();
   useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => { trackPageView(pathname); }, [pathname]);
+  useEffect(() => installContactTracking(), []);
   return null;
 };
 

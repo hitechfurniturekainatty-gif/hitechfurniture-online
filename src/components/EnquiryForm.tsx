@@ -1,3 +1,4 @@
+import { trackLead } from "@/lib/track";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import {
@@ -263,6 +264,7 @@ export const EnquiryForm = () => {
       const code = (data as { code?: string } | null)?.code ?? null;
       setResultCode(code);
       setStatus("success");
+      trackLead();
 
       // Non-blocking n8n webhook — fires after success, never blocks or errors the user
       try {
