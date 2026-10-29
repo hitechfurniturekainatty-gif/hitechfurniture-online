@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Input } from "@/components/ui/input";
-import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2, UserPlus } from "lucide-react";
+import { Loader2, MessageCircle, Search, Phone, Send, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2, UserPlus, CalendarPlus, Clock } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -17,6 +18,42 @@ type Message = {
   message_text: string;
   created_at: string;
 };
+
+type ConvMeta = {
+  id: string;
+  contact_id: string;
+  assigned_to: string | null;
+  status: string;
+  last_inbound_at: string | null;
+  last_outbound_at: string | null;
+  ai_paused_until: string | null;
+};
+
+type Staff = { user_id: string; display_name: string | null };
+
+const STATUSES: [string, string][] = [
+  ["open", "Open"],
+  ["follow_up", "Follow-up"],
+  ["showroom_visit", "Showroom visit"],
+  ["won", "Won"],
+  ["lost", "Lost"],
+  ["closed", "Closed"],
+];
+const statusLabel = (s: string) => STATUSES.find(([v]) => v === s)?.[1] ?? s;
+const statusTone: Record<string, string> = {
+  open: "bg-sky-100 text-sky-800",
+  follow_up: "bg-amber-100 text-amber-800",
+  showroom_visit: "bg-violet-100 text-violet-800",
+  won: "bg-emerald-100 text-emerald-800",
+  lost: "bg-rose-100 text-rose-800",
+  closed: "bg-muted text-muted-foreground",
+};
+const isOverdue = (m?: ConvMeta) =>
+  !!m &&
+  ["open", "follow_up"].includes(m.status) &&
+  !!m.last_inbound_at &&
+  new Date(m.last_inbound_at) > new Date(m.last_outbound_at ?? 0) &&
+  Date.now() - new Date(m.last_inbound_at).getTime() > 24 * 3600 * 1000;
 
 type Conversation = {
   phone: string;
@@ -57,6 +94,76 @@ const InboxPage = () => {
   const [healthLoading, setHealthLoading] = useState(true);
   const [health, setHealth] = useState<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  const [meta, setMeta] = useState<Record<string, ConvMeta>>({});
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [view, setView] = useState("all");
+  const [visitAt, setVisitAt] = useState("");
+  const [visitNote, setVisitNote] = useState("");
+  const [booking, setBooking] = useState(false);
+
+  const loadMeta = async () => {
+    const { data } = await (supabase as any)
+      .from("chat_conversations")
+      .select("id,contact_id,assigned_to,status,last_inbound_at,last_outbound_at,ai_paused_until")
+      .eq("channel", "whatsapp");
+    if (data) setMeta(Object.fromEntries((data as ConvMeta[]).map((c) => [c.contact_id, c])));
+  };
+
+  const loadStaff = async () => {
+    const [p, r] = await Promise.all([
+      supabase.from("profiles").select("user_id,display_name"),
+      supabase.from("user_roles").select("user_id,role").in("role", ["admin", "staff"]),
+    ]);
+    const ok = new Set((r.data ?? []).map((x: any) => x.user_id));
+    setStaff(((p.data ?? []) as Staff[]).filter((x) => ok.has(x.user_id)));
+  };
+
+  const staffName = (id: string | null) =>
+    id ? staff.find((s) => s.user_id === id)?.display_name || "Staff" : "Unassigned";
+
+  const updateMeta = async (phone: string, patch: Partial<ConvMeta>) => {
+    const cur = meta[phone];
+    if (!cur) {
+      toast({ title: "Chat record not ready yet, refresh once", variant: "destructive" });
+      return;
+    }
+    const extra: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.status && ["won", "lost", "closed"].includes(patch.status)) extra.closed_at = new Date().toISOString();
+    const { error } = await (supabase as any)
+      .from("chat_conversations")
+      .update({ ...patch, ...extra })
+      .eq("id", cur.id);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setMeta((prev) => ({ ...prev, [phone]: { ...cur, ...patch } }));
+  };
+
+  const bookVisit = async () => {
+    if (!active || !visitAt) return;
+    setBooking(true);
+    const cur = meta[active.phone];
+    const { error } = await (supabase as any).from("showroom_appointments").insert({
+      conversation_id: cur?.id ?? null,
+      customer_name: active.customer_name,
+      customer_phone: active.phone,
+      visit_at: new Date(visitAt).toISOString(),
+      requirement: visitNote || null,
+      assigned_to: cur?.assigned_to ?? user?.id ?? null,
+      source: "staff",
+    });
+    setBooking(false);
+    if (error) {
+      toast({ title: "Booking failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await updateMeta(active.phone, { status: "showroom_visit" });
+    setVisitAt("");
+    setVisitNote("");
+    toast({ title: "Showroom visit booked", description: new Date(visitAt).toLocaleString("en-IN") });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -85,6 +192,8 @@ const InboxPage = () => {
   useEffect(() => {
     load();
     loadHealth();
+    loadMeta();
+    loadStaff();
   }, []);
 
   // Realtime: new messages append live without a full reload.
@@ -96,6 +205,7 @@ const InboxPage = () => {
         { event: "INSERT", schema: "public", table: "whatsapp_messages" },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as Message]);
+          void loadMeta();
         },
       )
       .subscribe();
@@ -131,14 +241,22 @@ const InboxPage = () => {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return conversations;
-    return conversations.filter(
+    const byView = conversations.filter((c) => {
+      const m = meta[c.phone];
+      if (view === "all") return true;
+      if (view === "mine") return m?.assigned_to === user?.id;
+      if (view === "unassigned") return !m?.assigned_to;
+      if (view === "overdue") return isOverdue(m);
+      return (m?.status ?? "open") === view;
+    });
+    if (!needle) return byView;
+    return byView.filter(
       (c) =>
         c.phone.toLowerCase().includes(needle) ||
         (c.customer_name ?? "").toLowerCase().includes(needle) ||
         c.lastMessage.toLowerCase().includes(needle),
     );
-  }, [conversations, q]);
+  }, [conversations, q, view, meta, user?.id]);
 
   // Auto-select the first conversation once loaded (desktop convenience).
   useEffect(() => {
@@ -169,6 +287,11 @@ const InboxPage = () => {
       if (!data?.ok) throw new Error(data?.detail || data?.error || "Message could not be sent");
 
       setReply("");
+      if (meta[active.phone]) {
+        void updateMeta(active.phone, {
+          ai_paused_until: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+        });
+      }
       if (data.message) {
         setMessages((prev) =>
           prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message as Message],
@@ -250,7 +373,35 @@ const InboxPage = () => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr] md:h-[calc(100vh-220px)]">
           {/* Conversation list */}
           <div className="flex flex-col rounded-lg border bg-card md:overflow-hidden">
-            <div className="border-b p-2">
+            <div className="space-y-2 border-b p-2">
+              <div className="flex gap-1 overflow-x-auto pb-1 text-xs">
+                {[
+                  ["all", "All"],
+                  ["mine", "Mine"],
+                  ["unassigned", "Unassigned"],
+                  ["overdue", "24h+ no reply"],
+                  ...STATUSES,
+                ].map(([v, l]) => {
+                  const n =
+                    v === "overdue"
+                      ? conversations.filter((c) => isOverdue(meta[c.phone])).length
+                      : null;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setView(v)}
+                      className={cn(
+                        "shrink-0 rounded-full border px-2.5 py-1",
+                        view === v ? "bg-[#0E5C66] text-white" : "hover:bg-muted",
+                      )}
+                    >
+                      {l}
+                      {n ? ` (${n})` : ""}
+                    </button>
+                  );
+                })}
+              </div>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -281,6 +432,17 @@ const InboxPage = () => {
                   </div>
                   <span className="truncate text-xs text-muted-foreground">{c.phone}</span>
                   <span className="truncate text-sm text-muted-foreground">{c.lastMessage}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                    <span className={cn("rounded px-1.5 py-0.5 font-medium", statusTone[meta[c.phone]?.status ?? "open"])}>
+                      {statusLabel(meta[c.phone]?.status ?? "open")}
+                    </span>
+                    <span className="rounded bg-muted px-1.5 py-0.5">{staffName(meta[c.phone]?.assigned_to ?? null)}</span>
+                    {isOverdue(meta[c.phone]) && (
+                      <span className="flex items-center gap-0.5 rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-700">
+                        <Clock className="h-3 w-3" /> 24h+
+                      </span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -303,6 +465,60 @@ const InboxPage = () => {
                   <Button size="sm" variant="outline" onClick={() => makeLead(active)}>
                     <UserPlus className="mr-1.5 h-4 w-4" /> Lead ആക്കുക
                   </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2 text-xs">
+                  <label className="flex items-center gap-1">
+                    Assign
+                    <select
+                      className="rounded-md border bg-background px-2 py-1"
+                      value={meta[active.phone]?.assigned_to ?? ""}
+                      onChange={(e) => void updateMeta(active.phone, { assigned_to: e.target.value || null })}
+                    >
+                      <option value="">Unassigned</option>
+                      {staff.map((s) => (
+                        <option key={s.user_id} value={s.user_id}>
+                          {s.display_name || "Staff"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1">
+                    Status
+                    <select
+                      className="rounded-md border bg-background px-2 py-1"
+                      value={meta[active.phone]?.status ?? "open"}
+                      onChange={(e) => void updateMeta(active.phone, { status: e.target.value })}
+                    >
+                      {STATUSES.map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {meta[active.phone]?.ai_paused_until &&
+                    new Date(meta[active.phone]!.ai_paused_until!) > new Date() && (
+                      <span className="rounded bg-amber-100 px-2 py-1 text-amber-800">
+                        AI paused till {formatTime(meta[active.phone]!.ai_paused_until!)}
+                      </span>
+                    )}
+                  <span className="ml-auto flex flex-wrap items-center gap-1">
+                    <input
+                      type="datetime-local"
+                      value={visitAt}
+                      onChange={(e) => setVisitAt(e.target.value)}
+                      className="rounded-md border bg-background px-2 py-1"
+                    />
+                    <input
+                      value={visitNote}
+                      onChange={(e) => setVisitNote(e.target.value)}
+                      placeholder="Requirement"
+                      className="w-28 rounded-md border bg-background px-2 py-1"
+                    />
+                    <Button size="sm" variant="outline" disabled={!visitAt || booking} onClick={() => void bookVisit()}>
+                      <CalendarPlus className="mr-1 h-3.5 w-3.5" /> Visit book
+                    </Button>
+                  </span>
                 </div>
                 <div className="flex-1 space-y-2 overflow-y-auto p-4">
                   {active.messages.map((m) => (
