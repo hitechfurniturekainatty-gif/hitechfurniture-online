@@ -84,7 +84,7 @@ export default function StaffCatalog() {
         allPages((start,end)=>db.from("product_bundles").select(BUNDLE_FIELDS).is("deleted_at",null).order("id").range(start,end)),
         allPages((start,end)=>db.from("product_locations").select("id,building,floor,section,part").eq("is_active",true).order("display_order").order("id").range(start,end)),
         allPages((start,end)=>db.from("main_categories").select("id,name").is("deleted_at",null).order("display_order").order("id").range(start,end)),
-        allPages((start,end)=>db.from("sub_categories").select("id,name,main_category_id").order("display_order").order("id").range(start,end)),
+        allPages((start,end)=>db.from("sub_categories").select("id,name,main_category_id").is("deleted_at",null).order("display_order").order("id").range(start,end)),
       ]);
       if (ticket !== revision.current) return;
       const bundles = bs.map(b => ({
