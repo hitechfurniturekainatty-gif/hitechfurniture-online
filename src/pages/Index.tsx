@@ -1,3 +1,4 @@
+import { fetchCategoriesInStock } from "@/lib/categoriesInStock";
 import { Fragment, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,8 +44,10 @@ const Index = () => {
   const vis = usePublicCatalogVisibility();
   const social = useSocialLinks();
   const layout = useHomeLayout();
-  // Categories always stay visible; only products inside hidden ones are left out.
-  const shownCategories = categories;
+  const [stockMain, setStockMain] = useState<Record<string, number> | null>(null);
+  useEffect(() => { let off = false; fetchCategoriesInStock().then((m) => { if (!off) setStockMain(m.main); }).catch(() => {}); return () => { off = true; }; }, []);
+  // Only categories with in-stock items are shown (visibility hiding still keeps those tiles).
+  const shownCategories = stockMain ? categories.filter((c) => (stockMain[c.id] ?? 0) > 0) : [];
   const shownFeatured = featured.filter((p) => !vis.itemHidden({ id: p.id, main_category_id: p.main_category_id, sub_category_id: p.sub_category_id }));
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [settings, setSettings] = useState<HomepageSettings | null>(null);

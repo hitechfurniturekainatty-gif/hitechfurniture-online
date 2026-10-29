@@ -1,3 +1,4 @@
+import { fetchCategoriesInStock, type StockMap } from "@/lib/categoriesInStock";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,10 +104,14 @@ const Catalog = () => {
     return () => { cancelled = true; };
   }, [vis.ready, vis.allHidden]);
 
+  const [stockMap, setStockMap] = useState<StockMap | null>(null);
+  useEffect(() => { let off = false; fetchCategoriesInStock().then((m) => { if (!off) setStockMap(m); }).catch(() => { if (!off) setStockMap({ main: {}, sub: {} }); }); return () => { off = true; }; }, []);
+  // Only categories / sub-categories that currently have stock are shown (keeps the catalog clean).
+  const shownMainCats = useMemo(() => stockMap ? mainCats.filter((c) => (stockMap.main[c.id] ?? 0) > 0) : [], [mainCats, stockMap]);
   const activeSubObj = activeSubSlug && activeSubSlug !== "__all__" ? subCats.find((s) => s.slug === activeSubSlug && s.main_category_id === activeCat?.id) : undefined;
   // Products here are hidden from the public by an admin rule (whole catalog, this category or sub-category).
   const scopeHidden = vis.allHidden || (!!activeCat && vis.mainHidden(activeCat.id)) || (!!activeSubObj && vis.subHidden(activeSubObj));
-  const subsForActive = useMemo(() => activeCat ? subCats.filter((s) => s.main_category_id === activeCat.id) : [], [activeCat, subCats]);
+  const subsForActive = useMemo(() => activeCat && stockMap ? subCats.filter((s) => s.main_category_id === activeCat.id && (stockMap.sub[s.id] ?? 0) > 0) : [], [activeCat, subCats, stockMap]);
 
   const filtered = useMemo(() => {
     const list = products.filter((p) => {
@@ -255,7 +260,7 @@ const Catalog = () => {
                       <p className="mb-2 text-sm font-medium">Main category</p>
                       <Select value={activeCatSlug ?? "__all__"} onValueChange={(v) => setCat(v === "__all__" ? null : v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="__all__">All categories</SelectItem>{mainCats.map((c) => <SelectItem key={c.id} value={c.slug}>{toTitleCase(c.name)}</SelectItem>)}</SelectContent>
+                        <SelectContent><SelectItem value="__all__">All categories</SelectItem>{shownMainCats.map((c) => <SelectItem key={c.id} value={c.slug}>{toTitleCase(c.name)}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     {activeCat && subsForActive.length > 0 && (
@@ -294,13 +299,13 @@ const Catalog = () => {
         </div>
 
         {isLandingView ? (
-          loading ? (
+          loading || !stockMap ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="aspect-square animate-pulse rounded-2xl bg-muted" />)}</div>
-          ) : mainCats.length === 0 ? (
+          ) : shownMainCats.length === 0 ? (
             <EmptyState title="No categories yet" text="Furniture categories will appear here once published." />
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {mainCats.map((c) => (
+              {shownMainCats.map((c) => (
                 <button key={c.id} type="button" onClick={() => setCat(c.slug)} className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-product">
                   <div className="aspect-[4/3] overflow-hidden bg-muted/30">{c.image_url ? <img src={c.image_url} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><span className="font-display text-4xl text-primary">{c.name[0]}</span></div>}</div>
                   <div className="flex items-center justify-between gap-3 p-4"><div><p className="font-display text-lg text-foreground">{toTitleCase(c.name)}</p><p className="mt-1 text-xs text-muted-foreground">{vis.mainHidden(c.id) ? "See at our showroom" : `${productCountByCat[c.id] ?? 0} pieces`}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
