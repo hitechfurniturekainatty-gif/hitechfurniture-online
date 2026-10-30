@@ -264,7 +264,7 @@ export const EnquiryForm = () => {
       const code = (data as { code?: string } | null)?.code ?? null;
       setResultCode(code);
       setStatus("success");
-      trackLead();
+      trackLead(category, { phone: phone.trim(), name: name.trim(), place: place.trim() });
 
       // Non-blocking n8n webhook — fires after success, never blocks or errors the user
       try {
