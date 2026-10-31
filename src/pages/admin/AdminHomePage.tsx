@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SocialLinksAdminCard } from "@/components/admin/SocialLinksAdminCard";
+import { OptimizeHomeImagesButton } from "@/components/admin/OptimizeHomeImagesButton";
 import { HomeLayoutEditor } from "@/components/admin/HomeLayoutEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -255,6 +256,7 @@ const AdminHomePage = () => {
             Edit the live banner, sections, contact details and social links shown to visitors.
           </p>
         </div>
+        <OptimizeHomeImagesButton />
       </div>
 
       {/* Prominent admin-only master controls for the public catalog.
