@@ -116,7 +116,9 @@ export function privateMediaFetch(baseFetch: typeof fetch): typeof fetch {
       }
     }
 
-    const mapped = mapMedia(value, u => signed[mediaPath(u)] ?? '');
+    // Never blank an attachment when signing fails: the editor would save the
+    // empty value back and the photo would be lost from the quotation.
+    const mapped = mapMedia(value, u => signed[mediaPath(u)] ?? u);
     const outputHeaders = new Headers(response.headers);
     outputHeaders.delete('content-length');
     outputHeaders.delete('content-encoding');

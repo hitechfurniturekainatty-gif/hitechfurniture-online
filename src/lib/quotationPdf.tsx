@@ -306,6 +306,64 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
   </Document>
 );
 
+// Fetch any image for the PDF. Order:
+//  1. Our private `quotations` bucket → authenticated storage download
+//     (works for old public-style URLs and expired signed URLs alike).
+//  2. Plain CORS fetch (with timeout).
+//  3. Server-side `image-proxy` edge function for hosts without CORS
+//     (e.g. Output Books product photos).
+const QUOTATIONS_RE = /\/storage\/v1\/object\/(?:public|sign|authenticated)\/quotations\/([^?#]+)/;
+function withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+}
+const isImageBlob = (b: Blob | null | undefined): b is Blob =>
+  !!b && b.size > 0 && (b.type.startsWith("image/") || b.type === "application/octet-stream" || b.type === "");
+async function fetchImageBlob(url: string): Promise<Blob | null> {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const m = url.match(QUOTATIONS_RE);
+  if (m) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.storage.from("quotations").download(decodeURIComponent(m[1])),
+      );
+      if (!error && isImageBlob(data)) return data;
+      console.warn("[PDF] storage download failed", m[1], error);
+    } catch (e) {
+      console.warn("[PDF] storage download threw", m[1], e);
+    }
+  }
+  try {
+    const res = await withTimeout(fetch(url, { mode: "cors", credentials: "omit" }));
+    if (res.ok) {
+      const b = await res.blob();
+      if (isImageBlob(b)) return b;
+    }
+  } catch {
+    /* CORS / network — try proxy */
+  }
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    if (!token) return null;
+    const res = await withTimeout(
+      fetch("https://ejxautrxbcemrncpzjyg.supabase.co/functions/v1/image-proxy", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }),
+    );
+    if (!res.ok) {
+      console.warn(`[PDF] image-proxy ${res.status} for ${url}`);
+      return null;
+    }
+    const b = await res.blob();
+    return isImageBlob(b) ? b : null;
+  } catch (e) {
+    console.warn("[PDF] image-proxy threw", url, e);
+    return null;
+  }
+}
+
 // Pre-fetch a remote image and convert to data URI so @react-pdf/renderer
 // never fails on CORS / 404 / slow networks. Returns null on failure.
 // IMPORTANT: @react-pdf/renderer only supports JPEG and PNG — NOT WebP / AVIF.
@@ -325,17 +383,9 @@ async function toDataUri(url: string | null, options: PdfImageOptions = {}): Pro
       const res = await fetch(url);
       blob = await res.blob();
     } else {
-      // credentials: 'omit' avoids sending stale cookies that some CDNs reject
-      const res = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-cache" });
-      if (!res.ok) {
-        console.warn(`[PDF] image fetch ${res.status} for ${url}`);
-        return null;
-      }
-      blob = await res.blob();
-      if (!blob.type.startsWith("image/")) {
-        console.warn(`[PDF] non-image blob (${blob.type}) for ${url}`);
-        return null;
-      }
+      const b = await fetchImageBlob(url);
+      if (!b) return null;
+      blob = b;
     }
     // Re-encode to JPEG so @react-pdf/renderer always accepts it.
     return await blobToJpegDataUri(blob, options);
