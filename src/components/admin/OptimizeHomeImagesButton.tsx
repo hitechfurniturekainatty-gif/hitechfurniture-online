@@ -53,7 +53,7 @@ export const OptimizeHomeImagesButton = () => {
           const v = (st as Record<string, unknown>)[k] as string | null;
           if (needs(v)) patch[k] = await convert(v!);
         }
-        if (Object.keys(patch).length) await supabase.from("homepage_settings").update(patch).eq("id", (st as { id: string }).id);
+        if (Object.keys(patch).length) await supabase.from("homepage_settings").update(patch as never).eq("id", (st as { id: string }).id);
       }
       // 2) hero slides
       const { data: slides } = await supabase.from("homepage_hero_slides").select("id,image_url");
