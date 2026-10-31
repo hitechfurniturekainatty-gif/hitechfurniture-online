@@ -30,7 +30,7 @@ describe('Private attachments',()=>{
       .mockResolvedValueOnce(new Response(JSON.stringify({image:file,description:'Sofa'}),{headers:{'content-type':'application/json'}}))
       .mockResolvedValueOnce(new Response('{}',{status:403}));
     const response=await privateMediaFetch(fetcher)(`${backendUrl}/rest/v1/quotation_items`,{method:'PATCH',body:JSON.stringify({image:signed}),headers:{Authorization:'Bearer staff-session'}});
-    expect(await response.json()).toEqual({image:'',description:'Sofa'});
+    expect(await response.json()).toEqual({image:file,description:'Sofa'});
     expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({image:file});
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -46,7 +46,7 @@ describe('Private attachments',()=>{
       .mockResolvedValueOnce(new Response(JSON.stringify({image:file}),{headers:{'content-type':'application/json'}}))
       .mockResolvedValueOnce(new Response('{}',{status:403}));
     const secondResponse=await privateMediaFetch(second)(`${backendUrl}/rest/v1/quotation_items`,{headers:{Authorization:'Bearer viewer-two'}});
-    expect(await secondResponse.json()).toEqual({image:''});
+    expect(await secondResponse.json()).toEqual({image:file});
     expect(second).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,3 +1,4 @@
+import { Seo } from "@/components/Seo";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BRAND_NAME } from "@/lib/brand";
@@ -5,6 +6,7 @@ import { BRAND_NAME } from "@/lib/brand";
 const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen">
+      <Seo title="Privacy Policy — Hitech Furniture & Interiors" description="How Hitech Furniture & Interiors, Kalpetta, Wayanad collects and uses enquiry and contact details." />
       <SiteHeader />
       <main className="container-page py-14 max-w-3xl mx-auto">
         <h1 className="font-display text-3xl mb-2">Privacy Policy</h1>
