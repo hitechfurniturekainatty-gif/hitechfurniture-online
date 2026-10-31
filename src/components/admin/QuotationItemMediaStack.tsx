@@ -365,6 +365,8 @@ const MultiInline = ({
         }
         const data = { publicUrl: await uploadedMediaUrl("quotations", path) };
         onChangeRef.current(joinUrls([...urlsRef.current, data.publicUrl]));
+      } catch (e: any) {
+        toast({ title: "Photo upload failed", description: e?.message ?? "Try again", variant: "destructive" });
       } finally {
         URL.revokeObjectURL(previewUrl);
         setPending((p) => p.filter((x) => x.id !== previewId));

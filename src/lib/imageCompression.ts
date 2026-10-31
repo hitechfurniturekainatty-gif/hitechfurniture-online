@@ -22,13 +22,19 @@ export async function compressImage(file: File): Promise<File> {
   if (file.size <= 300 * 1024) return file;
 
   try {
-    const compressed = await imageCompression(file, {
-      maxSizeMB: 0.5, // ~500KB ceiling — keeps catalog snappy on 4G
-      maxWidthOrHeight: 1920, // 4K-ready longest side, crisp on any screen
-      useWebWorker: true,
-      initialQuality: 0.85, // visually lossless for furniture textures
-      fileType: "image/webp", // ~30% smaller than JPEG at the same quality
-    });
+    // The web worker loads its script from a CDN; on some phones / networks it
+    // never resolves and the upload sat on "Uploading…" forever. Cap it at 15s
+    // and fall back to the original file so the photo always gets attached.
+    const compressed = await Promise.race([
+      imageCompression(file, {
+        maxSizeMB: 0.5, // ~500KB ceiling — keeps catalog snappy on 4G
+        maxWidthOrHeight: 1920, // 4K-ready longest side, crisp on any screen
+        useWebWorker: true,
+        initialQuality: 0.85, // visually lossless for furniture textures
+        fileType: "image/webp", // ~30% smaller than JPEG at the same quality
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("compression timeout")), 15000)),
+    ]);
     const blob = compressed as Blob;
     // Never ship a "compressed" file that ended up bigger than the original.
     if (blob.size >= file.size) return file;

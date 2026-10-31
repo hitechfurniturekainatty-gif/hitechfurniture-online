@@ -157,6 +157,7 @@ type Product = {
   offer_price: number | null;
   main_category_id: string;
   sub_category_id: string | null;
+  primary_image_url?: string | null;
   product_images: { image_url: string }[];
 };
 type MainCat = { id: string; name: string; image_url: string | null };
@@ -218,9 +219,9 @@ const ProductRow = ({
     className="flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-smooth hover:border-primary hover:bg-muted"
   >
     <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-      {p.product_images?.[0] && (
+      {(p.product_images?.[0]?.image_url || p.primary_image_url) && (
         <img
-          src={p.product_images[0].image_url}
+          src={p.product_images?.[0]?.image_url || p.primary_image_url || ""}
           alt=""
           className="h-full w-full object-contain p-0.5"
         />
@@ -577,7 +578,7 @@ const AdminQuotationEditor = () => {
     const [{ data: pr }, { data: mc }, { data: sc }, bRes, biRes] = await Promise.all([
       supabase
         .from("products")
-        .select("id, product_name, product_code, mrp, offer_price, main_category_id, sub_category_id, product_images(image_url)")
+        .select("id, product_name, product_code, mrp, offer_price, main_category_id, sub_category_id, primary_image_url, product_images(image_url)")
         .eq("is_published", true)
         .is("deleted_at", null)
         .order("product_name", { ascending: true })
@@ -629,7 +630,7 @@ const AdminQuotationEditor = () => {
       client_item_key: clientItemKey,
       description: `${p.product_name} (${p.product_code})`,
       item_notes: null,
-      item_image_url: p.product_images?.[0]?.image_url ?? null,
+      item_image_url: p.product_images?.[0]?.image_url ?? p.primary_image_url ?? null,
       measurement: null,
       measurement_image_url: null,
       catalog_text: p.product_code ?? null,
@@ -1965,7 +1966,7 @@ const AdminQuotationEditor = () => {
                         .map<Suggestion<Product>>((p) => ({
                           label: `${p.product_name} (${p.product_code})`,
                           sub: formatINR(p.offer_price ?? p.mrp ?? 0),
-                          image: p.product_images?.[0]?.image_url ?? null,
+                          image: p.product_images?.[0]?.image_url ?? p.primary_image_url ?? null,
                           data: p,
                         }));
                     }}
@@ -1974,7 +1975,7 @@ const AdminQuotationEditor = () => {
                       if (!p) return;
                       updateItem(it.id, {
                         description: `${p.product_name} (${p.product_code})`,
-                        item_image_url: p.product_images?.[0]?.image_url ?? it.item_image_url,
+                        item_image_url: p.product_images?.[0]?.image_url ?? p.primary_image_url ?? it.item_image_url,
                         catalog_text: (p.product_code ?? it.catalog_text ?? "").toUpperCase(),
                         unit_price: canEditPrice ? Number(p.offer_price ?? p.mrp ?? it.unit_price) : it.unit_price,
                         product_id: p.id,
