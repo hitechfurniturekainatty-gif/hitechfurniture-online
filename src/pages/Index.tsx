@@ -314,6 +314,12 @@ const Index = () => {
                       </div>
                     </a>
                   )}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <a href={`https://wa.me/${settings?.whatsapp_number || "919895134482"}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-full bg-primary-foreground/10 px-4 text-sm font-semibold hover:bg-primary-foreground/20">WhatsApp</a>
+                    <a href={settings?.instagram_url || "https://www.instagram.com/hitech_furniture_wayanad"} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-full bg-primary-foreground/10 px-4 text-sm font-semibold hover:bg-primary-foreground/20">Instagram DM</a>
+                    <a href="https://m.me/634075729791776" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-full bg-primary-foreground/10 px-4 text-sm font-semibold hover:bg-primary-foreground/20">Facebook Message</a>
+                    <button type="button" onClick={() => openEnquiryForm()} className="inline-flex min-h-11 items-center rounded-full bg-primary-foreground/10 px-4 text-sm font-semibold hover:bg-primary-foreground/20">Enquiry Form</button>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">

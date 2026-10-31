@@ -101,7 +101,7 @@ export const BLOCKS: BlockDef[] = [
   ] },
   { id: "interiors", name: "Complete interiors (brown, 4 steps)", fields: [
     f("eyebrow", "Small label", "Complete interiors"),
-    f("title", "Heading", "From an empty room to a finished home."),
+    f("title", "Heading", "Plan, design and install — one team, start to finish."),
     f("body", "Text", "Hitech brings furniture and interiors together under one roof — helping you plan spaces, customise storage and furniture, coordinate finishes and complete installation with a more seamless experience.", true),
     f("btn", "Button", "Discuss your interior project"),
     ...four("s", [

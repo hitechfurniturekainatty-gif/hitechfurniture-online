@@ -12,7 +12,7 @@ export const LOCAL_BUSINESS_JSONLD = {
   "@type": "FurnitureStore",
   name: SEO_BRAND_NAME,
   description:
-    "Custom furniture manufacturer, retailer, wholesaler and interior designer in Kalpetta, Wayanad, Kerala. 14+ years in operation.",
+    "Custom furniture manufacturer, retailer, wholesaler and interior designer in Kalpetta, Wayanad, Kerala. Sofas, beds, wardrobes, dining and branded mattresses (Kurlon, Repose, Peps) for every budget. 14+ years in operation.",
   telephone: "+91 98951 34482",
   address: {
     "@type": "PostalAddress",

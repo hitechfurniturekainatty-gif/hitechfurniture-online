@@ -1,7 +1,7 @@
 import { useRef, useState, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine, ArrowRight, Share2, Loader2 } from "lucide-react";
+import { Instagram, Facebook, Youtube, Linkedin, AtSign, Send, Globe, MapPin, Link2, ScanLine, ArrowRight, Share2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FancyQr, svgToPng } from "@/components/FancyQr";
 import { shareAllLinks } from "@/lib/shareLinks";
@@ -147,7 +147,7 @@ export function ConnectSection({ links, eyebrow = "Stay connected", title = "Let
         <div className="relative grid items-center gap-8 md:grid-cols-[1fr_auto] md:gap-10">
           <div className="text-center md:text-left">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9C5B10] shadow-sm ring-1 ring-[#f1dcc2]">
-              <span aria-hidden>✨</span>{eyebrow}
+              <Sparkles aria-hidden className="h-3.5 w-3.5" />{eyebrow}
             </span>
             <h2 id="connect-heading" className="mt-4 font-display text-3xl leading-tight text-primary md:text-[2.6rem]">
               {title}

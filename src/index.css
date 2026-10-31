@@ -193,3 +193,9 @@ html[data-text-align="left"] body:not(:has(.admin-theme)) main section p{text-al
 [data-section-align="center"]>.section-align :is(h1,h2,h3,h4,p){text-align:center;margin-left:auto;margin-right:auto}
 [data-section-align="left"]>.section-align :is(h1,h2,h3,h4,p){text-align:left;margin-left:0;margin-right:auto}
 [data-section-align="right"]>.section-align :is(h1,h2,h3,h4,p){text-align:right;margin-left:auto;margin-right:0}
+
+/* Mobile tap targets ≥44px (audit fix) — public site links/buttons */
+@media (pointer: coarse) {
+  header a, header button, footer a, footer button, main a.inline-flex, main button { min-height: 44px; }
+  footer a { display: inline-flex; align-items: center; }
+}
