@@ -3,11 +3,18 @@ import type { Database } from './types';
 import { catalogCostFetch } from '@/lib/catalogCostAccess';
 import { privateMediaFetch } from '@/lib/privateMedia';
 
-// Single production backend for the entire Hitech app.
-// Keep this explicit so hosting-provider environment overrides cannot silently
-// point authentication, catalog, quotations, or other modules at an old project.
-const SUPABASE_URL = 'https://ejxautrxbcemrncpzjyg.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_NDjWvTxfOE7KIuzEqjRZLA_YUrWpSPB';
+// Explicit build-time selection: normal production uses the known primary.
+// Hostinger recovery builds MUST set BOTH VITE_SUPABASE_URL and
+// VITE_SUPABASE_PUBLISHABLE_KEY. Never put service_role keys in a Vite env var.
+// A build targeting recovery must be tested before deployment; this is not
+// automatic runtime failover and does not change the live production bundle.
+const recoveryUrl = import.meta.env.VITE_SUPABASE_URL;
+const recoveryKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+if (Boolean(recoveryUrl) !== Boolean(recoveryKey)) {
+  throw new Error('Set both recovery Supabase configuration values together');
+}
+const SUPABASE_URL = recoveryUrl || 'https://ejxautrxbcemrncpzjyg.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = recoveryKey || 'sb_publishable_NDjWvTxfOE7KIuzEqjRZLA_YUrWpSPB';
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   global: { fetch: privateMediaFetch(catalogCostFetch((input, init) => fetch(input, init))) },
