@@ -83,6 +83,7 @@ const SharedQuotationView = lazy(pageLoaders.SharedQuotationView);
 const SharedJobView = lazy(pageLoaders.SharedJobView);
 const DeliveryNote = lazy(pageLoaders.DeliveryNote);
 const About = lazy(pageLoaders.About);
+const FurnitureShopWayanad = lazy(pageLoaders.FurnitureShopWayanad);
 const PrivacyPolicy = lazy(pageLoaders.PrivacyPolicy);
 const EnquiryLink = lazy(pageLoaders.EnquiryLink);
 const UserGuide = lazy(pageLoaders.UserGuide);
@@ -128,6 +129,7 @@ const App = () => (
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
+            <Route path="/furniture-shop-wayanad" element={<FurnitureShopWayanad />} />
             <Route path="/faq" element={<Faq />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enquiry" element={<EnquiryLink />} />
