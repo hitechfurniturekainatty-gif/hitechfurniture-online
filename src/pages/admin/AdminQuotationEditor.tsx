@@ -130,14 +130,17 @@ type Quotation = {
   item_conversion_status?: "open" | "partial" | "converted" | "lost" | null;
 };
 
-const DEFAULT_TERMS = `1. Advance payment, if any, will be adjusted against the order total. Balance to be paid as agreed before/at delivery.
-2. Delivery timeline is subject to final design/specification approval and production/stock availability.
-3. Prices are valid for 15 days from quotation date.
-4. GST as applicable will be charged extra (where shown).
-5. Transportation and installation charges (if any) are extra unless specified.
-6. Goods once sold will not be taken back or exchanged.
-7. Any changes after order confirmation may attract additional charges.
-8. Warranty as per manufacturer terms; does not cover misuse or natural wear.`;
+const DEFAULT_TERMS = `1. Prices quoted are valid for 20 days from the date of quotation. After this period, prices are subject to revision.
+2. Order is confirmed only on receipt of the agreed advance payment. Advance will be adjusted against the final bill, and the balance is payable before/at delivery.
+3. Delivery period starts from the date of order confirmation and advance receipt. It is subject to final design/specification approval and production/stock availability.
+4. GST as applicable will be charged extra (where not already included).
+5. Transportation, loading/unloading and installation charges (if any) are extra unless specified in the quotation.
+6. Made-to-order and customised items cannot be cancelled, returned or exchanged once production has started. Goods once sold will not be taken back or exchanged.
+7. Any change in design, size, material or colour after order confirmation may change the price and delivery date.
+8. Slight variations in colour, finish, grain and shade between samples/photos and the final product are natural, especially in wood and fabric.
+9. Please check the goods at the time of delivery. Any damage or shortage must be reported at delivery.
+10. Warranty is as per manufacturer terms. It does not cover misuse, wrong handling, water damage, termite/pest damage or normal wear and tear.
+11. All disputes are subject to Kalpetta, Wayanad jurisdiction.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type ItemWorkSummary = {
