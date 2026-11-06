@@ -29,7 +29,6 @@ import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import { computeStage, stageToneClasses, ALL_STAGES, STAGE_DEFS, type PipelineStage } from "@/lib/quotationPipeline";
 import { HelpHint } from "@/components/help/HelpHint";
 import { ActionHint } from "@/components/help/ActionHint";
-import { PipelineSteps } from "@/components/admin/PipelineSteps";
 import { isJobFinished } from "./AdminWorkerDetail";
 import {
   saveNewQuotationDraft,
@@ -728,190 +727,154 @@ const AdminQuotations = () => {
     };
   }, [rows, search]);
 
-  const renderRow = (q: Q) => (
-    <Card key={q.id} className="overflow-hidden border-2 border-primary/35 bg-primary/[0.035] shadow-md transition-all hover:border-primary/60 hover:bg-primary/[0.055] hover:shadow-lg">
-      <CardContent className="p-4">
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex min-w-0 items-start gap-3 rounded-lg border border-primary/25 bg-primary/[0.07] p-3">
-            {isPO(q.document_type) ? (
-              <ShoppingCart className="mt-1 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-            ) : (
-              <FileText className="mt-1 h-4 w-4 shrink-0 text-primary" />
-            )}
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span className="inline-flex w-fit rounded-md bg-primary px-2.5 py-1 font-mono text-sm font-bold leading-snug text-primary-foreground shadow-sm">{q.quotation_id}</span>
-                <Badge variant="outline" className={`w-fit shrink-0 ${docTagClasses(q.document_type)}`}>
-                  {isPO(q.document_type) ? "PO" : "Quotation"}
+  const renderRow = (q: Q) => {
+    const po = isPO(q.document_type);
+    const docNo = q.quotation_id.split(" / ")[0];
+    const info = !po ? stageFor(q) : null;
+    return (
+      <div
+        key={q.id}
+        className="rounded-xl border border-border/70 bg-card px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-muted/20"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          {/* Left: who + meta + tags */}
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-base font-semibold leading-snug text-foreground sm:text-[17px]">
+              {titleCaseTrim(q.party_name)}
+              {q.party_place && <span className="font-normal text-muted-foreground"> · {q.party_place}</span>}
+            </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 font-mono font-medium text-foreground/80">
+                {po ? <ShoppingCart className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                {docNo}
+              </span>
+              <span>· {new Date(q.quotation_date).toLocaleDateString("en-IN")}</span>
+              {q.party_phone && (
+                <a
+                  href={`tel:${q.party_phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-foreground hover:underline"
+                >
+                  · {q.party_phone}
+                </a>
+              )}
+              {q.salesperson_name && <span>· Sales: {q.salesperson_name}</span>}
+              {q.created_by && (
+                <span className="inline-flex items-center gap-1">
+                  · <User className="h-3 w-3" /> {creatorMap[q.created_by] ?? "Staff"}
+                </span>
+              )}
+              {q.updated_by && q.updated_at && q.updated_by !== q.created_by && (
+                <span>· Edited by {creatorMap[q.updated_by] ?? "Staff"}</span>
+              )}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <Badge variant={statusBadgeVariant(q.status)} className="shrink-0 text-[11px]">{statusLabel(q.status)}</Badge>
+              {po && (
+                <Badge variant="outline" className={`shrink-0 text-[11px] ${docTagClasses(q.document_type)}`}>PO</Badge>
+              )}
+              {q.service_type === "service" && (
+                <Badge variant="outline" className="shrink-0 border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300">Service Request</Badge>
+              )}
+              {q.service_type === "complaint-repair" && (
+                <Badge variant="outline" className="shrink-0 border-amber-500/40 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300">Complaint Repair</Badge>
+              )}
+              {q.is_direct_order && !po && (
+                <Badge variant="outline" className="shrink-0 border-blue-500/40 bg-blue-500/10 text-[11px] text-blue-700 dark:text-blue-300">Direct Order</Badge>
+              )}
+              {info && (isAdmin || isOfficeStaff) ? (
+                <Select value={String(info.stage)} onValueChange={(v) => changeStage(q, Number(v) as PipelineStage)}>
+                  <SelectTrigger className={`h-6 w-auto gap-1 rounded-full border px-2.5 text-[11px] font-medium ${stageToneClasses(info.tone)}`}>
+                    <SelectValue>Stage {info.stage}: {info.label}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_STAGES.map((s) => (
+                      <SelectItem key={s} value={String(s)} className="text-xs">
+                        Stage {s}: {STAGE_DEFS[s].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : info ? (
+                <Badge variant="outline" className={`shrink-0 text-[11px] ${stageToneClasses(info.tone)}`}>
+                  Stage {info.stage}: {info.label}
                 </Badge>
-                <Badge variant={statusBadgeVariant(q.status)} className="w-fit shrink-0">{statusLabel(q.status)}</Badge>
-                {q.service_type === "service" && (
-                  <Badge variant="outline" className="w-fit shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                    Service Request
-                  </Badge>
-                )}
-                {q.service_type === "complaint-repair" && (
-                  <Badge variant="outline" className="w-fit shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                    Complaint Repair
-                  </Badge>
-                )}
-                {q.is_direct_order && !isPO(q.document_type) && (
-                  <Badge variant="outline" className="w-fit shrink-0 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300">
-                    Direct Order
-                  </Badge>
-                )}
-              </div>
-              <p className="rounded-md border border-primary/15 bg-primary/15 px-2 py-1 text-base font-semibold leading-snug text-primary break-words sm:text-lg">
-                {titleCaseTrim(q.party_name)} <span className="text-primary/70">·</span> {q.party_place}
-                {q.party_phone && (
-                  <>
-                    {" "}<span className="text-primary/70">·</span>{" "}
-                    <a
-                      href={`tel:${q.party_phone}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
-                    >
-                      {q.party_phone}
-                    </a>
-                  </>
-                )}
-              </p>
-              {!isPO(q.document_type) && <p className="text-xs font-medium text-sky-800">Source: {sourceMap === null ? "Source unavailable" : sourceMap[q.id] || "Direct quotation · No linked lead"}</p>}
-              <p className="text-xs text-muted-foreground">
-                {new Date(q.quotation_date).toLocaleDateString("en-IN")}
-                {q.created_by && (
-                  <span className="ml-2 inline-flex items-center gap-1">
-                    · <User className="h-3 w-3" /> {creatorMap[q.created_by] ?? "Staff"}
-                  </span>
-                )}
-                {q.salesperson_name && (
-                  <span className="ml-2 inline-flex items-center gap-1">
-                    · Sales: <span className="font-medium text-foreground">{q.salesperson_name}</span>
-                  </span>
-                )}
-                {q.updated_by && q.updated_at && q.updated_by !== q.created_by && (
-                  <span className="ml-2 inline-flex items-center gap-1">
-                    · Edited by <span className="font-medium text-foreground">{creatorMap[q.updated_by] ?? "Staff"}</span>
-                  </span>
-                )}
-              </p>
+              ) : null}
+              {info && <span className="text-[11px] text-muted-foreground">With {info.owner}</span>}
             </div>
+
+            {!po && (
+              <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+                Source: {sourceMap === null ? "unavailable" : sourceMap[q.id] || "Direct quotation · no linked lead"}
+              </p>
+            )}
           </div>
 
-          {!isPO(q.document_type) && (() => {
-            const info = stageFor(q);
-            return (
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <Badge variant="outline" className={stageToneClasses(info.tone)}>
-                    Stage {info.stage}: {info.label}
-                  </Badge>
-                  <span className="text-muted-foreground">With: <span className="font-semibold text-foreground">{info.owner}</span></span>
-                  {(isAdmin || isOfficeStaff) && (
-                    <Select
-                      value={String(info.stage)}
-                      onValueChange={(v) => changeStage(q, Number(v) as PipelineStage)}
-                    >
-                      <SelectTrigger className="h-7 w-[170px] text-[11px]">
-                        <SelectValue placeholder="Move to…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ALL_STAGES.map((s) => (
-                          <SelectItem key={s} value={String(s)} className="text-xs">
-                            Stage {s}: {STAGE_DEFS[s].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <PipelineSteps stage={info.stage} showLabels />
-              </div>
-            );
-          })()}
-
-          <div className="border-t border-border/50 pt-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {isPO(q.document_type) ? (
-                <span className="text-sm text-muted-foreground">Work / material order</span>
-              ) : (
-                <span className="font-display text-lg font-semibold">{formatINR(q.total)}</span>
+          {/* Right: amount + actions */}
+          <div className="flex items-center justify-between gap-3 sm:shrink-0 sm:flex-col sm:items-end sm:justify-start">
+            {po ? (
+              <span className="text-sm text-muted-foreground">Work / material order</span>
+            ) : (
+              <span className="font-display text-xl font-semibold tabular-nums">{formatINR(q.total)}</span>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" asChild className="h-9 gap-1.5">
+                <Link to={`/admin/quotations/${q.id}/preview`} aria-label="Preview">
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">Preview</span>
+                </Link>
+              </Button>
+              <Button size="sm" asChild className="h-9 gap-1.5 px-4">
+                <Link to={`/admin/quotations/${q.id}`}>
+                  Open
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              {(isAdmin || isOfficeStaff) && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                  onClick={() => remove(q)}
+                  aria-label="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
-
-              {/* Mobile: keep actions airy and readable. The long primary action gets
-                  its own row; secondary actions sit below without text collisions. */}
-              <div className="grid grid-cols-2 gap-2 sm:hidden">
-                <Button size="sm" asChild className="col-span-2 h-11 w-full rounded-xl font-semibold shadow-sm">
-                  <Link to={`/admin/quotations/${q.id}`}>
-                    Open Quotation
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild className="h-10 w-full rounded-xl font-semibold">
-                  <Link to={`/admin/quotations/${q.id}/preview`}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </Link>
-                </Button>
-                {(isAdmin || isOfficeStaff) ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-10 w-full rounded-xl font-semibold text-destructive hover:text-destructive"
-                    onClick={() => remove(q)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                ) : (
-                  <div aria-hidden="true" />
-                )}
-              </div>
-
-              {/* Tablet / desktop: retain the compact inline action row. */}
-              <div className="hidden items-center gap-2 sm:flex">
-                <Button size="sm" variant="outline" asChild className="h-10 font-semibold">
-                  <Link to={`/admin/quotations/${q.id}/preview`}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </Link>
-                </Button>
-                <Button size="sm" asChild className="h-11 px-5 font-semibold shadow-sm">
-                  <Link to={`/admin/quotations/${q.id}`}>
-                    Open Quotation
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Link>
-                </Button>
-                {(isAdmin || isOfficeStaff) && (
-                  <Button size="sm" variant="outline" className="h-10" onClick={() => remove(q)}>
-                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                    Delete
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
+
+        {/* Slim progress strip */}
+        {info && (
+          <div className="mt-3 flex items-center gap-1" aria-hidden="true">
+            {ALL_STAGES.map((s) => (
+              <span
+                key={s}
+                title={STAGE_DEFS[s].label}
+                className={`h-1 flex-1 rounded-full ${
+                  s < info.stage ? "bg-emerald-500" : s === info.stage ? "bg-amber-500" : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AdminShell>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl">
+          <h1 className="font-display text-2xl sm:text-[28px]">
             {statusFilter.startsWith("stage")
               ? `${stageFilterLabel(statusFilter as StageFilterKey)} Queue`
               : statusFilter === "rejected"
               ? "Rejected Quotations"
               : "Quotations & Purchase Orders"}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            {statusFilter.startsWith("stage")
-              ? `Showing only quotations currently in the ${stageFilterLabel(statusFilter as StageFilterKey)} stage.`
-              : "Customer quotations and worker / supplier POs in one place."}
-          </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           {!isPO(docTab) && (
@@ -1141,7 +1104,7 @@ const AdminQuotations = () => {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="sm:w-56">
+          <SelectTrigger className="sm:w-48">
             <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
             <SelectValue />
           </SelectTrigger>
@@ -1155,7 +1118,7 @@ const AdminQuotations = () => {
         </Select>
         {isOfficeStaff && (
           <Select value={staffFilter} onValueChange={setStaffFilter}>
-            <SelectTrigger className="sm:w-56">
+            <SelectTrigger className="sm:w-48">
               <User className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="All staff" />
             </SelectTrigger>
@@ -1172,7 +1135,7 @@ const AdminQuotations = () => {
         )}
         {isOfficeStaff && (
           <Select value={salesFilter} onValueChange={setSalesFilter}>
-            <SelectTrigger className="sm:w-56">
+            <SelectTrigger className="sm:w-48">
               <User className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="All salespersons" />
             </SelectTrigger>
@@ -1193,13 +1156,6 @@ const AdminQuotations = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList className="w-full justify-start overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
-            {STAGE_FILTER_KEYS.map((k) => (
-              <TabsTrigger key={k} value={k} className="whitespace-nowrap">
-                {stageFilterLabel(k)} ({counts[k] ?? 0})
-              </TabsTrigger>
-            ))}
-          </TabsList>
           {!isPO(docTab) && (statusFilter === "stage1" || leadFilter !== "all") && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
@@ -1224,7 +1180,7 @@ const AdminQuotations = () => {
               ))}
             </div>
           )}
-          <TabsContent value={statusFilter} className="mt-4 grid gap-5">
+          <TabsContent value={statusFilter} className="mt-3 grid gap-2.5">
             {filtered.map(renderRow)}
             {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Nothing here yet.</p>}
           </TabsContent>
