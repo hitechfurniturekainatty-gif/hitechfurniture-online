@@ -297,72 +297,86 @@ const AdminOverview = () => {
 
       {(isOfficeStaff || isWarehouse || isDelivery) && <Card className="mb-5 rounded-2xl border-stone-200 bg-white shadow-sm"><CardContent className="p-4"><button type="button" onClick={()=>navigate("/catalog")} className="flex w-full items-center justify-between gap-3 text-left"><div className="flex items-center gap-3"><span className="rounded-xl bg-stone-100 p-2.5 text-stone-700"><PackageSearch className="h-5 w-5" /></span><div><h2 className="text-sm font-semibold">Total Catalog</h2><p className="text-xs text-muted-foreground">Browse furniture and product details</p></div></div><ArrowRight className="h-4 w-4" /></button><Button type="button" size="sm" className="mt-3 border border-amber-200 bg-amber-100 text-amber-950 hover:bg-amber-200" onClick={()=>navigate("/admin/staff-catalog")}>Staff Catalog <ArrowRight className="ml-2 h-3.5 w-3.5" /></Button></CardContent></Card>}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          const quickAction = "quickAction" in card ? card.quickAction : undefined;
-          const details = "customDetails" in card && card.customDetails ? card.customDetails : (snapshot.details[card.key] ?? []);
-          const openCard = () => navigate(card.href);
-          const runQuick = (event: React.MouseEvent) => {
-            event.stopPropagation();
-            if (!quickAction) return;
-            if ("kind" in quickAction && quickAction.kind === "enquiry") return navigate("/admin/leads");
-            if ("href" in quickAction && quickAction.href) navigate(quickAction.href);
-          };
-
-          return (
-            <Card
-              key={card.key}
-              role="link"
-              tabIndex={0}
-              onClick={openCard}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(); } }}
-              className="group cursor-pointer border-[#8b6b4f]/15 bg-white transition-all hover:-translate-y-0.5 hover:border-[#8b6b4f]/35 hover:shadow-md"
-            >
-              <CardContent className="flex min-h-[190px] h-full flex-col p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                </div>
-
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-foreground">{card.title}</h2>
-                  <div className="font-display text-2xl font-semibold text-[#2f2925]">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : card.count}
-                  </div>
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  {details.slice(0, 3).map((d) => (
-                    <div key={d.label} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <StatusDot tone={d.tone} />
-                        {d.label}
-                      </span>
-                      <span className="font-semibold text-foreground">{loading ? "—" : d.value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-auto pt-3">
-                  {quickAction ? (
-                    <Button type="button" size="sm" className="h-8 bg-[#76563f] text-xs hover:bg-[#654936]" onClick={runQuick}>
-                      <Plus className="mr-1 h-3.5 w-3.5" />{quickAction.label}
-                    </Button>
-                  ) : (
-                    <Button type="button" size="sm" variant="outline" className="h-8 border-[#8b6b4f]/25 text-xs text-[#76563f]" onClick={(e) => { e.stopPropagation(); openCard(); }}>
-                      {card.action}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <OverviewList cards={cards} snapshot={snapshot} loading={loading} navigate={navigate} />
     </AdminShell>
+  );
+};
+
+type OverviewCard = {
+  key: string; title: string; count: number | string; href: string; action: string;
+  icon: React.ComponentType<{ className?: string }>;
+  quickAction?: { label: string; href?: string; kind?: string };
+  customDetails?: Detail[];
+};
+
+/** Master-detail list: compact rows on the left, details of the selected row on the right.
+ *  On phones a row opens its page directly. */
+const OverviewList = ({ cards, snapshot, loading, navigate }: { cards: any[]; snapshot: Snapshot; loading: boolean; navigate: (to: string) => void }) => {
+  const [sel, setSel] = useState<string | null>(null);
+  const list = cards as OverviewCard[];
+  const active = list.find((c) => c.key === sel) ?? list[0];
+  if (!active) return null;
+  const details = active.customDetails ?? snapshot.details[active.key] ?? [];
+  const pick = (c: OverviewCard) => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) { navigate(c.href); return; }
+    setSel(c.key);
+  };
+  const runQuick = () => {
+    const qa = active.quickAction;
+    if (!qa) return;
+    if (qa.kind === "enquiry") return navigate("/admin/leads");
+    if (qa.href) navigate(qa.href);
+  };
+  const ActiveIcon = active.icon;
+  return (
+    <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      <nav aria-label="Business overview" className="overflow-hidden rounded-2xl border border-[#8b6b4f]/15 bg-white shadow-sm">
+        <ul className="divide-y divide-[#8b6b4f]/10">
+          {list.map((c) => {
+            const Icon = c.icon;
+            const on = c.key === active.key;
+            return (
+              <li key={c.key}>
+                <button
+                  type="button"
+                  aria-current={on ? "true" : undefined}
+                  onClick={() => pick(c)}
+                  className={`flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FBEFE4]/60 ${on ? "bg-[#FBEFE4] md:border-l-4 md:border-l-[#76563f]" : "md:border-l-4 md:border-l-transparent"}`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+                  <span className="flex-1 truncate text-sm font-medium text-foreground">{c.title}</span>
+                  <span className="font-display text-base font-semibold text-[#2f2925]">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : c.count}</span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground md:hidden" aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <section aria-live="polite" className="hidden rounded-2xl border border-[#8b6b4f]/15 bg-white p-6 shadow-sm md:block">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]"><ActiveIcon className="h-5 w-5" aria-hidden="true" /></span>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{active.title}</h2>
+            <p className="text-xs text-muted-foreground">{loading ? "Loading…" : `${active.count} total`}</p>
+          </div>
+        </div>
+        <ul className="mt-5 divide-y divide-[#8b6b4f]/10">
+          {details.length === 0 && <li className="py-3 text-sm text-muted-foreground">No breakdown available.</li>}
+          {details.map((d) => (
+            <li key={d.label} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground"><StatusDot tone={d.tone} />{d.label}</span>
+              <span className="font-semibold text-foreground">{loading ? "—" : d.value}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button type="button" className="h-10 bg-[#76563f] hover:bg-[#654936]" onClick={() => navigate(active.href)}>{active.action}<ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>
+          {active.quickAction && <Button type="button" variant="outline" className="h-10 border-[#8b6b4f]/25 text-[#76563f]" onClick={runQuick}><Plus className="mr-1 h-4 w-4" aria-hidden="true" />{active.quickAction.label}</Button>}
+        </div>
+      </section>
+    </div>
   );
 };
 
