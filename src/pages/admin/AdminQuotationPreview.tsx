@@ -557,9 +557,9 @@ const AdminQuotationPreview = () => {
             src={quoteHeaderArt}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute right-0 top-0 hidden h-[180px] w-[330px] sm:block"
+            className="pointer-events-none absolute right-0 top-0 h-[104px] w-[190px] sm:h-[180px] sm:w-[330px]"
           />
-          <div className="relative px-5 pb-3 pt-5 sm:min-h-[150px] sm:px-8 sm:pt-6">
+          <div className="relative min-h-[118px] px-5 pb-3 pt-4 sm:min-h-[150px] sm:px-8 sm:pt-6">
             <Logo className="h-14 w-auto sm:h-[72px]" />
             <div className="mt-2 text-[11px] font-semibold leading-snug text-[#3B2A1C] sm:text-xs">
               <p>Edapetty Shopping Centre,</p>
