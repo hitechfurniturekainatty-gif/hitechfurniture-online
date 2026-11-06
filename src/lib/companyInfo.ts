@@ -8,7 +8,7 @@ export const BANK_DETAILS = {
 
 export const COMPANY = {
   name: "Hitech Furniture and Interiors",
-  address: "Kalpetta, Wayanad, Kerala",
-  phone: "+91 98951 34482",
+  address: "Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad - 673122",
+  phone: "9895134482 | 9526610404",
   email: "",
 };

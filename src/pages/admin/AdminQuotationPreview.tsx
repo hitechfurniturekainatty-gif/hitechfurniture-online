@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import quoteHeaderArt from "@/assets/quote-header-art.jpg";
+import quoteFooterWave from "@/assets/quote-footer-wave.png";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +24,7 @@ import { COMPANY, BANK_DETAILS } from "@/lib/companyInfo";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import {
   Loader2, ArrowLeft, Pencil, MessageCircle, Check, Download, HardHat,
-  Image as ImageIcon, Hash, Ruler, FileText, Camera,
+  Image as ImageIcon, Hash, Ruler, FileText, Camera, User, CalendarDays,
 } from "lucide-react";
 import { isPO, type DocType } from "@/lib/docType";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
@@ -549,49 +551,69 @@ const AdminQuotationPreview = () => {
 
       {/* Document */}
       <article className="mx-auto max-w-4xl rounded-lg border border-border bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
-        {/* Header — logo + company block (fixed, never squeezed) and a short doc number.
-            Party name / place live only in the "Quotation For" box below. */}
-        <header className="flex flex-col gap-3 border-b-2 border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-8">
-          <div className="flex items-center gap-4">
-            <Logo className="h-14 w-auto shrink-0 sm:h-16" />
-            <div className="min-w-0">
-              <h1 className="font-display text-xl font-bold leading-tight sm:whitespace-nowrap sm:text-2xl">{COMPANY.name}</h1>
-              <p className="text-xs text-slate-600 sm:text-sm">{COMPANY.address}</p>
-              <p className="text-xs text-slate-600 sm:text-sm">{COMPANY.phone}</p>
+        {/* Header — logo + company block on the left, hero art on the right (sm+) */}
+        <header className="relative overflow-hidden rounded-t-lg">
+          <img
+            src={quoteHeaderArt}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-0 hidden h-[180px] w-[330px] sm:block"
+          />
+          <div className="relative px-5 pb-3 pt-5 sm:min-h-[150px] sm:px-8 sm:pt-6">
+            <Logo className="h-14 w-auto sm:h-[72px]" />
+            <div className="mt-2 text-[11px] font-semibold leading-snug text-[#3B2A1C] sm:text-xs">
+              <p>Edapetty Shopping Centre,</p>
+              <p>Edapetty, Kalpetta, Wayanad - 673122</p>
+              <p>Ph: {COMPANY.phone}</p>
             </div>
-          </div>
-          <div className="shrink-0 text-left sm:text-right">
-            <p className={`text-[11px] uppercase tracking-wider ${po ? "font-bold text-blue-600" : "text-slate-500"}`}>
-              {po ? "PURCHASE ORDER" : "Quotation"}
-            </p>
-            <p className="whitespace-nowrap font-mono text-base font-semibold sm:text-lg">
-              {q.quotation_id.split(" / ")[0]}
-            </p>
           </div>
         </header>
 
-        {/* Party — name/details get full width; date sits at the end (right) */}
-        <section className="border-b border-slate-200 p-5 sm:p-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div className="min-w-0 flex-1">
-              <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">{po ? "Worker / Supplier" : "Quotation For"}</p>
-              <p className="break-words text-base font-semibold sm:text-lg">{q.party_name}</p>
-              <p className="break-words text-sm text-slate-700">{q.party_place}</p>
-              {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{q.party_address}</p>}
-              {q.party_phone && <p className="mt-0.5 text-sm text-slate-700">Phone: {q.party_phone}</p>}
+        {/* Title band + number / date */}
+        <div className="flex flex-col gap-3 px-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div
+            className="w-full max-w-[260px] bg-[#5E2D05] py-2 pl-5 text-lg font-bold uppercase tracking-[0.3em] text-white sm:text-xl"
+            style={{ clipPath: "polygon(0 0, 97% 0, 90% 100%, 0 100%)" }}
+          >
+            {po ? "Purchase Order" : "Quotation"}
+          </div>
+          <div className="sm:text-right">
+            <div className="inline-flex items-center gap-3 rounded-xl bg-[#FBEFE4] px-3 py-2">
+              <FileText className="h-5 w-5 shrink-0 text-[#5E2D05]" />
+              <div className="leading-tight">
+                <p className="text-[10px] text-[#3B2A1C]">{po ? "PO No." : "Quotation No."}</p>
+                <p className="whitespace-nowrap text-sm font-bold text-[#1F140B] sm:text-base">{q.quotation_id.split(" / ")[0]}</p>
+              </div>
+              <span className="h-7 w-px bg-[#9C7B5E]/60" />
+              <CalendarDays className="h-5 w-5 shrink-0 text-[#5E2D05]" />
+              <div className="leading-tight">
+                <p className="text-[10px] text-[#3B2A1C]">Date</p>
+                <p className="whitespace-nowrap text-sm font-bold text-[#1F140B] sm:text-base">{fmtDate(q.quotation_date)}</p>
+              </div>
             </div>
-            <div className="shrink-0 text-left text-xs text-slate-600 sm:text-right sm:text-sm">
-              <p className="whitespace-nowrap">Date: {fmtDate(q.quotation_date)}</p>
-              {q.expected_delivery_date && (
-                <p className="whitespace-nowrap">Delivery: {fmtDate(q.expected_delivery_date)}</p>
-              )}
-            </div>
+            {q.expected_delivery_date && (
+              <p className="mt-1 text-[11px] text-[#3B2A1C]">
+                Delivery Date: <span className="font-bold">{fmtDate(q.expected_delivery_date)}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Party — full width so long names never squeeze anything */}
+        <section className="mx-5 mt-4 flex items-start gap-3 border-b border-[#D9B99B] pb-4 sm:mx-8">
+          <User className="mt-1 h-7 w-7 shrink-0 text-[#5E2D05]" strokeWidth={1.5} />
+          <div className="min-w-0">
+            <p className="text-[11px] text-[#3B2A1C]">{po ? "Worker / Supplier" : "Quotation For"}</p>
+            <p className="break-words text-lg font-bold text-[#1F140B]">{q.party_name}</p>
+            <p className="break-words text-sm text-[#3B2A1C]">{q.party_place}</p>
+            {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-[#3B2A1C]">{q.party_address}</p>}
+            {q.party_phone && <p className="mt-0.5 text-sm text-[#3B2A1C]">Phone: {q.party_phone}</p>}
           </div>
         </section>
 
         {/* Items — table on sm+, stacked cards on mobile */}
         <section className="p-5 sm:p-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">Items</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#5E2D05]">Items</h2>
 
           {/* Mobile: stacked cards */}
           <div className="space-y-3 sm:hidden">
@@ -693,9 +715,9 @@ const AdminQuotationPreview = () => {
           </div>
 
           {/* Desktop: table */}
-          <div className="hidden overflow-hidden rounded-md border border-slate-200 sm:block">
+          <div className="hidden overflow-hidden rounded-lg border border-[#E6CDB5] sm:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
+              <thead className="bg-[#5E2D05] text-white">
                 <tr>
                   <th className="w-10 px-3 py-2 text-left">Sl No</th>
                   <th className="px-3 py-2 text-left">Description</th>
@@ -710,7 +732,7 @@ const AdminQuotationPreview = () => {
                 {items.map((it, idx) => {
                   const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
                   return (
-                    <tr key={it.id} className="border-t border-slate-200 align-top odd:bg-white even:bg-slate-50/60">
+                    <tr key={it.id} className="border-t border-[#E6CDB5] align-top odd:bg-white even:bg-[#FDF6EE]">
                       <td className="px-3 py-3 text-left text-slate-500 tabular-nums">{idx + 1}</td>
                       <td className="px-3 py-3">
                         <p className="font-medium text-slate-900">{it.description}</p>
@@ -759,8 +781,8 @@ const AdminQuotationPreview = () => {
             Warehouse + delivery get just Advance / Balance so they can confirm
             collection without seeing item-level pricing or margins. */}
         {hasAnyPrice && !po && canSeePrices && (
-          <section className="border-t-2 border-slate-300 bg-slate-50/70 p-5 sm:p-8">
-            <div className="ml-auto w-full max-w-sm overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-sm">
+          <section className="px-5 pb-2 sm:px-8">
+            <div className="ml-auto w-full max-w-sm overflow-hidden rounded-lg border border-[#E6CDB5] bg-[#FDF6EE] text-sm">
               <div className="flex justify-between px-4 py-2">
                 <span className="text-slate-600">Subtotal (INR)</span>
                 <span className="font-mono tabular-nums">{formatINRNumber(subtotal)}</span>
@@ -777,9 +799,9 @@ const AdminQuotationPreview = () => {
                   <span className="font-mono tabular-nums">{formatINRNumber(gstAmount)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between border-t-2 border-slate-300 bg-slate-900 px-4 py-3 text-base font-semibold text-white">
-                <span>Grand Total</span>
-                <span className="font-mono tabular-nums">{formatINR(grandTotal)}</span>
+              <div className="flex items-stretch border-t border-[#E6CDB5] bg-[#FBEFE4] text-base font-bold">
+                <span className="flex-1 px-4 py-3 text-[#5E2D05]">Total Amount (INR)</span>
+                <span className="flex items-center bg-[#5E2D05] px-4 font-mono tabular-nums text-white">{formatINR(grandTotal)}</span>
               </div>
               {showAdvance && (
                 <>
@@ -819,30 +841,49 @@ const AdminQuotationPreview = () => {
           </section>
         )}
 
-        {/* Bank + Terms (collapsed compactly) */}
-        <section className="grid gap-4 border-t border-slate-200 p-5 text-xs sm:grid-cols-2 sm:p-8">
-          {!po && (
-            <div>
-              <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Bank Details</h3>
-              <p className="text-slate-700">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
-              <p className="text-slate-700">A/C: {BANK_DETAILS.accountName}</p>
-              <p className="font-mono text-slate-700">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
-            </div>
-          )}
-          {!po && q.terms && (
-            <div>
-              <h3 className="mb-1 font-semibold uppercase tracking-wider text-slate-500">Terms</h3>
-              <p className="whitespace-pre-line text-[11px] leading-snug text-slate-600">{q.terms}</p>
-            </div>
-          )}
-        </section>
+        {/* Bank details */}
+        {!po && (
+          <section className="mx-5 mt-4 rounded-lg bg-[#FBEFE4] p-4 text-xs sm:mx-8">
+            <h3 className="mb-1 text-[13px] font-bold text-[#5E2D05]">Bank Details</h3>
+            <p className="text-[#3B2A1C]">{BANK_DETAILS.bankName} — {BANK_DETAILS.branch}</p>
+            <p className="text-[#3B2A1C]">A/C: {BANK_DETAILS.accountName}</p>
+            <p className="font-mono text-[#3B2A1C]">{BANK_DETAILS.accountNumber} · IFSC {BANK_DETAILS.ifsc}</p>
+          </section>
+        )}
 
-        <footer className="border-t border-slate-200 p-4 text-center text-[11px] text-slate-500 sm:p-6">
+        {/* Terms */}
+        {!po && q.terms && q.terms.trim() !== "" && (
+          <section className="mx-5 mt-4 overflow-hidden rounded-lg bg-[#FBEFE4] sm:mx-8">
+            <h3 className="border-b border-[#E6CDB5] px-4 py-2 text-[13px] font-bold text-[#5E2D05]">Terms &amp; Conditions</h3>
+            <ol className="space-y-1 px-4 py-3 text-[11.5px] leading-snug text-[#3B2A1C]">
+              {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => {
+                const m = line.match(/^\s*(\d+)[.)]\s*(.*)$/);
+                return (
+                  <li key={idx} className="flex gap-2">
+                    <span className="w-5 shrink-0 font-bold text-[#5E2D05]">{m ? `${m[1]}.` : "•"}</span>
+                    <span>{m ? m[2] : line}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
+
+        {/* Thank you */}
+        {!po && (
+          <div className="mt-5 px-5 text-right sm:px-8">
+            <p className="font-serif text-3xl italic text-[#5E2D05]">Thank You</p>
+            <span className="ml-auto block h-[2px] w-28 bg-[#F2A12B]" />
+            <p className="mt-1 text-[10px] font-bold tracking-[0.25em] text-[#1F140B]">FOR YOUR ENQUIRY</p>
+          </div>
+        )}
+
+        <footer className="px-4 pt-4 text-center text-[11px] text-slate-500">
           {createdByName && (
-            <p className="mb-1">Created By: <span className="font-medium text-slate-700">{createdByName}</span></p>
+            <p>Created By: <span className="font-medium text-slate-700">{createdByName}</span></p>
           )}
-          Thank you for your business — {COMPANY.name}
         </footer>
+        <img src={quoteFooterWave} alt="" aria-hidden="true" className="mt-2 block w-full rounded-b-lg" />
       </article>
 
       {/* Sticky action bar */}

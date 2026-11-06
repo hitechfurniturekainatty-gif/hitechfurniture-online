@@ -1,5 +1,7 @@
-import { Document, Page, Text, View, StyleSheet, Image, pdf } from "@react-pdf/renderer";
-import logo from "@/assets/hitech-logo.jpeg";
+import { Document, Page, Text, View, StyleSheet, Image, Svg, Path, Circle, Rect, pdf } from "@react-pdf/renderer";
+import logo from "@/assets/hitech-logo-wide.jpg";
+import headerArt from "@/assets/quote-header-art.jpg";
+import footerWave from "@/assets/quote-footer-wave.png";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 import { firstUrl } from "./firstUrl";
 
@@ -16,46 +18,67 @@ const formatINR = (n: number | null | undefined) => {
   return `Rs ${fmtNum(n)}`;
 };
 
-// A4 = 595 x 842 pt. Side padding 22pt → usable width = 551pt
+// A4 = 595 x 842 pt. Side padding 28pt → usable width = 539pt
+const BROWN = "#5E2D05";
+const BROWN_MID = "#8A4B1F";
+const CREAM = "#FBEFE4";
+const CREAM_SOFT = "#FDF6EE";
+const LINE = "#E6CDB5";
 const styles = StyleSheet.create({
-  page: { paddingTop: 24, paddingBottom: 36, paddingHorizontal: 22, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FFFFFF", fontSize: 12 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottom: "1.5pt solid #5E2D05", paddingBottom: 12, marginBottom: 14 },
-  logo: { width: 120, height: 54, objectFit: "contain" },
-  brandRight: { textAlign: "right" },
-  brandName: { fontSize: 16, fontWeight: 700, color: "#5E2D05" },
-  brandLine: { fontSize: 10, color: "#655B52", marginTop: 2 },
-  hTitle: { fontSize: 22, fontWeight: 700, color: "#5E2D05", marginBottom: 10, textAlign: "center", letterSpacing: 1 },
-  partyRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14, gap: 12 },
-  partyBox: { flex: 1, padding: 10, backgroundColor: "#F4F7F7", borderRadius: 4 },
-  partyLabel: { fontSize: 9, color: "#655B52", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  partyValue: { fontSize: 12, fontWeight: 600, color: "#292522" },
-  table: { borderWidth: 0.75, borderColor: "#5E2D05", marginBottom: 12 },
-  tHead: { flexDirection: "row", backgroundColor: "#5E2D05" },
-  th: { color: "#FFFFFF", fontSize: 10.5, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: "#FFFFFF" },
-  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", minHeight: 44 },
-  tRowAlt: { backgroundColor: "#F4F7F7" },
-  td: { fontSize: 11, padding: 6, borderRightWidth: 0.5, borderRightColor: "#D8DEDF" },
-  tdImg: { width: 64, height: 64, objectFit: "contain" },
-  totalsWrap: { marginTop: 4, paddingTop: 8, borderTopWidth: 1.5, borderTopColor: "#5E2D05", backgroundColor: "#F4F7F7", paddingHorizontal: 8, paddingBottom: 8, borderRadius: 4 },
-  totalsBox: { marginLeft: "auto", width: 280, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4, backgroundColor: "#FFFFFF" },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 8, borderBottomWidth: 0.5, borderBottomColor: "#D8DEDF" },
-  totalLabel: { fontSize: 11, color: "#493A2E" },
-  totalValue: { fontSize: 12, fontWeight: 600, color: "#292522" },
-  grandRow: { flexDirection: "row", justifyContent: "space-between", padding: 10, backgroundColor: "#5E2D05" },
-  grandLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
-  grandValue: { color: "#FFFFFF", fontSize: 16, fontWeight: 700 },
-  bankBox: { marginTop: 16, padding: 12, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4 },
-  bankTitle: { fontSize: 12, fontWeight: 700, color: "#5E2D05", marginBottom: 5 },
-  bankLine: { fontSize: 11, color: "#493A2E", marginBottom: 2 },
-  termsBox: { marginTop: 12, padding: 12, borderWidth: 0.75, borderColor: "#5E2D05", borderRadius: 4, backgroundColor: "#FAFCFC" },
-  termsTitle: { fontSize: 12, fontWeight: 700, color: "#5E2D05", marginBottom: 5 },
-  termsLine: { fontSize: 10.5, color: "#493A2E", marginBottom: 3, lineHeight: 1.45 },
-  footer: { position: "absolute", bottom: 16, left: 22, right: 22, textAlign: "center", fontSize: 9, color: "#655B52", borderTopWidth: 0.5, borderTopColor: "#D8DEDF", paddingTop: 6 },
+  page: { paddingTop: 22, paddingBottom: 76, paddingHorizontal: 28, fontFamily: "Helvetica", color: "#292522", backgroundColor: "#FFFFFF", fontSize: 12 },
+  heroArt: { position: "absolute", top: 0, right: 0, width: 330, height: 180 },
+  wave: { position: "absolute", bottom: 0, left: 0, width: 595, height: 70 },
+  headerBlock: { height: 138 },
+  logo: { width: 176, height: 73 },
+  addrLine: { fontSize: 9.5, color: "#3B2A1C", marginTop: 2.5, fontWeight: 600 },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, marginBottom: 10 },
+  titleBand: { width: 260, height: 38, justifyContent: "center" },
+  titleText: { position: "absolute", left: 18, top: 8, fontSize: 20, fontWeight: 700, color: "#FFFFFF", letterSpacing: 6 },
+  metaBox: { flexDirection: "row", alignItems: "center", backgroundColor: CREAM, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 10, gap: 10 },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  metaLabel: { fontSize: 8, color: "#3B2A1C" },
+  metaValue: { fontSize: 12, fontWeight: 700, color: "#1F140B" },
+  metaDivider: { width: 0.75, height: 24, backgroundColor: "#9C7B5E" },
+  partyWrap: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingBottom: 9, marginBottom: 10, borderBottomWidth: 0.75, borderBottomColor: "#D9B99B" },
+  partyLabel: { fontSize: 9, color: "#3B2A1C", marginBottom: 2 },
+  partyName: { fontSize: 15, fontWeight: 700, color: "#1F140B" },
+  partyLine: { fontSize: 10.5, color: "#3B2A1C", marginTop: 1.5 },
+  table: { borderWidth: 0.75, borderColor: LINE, borderRadius: 6, marginBottom: 10 },
+  tHead: { flexDirection: "row", backgroundColor: BROWN, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  th: { color: "#FFFFFF", fontSize: 10, fontWeight: 700, padding: 6, borderRightWidth: 0.5, borderRightColor: BROWN_MID },
+  tRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: LINE, minHeight: 44 },
+  tRowAlt: { backgroundColor: CREAM_SOFT },
+  td: { fontSize: 11, padding: 6, borderRightWidth: 0.5, borderRightColor: LINE },
+  tdImg: { width: 60, height: 60, objectFit: "contain" },
+  lowerRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  totalsBox: { width: 235, borderWidth: 0.75, borderColor: LINE, borderRadius: 6, backgroundColor: CREAM_SOFT },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", padding: 7, borderBottomWidth: 0.5, borderBottomColor: LINE },
+  totalLabel: { fontSize: 10.5, color: "#3B2A1C" },
+  totalValue: { fontSize: 11.5, fontWeight: 600, color: "#292522" },
+  grandRow: { flexDirection: "row", alignItems: "stretch", backgroundColor: CREAM, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  grandLabel: { flex: 1, color: BROWN, fontSize: 11, fontWeight: 700, padding: 9 },
+  grandValueBox: { backgroundColor: BROWN, paddingHorizontal: 12, justifyContent: "center", borderBottomRightRadius: 5 },
+  grandValue: { color: "#FFFFFF", fontSize: 14, fontWeight: 700 },
+  bankBox: { flex: 1, padding: 10, borderRadius: 6, backgroundColor: CREAM },
+  bankTitle: { fontSize: 11, fontWeight: 700, color: BROWN, marginBottom: 4 },
+  bankLine: { fontSize: 9.5, color: "#3B2A1C", marginBottom: 1.5 },
+  termsBox: { marginTop: 10, borderRadius: 6, backgroundColor: CREAM },
+  termsHead: { paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: LINE },
+  termsTitle: { fontSize: 11, fontWeight: 700, color: BROWN },
+  termsBody: { paddingVertical: 5, paddingHorizontal: 10 },
+  termsRow: { flexDirection: "row", marginBottom: 2 },
+  termsNum: { width: 14, fontSize: 8.8, color: BROWN, fontWeight: 700 },
+  termsLine: { flex: 1, fontSize: 8.8, color: "#3B2A1C", lineHeight: 1.4 },
+  thanks: { alignItems: "flex-end", marginTop: 8 },
+  thanksScript: { fontFamily: "Times-Italic", fontSize: 24, color: BROWN },
+  thanksUnder: { width: 120, height: 2, backgroundColor: "#F2A12B", marginTop: 1 },
+  thanksSub: { fontSize: 7.5, letterSpacing: 2.2, color: "#1F140B", fontWeight: 700, marginTop: 4 },
+  contHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 6, borderBottomWidth: 0.75, borderBottomColor: "#D9B99B" },
 });
 
 // Sum = 549 (usable 551pt minus table borderWidth 0.75 × 2 sides = 1.5pt → floor to 549).
 // desc trimmed 120→118 to absorb the 2pt; all other cols unchanged.
-const cols = { sl: 22, desc: 118, img: 70, meas: 95, cat: 100, qty: 30, price: 54, amt: 60 };
+const cols = { sl: 24, desc: 112, img: 66, meas: 90, cat: 94, qty: 28, price: 60, amt: 63 };
 
 export type QuotationItemPdf = {
   description: string;
@@ -108,50 +131,101 @@ type PdfRenderOptions = {
   image?: PdfImageOptions;
 };
 
-const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
+const DocIcon = () => (
+  <Svg width={20} height={22} viewBox="0 0 20 22">
+    <Path d="M4 1.5 H12.5 L17 6 V19.5 H4 Z" stroke={BROWN} strokeWidth={1.4} fill="none" />
+    <Path d="M7 10 H14 M7 13 H14 M7 16 H12" stroke={BROWN} strokeWidth={1.2} />
+  </Svg>
+);
+const CalIcon = () => (
+  <Svg width={22} height={22} viewBox="0 0 22 22">
+    <Rect x={2.5} y={4} width={17} height={15} rx={2} stroke={BROWN} strokeWidth={1.4} fill="none" />
+    <Path d="M2.5 9 H19.5 M7 1.8 V5.5 M15 1.8 V5.5" stroke={BROWN} strokeWidth={1.4} />
+    <Path d="M6.5 12.5 H9 M10.5 12.5 H13 M6.5 15.5 H9" stroke={BROWN} strokeWidth={1.2} />
+  </Svg>
+);
+const PersonIcon = () => (
+  <Svg width={26} height={28} viewBox="0 0 26 28">
+    <Circle cx={13} cy={8} r={5.5} stroke={BROWN} strokeWidth={1.6} fill="none" />
+    <Path d="M3 26 C3 18.5 8 15.5 13 15.5 C18 15.5 23 18.5 23 26 Z" stroke={BROWN} strokeWidth={1.6} fill="none" />
+  </Svg>
+);
+
+const shortDocNo = (id: string) => id.split(" / ")[0];
+
+export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
+      {/* Fixed footer wave on every page */}
+      <Image src={footerWave} style={styles.wave} fixed />
+
+      {/* Compact header on pages 2+ */}
+      <View
+        fixed
+        render={({ pageNumber }) =>
+          pageNumber > 1 ? (
+            <View style={styles.contHeader}>
+              <Image src={logo} style={{ width: 84, height: 35 }} />
+              <Text style={{ fontSize: 10, color: BROWN, fontWeight: 700 }}>
+                {q.is_po ? "PURCHASE ORDER" : "QUOTATION"} · {shortDocNo(q.quotation_id)}
+              </Text>
+            </View>
+          ) : null
+        }
+      />
+
+      {/* Page-1 hero header */}
+      <Image src={headerArt} style={styles.heroArt} />
+      <View style={styles.headerBlock}>
         <Image src={logo} style={styles.logo} />
-        <View style={styles.brandRight}>
-          <Text style={styles.brandName}>{COMPANY.name}</Text>
-          <Text style={styles.brandLine}>{COMPANY.address}</Text>
-          <Text style={styles.brandLine}>Phone: {COMPANY.phone}</Text>
+        <Text style={[styles.addrLine, { marginTop: 8 }]}>Edapetty Shopping Centre,</Text>
+        <Text style={styles.addrLine}>Edapetty, Kalpetta, Wayanad - 673122</Text>
+        <Text style={styles.addrLine}>Ph: {COMPANY.phone}</Text>
+      </View>
+
+      {/* Title band + number/date */}
+      <View style={styles.titleRow}>
+        <View style={styles.titleBand}>
+          <Svg width={260} height={38} viewBox="0 0 260 38" style={{ position: "absolute", top: 0, left: 0 }}>
+            <Path d="M0 0 H252 Q262 0 255 8 L238 30 Q233 38 222 38 H0 Z" fill={BROWN} />
+          </Svg>
+          <Text style={styles.titleText}>{q.is_po ? "PURCHASE ORDER" : "QUOTATION"}</Text>
+        </View>
+        <View>
+          <View style={styles.metaBox}>
+            <View style={styles.metaItem}>
+              <DocIcon />
+              <View>
+                <Text style={styles.metaLabel}>{q.is_po ? "PO No." : "Quotation No."}</Text>
+                <Text style={styles.metaValue}>{shortDocNo(q.quotation_id)}</Text>
+              </View>
+            </View>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <CalIcon />
+              <View>
+                <Text style={styles.metaLabel}>Date</Text>
+                <Text style={styles.metaValue}>{q.quotation_date}</Text>
+              </View>
+            </View>
+          </View>
+          {q.expected_delivery_date && (
+            <Text style={{ fontSize: 9, color: "#3B2A1C", textAlign: "right", marginTop: 3 }}>
+              Delivery Date: <Text style={{ fontWeight: 700 }}>{q.expected_delivery_date}</Text>
+            </Text>
+          )}
         </View>
       </View>
 
-      <Text style={styles.hTitle}>{q.is_po ? "PURCHASE ORDER" : "QUOTATION"}</Text>
-
-      <View style={styles.partyRow}>
-        <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>{q.is_po ? "PO No." : "Quotation No."}</Text>
-          <Text style={styles.partyValue}>{q.quotation_id}</Text>
-          <Text style={[styles.partyLabel, { marginTop: 6 }]}>Date</Text>
-          <Text style={styles.partyValue}>{q.quotation_date}</Text>
-          {q.expected_delivery_date && (
-            <>
-              <Text style={[styles.partyLabel, { marginTop: 6 }]}>Delivery Date</Text>
-              <Text style={styles.partyValue}>{q.expected_delivery_date}</Text>
-            </>
-          )}
-        </View>
-        <View style={styles.partyBox}>
-          <Text style={styles.partyLabel}>{q.is_po ? "Worker / Supplier" : "Party Name"}</Text>
-          <Text style={styles.partyValue}>{q.party_name}</Text>
-          <Text style={[styles.partyLabel, { marginTop: 6 }]}>Place</Text>
-          <Text style={styles.partyValue}>{q.party_place}</Text>
-          {q.party_phone && (
-            <>
-              <Text style={[styles.partyLabel, { marginTop: 6 }]}>Phone</Text>
-              <Text style={styles.partyValue}>{q.party_phone}</Text>
-            </>
-          )}
-          {q.party_address && (
-            <>
-              <Text style={[styles.partyLabel, { marginTop: 6 }]}>Address</Text>
-              <Text style={styles.partyValue}>{q.party_address}</Text>
-            </>
-          )}
+      {/* Party */}
+      <View style={styles.partyWrap}>
+        <PersonIcon />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.partyLabel}>{q.is_po ? "Worker / Supplier" : "Quotation For"}</Text>
+          <Text style={styles.partyName}>{q.party_name}</Text>
+          <Text style={styles.partyLine}>{q.party_place}</Text>
+          {q.party_address ? <Text style={styles.partyLine}>{q.party_address}</Text> : null}
+          {q.party_phone ? <Text style={styles.partyLine}>Phone: {q.party_phone}</Text> : null}
         </View>
       </View>
 
@@ -174,44 +248,44 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
           <View key={i} style={[styles.tRow, i % 2 === 1 ? styles.tRowAlt : null]} wrap={false}>
             <Text style={[styles.td, { width: cols.sl }]}>{i + 1}</Text>
             <View style={[styles.td, { width: cols.desc }]}>
-              <Text>{it.description}</Text>
+              <Text style={{ fontWeight: 700 }}>{it.description}</Text>
               {it.item_notes?.trim() ? (
-                <Text style={{ marginTop: 3, fontSize: 9.5, color: "#52666A", lineHeight: 1.35 }}>
+                <Text style={{ marginTop: 3, fontSize: 9.5, color: "#6B5848", lineHeight: 1.35 }}>
                   {it.item_notes}
                 </Text>
               ) : null}
             </View>
             <View style={[styles.td, { width: cols.img, alignItems: "center", justifyContent: "center" }]}>
-              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 10, color: "#9AA8AA" }}>-</Text>}
+              {it.item_image_url && it.item_image_url.startsWith("data:") ? <Image src={it.item_image_url} style={styles.tdImg} /> : <Text style={{ fontSize: 10, color: "#B8A594" }}>-</Text>}
             </View>
             <View style={[styles.td, { width: cols.meas }]}>
-              {it.measurement && <Text style={{ fontSize: 11 }}>{it.measurement}</Text>}
+              {it.measurement ? <Text style={{ fontSize: 11 }}>{it.measurement}</Text> : <Text style={{ fontSize: 10, color: "#B8A594" }}>-</Text>}
               {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.measurement_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
               {it.sketch_data_uri && (
                 <View style={{ marginTop: 3 }}>
-                  <Image src={it.sketch_data_uri} style={{ width: cols.meas - 12, height: 60, objectFit: "contain", borderWidth: 0.5, borderColor: "#D8DEDF" }} />
+                  <Image src={it.sketch_data_uri} style={{ width: cols.meas - 12, height: 60, objectFit: "contain", borderWidth: 0.5, borderColor: LINE }} />
                 </View>
               )}
               {(it.site_photos_data ?? []).length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.site_photos_data ?? []).map((src, k) => (
-                    <Image key={`s-${k}`} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
+                    <Image key={`s-${k}`} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
             </View>
             <View style={[styles.td, { width: cols.cat }]}>
-              {it.catalog_text && <Text style={{ fontSize: 11 }}>{it.catalog_text}</Text>}
+              {it.catalog_text ? <Text style={{ fontSize: 11 }}>{it.catalog_text}</Text> : null}
               {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 3, gap: 3 }}>
                   {(it.catalog_images ?? []).filter((s) => s && s.startsWith("data:")).map((src, k) => (
-                    <Image key={k} src={src} style={{ width: 44, height: 44, objectFit: "contain" }} />
+                    <Image key={k} src={src} style={{ width: 42, height: 42, objectFit: "contain" }} />
                   ))}
                 </View>
               )}
@@ -228,80 +302,88 @@ const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       </View>
 
       {!q.is_po && (
-      <View style={styles.totalsWrap}>
-      <View style={styles.totalsBox}>
-        {/* Subtotal — always shown */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Subtotal (INR)</Text>
-          <Text style={styles.totalValue}>{fmtNum(q.subtotal)}</Text>
-        </View>
-
-        {/* Discount — only if > 0 */}
-        {(q.discount_amount ?? 0) > 0 && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Discount (INR)</Text>
-            <Text style={styles.totalValue}>- {fmtNum(q.discount_amount)}</Text>
+        <View style={styles.lowerRow} wrap={false}>
+          <View style={styles.bankBox}>
+            <Text style={styles.bankTitle}>Bank Details</Text>
+            <Text style={styles.bankLine}>Bank: {BANK_DETAILS.bankName}</Text>
+            <Text style={styles.bankLine}>A/c Name: {BANK_DETAILS.accountName}</Text>
+            <Text style={styles.bankLine}>A/c Number: {BANK_DETAILS.accountNumber}</Text>
+            <Text style={styles.bankLine}>IFSC: {BANK_DETAILS.ifsc}</Text>
+            <Text style={styles.bankLine}>Branch: {BANK_DETAILS.branch}</Text>
           </View>
-        )}
-
-        {/* GST — only if % > 0 AND amount > 0 */}
-        {(q.gst_percent ?? 0) > 0 && (q.gst_amount ?? 0) > 0 && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>GST {q.gst_percent}% (INR)</Text>
-            <Text style={styles.totalValue}>{fmtNum(q.gst_amount)}</Text>
-          </View>
-        )}
-
-        {/* Grand Total — always shown */}
-        <View style={styles.grandRow}>
-          <Text style={styles.grandLabel}>GRAND TOTAL</Text>
-          <Text style={styles.grandValue}>{formatINR(q.total)}</Text>
-        </View>
-
-        {/* Advance + Balance Due — only if advance > 0 */}
-        {(q.advance_amount ?? 0) > 0 && (
-          <>
+          <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Less: Advance Received (INR)</Text>
-              <Text style={styles.totalValue}>- {fmtNum(q.advance_amount)}</Text>
+              <Text style={styles.totalLabel}>Subtotal (INR)</Text>
+              <Text style={styles.totalValue}>{fmtNum(q.subtotal)}</Text>
             </View>
-            <View style={[styles.grandRow, { backgroundColor: "#1F6B76" }]}>
-              <Text style={styles.grandLabel}>BALANCE DUE</Text>
-              <Text style={styles.grandValue}>{formatINR(q.balance_due ?? q.total)}</Text>
+            {(q.discount_amount ?? 0) > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Discount (INR)</Text>
+                <Text style={styles.totalValue}>- {fmtNum(q.discount_amount)}</Text>
+              </View>
+            )}
+            {(q.gst_percent ?? 0) > 0 && (q.gst_amount ?? 0) > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>GST {q.gst_percent}% (INR)</Text>
+                <Text style={styles.totalValue}>{fmtNum(q.gst_amount)}</Text>
+              </View>
+            )}
+            <View style={styles.grandRow}>
+              <Text style={styles.grandLabel}>Total Amount (INR)</Text>
+              <View style={styles.grandValueBox}>
+                <Text style={styles.grandValue}>{formatINR(q.total)}</Text>
+              </View>
             </View>
-          </>
-        )}
-      </View>
-      </View>
-      )}
-
-      {!q.is_po && (
-      <View style={styles.bankBox} wrap={false}>
-        <Text style={styles.bankTitle}>Bank Details</Text>
-        <Text style={styles.bankLine}>Bank: {BANK_DETAILS.bankName}</Text>
-        <Text style={styles.bankLine}>A/c Name: {BANK_DETAILS.accountName}</Text>
-        <Text style={styles.bankLine}>A/c Number: {BANK_DETAILS.accountNumber}</Text>
-        <Text style={styles.bankLine}>IFSC: {BANK_DETAILS.ifsc}</Text>
-        <Text style={styles.bankLine}>Branch: {BANK_DETAILS.branch}</Text>
-      </View>
+            {(q.advance_amount ?? 0) > 0 && (
+              <>
+                <View style={[styles.totalRow, { borderTopWidth: 0.5, borderTopColor: LINE }]}>
+                  <Text style={styles.totalLabel}>Less: Advance Received (INR)</Text>
+                  <Text style={styles.totalValue}>- {fmtNum(q.advance_amount)}</Text>
+                </View>
+                <View style={[styles.grandRow, { backgroundColor: BROWN_MID }]}>
+                  <Text style={[styles.grandLabel, { color: "#FFFFFF" }]}>BALANCE DUE</Text>
+                  <View style={[styles.grandValueBox, { backgroundColor: BROWN_MID }]}>
+                    <Text style={styles.grandValue}>{formatINR(q.balance_due ?? q.total)}</Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
       )}
 
       {!q.is_po && q.terms && q.terms.trim() !== "" && (
         <View style={styles.termsBox} wrap={false}>
-          <Text style={styles.termsTitle}>Terms & Conditions</Text>
-          {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => (
-            <Text key={idx} style={styles.termsLine}>{line}</Text>
-          ))}
+          <View style={styles.termsHead}>
+            <Text style={styles.termsTitle}>Terms & Conditions</Text>
+          </View>
+          <View style={styles.termsBody}>
+            {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => {
+              const m = line.match(/^\s*(\d+)[.)]\s*(.*)$/);
+              return (
+                <View key={idx} style={styles.termsRow}>
+                  <Text style={styles.termsNum}>{m ? `${m[1]}.` : "•"}</Text>
+                  <Text style={styles.termsLine}>{m ? m[2] : line}</Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
       )}
 
       {q.notes && (
         <View style={{ marginTop: 10 }}>
-          <Text style={{ fontSize: 9, color: "#655B52" }}>Notes: {q.notes}</Text>
+          <Text style={{ fontSize: 9, color: "#6B5848" }}>Notes: {q.notes}</Text>
         </View>
       )}
 
-      <Text style={styles.footer}>{COMPANY.name} · {COMPANY.address} · {COMPANY.phone}</Text>
+      {!q.is_po && (
+        <View style={styles.thanks} wrap={false}>
+          <Text style={styles.thanksScript}>Thank You</Text>
+          <View style={styles.thanksUnder} />
+          <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
+        </View>
+      )}
     </Page>
   </Document>
 );
