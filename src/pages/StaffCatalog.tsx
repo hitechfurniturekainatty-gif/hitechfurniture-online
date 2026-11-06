@@ -69,6 +69,7 @@ export default function StaffCatalog() {
   const [stockEntry,setStockEntry] = useState<FloorEntry | null>(null);
   const [loadedAt,setLoadedAt] = useState<Date | null>(null);
   const revision = useRef(0);
+  const lastLoadAt=useRef(0);
   const busy = useRef(false);
   const interacting = useRef(false);
   interacting.current=snapOpen||snapPinOpen||arrangeOpen||moveEntries.length>0||!!stockEntry||selecting||!!viewerKey;
@@ -95,6 +96,7 @@ export default function StaffCatalog() {
       setLocations(ls as FloorLocation[]);
       setCategories(cs as Category[]);
       setSubCategories(sc as SubCategory[]);
+      lastLoadAt.current=Date.now();
       setLoadedAt(new Date());
     } catch (e) {
       if (ticket===revision.current) setError(e instanceof Error ? e.message : (e as any)?.message || "Could not load Staff Catalog");
@@ -105,7 +107,7 @@ export default function StaffCatalog() {
   },[allowed,user?.id]);
   useEffect(()=>{
     void load();
-    const refresh=()=>{if(!document.hidden&&!interacting.current) void load();};
+    const refresh=()=>{if(!document.hidden&&!interacting.current&&Date.now()-lastLoadAt.current>30_000) void load();};
     const timer=window.setInterval(refresh,60_000);
     window.addEventListener("focus",refresh);
     document.addEventListener("visibilitychange",refresh);

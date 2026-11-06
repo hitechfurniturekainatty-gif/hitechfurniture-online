@@ -397,6 +397,14 @@ const AdminQuotationEditor = () => {
       const existing = itemsRef.current.find((it) => it.id === x.id);
       return { ...x, _clientKey: existing?._clientKey ?? x.id } as QItem;
     });
+    // Background (realtime) refresh: if nothing actually changed, keep the
+    // current state untouched so the screen never flickers or jumps while
+    // photos / catalog entries are being added.
+    if (opts.silent && qRef.current && JSON.stringify(qRef.current) === JSON.stringify(nextQ)
+      && itemsRef.current.length === nextItems.length
+      && JSON.stringify(itemsRef.current.map(({ _clientKey, _dirty, _isNew, ...r }: any) => r)) === JSON.stringify(nextItems.map(({ _clientKey, ...r }: any) => r))) {
+      return;
+    }
     qRef.current = nextQ;
     itemsRef.current = nextItems;
     setQ(nextQ);
@@ -421,12 +429,19 @@ const AdminQuotationEditor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const rtTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (rtTimer.current) window.clearTimeout(rtTimer.current); }, []);
   useRealtimeQuotation(id, () => {
-    const hasUnsavedItems = itemsRef.current.some((it) => it._dirty || it._isNew);
-    if (!headerDirtyRef.current && !hasUnsavedItems && !savingRef.current) {
-      load({ silent: true });
-      setStatusHistoryKey((k) => k + 1);
-    }
+    // Debounce bursts (every save echoes several row events) and re-check the
+    // unsaved/saving flags when the timer fires, not when the event arrives.
+    if (rtTimer.current) window.clearTimeout(rtTimer.current);
+    rtTimer.current = window.setTimeout(() => {
+      const hasUnsavedItems = itemsRef.current.some((it) => it._dirty || it._isNew);
+      if (!headerDirtyRef.current && !hasUnsavedItems && !savingRef.current && !document.hidden) {
+        load({ silent: true });
+        setStatusHistoryKey((k) => k + 1);
+      }
+    }, 1200);
   });
 
   const subtotal = useMemo(() => items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0), [items]);

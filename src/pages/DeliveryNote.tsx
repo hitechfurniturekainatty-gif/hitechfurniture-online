@@ -106,15 +106,15 @@ const DeliveryNote = () => {
       <div className="mx-auto flex max-w-3xl items-center gap-2">
         <Button size="sm" variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /><span className="ml-1 hidden sm:inline">Back</span></Button>
         <div className="min-w-0 flex-1"><p className="truncate text-xs font-mono font-semibold">{q.quotation_id}</p><p className="truncate text-[11px] text-muted-foreground">Delivery team handoff</p></div>
-        {q.party_phone && <Button asChild size="icon" variant="outline"><a href={`tel:${q.party_phone}`}><Phone className="h-4 w-4" /></a></Button>}
+        {q.party_phone && <Button asChild size="icon" variant="outline" className="h-11 w-11"><a aria-label="Call customer" href={`tel:${q.party_phone}`}><Phone className="h-4 w-4" /></a></Button>}
         <Button size="sm" variant="outline" onClick={downloadPdf} disabled={pdfBusy || !selectedItems.length}>{pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="ml-1 hidden md:inline">PDF</span></Button>
         <Button size="sm" onClick={sharePdf} disabled={pdfBusy || !selectedItems.length}>{pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}<span className="ml-1 hidden sm:inline">Share PDF</span></Button>
-        <Button disabled={!selectedItems.length} size="icon" variant="ghost" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+        <Button aria-label="Print" className="h-11 w-11" disabled={!selectedItems.length} size="icon" variant="ghost" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
       </div>
     </div>
 
     <div className="mx-auto max-w-3xl px-3 py-4 sm:px-6 sm:py-6">
-      <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm print:hidden"><b>ഈ delivery-യിൽ അയക്കേണ്ട items തിരഞ്ഞെടുക്കുക.</b><p>PDF / Share PDF / Print include selected items only. Already delivered, unconfirmed, not-ready or partially cancelled/ordered rows cannot be selected. Split partial rows before dispatch. Balance is for the whole order, not just these items.</p></div>
+      <div className="mb-3 rounded-xl bg-[#FBEFE4] p-3 text-sm text-[#3B2A1C] print:hidden"><b>ഈ delivery-യിൽ അയക്കേണ്ട items തിരഞ്ഞെടുക്കുക.</b><p className="text-muted-foreground">Only ready items can be selected. Balance shown is for the whole order.</p></div>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:border-0 print:shadow-none">
         <div className="border-b border-slate-200 bg-[#f4f7f2] px-4 py-4 text-slate-900 print:bg-white">
           <div className="flex justify-between gap-3"><div><h1 className="font-display text-xl sm:text-2xl">{COMPANY.name}</h1><p className="text-xs text-slate-600">{COMPANY.address} · {COMPANY.phone}</p></div><div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Delivery Handoff</p><p className="font-mono text-sm font-bold">{q.quotation_id}</p></div></div>

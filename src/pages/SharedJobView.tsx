@@ -116,20 +116,20 @@ const SharedJobView = () => {
                   </div>
                 )}
                 {(it.measurement || it.measurement_image_url) && (
-                  <div className="rounded-lg border border-border bg-amber-50 p-2 text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+                  <div className="rounded-lg bg-[#FBEFE4] p-3 text-[#3B2A1C] dark:bg-muted dark:text-foreground">
                     <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
                       <Ruler className="h-3 w-3" /> Measurement
                     </p>
                     {it.measurement && <p className="whitespace-pre-line text-base font-medium">{it.measurement}</p>}
                     {it.measurement_image_url && (
-                      <button type="button" onClick={() => setZoom(it.measurement_image_url!)} className="mt-2 block w-full overflow-hidden rounded border border-amber-200 bg-white">
+                      <button type="button" onClick={() => setZoom(it.measurement_image_url!)} className="mt-2 block w-full overflow-hidden rounded bg-white">
                         <img src={it.measurement_image_url} alt="Measurement" className="h-auto w-full object-contain" loading="lazy" />
                       </button>
                     )}
                   </div>
                 )}
                 {it.sketch_url && (
-                  <div className="rounded-lg border border-border bg-background p-2">
+                  <div className="rounded-lg bg-[#FDF6EE] p-3 dark:bg-muted">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sketch</p>
                     <button type="button" onClick={() => setZoom(it.sketch_url!)} className="block w-full overflow-hidden rounded border border-border bg-white">
                       <img src={it.sketch_url} alt="Sketch" className="h-auto w-full object-contain" loading="lazy" />
@@ -137,7 +137,7 @@ const SharedJobView = () => {
                   </div>
                 )}
                 {(it.catalog_text || it.catalog_image_url) && (
-                  <div className="rounded-lg border border-border bg-muted/40 p-2">
+                  <div className="rounded-lg bg-[#FDF6EE] p-3 dark:bg-muted">
                     <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <FileText className="h-3 w-3" /> Catalog reference
                     </p>
@@ -150,7 +150,7 @@ const SharedJobView = () => {
                   </div>
                 )}
                 {sitePics.length > 0 && (
-                  <div className="rounded-lg border border-border bg-background p-2">
+                  <div className="rounded-lg bg-[#FDF6EE] p-3 dark:bg-muted">
                     <p className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Camera className="h-3 w-3" /> Site photos ({sitePics.length})
                     </p>
@@ -172,7 +172,7 @@ const SharedJobView = () => {
       {zoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2" onClick={() => setZoom(null)}>
           <img src={zoom} alt="Zoom" className="max-h-full max-w-full object-contain" style={{ touchAction: "pinch-zoom" }} onClick={(e) => e.stopPropagation()} />
-          <Button variant="secondary" size="sm" className="absolute right-3 top-3" onClick={() => setZoom(null)}>Close</Button>
+          <Button variant="secondary" aria-label="Close preview" className="absolute right-3 top-3 h-11 px-4" onClick={() => setZoom(null)}>Close</Button>
         </div>
       )}
     </div>
