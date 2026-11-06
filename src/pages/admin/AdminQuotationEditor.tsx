@@ -130,19 +130,15 @@ type Quotation = {
   item_conversion_status?: "open" | "partial" | "converted" | "lost" | null;
 };
 
-const DEFAULT_TERMS = `1. Prices quoted are valid for 20 days from the date of quotation. After this, prices are subject to revision.
-2. Order is confirmed only after receipt of 50% advance. Until then this quotation is not an order, and price, stock and delivery date are not reserved.
-3. Payment schedule: 50% advance on order confirmation, 25% when work is in progress (on intimation), and the balance 25% on completion before delivery.
-4. Delivery period starts from order confirmation, advance receipt and approval of design/measurements. It is subject to production/stock availability, and delays from the customer's side (changes, site not ready, late payment) will extend it.
-5. GST as applicable will be charged extra (where not already included).
-6. Transportation, loading/unloading and installation charges (if any) are extra unless specified in the quotation.
-7. Made-to-order and customised items cannot be cancelled, returned or exchanged. Once production has started, the advance paid is non-refundable.
-8. Any change in design, size, material or colour after order confirmation may change the price and delivery date.
-9. Slight variations in colour, finish, grain and shade between samples/photos and the final product are natural, especially in wood and fabric.
-10. Goods must be checked at the time of delivery. Any damage or shortage must be reported at delivery.
-11. Goods remain the property of Hitech Furniture and Interiors until full payment is received. If delivery or collection is delayed by the customer after intimation, storage and re-delivery charges may apply.
-12. Warranty is as per manufacturer terms. It does not cover misuse, wrong handling, water damage, termite/pest damage or normal wear and tear.
-13. All disputes are subject to Kalpetta, Wayanad jurisdiction.`;
+const DEFAULT_TERMS = `1. Prices are valid for 20 days from the date of quotation.
+2. The order is confirmed only on receipt of 50% advance. Until then, price, stock and delivery date are not reserved.
+3. Payment schedule: 50% advance on order confirmation, 25% during work in progress, and the balance 25% at the time of delivery. Goods remain the property of Hitech Furniture and Interiors until full payment is received.
+4. Delivery period starts from advance receipt and approval of design/measurements. Delays from the customer's side will extend the delivery date.
+5. Made-to-order items cannot be cancelled, returned or exchanged, and the advance is non-refundable once production has started. Changes after confirmation may change the price and delivery date.
+6. Transportation, loading/unloading and installation charges are extra unless mentioned in the quotation.
+7. Please check the goods at delivery and report any damage or shortage at that time. Damage after delivery is not covered.
+8. Guarantee applies to wooden items only, against manufacturing defects. Other materials (fabric, foam, glass, hardware, etc.) are covered only by the brand's own warranty, if any. The original bill must be kept for any warranty claim. Misuse, water damage, termite/pest damage, improper handling and normal wear are not covered.
+9. Slight variations in colour, grain and finish from samples/photos are natural. All disputes are subject to Kalpetta, Wayanad jurisdiction.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type ItemWorkSummary = {
