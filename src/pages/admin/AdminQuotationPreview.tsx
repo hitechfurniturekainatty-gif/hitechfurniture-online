@@ -549,35 +549,44 @@ const AdminQuotationPreview = () => {
 
       {/* Document */}
       <article className="mx-auto max-w-4xl rounded-lg border border-border bg-white text-slate-900 shadow-sm print:border-0 print:shadow-none">
-        {/* Header */}
-        <header className="flex flex-col gap-4 border-b-2 border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-8">
-          <div className="flex items-start gap-3">
-            <Logo className="h-14 w-auto sm:h-16" />
-            <div>
-              <h1 className="font-display text-xl font-bold leading-tight sm:text-2xl">{COMPANY.name}</h1>
+        {/* Header — logo + company block (fixed, never squeezed) and a short doc number.
+            Party name / place live only in the "Quotation For" box below. */}
+        <header className="flex flex-col gap-3 border-b-2 border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-8">
+          <div className="flex items-center gap-4">
+            <Logo className="h-14 w-auto shrink-0 sm:h-16" />
+            <div className="min-w-0">
+              <h1 className="font-display text-xl font-bold leading-tight sm:whitespace-nowrap sm:text-2xl">{COMPANY.name}</h1>
               <p className="text-xs text-slate-600 sm:text-sm">{COMPANY.address}</p>
               <p className="text-xs text-slate-600 sm:text-sm">{COMPANY.phone}</p>
             </div>
           </div>
-          <div className="text-left sm:text-right">
+          <div className="shrink-0 text-left sm:text-right">
             <p className={`text-[11px] uppercase tracking-wider ${po ? "font-bold text-blue-600" : "text-slate-500"}`}>
               {po ? "PURCHASE ORDER" : "Quotation"}
             </p>
-            <p className="font-mono text-base font-semibold sm:text-lg">{q.quotation_id}</p>
-            <p className="mt-1 text-xs text-slate-600 sm:text-sm">Date: {fmtDate(q.quotation_date)}</p>
-            {q.expected_delivery_date && (
-              <p className="text-xs text-slate-600 sm:text-sm">Delivery: {fmtDate(q.expected_delivery_date)}</p>
-            )}
+            <p className="whitespace-nowrap font-mono text-base font-semibold sm:text-lg">
+              {q.quotation_id.split(" / ")[0]}
+            </p>
           </div>
         </header>
 
-        {/* Party */}
+        {/* Party — name/details get full width; date sits at the end (right) */}
         <section className="border-b border-slate-200 p-5 sm:p-8">
-          <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">{po ? "Worker / Supplier" : "Quotation For"}</p>
-          <p className="text-base font-semibold sm:text-lg">{q.party_name}</p>
-          <p className="text-sm text-slate-700">{q.party_place}</p>
-          {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{q.party_address}</p>}
-          {q.party_phone && <p className="mt-0.5 text-sm text-slate-700">Phone: {q.party_phone}</p>}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[11px] uppercase tracking-wider text-slate-500">{po ? "Worker / Supplier" : "Quotation For"}</p>
+              <p className="break-words text-base font-semibold sm:text-lg">{q.party_name}</p>
+              <p className="break-words text-sm text-slate-700">{q.party_place}</p>
+              {q.party_address && <p className="mt-0.5 whitespace-pre-line text-sm text-slate-700">{q.party_address}</p>}
+              {q.party_phone && <p className="mt-0.5 text-sm text-slate-700">Phone: {q.party_phone}</p>}
+            </div>
+            <div className="shrink-0 text-left text-xs text-slate-600 sm:text-right sm:text-sm">
+              <p className="whitespace-nowrap">Date: {fmtDate(q.quotation_date)}</p>
+              {q.expected_delivery_date && (
+                <p className="whitespace-nowrap">Delivery: {fmtDate(q.expected_delivery_date)}</p>
+              )}
+            </div>
+          </div>
         </section>
 
         {/* Items — table on sm+, stacked cards on mobile */}
