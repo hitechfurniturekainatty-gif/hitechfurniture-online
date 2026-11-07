@@ -2008,6 +2008,7 @@ export type Database = {
           status: string
           submitted_for_pricing_at: string | null
           subtotal: number
+          show_seal_sign: boolean
           terms: string | null
           total: number
           updated_at: string
@@ -2061,6 +2062,7 @@ export type Database = {
           status?: string
           submitted_for_pricing_at?: string | null
           subtotal?: number
+          show_seal_sign?: boolean
           terms?: string | null
           total?: number
           updated_at?: string
@@ -2114,6 +2116,7 @@ export type Database = {
           status?: string
           submitted_for_pricing_at?: string | null
           subtotal?: number
+          show_seal_sign?: boolean
           terms?: string | null
           total?: number
           updated_at?: string

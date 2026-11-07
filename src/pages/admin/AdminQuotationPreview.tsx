@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import quoteHeaderArt from "@/assets/quote-header-art.jpg";
 import quoteFooterWave from "@/assets/quote-footer-wave.png";
+import sealSign from "@/assets/hitech-seal-signed.png";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +68,7 @@ type Quotation = {
   status: string;
   notes: string | null;
   terms: string | null;
+  show_seal_sign?: boolean | null;
   created_by: string | null;
   document_type: DocType;
   submitted_for_pricing_at?: string | null;
@@ -259,6 +261,7 @@ const AdminQuotationPreview = () => {
         balance_due: balance,
         notes: q.notes,
         terms: q.terms,
+        show_seal_sign: !!q.show_seal_sign,
         is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
@@ -336,6 +339,7 @@ const AdminQuotationPreview = () => {
         balance_due: balance,
         notes: q.notes,
         terms: q.terms,
+        show_seal_sign: !!q.show_seal_sign,
         is_po: isPO(q.document_type),
         items: items.map((it) => ({
           description: it.description,
@@ -867,6 +871,15 @@ const AdminQuotationPreview = () => {
               })}
             </ol>
           </section>
+        )}
+
+        {!po && q.show_seal_sign && (
+          <div className="mt-4 flex justify-end px-5 sm:px-8">
+            <div className="text-center">
+              <img src={sealSign} alt="Hitech seal and signature" className="h-24 w-auto" />
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#5E2D05]">Authorised Signatory</p>
+            </div>
+          </div>
         )}
 
         {/* Thank you */}

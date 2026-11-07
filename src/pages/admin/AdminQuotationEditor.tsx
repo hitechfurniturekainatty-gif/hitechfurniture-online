@@ -19,6 +19,7 @@ import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
 import { QuotationItemMediaStack } from "@/components/admin/QuotationItemMediaStack";
 import { ContactPicker } from "@/components/admin/ContactPicker";
 import { useAuth } from "@/hooks/useAuth";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
@@ -116,6 +117,7 @@ type Quotation = {
   status: string;
   notes: string | null;
   terms: string | null;
+  show_seal_sign?: boolean | null;
   delivery_route_id: string | null;
   delivery_place: string | null;
   document_type: DocType;
@@ -800,6 +802,7 @@ const AdminQuotationEditor = () => {
       h.status,
       h.notes,
       h.terms,
+      h.show_seal_sign ? 1 : 0,
       h.salesperson_name,
       h.delivery_place,
       h.delivery_route_id,
@@ -822,6 +825,7 @@ const AdminQuotationEditor = () => {
         status: saveQ.status,
         notes: saveQ.notes,
         terms: saveQ.terms,
+        show_seal_sign: !!saveQ.show_seal_sign,
         salesperson_name: saveQ.salesperson_name,
       }).eq("id", saveQ.id);
       if (error) {
@@ -1032,6 +1036,7 @@ const AdminQuotationEditor = () => {
       q?.advance_amount ?? "",
       q?.notes ?? "",
       q?.terms ?? "",
+      q?.show_seal_sign ? 1 : 0,
       q?.salesperson_name ?? "",
       q?.delivery_place ?? "",
       q?.delivery_route_id ?? "",
@@ -1115,6 +1120,7 @@ const AdminQuotationEditor = () => {
       balance_due: balanceDue,
       notes: q.notes,
       terms: q.terms ?? DEFAULT_TERMS,
+      show_seal_sign: !!q.show_seal_sign,
       is_po: po,
       items: items.map((it) => ({
         description: it.description,
@@ -2429,6 +2435,15 @@ const AdminQuotationEditor = () => {
               />
               <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
             </div>
+            {isAdmin && !po && (
+              <div className="flex items-center justify-between rounded-md border border-primary/25 px-3 py-2">
+                <div>
+                  <Label className="text-sm">Add company seal &amp; signature</Label>
+                  <p className="text-[10px] text-muted-foreground">Prints Hitech seal with sign under the terms. Off by default.</p>
+                </div>
+                <Switch checked={!!q.show_seal_sign} onCheckedChange={(v) => updateHeader({ show_seal_sign: v })} />
+              </div>
+            )}
             {canEditPrice && (
               <div className="space-y-1.5">
                 <Label>GST %</Label>

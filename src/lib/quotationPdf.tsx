@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image, Svg, Path, Circle, Rect, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo-wide.jpg";
+import sealSign from "@/assets/hitech-seal-signed.png";
 import headerArt from "@/assets/quote-header-art.jpg";
 import footerWave from "@/assets/quote-footer-wave.png";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
@@ -117,6 +118,8 @@ export type QuotationPdfData = {
   balance_due?: number;
   notes: string | null;
   terms?: string | null;
+  /** Prints company seal + signature under the terms (admin opt-in). */
+  show_seal_sign?: boolean;
   items: QuotationItemPdf[];
   /** When true, renders as PURCHASE ORDER: no prices, no totals, no bank, no terms. */
   is_po?: boolean;
@@ -367,6 +370,15 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
                 </View>
               );
             })}
+          </View>
+        </View>
+      )}
+
+      {!q.is_po && q.show_seal_sign && (
+        <View style={{ marginTop: 10, alignItems: "flex-end" }} wrap={false}>
+          <View style={{ alignItems: "center" }}>
+            <Image src={sealSign} style={{ width: 150, height: 68, objectFit: "contain" }} />
+            <Text style={{ fontSize: 8, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
           </View>
         </View>
       )}
