@@ -130,14 +130,14 @@ type Quotation = {
   item_conversion_status?: "open" | "partial" | "converted" | "lost" | null;
 };
 
-const DEFAULT_TERMS = `1. Validity: Quotation is valid for 30 days from the date of issue.
-2. Payment: Orders are confirmed only upon receipt of the agreed advance. Balance payment must be completed before delivery unless otherwise agreed in writing.
-3. GST: Taxes, transportation, and installation charges are applicable as specified in the quotation.
-4. Delivery: Delivery dates are estimated and subject to product availability, production schedules, and transportation conditions.
-5. Product Variation: Minor variations in colour, texture, wood grain, and finish may occur.
-6. Custom Orders: Customized furniture cannot ordinarily be cancelled or returned for change of mind once production has commenced. Statutory rights remain unaffected.
-7. Guarantee: Guarantee applies to wooden items only, against manufacturing defects. Other items are covered only by the respective manufacturer's warranty, if any.
-8. Returns & Claims: Any damage, shortage, or product-related concern should be reported promptly. Eligible complaints will be resolved under the applicable warranty, return policy, and consumer protection laws.`;
+const DEFAULT_TERMS = `1. This quotation is valid for 30 days from the date of issue.
+2. Your order is confirmed only after we receive the advance. Please pay the balance before delivery, unless we agree otherwise in writing.
+3. GST, transport and installation charges are applied as shown in the quotation.
+4. Delivery dates are estimates. They can change with stock, production work and transport.
+5. Small differences in colour, texture, wood grain and finish can happen.
+6. Custom-made furniture cannot be cancelled or returned once we start making it.
+7. Guarantee is for wooden items only, against manufacturing defects. Other items are covered only by the maker's warranty, if any.
+8. Please tell us quickly about any damage or missing items. We will solve genuine complaints as per the warranty, return rules and consumer law.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type ItemWorkSummary = {
