@@ -67,11 +67,11 @@ const styles = StyleSheet.create({
   termsHead: { paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: LINE },
   termsTitle: { fontSize: 11, fontWeight: 700, color: BROWN },
   termsBody: { paddingVertical: 5, paddingHorizontal: 10 },
-  termsRow: { flexDirection: "row", marginBottom: 2 },
+  termsRow: { flexDirection: "row", marginBottom: 1.5 },
   termsNum: { width: 14, fontSize: 8.8, color: BROWN, fontWeight: 700 },
-  termsLine: { flex: 1, fontSize: 8.8, color: "#3B2A1C", lineHeight: 1.4 },
+  termsLine: { flex: 1, fontSize: 8.6, color: "#3B2A1C", lineHeight: 1.3 },
   thanks: { alignItems: "flex-end", marginTop: 8 },
-  thanksScript: { fontFamily: "Times-Italic", fontSize: 24, color: BROWN },
+  thanksScript: { fontFamily: "Times-Italic", fontSize: 20, color: BROWN },
   thanksUnder: { width: 120, height: 2, backgroundColor: "#F2A12B", marginTop: 1 },
   thanksSub: { fontSize: 7.5, letterSpacing: 2.2, color: "#1F140B", fontWeight: 700, marginTop: 4 },
   contHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 6, borderBottomWidth: 0.75, borderBottomColor: "#D9B99B" },
@@ -360,46 +360,49 @@ export const QuotationDoc = ({ q, assets }: { q: QuotationPdfData; assets?: Part
         </View>
       )}
 
-      {!q.is_po && q.terms && q.terms.trim() !== "" && (
-        <View style={styles.termsBox} wrap={false}>
-          <View style={styles.termsHead}>
-            <Text style={styles.termsTitle}>Terms & Conditions</Text>
-          </View>
-          <View style={styles.termsBody}>
-            {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => {
-              const m = line.match(/^\s*(\d+)[.)]\s*(.*)$/);
-              return (
-                <View key={idx} style={styles.termsRow}>
-                  <Text style={styles.termsNum}>{m ? `${m[1]}.` : "•"}</Text>
-                  <Text style={styles.termsLine}>{m ? m[2] : line}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {q.notes && (
-        <View style={{ marginTop: 10 }}>
-          <Text style={{ fontSize: 9, color: "#6B5848" }}>Notes: {q.notes}</Text>
-        </View>
-      )}
-
-      {!q.is_po && (
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }} wrap={false}>
-          <View style={{ alignItems: "flex-start" }}>
-            <Text style={styles.thanksScript}>Thank You</Text>
-            <View style={styles.thanksUnder} />
-            <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
-          </View>
-          {q.show_seal_sign && (
-            <View style={{ alignItems: "center" }}>
-              <Image src={A.sealSign} style={{ width: 130, height: 59, objectFit: "contain" }} />
-              <Text style={{ fontSize: 7.5, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
+      {/* Terms, notes, thank-you and seal stay together: never a lonely signature page */}
+      <View wrap={false}>
+        {!q.is_po && q.terms && q.terms.trim() !== "" && (
+          <View style={styles.termsBox} wrap={false}>
+            <View style={styles.termsHead}>
+              <Text style={styles.termsTitle}>Terms & Conditions</Text>
             </View>
-          )}
-        </View>
-      )}
+            <View style={styles.termsBody}>
+              {q.terms.split(/\r?\n/).filter((l) => l.trim() !== "").map((line, idx) => {
+                const m = line.match(/^\s*(\d+)[.)]\s*(.*)$/);
+                return (
+                  <View key={idx} style={styles.termsRow}>
+                    <Text style={styles.termsNum}>{m ? `${m[1]}.` : "•"}</Text>
+                    <Text style={styles.termsLine}>{m ? m[2] : line}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {q.notes && (
+          <View style={{ marginTop: 10 }}>
+            <Text style={{ fontSize: 9, color: "#6B5848" }}>Notes: {q.notes}</Text>
+          </View>
+        )}
+
+        {!q.is_po && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }} wrap={false}>
+            <View style={{ alignItems: "flex-start" }}>
+              <Text style={styles.thanksScript}>Thank You</Text>
+              <View style={styles.thanksUnder} />
+              <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
+            </View>
+            {q.show_seal_sign && (
+              <View style={{ alignItems: "center" }}>
+                <Image src={A.sealSign} style={{ width: 110, height: 50, objectFit: "contain" }} />
+                <Text style={{ fontSize: 7.5, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     </Page>
   </Document>
 );
