@@ -1,6 +1,6 @@
 import { QuotationOrigin } from "@/components/leads/QuotationOrigin";
 import { MeasurementAssignment } from '@/components/admin/MeasurementAssignment';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -13,6 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AttachmentThumbStrip } from "@/components/admin/AttachmentThumbStrip";
@@ -27,6 +31,7 @@ import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2, Columns2,
+  Ruler, ChevronDown,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, useDroppable,
@@ -260,6 +265,34 @@ export const statusLabel = (s: string) => {
   };
   return map[normalizeStatus(s)] ?? s;
 };
+
+const SectionCard = ({
+  step, title, hint, actions, children,
+}: {
+  step: number;
+  title: ReactNode;
+  hint?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) => (
+  <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <header className="flex flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{step}</span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold leading-tight">{title}</h2>
+          {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+        </div>
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </header>
+    {children}
+  </section>
+);
+
+const GroupTitle = ({ children }: { children: ReactNode }) => (
+  <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</h3>
+);
 
 const AdminQuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -1746,16 +1779,9 @@ const AdminQuotationEditor = () => {
         <QuotationFlowLinks quotationId={q.id} />
 
         <div className="hidden flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/80 p-2 shadow-sm sm:flex">
-          {canBypass && (
-            <Select onValueChange={pushToSelectValueChange}>
-              <SelectTrigger className="h-8 w-auto min-w-[130px] shrink-0"><SelectValue placeholder="Push to…" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="production">→ Production</SelectItem>
-                <SelectItem value="warehouse">→ Warehouse</SelectItem>
-                <SelectItem value="logistics">→ Logistics</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
+          <Button className="shrink-0" onClick={saveAndPreview} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
+          </Button>
           {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
             <Button
               size="sm"
@@ -1766,19 +1792,6 @@ const AdminQuotationEditor = () => {
               <CheckCircle2 className="mr-2 h-4 w-4" />Confirm & Convert to Order
             </Button>
           )}
-          {canReject && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 shrink-0 text-destructive hover:text-destructive"
-              onClick={handleReject}
-            >
-              Reject
-            </Button>
-          )}
-          <Button className="shrink-0" onClick={saveAndPreview} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save
-          </Button>
           {isFieldOnly && q.source_task_id && !submittedForPricing && (
             <Button onClick={submitForPricing} disabled={saving} variant="default" className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white">
               <CheckCircle2 className="mr-2 h-4 w-4" />Submit for pricing
@@ -1786,6 +1799,7 @@ const AdminQuotationEditor = () => {
           )}
           {canEditPrice && (
             <>
+              <span className="mx-1 h-6 w-px bg-border" aria-hidden />
               <DownloadShareMenu
                 onPdf={downloadPdf}
                 onJpg={downloadJpg}
@@ -1794,10 +1808,47 @@ const AdminQuotationEditor = () => {
                 jpgTooltip="JPG — high-res images for WhatsApp"
               />
               <Button variant="outline" className="shrink-0" onClick={shareWhatsApp}><MessageCircle className="mr-2 h-4 w-4 text-primary" />WhatsApp</Button>
-              <Button variant="outline" onClick={async () => { const saved = await ensureSaved(); if (saved) { setMeasurementItems(saved); setMeasurementOpen(true); } }}>Assign measurement</Button>
               <Button variant="secondary" className="shrink-0" onClick={openJobDialog}><HardHat className="mr-2 h-4 w-4" />Assign job</Button>
               <AttachedNotesButton quotationId={q.id} />
             </>
+          )}
+          {(canEditPrice || canBypass || canReject) && (
+            <div className="ml-auto">
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="shrink-0">
+                    <ChevronDown className="mr-1.5 h-4 w-4" />Order actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {canEditPrice && (
+                    <>
+                      <DropdownMenuLabel>Measurement</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={async () => { const saved = await ensureSaved(); if (saved) { setMeasurementItems(saved); setMeasurementOpen(true); } }}>
+                        <Ruler className="mr-2 h-4 w-4" />Assign measurement
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canBypass && (
+                    <>
+                      {canEditPrice && <DropdownMenuSeparator />}
+                      <DropdownMenuLabel>Move order to</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => pushToSelectValueChange("production")}>→ Production</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => pushToSelectValueChange("warehouse")}>→ Warehouse</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => pushToSelectValueChange("logistics")}>→ Logistics</DropdownMenuItem>
+                    </>
+                  )}
+                  {canReject && (
+                    <>
+                      {(canEditPrice || canBypass) && <DropdownMenuSeparator />}
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => handleReject()}>
+                        Reject quotation
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>
@@ -1812,13 +1863,12 @@ const AdminQuotationEditor = () => {
         </div>
       )}
 
-      <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/[0.012] p-2.5 shadow-sm sm:p-3">
-      <Card className="mb-3 overflow-hidden rounded-xl border border-primary/20 bg-background shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b border-border/50 bg-muted/20 px-4 py-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            {po && <ShoppingCartIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-            {po ? "Purchase Order Details" : "Party & Quotation Details"}
-          </CardTitle>
+      <div className="mb-5">
+      <SectionCard
+        step={1}
+        title={po ? "Purchase order details" : "Party & quotation details"}
+        hint="Fill the customer details first, then add items below."
+        actions={
           <ContactPicker
             label="From Contacts"
             onPick={({ name, tel, place, address }) =>
@@ -1830,14 +1880,27 @@ const AdminQuotationEditor = () => {
               })
             }
           />
-        </CardHeader>
-        <CardContent
-          className="grid gap-x-4 gap-y-3 p-4 sm:grid-cols-2 md:grid-cols-3"
+        }
+      >
+        <div
+          className="grid gap-6 p-4 md:grid-cols-2"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
         >
-          <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} onBlur={(e) => updateHeader({ party_name: toTitleCase(e.target.value) })} /></div>
-          <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
+          <div className="space-y-3">
+            <GroupTitle>{po ? "Worker / supplier" : "Customer"}</GroupTitle>
+            <div className="space-y-1.5"><Label>{po ? "Worker / Supplier *" : "Party name *"}</Label><Input className="h-11" value={q.party_name} onChange={(e) => updateHeader({ party_name: e.target.value })} onBlur={(e) => updateHeader({ party_name: toTitleCase(e.target.value) })} /></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label>Place *</Label><Input className="h-11" value={q.party_place} onChange={(e) => updateHeader({ party_place: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
+            </div>
+            <div className="space-y-1.5"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
+          </div>
+          <div className="space-y-3 md:border-l md:border-border md:pl-6">
+            <GroupTitle>{po ? "PO info" : "Quotation info"}</GroupTitle>
+            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Delivery date</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
+            </div>
           {!po && (
             <div className="space-y-1.5">
               <Label>Salesperson / Staff name</Label>
@@ -1863,9 +1926,6 @@ const AdminQuotationEditor = () => {
               </div>
             </div>
           )}
-          <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>{po ? "PO date" : "Quotation date"}</Label><Input className="h-11" type="date" value={q.quotation_date} onChange={(e) => updateHeader({ quotation_date: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Delivery date</Label><Input className="h-11" type="date" value={q.expected_delivery_date ?? ""} onChange={(e) => updateHeader({ expected_delivery_date: e.target.value || null })} /></div>
           {!po && (
             <div className="sm:col-span-2 md:col-span-3">
               <DeliveryRoutePicker
@@ -1875,13 +1935,15 @@ const AdminQuotationEditor = () => {
               />
             </div>
           )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </SectionCard>
 
       <ItemsDropZone>
-      <Card className="mb-4 border-2 border-primary/30 bg-primary/[0.012] shadow-sm">
-        <CardHeader className="flex flex-col gap-2 border-b border-primary/25 bg-primary/[0.04] pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+      <SectionCard
+        step={2}
+        title={
+          <span className="flex flex-wrap items-center gap-2">
             <span>Items ({items.length})</span>
             {items.length > 0 && (() => {
               const delivered = items.filter((i) => !!i.delivered_at).length;
@@ -1896,42 +1958,38 @@ const AdminQuotationEditor = () => {
                 </span>
               );
             })()}
-          </CardTitle>
-          <div className="flex flex-wrap gap-2">
+          </span>
+        }
+        hint="Add each product, then set quantity and rate. Tap Details on a row for stock, delivery and attachments."
+        actions={
+          <>
+            <Button type="button" size="sm" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
+              <Plus className="mr-1.5 h-4 w-4" />Add item
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={openProductPicker}>
+              <Package className="mr-1.5 h-4 w-4" />From catalog
+            </Button>
             <Button
               type="button"
               size="sm"
               variant={dndOpen ? "default" : "outline"}
-              className="flex-1 sm:flex-initial"
               onClick={() => setDndOpen((o) => !o)}
               title="Split-view catalog: drag products straight into this list"
             >
-              <Columns2 className="mr-1.5 h-4 w-4" />D&amp;D
+              <Columns2 className="mr-1.5 h-4 w-4" />Drag &amp; drop
             </Button>
-            <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-initial" onClick={openProductPicker}>
-              <Package className="mr-1.5 h-4 w-4" />From catalog
-            </Button>
-            <Button type="button" size="sm" className="flex-1 sm:flex-initial" onClick={(e) => { e.preventDefault(); addBlankItem(); }}>
-              <Plus className="mr-1.5 h-4 w-4" />Add item
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="flex-1 sm:flex-initial"
-              onClick={() => setLivePreviewOpen(true)}
-              title="Live invoice preview"
-            >
+            <Button type="button" size="sm" variant="ghost" onClick={() => setLivePreviewOpen(true)} title="Live invoice preview">
               <FileText className="mr-1.5 h-4 w-4" />Preview
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 px-2 sm:px-6">
+          </>
+        }
+      >
+        <div className="space-y-3 p-2 sm:p-4">
           {items.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">No items yet. Tap "Add item" to begin.</p>
           )}
           {items.length > 0 && (
-            <div className="hidden sm:grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] gap-2 rounded-md bg-muted/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="hidden sm:grid grid-cols-[40px_minmax(0,1fr)_80px_120px_120px_88px] gap-2 rounded-md border bg-muted/50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <span>#</span>
               <span>Item / Description</span>
               <span className="text-right">Qty</span>
@@ -1943,15 +2001,15 @@ const AdminQuotationEditor = () => {
             </div>
           )}
           {items.map((it, idx) => (
-            <div key={it._clientKey} data-item-id={it.id} className="overflow-hidden rounded-xl border-2 border-primary/45 bg-primary/[0.04] shadow-md transition-colors hover:border-primary/65 hover:bg-primary/[0.06]">
+            <div key={it._clientKey} data-item-id={it.id} className={`overflow-hidden rounded-lg border bg-card shadow-sm transition-colors ${expandedItemId === it.id ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
               {canEditPrice && !it._isNew && (() => {
                 const readyQty = Math.min(Number(it.quantity ?? 0), Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? it.quantity : 0))));
                 const customQty = Math.max(0, Number(it.quantity ?? 0) - readyQty);
                 const alreadyAssigned = Number(itemWorkMap[it.id]?.assigned ?? 0);
                 const canAssign = customQty > 0 && alreadyAssigned === 0;
                 return (
-                  <label className={`flex items-center gap-2 border-b border-primary/30 px-3 py-2 text-sm ${
-                    canAssign ? "cursor-pointer bg-violet-500/[0.07]" : "cursor-default bg-primary/[0.035] text-muted-foreground"
+                  <label className={`flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs ${
+                    canAssign ? "cursor-pointer bg-violet-500/[0.07]" : "cursor-default bg-muted/30 text-muted-foreground"
                   }`}>
                     <Checkbox
                       checked={selectedItemIds.has(it.id)}
@@ -1974,7 +2032,7 @@ const AdminQuotationEditor = () => {
                   {it.product_id && <Badge variant="outline" className="px-1 py-0 text-[9px] leading-none">Cat</Badge>}
                   {it.bundle_id && <Badge className="px-1 py-0 text-[9px] leading-none bg-violet-600 hover:bg-violet-600">Bundle</Badge>}
                 </div>
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-2">
                   <AutoSuggestInput
                     value={it.description}
                     onChange={(v) => updateItem(it.id, { description: v })}
@@ -2008,28 +2066,15 @@ const AdminQuotationEditor = () => {
                     className="min-h-[52px] text-sm"
                     value={it.item_notes ?? ""}
                     onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
-                    placeholder="Description — specs, customer notes, etc. (optional)"
+                    placeholder="Size, colour, finish, customer notes (optional)"
                   />
-                  {canEditPrice && !it._isNew && (
-                    <div className="pt-1">
-                      <ReadyStockSplitEditor
-                        itemId={it.id}
-                        quantity={Number(it.quantity) || 0}
-                        onRouteChange={(route, readyQty, decision) => {
-                          setItems((prev) => {
-                            const next = prev.map((row) =>
-                              row.id === it.id
-                                ? { ...row, fulfillment_route: route, ready_stock_qty: readyQty, stock_decision: decision }
-                                : row
-                            );
-                            itemsRef.current = next;
-                            return next;
-                          });
-                        }}
-                      />
-                    </div>
-                  )}
-
+                  <div data-enter-skip className="pt-1">
+                    <QuotationItemMediaStack
+                      item={it}
+                      onChange={(patch) => updateItem(it.id, patch)}
+                      disabled={fieldReadOnly}
+                    />
+                  </div>
                   <div className="flex flex-wrap items-center gap-1 text-[10px]">
                     {it.stock_decision && (
                       <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${
@@ -2044,73 +2089,13 @@ const AdminQuotationEditor = () => {
                     {it.sketch_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Sketch</span>}
                     {it.item_image_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Photo</span>}
                     {it.site_photos && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Site</span>}
-                    {Number(it.ordered_qty ?? 0) > 0 && (
-                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
-                      Ordered {Number(it.ordered_qty ?? 0)}/{Number(it.quantity ?? 0)}
-                    </span>
-                  )}
-                  {Number(it.cancelled_qty ?? 0) > 0 && (
-                    <span
-                      className="rounded-full border border-stone-400/50 bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-600"
-                      title={it.cancellation_reason || "Cancelled quantity"}
-                    >
-                      Closed {Number(it.cancelled_qty ?? 0)}
-                    </span>
-                  )}
                   {Number(it.ordered_qty ?? 0) < Number(it.quantity ?? 0) && (
                     <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
                       Open {Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0))}
                     </span>
                   )}
-                  {canEditPrice && !it._isNew && Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0)) > 0 && (
-                    <button
-                      type="button"
-                      className="rounded-full border border-amber-500/40 px-1.5 py-0.5 font-semibold text-amber-700 hover:bg-amber-50"
-                      onClick={(e) => { e.stopPropagation(); void closeRemainingItem(it); }}
-                    >
-                      Close Remaining
-                    </button>
-                  )}
-                  {canEditPrice && !it._isNew && Number(it.cancelled_qty ?? 0) > 0 && normalizeStatus(q.status) !== "delivered" && normalizeStatus(q.status) !== "rejected" && (
-                    <button
-                      type="button"
-                      className="rounded-full border border-sky-500/40 px-1.5 py-0.5 font-semibold text-sky-700 hover:bg-sky-50"
-                      onClick={(e) => { e.stopPropagation(); void reopenCancelledItem(it); }}
-                    >
-                      Reopen
-                    </button>
-                  )}
                   {it.delivered_at && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">✓ Delivered</span>}
                     {!it.delivered_at && it.dispatched_at && <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-semibold text-sky-700 dark:text-sky-300">In transit</span>}
-                  </div>
-                  {!it._isNew && (() => {
-                    const work = itemWorkMap[it.id];
-                    const quoted = Number(it.quantity ?? 0);
-                    const ordered = Number(it.ordered_qty ?? 0);
-                    const ready = Math.min(quoted, Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? quoted : 0))));
-                    const customPending = Math.max(0, quoted - ready);
-                    return (
-                      <div className="mt-1 grid gap-1 rounded-md border border-primary/20 bg-primary/[0.035] p-2 text-[10px] sm:grid-cols-2 lg:grid-cols-4">
-                        <span><b>Quoted:</b> {quoted} · <b>Order:</b> {ordered}</span>
-                        <span><b>Ready:</b> {ready} · <b>Custom pending:</b> {customPending}</span>
-                        <span>
-                          <b>Worker:</b> {work?.workers.length ? work.workers.join(", ") : "Not assigned"}
-                          {work ? " · Complete " + work.completed + " · Pending " + work.pending : ""}
-                        </span>
-                        <span>
-                          <b>Due:</b> {work?.due_at ? new Date(work.due_at).toLocaleDateString("en-IN") : "—"}
-                          {work ? " · Received " + work.received : ""}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  <div data-enter-skip className="pt-1">
-                    <QuotationItemMediaStack
-                      item={it}
-                      onChange={(patch) => updateItem(it.id, patch)}
-                      disabled={fieldReadOnly}
-                    />
                   </div>
                 </div>
                 </div>
@@ -2240,11 +2225,10 @@ const AdminQuotationEditor = () => {
               </div>
 
               {expandedItemId === it.id && (
-              <>
-              <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Item #{idx + 1}</span>
-                  {it.product_id && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
+                <div className="space-y-4 border-t border-border bg-muted/20 p-3 sm:p-4">
+                  <div>
+                    <GroupTitle>Fulfilment</GroupTitle>
+                    <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() =>
@@ -2270,13 +2254,6 @@ const AdminQuotationEditor = () => {
                       In transit
                     </span>
                   ) : null)}
-                  {showPricing && ((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)) > 0 && (
-                    <span className="ml-2 font-mono text-sm font-semibold text-primary">
-                      {formatINR((Number(it.quantity) || 0) * (Number(it.unit_price) || 0))}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
                   {canEditPrice && !it._isNew && !it.delivered_at && (
                     <>
                       {!it.dispatched_at ? (
@@ -2316,11 +2293,89 @@ const AdminQuotationEditor = () => {
                       Reset
                     </Button>
                   )}
-                </div>
-              </div>
-
+                    </div>
+                  {canEditPrice && !it._isNew && (
+                    <div className="pt-1">
+                      <ReadyStockSplitEditor
+                        itemId={it.id}
+                        quantity={Number(it.quantity) || 0}
+                        onRouteChange={(route, readyQty, decision) => {
+                          setItems((prev) => {
+                            const next = prev.map((row) =>
+                              row.id === it.id
+                                ? { ...row, fulfillment_route: route, ready_stock_qty: readyQty, stock_decision: decision }
+                                : row
+                            );
+                            itemsRef.current = next;
+                            return next;
+                          });
+                        }}
+                      />
+                    </div>
+                  )}
+                  </div>
+                  {!it._isNew && (
+                    <div>
+                      <GroupTitle>Order progress</GroupTitle>
+                      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    {Number(it.ordered_qty ?? 0) > 0 && (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                      Ordered {Number(it.ordered_qty ?? 0)}/{Number(it.quantity ?? 0)}
+                    </span>
+                  )}
+                  {Number(it.cancelled_qty ?? 0) > 0 && (
+                    <span
+                      className="rounded-full border border-stone-400/50 bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-600"
+                      title={it.cancellation_reason || "Cancelled quantity"}
+                    >
+                      Closed {Number(it.cancelled_qty ?? 0)}
+                    </span>
+                  )}
+                  {canEditPrice && !it._isNew && Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0)) > 0 && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-amber-500/40 px-1.5 py-0.5 font-semibold text-amber-700 hover:bg-amber-50"
+                      onClick={(e) => { e.stopPropagation(); void closeRemainingItem(it); }}
+                    >
+                      Close Remaining
+                    </button>
+                  )}
+                  {canEditPrice && !it._isNew && Number(it.cancelled_qty ?? 0) > 0 && normalizeStatus(q.status) !== "delivered" && normalizeStatus(q.status) !== "rejected" && (
+                    <button
+                      type="button"
+                      className="rounded-full border border-sky-500/40 px-1.5 py-0.5 font-semibold text-sky-700 hover:bg-sky-50"
+                      onClick={(e) => { e.stopPropagation(); void reopenCancelledItem(it); }}
+                    >
+                      Reopen
+                    </button>
+                  )}
+                      </div>
+                  {!it._isNew && (() => {
+                    const work = itemWorkMap[it.id];
+                    const quoted = Number(it.quantity ?? 0);
+                    const ordered = Number(it.ordered_qty ?? 0);
+                    const ready = Math.min(quoted, Math.max(0, Number(it.ready_stock_qty ?? (it.fulfillment_route === "ready_stock" ? quoted : 0))));
+                    const customPending = Math.max(0, quoted - ready);
+                    return (
+                      <div className="mt-1 grid gap-1 rounded-md border border-primary/20 bg-primary/[0.035] p-2 text-[10px] sm:grid-cols-2 lg:grid-cols-4">
+                        <span><b>Quoted:</b> {quoted} · <b>Order:</b> {ordered}</span>
+                        <span><b>Ready:</b> {ready} · <b>Custom pending:</b> {customPending}</span>
+                        <span>
+                          <b>Worker:</b> {work?.workers.length ? work.workers.join(", ") : "Not assigned"}
+                          {work ? " · Complete " + work.completed + " · Pending " + work.pending : ""}
+                        </span>
+                        <span>
+                          <b>Due:</b> {work?.due_at ? new Date(work.due_at).toLocaleDateString("en-IN") : "—"}
+                          {work ? " · Received " + work.received : ""}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                    </div>
+                  )}
               {(it.item_image_url || it.measurement_image_url || it.site_photos || it.catalog_image_url || it.sketch_url) && (
-                <div className="border-b bg-muted/20 px-3 py-2">
+                <div>
+                  <GroupTitle>Attachments</GroupTitle>
                   <AttachmentThumbStrip
                     itemImageUrl={it.item_image_url}
                     measurementImageUrl={it.measurement_image_url}
@@ -2330,8 +2385,7 @@ const AdminQuotationEditor = () => {
                   />
                 </div>
               )}
-
-              </>
+                </div>
               )}
             </div>
           ))}
@@ -2341,8 +2395,8 @@ const AdminQuotationEditor = () => {
               <Plus className="mr-2 h-4 w-4" />Add another item
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </SectionCard>
       </ItemsDropZone>
 
       <Dialog open={livePreviewOpen} onOpenChange={setLivePreviewOpen}>
@@ -2415,46 +2469,10 @@ const AdminQuotationEditor = () => {
       </Dialog>
 
       {!po && (
-      <Card className="mb-4 border border-primary/25 bg-primary/[0.012] shadow-none">
-        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
-          <div className="space-y-3 order-2 md:order-1">
-            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label>Terms & Conditions</Label>
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => updateHeader({ terms: DEFAULT_TERMS })}>
-                  Reset to default
-                </Button>
-              </div>
-              <Textarea
-                rows={8}
-                value={q.terms ?? DEFAULT_TERMS}
-                onChange={(e) => updateHeader({ terms: e.target.value })}
-                placeholder="Advance if any, delivery timeline, validity, GST, warranty..."
-                className="font-mono text-xs"
-              />
-              <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
-            </div>
-            {isAdmin && !po && (
-              <div className="flex items-center justify-between rounded-md border border-primary/25 px-3 py-2">
-                <div>
-                  <Label className="text-sm">Add company seal &amp; signature</Label>
-                  <p className="text-[10px] text-muted-foreground">Prints Hitech seal with sign under the terms. Off by default.</p>
-                </div>
-                <Switch checked={!!q.show_seal_sign} onCheckedChange={(v) => updateHeader({ show_seal_sign: v })} />
-              </div>
-            )}
-            {canEditPrice && (
-              <div className="space-y-1.5">
-                <Label>GST %</Label>
-                <Select value={String(q.gst_percent)} onValueChange={(v) => updateHeader({ gst_percent: Number(v) })}>
-                  <SelectTrigger className="h-11 w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>{GST_OPTIONS.map((g) => <SelectItem key={g} value={String(g)}>{g}%</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <div className="order-1 w-full space-y-2 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 md:order-2 md:ml-auto md:max-w-sm">
+      <>
+      <SectionCard step={3} title="Bill summary" hint="Discount, GST and advance are applied here. Totals update automatically.">
+        <div className="p-4">
+          <div className="ml-auto w-full max-w-md space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{formatINR(subtotal)}</span>
@@ -2480,6 +2498,16 @@ const AdminQuotationEditor = () => {
                 <span className="font-medium">- {formatINR(discountAmount)}</span>
               </div>
             ) : null}
+
+            {canEditPrice && (
+              <div className="flex items-center justify-between gap-2">
+                <Label className="shrink-0 text-sm text-muted-foreground">GST rate</Label>
+                <Select value={String(q.gst_percent)} onValueChange={(v) => updateHeader({ gst_percent: Number(v) })}>
+                  <SelectTrigger className="h-9 w-24 sm:w-32"><SelectValue /></SelectTrigger>
+                  <SelectContent>{GST_OPTIONS.map((g) => <SelectItem key={g} value={String(g)}>{g}%</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
 
             {(q.gst_percent ?? 0) > 0 && gstAmount > 0 && (
               <div className="flex justify-between text-sm">
@@ -2518,12 +2546,46 @@ const AdminQuotationEditor = () => {
               </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </SectionCard>
+
+      <SectionCard step={4} title="Notes & terms" hint="Terms are printed at the bottom of the quotation PDF. Edit per quote if needed.">
+        <div className="grid gap-5 p-4 md:grid-cols-2">
+          <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={8} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Terms & Conditions</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => updateHeader({ terms: DEFAULT_TERMS })}>
+                  Reset to default
+                </Button>
+              </div>
+              <Textarea
+                rows={8}
+                value={q.terms ?? DEFAULT_TERMS}
+                onChange={(e) => updateHeader({ terms: e.target.value })}
+                placeholder="Advance if any, delivery timeline, validity, GST, warranty..."
+                className="font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
+            </div>
+        </div>
+{isAdmin && !po && (
+          <div className="px-4 pb-4">
+              <div className="flex items-center justify-between rounded-md border border-primary/25 px-3 py-2">
+                <div>
+                  <Label className="text-sm">Add company seal &amp; signature</Label>
+                  <p className="text-[10px] text-muted-foreground">Prints Hitech seal with sign under the terms. Off by default.</p>
+                </div>
+                <Switch checked={!!q.show_seal_sign} onCheckedChange={(v) => updateHeader({ show_seal_sign: v })} />
+              </div>
+          </div>
+        )}
+      </SectionCard>
+      </>
       )}
       {po && (
-        <Card className="mb-4 border border-primary/25 bg-primary/[0.012] shadow-none">
-          <CardContent className="space-y-3 p-4">
+        <SectionCard step={3} title="Notes" hint="Instructions for the worker / supplier.">
+          <div className="space-y-3 p-4">
             <div className="space-y-1.5">
               <Label>Notes for worker / supplier</Label>
               <Textarea rows={3} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Material specs, delivery date, priority, finish type..." />
@@ -2532,8 +2594,8 @@ const AdminQuotationEditor = () => {
               No prices, GST, bank details or customer terms are shown on a Purchase Order.
               Use the <span className="font-semibold">Assign</span> button below to send this PO to a worker on WhatsApp.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       )}
       </div>
 
