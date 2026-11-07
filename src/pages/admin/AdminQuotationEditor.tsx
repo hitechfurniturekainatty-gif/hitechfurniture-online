@@ -130,15 +130,14 @@ type Quotation = {
   item_conversion_status?: "open" | "partial" | "converted" | "lost" | null;
 };
 
-const DEFAULT_TERMS = `1. Prices are valid for 20 days from the date of quotation.
-2. The order is confirmed only on receipt of 50% advance. Until then, price, stock and delivery date are not reserved.
-3. Payment schedule: 50% advance on order confirmation, 25% during work in progress, and the balance 25% at the time of delivery. Goods remain the property of Hitech Furniture and Interiors until full payment is received.
-4. Delivery period starts from advance receipt and approval of design/measurements. Delays from the customer's side will extend the delivery date.
-5. Made-to-order items cannot be cancelled, returned or exchanged, and the advance is non-refundable once production has started. Changes after confirmation may change the price and delivery date.
-6. Transportation, loading/unloading and installation charges are extra unless mentioned in the quotation.
-7. Please check the goods at delivery and report any damage or shortage at that time. Damage after delivery is not covered.
-8. Guarantee applies to wooden items only, against manufacturing defects. Other materials (fabric, foam, glass, hardware, etc.) are covered only by the brand's own warranty, if any. The original bill must be kept for any warranty claim. Misuse, water damage, termite/pest damage, improper handling and normal wear are not covered.
-9. Slight variations in colour, grain and finish from samples/photos are natural. All disputes are subject to Kalpetta, Wayanad jurisdiction.`;
+const DEFAULT_TERMS = `1. Validity: Quotation is valid for 30 days from the date of issue.
+2. Payment: Orders are confirmed upon receipt of the agreed advance. Balance payment must be completed before delivery unless otherwise agreed in writing.
+3. GST: Taxes, transportation, and installation charges are applicable as specified in the quotation.
+4. Delivery: Delivery dates are estimated and subject to product availability, production schedules, and transportation conditions.
+5. Product Variation: Minor variations in colour, texture, wood grain, and finish may occur.
+6. Custom Orders: Customized furniture cannot ordinarily be cancelled or returned for change of mind once production has commenced. Statutory rights remain unaffected.
+7. Warranty: Warranty applies as per the respective product or manufacturer's warranty terms. Manufacturing defects will be addressed in accordance with applicable law.
+8. Returns & Claims: Any damage, shortage, or product-related concern should be reported promptly. Eligible complaints will be resolved under the applicable warranty, return policy, and consumer protection laws.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
 type ItemWorkSummary = {
