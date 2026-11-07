@@ -131,12 +131,12 @@ type Quotation = {
 };
 
 const DEFAULT_TERMS = `1. Validity: Quotation is valid for 30 days from the date of issue.
-2. Payment: Orders are confirmed upon receipt of the agreed advance. Balance payment must be completed before delivery unless otherwise agreed in writing.
+2. Payment: Orders are confirmed only upon receipt of the agreed advance. Balance payment must be completed before delivery unless otherwise agreed in writing.
 3. GST: Taxes, transportation, and installation charges are applicable as specified in the quotation.
 4. Delivery: Delivery dates are estimated and subject to product availability, production schedules, and transportation conditions.
 5. Product Variation: Minor variations in colour, texture, wood grain, and finish may occur.
 6. Custom Orders: Customized furniture cannot ordinarily be cancelled or returned for change of mind once production has commenced. Statutory rights remain unaffected.
-7. Warranty: Warranty applies as per the respective product or manufacturer's warranty terms. Manufacturing defects will be addressed in accordance with applicable law.
+7. Guarantee: Guarantee applies to wooden items only, against manufacturing defects. Other items are covered only by the respective manufacturer's warranty, if any.
 8. Returns & Claims: Any damage, shortage, or product-related concern should be reported promptly. Eligible complaints will be resolved under the applicable warranty, return policy, and consumer protection laws.`;
 
 type Worker = { id: string; name: string; whatsapp_number: string; trade: string | null };
