@@ -156,11 +156,16 @@ const PersonIcon = () => (
 
 const shortDocNo = (id: string) => id.split(" / ")[0];
 
-export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
+export type QuotationPdfAssets = { logo: string; headerArt: string; footerWave: string; sealSign: string };
+const DEFAULT_ASSETS: QuotationPdfAssets = { logo, headerArt, footerWave, sealSign };
+
+export const QuotationDoc = ({ q, assets }: { q: QuotationPdfData; assets?: Partial<QuotationPdfAssets> }) => {
+  const A = { ...DEFAULT_ASSETS, ...assets };
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Fixed footer wave on every page */}
-      <Image src={footerWave} style={styles.wave} fixed />
+      <Image src={A.footerWave} style={styles.wave} fixed />
 
       {/* Compact header on pages 2+ */}
       <View
@@ -168,7 +173,7 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         render={({ pageNumber }) =>
           pageNumber > 1 ? (
             <View style={styles.contHeader}>
-              <Image src={logo} style={{ width: 84, height: 35 }} />
+              <Image src={A.logo} style={{ width: 84, height: 35 }} />
               <Text style={{ fontSize: 10, color: BROWN, fontWeight: 700 }}>
                 {q.is_po ? "PURCHASE ORDER" : "QUOTATION"} · {shortDocNo(q.quotation_id)}
               </Text>
@@ -178,9 +183,9 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       />
 
       {/* Page-1 hero header */}
-      <Image src={headerArt} style={styles.heroArt} />
+      <Image src={A.headerArt} style={styles.heroArt} />
       <View style={styles.headerBlock}>
-        <Image src={logo} style={styles.logo} />
+        <Image src={A.logo} style={styles.logo} />
         <Text style={[styles.addrLine, { marginTop: 8 }]}>Edapetty Shopping Centre,</Text>
         <Text style={styles.addrLine}>Edapetty, Kalpetta, Wayanad - 673122</Text>
         <Text style={styles.addrLine}>Ph: {COMPANY.phone}</Text>
@@ -381,23 +386,24 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       )}
 
       {!q.is_po && (
-        <View style={{ flexDirection: "row", justifyContent: q.show_seal_sign ? "space-between" : "flex-end", alignItems: "flex-end", marginTop: 8 }} wrap={false}>
-          {q.show_seal_sign && (
-            <View style={{ alignItems: "center" }}>
-              <Image src={sealSign} style={{ width: 130, height: 59, objectFit: "contain" }} />
-              <Text style={{ fontSize: 7.5, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
-            </View>
-          )}
-          <View style={{ alignItems: "flex-end" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }} wrap={false}>
+          <View style={{ alignItems: "flex-start" }}>
             <Text style={styles.thanksScript}>Thank You</Text>
             <View style={styles.thanksUnder} />
             <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
           </View>
+          {q.show_seal_sign && (
+            <View style={{ alignItems: "center" }}>
+              <Image src={A.sealSign} style={{ width: 130, height: 59, objectFit: "contain" }} />
+              <Text style={{ fontSize: 7.5, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
+            </View>
+          )}
         </View>
       )}
     </Page>
   </Document>
 );
+};
 
 // Fetch any image for the PDF. Order:
 //  1. Our private `quotations` bucket → authenticated storage download
@@ -530,6 +536,37 @@ async function blobToJpegDataUri(blob: Blob, options: PdfImageOptions = {}): Pro
   }
 }
 
+// Static artwork (logo, header photo, footer wave, seal & sign) is pre-loaded
+// as data URIs so @react-pdf/renderer never has to fetch hashed asset URLs
+// itself (stale cache / slow network would otherwise drop them silently).
+let assetCache: Promise<QuotationPdfAssets> | null = null;
+async function assetToDataUri(url: string): Promise<string> {
+  if (url.startsWith("data:")) return url;
+  try {
+    const res = await withTimeout(fetch(url, { credentials: "omit" }), 15000);
+    if (!res.ok) return url;
+    const blob = await res.blob();
+    if (!blob.type.startsWith("image/")) return url; // e.g. HTML fallback page
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn("[PDF] static asset preload failed", url, e);
+    return url;
+  }
+}
+function loadPdfAssets(): Promise<QuotationPdfAssets> {
+  if (!assetCache) {
+    assetCache = Promise.all([logo, headerArt, footerWave, sealSign].map(assetToDataUri))
+      .then(([l, h, f, sg]) => ({ logo: l, headerArt: h, footerWave: f, sealSign: sg }))
+      .catch(() => { assetCache = null; return DEFAULT_ASSETS; });
+  }
+  return assetCache;
+}
+
 export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRenderOptions = {}): Promise<Blob> {
   const imageOptions = options.image ?? {};
   const splitUrls = (raw: string | null) =>
@@ -566,7 +603,8 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
     })
   );
   const safe = { ...q, items };
-  return await pdf(<QuotationDoc q={safe} />).toBlob();
+  const assets = await loadPdfAssets();
+  return await pdf(<QuotationDoc q={safe} assets={assets} />).toBlob();
 }
 
 // ===== Job Work PDF (worker-safe: NO prices, NO bank, NO customer phone) =====
