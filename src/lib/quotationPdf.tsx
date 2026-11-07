@@ -374,15 +374,6 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
         </View>
       )}
 
-      {!q.is_po && q.show_seal_sign && (
-        <View style={{ marginTop: 10, alignItems: "flex-end" }} wrap={false}>
-          <View style={{ alignItems: "center" }}>
-            <Image src={sealSign} style={{ width: 150, height: 68, objectFit: "contain" }} />
-            <Text style={{ fontSize: 8, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
-          </View>
-        </View>
-      )}
-
       {q.notes && (
         <View style={{ marginTop: 10 }}>
           <Text style={{ fontSize: 9, color: "#6B5848" }}>Notes: {q.notes}</Text>
@@ -390,10 +381,18 @@ export const QuotationDoc = ({ q }: { q: QuotationPdfData }) => (
       )}
 
       {!q.is_po && (
-        <View style={styles.thanks} wrap={false}>
-          <Text style={styles.thanksScript}>Thank You</Text>
-          <View style={styles.thanksUnder} />
-          <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
+        <View style={{ flexDirection: "row", justifyContent: q.show_seal_sign ? "space-between" : "flex-end", alignItems: "flex-end", marginTop: 8 }} wrap={false}>
+          {q.show_seal_sign && (
+            <View style={{ alignItems: "center" }}>
+              <Image src={sealSign} style={{ width: 130, height: 59, objectFit: "contain" }} />
+              <Text style={{ fontSize: 7.5, color: BROWN, fontWeight: 700, marginTop: 2 }}>AUTHORISED SIGNATORY</Text>
+            </View>
+          )}
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={styles.thanksScript}>Thank You</Text>
+            <View style={styles.thanksUnder} />
+            <Text style={styles.thanksSub}>FOR YOUR ENQUIRY</Text>
+          </View>
         </View>
       )}
     </Page>
