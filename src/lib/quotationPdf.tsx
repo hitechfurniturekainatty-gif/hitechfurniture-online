@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image, Svg, Path, Circle, Rect, pdf } from "@react-pdf/renderer";
 import logo from "@/assets/hitech-logo-wide.jpg";
-import sealSign from "@/assets/hitech-seal-signed.png";
-import headerArt from "@/assets/quote-header-art.jpg";
+import sealSign from "@/assets/hitech-seal-signed.png?inline";
+import headerArt from "@/assets/quote-header-art.jpg?inline";
 import footerWave from "@/assets/quote-footer-wave.png";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 import { firstUrl } from "./firstUrl";
