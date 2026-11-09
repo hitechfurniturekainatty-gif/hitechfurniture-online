@@ -34,6 +34,10 @@
   RewriteRule ^ /_snapshots/about.html [L]
 
   RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
+  RewriteCond %{REQUEST_URI} ^/furniture-shop-wayanad/?$
+  RewriteRule ^ /_snapshots/furniture-shop-wayanad.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} (GPTBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|CCBot|OAI-SearchBot|ChatGPT-User|Applebot-Extended|Bytespider|Diffbot|omgili|facebookexternalhit|Facebot|meta-externalagent|WhatsApp|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview) [NC]
   RewriteCond %{REQUEST_URI} ^/faq/?$
   RewriteRule ^ /_snapshots/faq.html [L]
 

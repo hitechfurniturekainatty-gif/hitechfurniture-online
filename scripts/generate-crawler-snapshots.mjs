@@ -261,7 +261,34 @@ ${faqBlockHtml(GENERAL_FAQ)}`,
       description: "Hitech Furniture & Interiors — 14+ years serving Wayanad, Kerala with furniture retail, wholesale and interior design.",
       canonical: `${SITE_URL}/about`,
       jsonLd: LOCAL_BUSINESS_JSONLD,
-      bodyHtml: `<p>${BRAND} has served customers in Kalpetta, Wayanad, Kerala for over 14 years, offering furniture retail, wholesale and interior design services.</p>`,
+      bodyHtml: `<p>${BRAND} has served customers in Kalpetta, Wayanad, Kerala for over 14 years, offering furniture retail, wholesale, custom-made furniture and interior design for every budget. Branded mattresses: Kurlon, Repose, Peps. Delivery across Wayanad, Malabar, Kerala, Bengaluru and Tamil Nadu.</p>
+<p><strong>Address:</strong> Hitech Furniture and Interiors, Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, Kerala - 673122 (Kalpetta–Sulthan Bathery road). <a href="https://maps.app.goo.gl/DQWJCG1xRGEcRzx56">Google Maps</a></p>
+<p><strong>Phone / WhatsApp:</strong> +91 98951 34482, +91 95266 10404 · <strong>Hours:</strong> Monday–Saturday 9:30 AM – 8:30 PM</p>`,
+    })
+  );
+
+  // ---- Furniture shop in Wayanad (local landing page) ----
+  const WAYANAD_FAQ = [
+    { q: "Where is Hitech Furniture in Kalpetta?", a: "Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad - 673122, on the Kalpetta–Sulthan Bathery road." },
+    { q: "Do you have furniture for every budget?", a: "Yes. Hitech stocks budget, mid-range and premium furniture and mattresses." },
+    { q: "Do you deliver outside Wayanad?", a: "Yes. Delivery across Wayanad and Malabar, and to Bengaluru and Tamil Nadu on request." },
+    { q: "Can you make furniture to my size?", a: "Yes. Cots, wardrobes, sofas and dining sets are made to your size, finish and budget." },
+    { q: "Which mattress brands are available?", a: "Kurlon, Repose, Peps, Modo and local makes, for every budget." },
+    { q: "How can I contact Hitech Furniture?", a: "Call or WhatsApp 98951 34482 or 95266 10404, message on Instagram or Facebook, or send an enquiry from hitechfurniture.online." },
+  ];
+  mkdirSync("public/_snapshots", { recursive: true });
+  writeFileSync(
+    "public/_snapshots/furniture-shop-wayanad.html",
+    page({
+      title: "Furniture Shop in Wayanad | Hitech Furniture, Kalpetta",
+      description: "Furniture shop in Kalpetta, Wayanad: sofas, beds, mattresses (Kurlon, Repose, Peps), dining sets, wardrobes, custom furniture and interiors for every budget. 14+ years.",
+      canonical: `${SITE_URL}/furniture-shop-wayanad`,
+      jsonLd: [LOCAL_BUSINESS_JSONLD, faqJsonLd(WAYANAD_FAQ)],
+      bodyHtml: `<p>${BRAND} is a furniture showroom, custom furniture maker and interior designer in Kalpetta, Wayanad, Kerala, in business for more than 14 years. Furniture for premium, mid-range and low budgets.</p>
+<h2>Products</h2><ul><li>Sofas, recliners, centre tables, TV units</li><li>Wooden and steel cots, storage beds, bedroom sets</li><li>Mattresses: Kurlon, Repose, Peps, Modo and local makes</li><li>Dining tables and chairs (4, 6, 8 seater)</li><li>Wardrobes, dressing tables, shelves</li><li>Custom furniture made to size</li><li>Complete home and shop interiors</li></ul>
+<p><strong>Address:</strong> Hitech Furniture and Interiors, Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad, Kerala - 673122 (Kalpetta–Sulthan Bathery road). <a href="https://maps.app.goo.gl/DQWJCG1xRGEcRzx56">Google Maps</a></p>
+<p><strong>Phone / WhatsApp:</strong> +91 98951 34482, +91 95266 10404 · <strong>Hours:</strong> Monday–Saturday 9:30 AM – 8:30 PM</p>
+${faqBlockHtml(WAYANAD_FAQ)}`,
     })
   );
 
