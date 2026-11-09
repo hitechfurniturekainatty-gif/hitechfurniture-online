@@ -13,7 +13,22 @@ export const LOCAL_BUSINESS_JSONLD = {
   name: SEO_BRAND_NAME,
   description:
     "Custom furniture manufacturer, retailer, wholesaler and interior designer in Kalpetta, Wayanad, Kerala. Sofas, beds, wardrobes, dining and branded mattresses (Kurlon, Repose, Peps) for every budget. 14+ years in operation.",
+  alternateName: ["Hitech Furniture and Interiors", "Hitech Furniture Kalpetta", "Hitech Furniture Wayanad"],
   telephone: "+91 98951 34482",
+  contactPoint: [
+    { "@type": "ContactPoint", telephone: "+91 98951 34482", contactType: "sales", availableLanguage: ["Malayalam", "English"] },
+    { "@type": "ContactPoint", telephone: "+91 95266 10404", contactType: "customer service", availableLanguage: ["Malayalam", "English"] },
+  ],
+  logo: "https://hitechfurniture.online/hitech-logo.jpg",
+  image: "https://hitechfurniture.online/og-image.jpg",
+  priceRange: "₹-₹₹₹",
+  currenciesAccepted: "INR",
+  paymentAccepted: "Cash, UPI, Bank Transfer",
+  brand: [
+    { "@type": "Brand", name: "Kurlon" },
+    { "@type": "Brand", name: "Repose" },
+    { "@type": "Brand", name: "Peps" },
+  ],
   address: {
     "@type": "PostalAddress",
     // Canonical NAP address — keep identical to Google Business Profile,

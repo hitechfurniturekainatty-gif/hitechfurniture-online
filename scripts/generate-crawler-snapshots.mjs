@@ -55,7 +55,16 @@ const LOCAL_BUSINESS_JSONLD = {
   "@type": "FurnitureStore",
   name: BRAND,
   description: "Custom furniture manufacturer, retailer, wholesaler and interior designer in Kalpetta, Wayanad, Kerala. 14+ years in operation.",
+  alternateName: ["Hitech Furniture and Interiors", "Hitech Furniture Kalpetta", "Hitech Furniture Wayanad"],
   telephone: "+91 98951 34482",
+  contactPoint: [
+    { "@type": "ContactPoint", telephone: "+91 98951 34482", contactType: "sales", availableLanguage: ["Malayalam", "English"] },
+    { "@type": "ContactPoint", telephone: "+91 95266 10404", contactType: "customer service", availableLanguage: ["Malayalam", "English"] },
+  ],
+  logo: "https://hitechfurniture.online/hitech-logo.jpg",
+  image: "https://hitechfurniture.online/og-image.jpg",
+  priceRange: "₹-₹₹₹",
+  paymentAccepted: "Cash, UPI, Bank Transfer",
   address: {
     "@type": "PostalAddress",
     // Canonical NAP address — keep identical to Google Business Profile,
