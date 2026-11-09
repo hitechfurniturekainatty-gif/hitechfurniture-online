@@ -52,7 +52,7 @@ export const LOCAL_BUSINESS_JSONLD = {
   ],
   sameAs: [
     "https://www.instagram.com/hitech_furniture_wayanad",
-    "https://www.facebook.com/634075729791776",
+    "https://www.facebook.com/hitechfurniturewayanad",
   ],
   // Showroom is in Kalpetta, but sales and delivery go well beyond Wayanad:
   // across Kerala (incl. the Malabar region), Bengaluru and Tamil Nadu.
