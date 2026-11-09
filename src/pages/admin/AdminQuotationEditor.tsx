@@ -50,7 +50,7 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
-import { ShoppingCart as ShoppingCartIcon, MoreHorizontal, Pencil, StickyNote, FileDown, ImageDown, Link2 } from "lucide-react";
+import { ShoppingCart as ShoppingCartIcon, MoreHorizontal, MapPin, Pencil, StickyNote, FileDown, ImageDown, Link2 } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { shareLiveLink } from "@/lib/shareLink";
@@ -111,6 +111,7 @@ type Quotation = {
   party_place: string;
   party_phone: string | null;
   party_address: string | null;
+  site_location_url?: string | null;
   quotation_date: string;
   expected_delivery_date: string | null;
   gst_percent: number;
@@ -831,6 +832,7 @@ const AdminQuotationEditor = () => {
       h.party_place,
       h.party_phone,
       h.party_address,
+      h.site_location_url,
       h.quotation_date,
       h.expected_delivery_date,
       h.gst_percent,
@@ -854,6 +856,7 @@ const AdminQuotationEditor = () => {
         party_place: saveQ.party_place,
         party_phone: saveQ.party_phone,
         party_address: saveQ.party_address,
+        site_location_url: saveQ.site_location_url?.trim() || null,
         quotation_date: saveQ.quotation_date,
         expected_delivery_date: saveQ.expected_delivery_date,
         gst_percent: saveQ.gst_percent,
@@ -1066,6 +1069,7 @@ const AdminQuotationEditor = () => {
       q?.party_place ?? "",
       q?.party_phone ?? "",
       q?.party_address ?? "",
+      q?.site_location_url ?? "",
       q?.quotation_date ?? "",
       q?.expected_delivery_date ?? "",
       q?.gst_percent ?? "",
@@ -1902,6 +1906,13 @@ const AdminQuotationEditor = () => {
             <div className="min-w-0"><p className="text-[11px] text-muted-foreground">{po ? "Supplier" : "Customer"}</p><p className="truncate font-semibold">{titleCaseTrim(q.party_name)}</p></div>
             <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Place · Phone</p><p className="truncate">{q.party_place}{q.party_phone ? ` · ${q.party_phone}` : ""}</p></div>
             <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Date · Delivery</p><p className="truncate">{q.quotation_date ? new Date(q.quotation_date).toLocaleDateString("en-IN") : "—"} · {q.expected_delivery_date ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN") : "—"}</p></div>
+            {q.site_location_url?.trim() && (
+              <a
+                href={/^https?:\/\//i.test(q.site_location_url.trim()) ? q.site_location_url.trim() : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q.site_location_url.trim())}`}
+                target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+              ><MapPin className="h-3.5 w-3.5" />Site location</a>
+            )}
             {!po && <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Salesperson · Route</p><p className={`truncate ${q.delivery_route_id ? "" : "text-amber-700"}`}>{q.salesperson_name || "—"} · {q.delivery_place || (q.delivery_route_id ? "Set" : "Route not set")}</p></div>}
           </button>
         ) : (
@@ -1917,6 +1928,17 @@ const AdminQuotationEditor = () => {
               <div className="space-y-1.5"><Label>Phone</Label><Input className="h-11" inputMode="tel" value={q.party_phone ?? ""} onChange={(e) => updateHeader({ party_phone: e.target.value })} /></div>
             </div>
             <div className="space-y-1.5"><Label>Address</Label><Textarea rows={2} value={q.party_address ?? ""} onChange={(e) => updateHeader({ party_address: e.target.value })} /></div>
+            <div className="space-y-1.5">
+              <Label>Site / house location link</Label>
+              <div className="flex gap-2">
+                <Input className="h-11 flex-1" inputMode="url" placeholder="Paste Google Maps link" value={q.site_location_url ?? ""} onChange={(e) => updateHeader({ site_location_url: e.target.value })} />
+                {q.site_location_url?.trim() && (
+                  <Button type="button" variant="outline" className="h-11 px-3" asChild>
+                    <a href={/^https?:\/\//i.test(q.site_location_url.trim()) ? q.site_location_url.trim() : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q.site_location_url.trim())}`} target="_blank" rel="noopener noreferrer" aria-label="Open location"><MapPin className="h-4 w-4" /></a>
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
           <div className="space-y-3 md:border-l md:border-border md:pl-6">
             <GroupTitle>{po ? "PO info" : "Quotation info"}</GroupTitle>
@@ -2002,7 +2024,7 @@ const AdminQuotationEditor = () => {
               type="button"
               size="sm"
               variant={dndOpen ? "default" : "outline"}
-              className="hidden lg:inline-flex"
+              className="hidden sm:inline-flex"
               onClick={() => setDndOpen((o) => !o)}
               title="Split-view catalog: drag products straight into this list"
             >

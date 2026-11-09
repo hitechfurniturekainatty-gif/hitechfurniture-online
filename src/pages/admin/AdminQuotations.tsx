@@ -130,6 +130,7 @@ const AdminQuotations = () => {
     party_name: "",
     party_place: "",
     party_phone: "",
+    site_location_url: "",
     delivery_place: "",
     delivery_route_id: null as string | null,
     is_direct_order: false,
@@ -405,6 +406,7 @@ const AdminQuotations = () => {
             party_name: draft.party_name,
             party_place: draft.party_place,
             party_phone: draft.party_phone,
+            site_location_url: (draft as any).site_location_url ?? "",
             delivery_place: draft.delivery_place ?? "",
             delivery_route_id: draft.delivery_route_id ?? null,
             is_direct_order: false,
@@ -511,6 +513,7 @@ const AdminQuotations = () => {
       party_name: titleCaseTrim(form.party_name),
       party_place: form.party_place.trim() || "NA",
       party_phone: form.party_phone.trim() || null,
+      site_location_url: form.site_location_url.trim() || null,
       delivery_place: form.delivery_place.trim() || null,
       delivery_route_id: form.delivery_route_id,
       document_type: newDocType,
@@ -540,7 +543,7 @@ const AdminQuotations = () => {
     // Successfully persisted to DB — drop the local draft.
     clearNewQuotationDraft();
     setOpen(false);
-    setForm({ party_name: "", party_place: "", party_phone: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead", assigned_to: "", salesperson_name: "" });
+    setForm({ party_name: "", party_place: "", party_phone: "", site_location_url: "", delivery_place: "", delivery_route_id: null, is_direct_order: false, lead_type: "lead", assigned_to: "", salesperson_name: "" });
     if (isCustom) {
       toast({
         title: "Custom Project created",
@@ -994,6 +997,10 @@ const AdminQuotations = () => {
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1.5">Phone <HelpHint id="quotation.party_phone" /></Label>
                 <Input inputMode="tel" value={form.party_phone} onChange={(e) => setForm({ ...form, party_phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Site / house location link <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input inputMode="url" placeholder="Paste Google Maps link" value={form.site_location_url} onChange={(e) => setForm({ ...form, site_location_url: e.target.value })} />
               </div>
               {!isPO(newDocType) && (
                 <div className="space-y-1.5">

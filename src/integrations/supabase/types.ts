@@ -1992,6 +1992,7 @@ export type Database = {
           next_follow_up_at: string | null
           notes: string | null
           party_address: string | null
+          site_location_url: string | null
           party_name: string
           party_phone: string | null
           party_place: string
@@ -2046,6 +2047,7 @@ export type Database = {
           next_follow_up_at?: string | null
           notes?: string | null
           party_address?: string | null
+          site_location_url?: string | null
           party_name: string
           party_phone?: string | null
           party_place: string
@@ -2100,6 +2102,7 @@ export type Database = {
           next_follow_up_at?: string | null
           notes?: string | null
           party_address?: string | null
+          site_location_url?: string | null
           party_name?: string
           party_phone?: string | null
           party_place?: string
