@@ -35,14 +35,13 @@ export function QuotationOrigin({ quotationId }: { quotationId: string }) {
     })();
     return () => { active = false; };
   }, [quotationId]);
-  return <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50/50 p-3 text-sm">
-    <p className="mb-2 font-semibold">Enquiry source & responsibility · എവിടെനിന്ന് വന്നു?</p>
-    {failed ? <p role="alert">Source details could not be loaded. Reload to retry.</p> : !details ? <p>Loading source…</p> : <>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <p><b>Source:</b> {details.source}</p><p><b>Enquiry entered by:</b> {details.creator}</p>
-        <p><b>Salesman:</b> {details.salesperson}</p><p><b>Quotation created by:</b> {details.quoteCreator}</p>
-      </div>
-      {details.leadId && <Link className="mt-2 inline-block font-medium underline" to={`/admin/leads?open=${details.leadId}`}>Open original lead & follow-up →</Link>}
+  return <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground" title="Enquiry source & responsibility">
+    {failed ? <span role="alert">Source details could not be loaded. Reload to retry.</span> : !details ? <span>Loading source…</span> : <>
+      <span>Source: <b className="font-medium text-foreground">{details.source}</b></span>
+      <span>Enquiry by: <b className="font-medium text-foreground">{details.creator}</b></span>
+      <span>Salesman: <b className="font-medium text-foreground">{details.salesperson}</b></span>
+      <span>Quote by: <b className="font-medium text-foreground">{details.quoteCreator}</b></span>
+      {details.leadId && <Link className="font-medium text-primary underline" to={`/admin/leads?open=${details.leadId}`}>Open lead →</Link>}
     </>}
   </div>;
 }

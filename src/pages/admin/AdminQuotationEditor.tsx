@@ -276,7 +276,7 @@ const SectionCard = ({
   actions?: ReactNode;
   children: ReactNode;
 }) => (
-  <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+  <section className="mb-4 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{step}</span>
@@ -1742,7 +1742,7 @@ const AdminQuotationEditor = () => {
             </Link>
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="mb-1 inline-flex w-fit rounded-md bg-primary px-2.5 py-1 font-mono text-xs font-bold text-primary-foreground shadow-sm">{q.quotation_id}</p>
+            <p className="mb-0.5 truncate font-mono text-[11px] text-muted-foreground">{q.quotation_id}</p>
             <h1 className="truncate font-display text-lg font-semibold leading-tight sm:text-xl">
               {titleCaseTrim(q.party_name)} <span className="text-muted-foreground font-normal">· {q.party_place}</span>
             </h1>
@@ -2091,6 +2091,7 @@ const AdminQuotationEditor = () => {
                     onChange={(v) => updateItem(it.id, { description: v })}
                     onBlur={() => updateItem(it.id, { description: toTitleCase(it.description) })}
                     placeholder="Item name — type to search catalog"
+                    inputClassName="h-10 border-transparent bg-muted/50 font-medium focus-visible:bg-background"
                     fetchSuggestions={(query) => {
                       const qq = query.toLowerCase();
                       return products
@@ -2118,7 +2119,7 @@ const AdminQuotationEditor = () => {
                   <Textarea
                     rows={2}
                     autoFocus={!it.item_notes}
-                    className="min-h-[52px] text-sm"
+                    className="min-h-[44px] border-transparent bg-muted/50 text-sm focus-visible:bg-background"
                     value={it.item_notes ?? ""}
                     onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
                     placeholder="Size, colour, finish, customer notes"
@@ -2530,10 +2531,10 @@ const AdminQuotationEditor = () => {
       </Dialog>
 
       {!po && (
-      <>
+      <div className="mb-4 grid items-start gap-4 lg:grid-cols-2 [&>section]:mb-0">
       <SectionCard step={3} title="Bill summary" hint="Discount, GST and advance are applied here. Totals update automatically.">
         <div className="p-4">
-          <div className="ml-auto w-full max-w-md space-y-3">
+          <div className="w-full space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{formatINR(subtotal)}</span>
@@ -2660,7 +2661,7 @@ const AdminQuotationEditor = () => {
         </>
         )}
       </SectionCard>
-      </>
+      </div>
       )}
       {po && (
         <SectionCard step={3} title="Notes" hint="Instructions for the worker / supplier.">
