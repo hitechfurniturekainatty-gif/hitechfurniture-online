@@ -50,7 +50,7 @@ import { scrollFocusedIntoView } from "@/lib/mobileFocusScroll";
 import { handleEnterAsNext } from "@/lib/enterKeyNav";
 import { AutoSuggestInput, type Suggestion } from "@/components/admin/AutoSuggestInput";
 import { type DocType, isPO, docLabel, docLabelShort, docPartyLabel } from "@/lib/docType";
-import { ShoppingCart as ShoppingCartIcon } from "lucide-react";
+import { ShoppingCart as ShoppingCartIcon, MoreHorizontal, Pencil, StickyNote, FileDown, ImageDown, Link2 } from "lucide-react";
 import { openWhatsAppApp } from "@/lib/whatsapp";
 import { DownloadShareMenu } from "@/components/admin/DownloadShareMenu";
 import { shareLiveLink } from "@/lib/shareLink";
@@ -276,12 +276,12 @@ const SectionCard = ({
   children: ReactNode;
 }) => (
   <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-    <header className="flex flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{step}</span>
         <div className="min-w-0">
           <h2 className="text-base font-semibold leading-tight">{title}</h2>
-          {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+          {hint && <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">{hint}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -343,6 +343,10 @@ const AdminQuotationEditor = () => {
   const [jobDueDate, setJobDueDate] = useState("");
   const [generatingJob, setGeneratingJob] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  // UI-only: collapsed customer card, notes-per-item, terms panel
+  const [partyEditing, setPartyEditing] = useState<boolean | null>(null);
+  const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(new Set());
+  const [termsOpen, setTermsOpen] = useState(false);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   const [jobAssignmentKey, setJobAssignmentKey] = useState<string | null>(null);
   const [itemWorkMap, setItemWorkMap] = useState<Record<string, ItemWorkSummary>>({});
@@ -1723,7 +1727,7 @@ const AdminQuotationEditor = () => {
   };
 
   const formBody = (
-      <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-primary shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5 [&_.text-muted-foreground]:text-primary/60 [&_label]:text-primary">
+      <div className="-mx-2 -my-2 rounded-xl bg-white p-3 text-foreground shadow-card-soft sm:-mx-4 sm:-my-4 sm:p-5">
       {!po && <QuotationOrigin quotationId={q.id} />}
       <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.055] to-background p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1769,6 +1773,7 @@ const AdminQuotationEditor = () => {
               </Badge>
             );
           })()}
+          {canEditPrice && <div className="sm:hidden"><AttachedNotesButton quotationId={q.id} /></div>}
           {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
             <div className="hidden gap-1 sm:flex">
               <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => setStatus("delivered")}>Mark delivered</Button>
@@ -1869,6 +1874,7 @@ const AdminQuotationEditor = () => {
         title={po ? "Purchase order details" : "Party & quotation details"}
         hint="Fill the customer details first, then add items below."
         actions={
+          (partyEditing ?? !(q.party_name && q.party_place)) ? (
           <ContactPicker
             label="From Contacts"
             onPick={({ name, tel, place, address }) =>
@@ -1880,8 +1886,25 @@ const AdminQuotationEditor = () => {
               })
             }
           />
+          ) : (
+            <Button type="button" size="sm" variant="outline" onClick={() => setPartyEditing(true)}>
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />Edit
+            </Button>
+          )
         }
       >
+        {!(partyEditing ?? !(q.party_name && q.party_place)) ? (
+          <button
+            type="button"
+            onClick={() => setPartyEditing(true)}
+            className="grid w-full gap-x-6 gap-y-2 p-4 text-left text-sm sm:grid-cols-2 lg:grid-cols-4"
+          >
+            <div className="min-w-0"><p className="text-[11px] text-muted-foreground">{po ? "Supplier" : "Customer"}</p><p className="truncate font-semibold">{titleCaseTrim(q.party_name)}</p></div>
+            <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Place · Phone</p><p className="truncate">{q.party_place}{q.party_phone ? ` · ${q.party_phone}` : ""}</p></div>
+            <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Date · Delivery</p><p className="truncate">{q.quotation_date ? new Date(q.quotation_date).toLocaleDateString("en-IN") : "—"} · {q.expected_delivery_date ? new Date(q.expected_delivery_date).toLocaleDateString("en-IN") : "—"}</p></div>
+            {!po && <div className="min-w-0"><p className="text-[11px] text-muted-foreground">Salesperson · Route</p><p className={`truncate ${q.delivery_route_id ? "" : "text-amber-700"}`}>{q.salesperson_name || "—"} · {q.delivery_place || (q.delivery_route_id ? "Set" : "Route not set")}</p></div>}
+          </button>
+        ) : (
         <div
           className="grid gap-6 p-4 md:grid-cols-2"
           onKeyDown={(e) => handleEnterAsNext(e, () => { if (!saving) saveAndPreview(); })}
@@ -1936,7 +1959,13 @@ const AdminQuotationEditor = () => {
             </div>
           )}
           </div>
+          {q.party_name && q.party_place && (
+            <div className="flex justify-end md:col-span-2">
+              <Button type="button" size="sm" onClick={() => setPartyEditing(false)}>Done</Button>
+            </div>
+          )}
         </div>
+        )}
       </SectionCard>
 
       <ItemsDropZone>
@@ -1973,12 +2002,13 @@ const AdminQuotationEditor = () => {
               type="button"
               size="sm"
               variant={dndOpen ? "default" : "outline"}
+              className="hidden lg:inline-flex"
               onClick={() => setDndOpen((o) => !o)}
               title="Split-view catalog: drag products straight into this list"
             >
               <Columns2 className="mr-1.5 h-4 w-4" />Drag &amp; drop
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setLivePreviewOpen(true)} title="Live invoice preview">
+            <Button type="button" size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => setLivePreviewOpen(true)} title="Live invoice preview">
               <FileText className="mr-1.5 h-4 w-4" />Preview
             </Button>
           </>
@@ -2007,6 +2037,7 @@ const AdminQuotationEditor = () => {
                 const customQty = Math.max(0, Number(it.quantity ?? 0) - readyQty);
                 const alreadyAssigned = Number(itemWorkMap[it.id]?.assigned ?? 0);
                 const canAssign = customQty > 0 && alreadyAssigned === 0;
+                if (!canAssign) return null;
                 return (
                   <label className={`flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs ${
                     canAssign ? "cursor-pointer bg-violet-500/[0.07]" : "cursor-default bg-muted/30 text-muted-foreground"
@@ -2061,13 +2092,25 @@ const AdminQuotationEditor = () => {
                       });
                     }}
                   />
+                  {(it.item_notes || noteOpenIds.has(it._clientKey)) ? (
                   <Textarea
                     rows={2}
+                    autoFocus={!it.item_notes}
                     className="min-h-[52px] text-sm"
                     value={it.item_notes ?? ""}
                     onChange={(e) => updateItem(it.id, { item_notes: e.target.value || null })}
-                    placeholder="Size, colour, finish, customer notes (optional)"
+                    placeholder="Size, colour, finish, customer notes"
                   />
+                  ) : (
+                    <button
+                      type="button"
+                      data-enter-skip
+                      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary"
+                      onClick={() => setNoteOpenIds((prev) => new Set(prev).add(it._clientKey))}
+                    >
+                      <StickyNote className="h-3.5 w-3.5" />Add note (size, colour…)
+                    </button>
+                  )}
                   <div data-enter-skip className="pt-1">
                     <QuotationItemMediaStack
                       item={it}
@@ -2085,10 +2128,6 @@ const AdminQuotationEditor = () => {
                         {it.stock_decision === "custom" ? "Customize" : "Ready Stock"}
                       </span>
                     )}
-                    {it.measurement && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Dim</span>}
-                    {it.sketch_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Sketch</span>}
-                    {it.item_image_url && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Photo</span>}
-                    {it.site_photos && <span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Site</span>}
                   {Number(it.ordered_qty ?? 0) < Number(it.quantity ?? 0) && (
                     <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
                       Open {Math.max(0, Number(it.quantity ?? 0) - Number(it.ordered_qty ?? 0) - Number(it.cancelled_qty ?? 0))}
@@ -2549,7 +2588,24 @@ const AdminQuotationEditor = () => {
         </div>
       </SectionCard>
 
-      <SectionCard step={4} title="Notes & terms" hint="Terms are printed at the bottom of the quotation PDF. Edit per quote if needed.">
+      <SectionCard
+        step={4}
+        title="Notes & terms"
+        hint="Printed at the bottom of the quotation PDF."
+        actions={
+          <Button type="button" size="sm" variant="outline" onClick={() => setTermsOpen((o) => !o)}>
+            {termsOpen ? "Close" : <><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</>}
+          </Button>
+        }
+      >
+        {!termsOpen ? (
+          <button type="button" onClick={() => setTermsOpen(true)} className="flex w-full flex-wrap gap-x-6 gap-y-1 p-4 text-left text-sm">
+            <span><span className="text-muted-foreground">Notes: </span>{q.notes?.trim() ? (q.notes.trim().length > 40 ? q.notes.trim().slice(0, 40) + "…" : q.notes.trim()) : "None"}</span>
+            <span><span className="text-muted-foreground">Terms: </span>{(q.terms ?? DEFAULT_TERMS) === DEFAULT_TERMS ? "Standard" : "Custom"} ({(q.terms ?? DEFAULT_TERMS).split("\n").filter((l) => l.trim()).length} lines)</span>
+            {isAdmin && <span><span className="text-muted-foreground">Seal &amp; sign: </span>{q.show_seal_sign ? "On" : "Off"}</span>}
+          </button>
+        ) : (
+        <>
         <div className="grid gap-5 p-4 md:grid-cols-2">
           <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={8} value={q.notes ?? ""} onChange={(e) => updateHeader({ notes: e.target.value })} placeholder="Internal notes, delivery info, special instructions..." /></div>
             <div className="space-y-1.5">
@@ -2566,7 +2622,6 @@ const AdminQuotationEditor = () => {
                 placeholder="Advance if any, delivery timeline, validity, GST, warranty..."
                 className="font-mono text-xs"
               />
-              <p className="text-[10px] text-muted-foreground">Shown at the bottom of the quotation PDF. Edit per quote as needed.</p>
             </div>
         </div>
 {isAdmin && !po && (
@@ -2579,6 +2634,8 @@ const AdminQuotationEditor = () => {
                 <Switch checked={!!q.show_seal_sign} onCheckedChange={(v) => updateHeader({ show_seal_sign: v })} />
               </div>
           </div>
+        )}
+        </>
         )}
       </SectionCard>
       </>
@@ -2616,77 +2673,75 @@ const AdminQuotationEditor = () => {
         </Button>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
-        {(canBypass || canReject) && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {canBypass && (
-              <Select onValueChange={pushToSelectValueChange}>
-                <SelectTrigger className="h-11 min-w-[140px] flex-1"><SelectValue placeholder="Push to…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="production">→ Production</SelectItem>
-                  <SelectItem value="warehouse">→ Warehouse</SelectItem>
-                  <SelectItem value="logistics">→ Logistics</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-            {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
-              <Button
-                className="h-11 flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={confirmToOrder}
-                disabled={saving}
-              >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" />Confirm Order
-              </Button>
-            )}
-            {canReject && (
-              <Button
-                variant="outline"
-                className="h-11 shrink-0 text-destructive hover:text-destructive"
-                onClick={handleReject}
-              >
-                Reject
-              </Button>
-            )}
-          </div>
-        )}
-        {canEditPrice && (
-          <div className="mb-2 grid grid-cols-3 gap-2">
-            <DownloadShareMenu
-              onPdf={downloadPdf}
-              onJpg={downloadJpg}
-              onShareLink={shareLink}
-              triggerClassName="h-11 px-2 w-full"
-              label="Save"
-              pdfTooltip="PDF — full quotation"
-              jpgTooltip="JPG — for WhatsApp"
-            />
-            <Button variant="outline" onClick={shareWhatsApp} className="h-11 px-2">
-              <MessageCircle className="mr-1.5 h-4 w-4 text-primary" />WhatsApp
-            </Button>
-            <Button variant="secondary" onClick={openJobDialog} className="h-11 px-2">
-              <HardHat className="mr-1.5 h-4 w-4" />Assign
-            </Button>
-          </div>
-        )}
-        {canEditPrice && (
-          <div className="mb-2">
-            <AttachedNotesButton quotationId={q.id} className="h-11 w-full" />
-          </div>
-        )}
-        <Button onClick={saveAndPreview} disabled={saving} className="h-12 w-full">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
-        </Button>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:hidden">
         {isFieldOnly && q.source_task_id && !submittedForPricing && (
           <Button
             onClick={submitForPricing}
             disabled={saving}
-            className="mt-2 h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="mb-2 h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <CheckCircle2 className="mr-1.5 h-4 w-4" />Submit for pricing
           </Button>
         )}
+        <div className="flex items-center gap-2">
+          {showPricing && !po ? (
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="text-[10px] text-muted-foreground">{advanceAmount > 0 ? "Balance due" : "Grand total"}</p>
+              <p className="truncate font-display text-lg font-bold text-primary">{formatINR(advanceAmount > 0 ? balanceDue : grandTotal)}</p>
+            </div>
+          ) : <div className="flex-1" />}
+          {(canEditPrice || canBypass || canReject) && (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 px-3" aria-label="More actions">
+                  <MoreHorizontal className="mr-1 h-4 w-4" />More
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" className="w-60">
+                {canEditPrice && (
+                  <>
+                    <DropdownMenuLabel>Send to customer</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => shareWhatsApp()}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => downloadPdf()}><FileDown className="mr-2 h-4 w-4" />Download PDF</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => downloadJpg()}><ImageDown className="mr-2 h-4 w-4" />Download JPG</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => shareLink()}><Link2 className="mr-2 h-4 w-4" />Share link</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Work</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => openJobDialog()}><HardHat className="mr-2 h-4 w-4" />Assign job</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={async () => { const saved = await ensureSaved(); if (saved) { setMeasurementItems(saved); setMeasurementOpen(true); } }}>
+                      <Ruler className="mr-2 h-4 w-4" />Assign measurement
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canEditPrice && bypassStatus === "drafted" && bypassStage < 3 && !po && (
+                  <DropdownMenuItem className="text-emerald-700 focus:text-emerald-700" onSelect={() => confirmToOrder()}>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />Confirm order
+                  </DropdownMenuItem>
+                )}
+                {canBypass && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Move order to</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => pushToSelectValueChange("production")}>→ Production</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => pushToSelectValueChange("warehouse")}>→ Warehouse</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => pushToSelectValueChange("logistics")}>→ Logistics</DropdownMenuItem>
+                  </>
+                )}
+                {canReject && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => handleReject()}>Reject quotation</DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button onClick={saveAndPreview} disabled={saving} className="h-11 min-w-[96px]">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save</>}
+          </Button>
+        </div>
       </div>
-      <div className={canEditPrice ? "h-32 sm:hidden" : "h-16 sm:hidden"} aria-hidden />
+      <div className={isFieldOnly ? "h-32 sm:hidden" : "h-20 sm:hidden"} aria-hidden />
 
       <Dialog
         open={productPickerOpen}
