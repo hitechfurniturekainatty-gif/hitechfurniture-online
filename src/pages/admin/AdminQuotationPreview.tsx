@@ -569,6 +569,7 @@ const AdminQuotationPreview = () => {
               <p>Edapetty Shopping Centre,</p>
               <p>Edapetty, Kalpetta, Wayanad - 673122</p>
               <p>Ph: {COMPANY.phone}</p>
+              <p>GSTIN: {COMPANY.gstin}</p>
             </div>
           </div>
         </header>

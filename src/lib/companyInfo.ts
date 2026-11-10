@@ -8,6 +8,7 @@ export const BANK_DETAILS = {
 
 export const COMPANY = {
   name: "Hitech Furniture and Interiors",
+  gstin: "32AAGFH6849E1ZF",
   address: "Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad - 673122",
   phone: "9895134482 | 9526610404",
   email: "",

@@ -189,6 +189,7 @@ export const QuotationDoc = ({ q, assets }: { q: QuotationPdfData; assets?: Part
         <Text style={[styles.addrLine, { marginTop: 8 }]}>Edapetty Shopping Centre,</Text>
         <Text style={styles.addrLine}>Edapetty, Kalpetta, Wayanad - 673122</Text>
         <Text style={styles.addrLine}>Ph: {COMPANY.phone}</Text>
+        <Text style={styles.addrLine}>GSTIN: {COMPANY.gstin}</Text>
       </View>
 
       {/* Title band + number/date */}
