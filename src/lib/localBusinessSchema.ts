@@ -33,7 +33,7 @@ export const LOCAL_BUSINESS_JSONLD = {
     "@type": "PostalAddress",
     // Canonical NAP address — keep identical to Google Business Profile,
     // Justdial, Instagram, Facebook and the footer (homepage_settings.address_lines).
-    streetAddress: "Edapetty Shopping Centre, Edapetty",
+    streetAddress: "Edapetty Shopping Centre, Edapetty, Kainatty",
     addressLocality: "Kalpetta",
     addressRegion: "Wayanad, Kerala",
     postalCode: "673122",
