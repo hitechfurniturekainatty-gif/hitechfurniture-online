@@ -84,6 +84,7 @@ const SharedJobView = lazy(pageLoaders.SharedJobView);
 const DeliveryNote = lazy(pageLoaders.DeliveryNote);
 const About = lazy(pageLoaders.About);
 const FurnitureShopWayanad = lazy(pageLoaders.FurnitureShopWayanad);
+const FurnitureCategoryLanding = lazy(() => import("./pages/FurnitureCategoryLanding"));
 const PrivacyPolicy = lazy(pageLoaders.PrivacyPolicy);
 const EnquiryLink = lazy(pageLoaders.EnquiryLink);
 const UserGuide = lazy(pageLoaders.UserGuide);
@@ -130,6 +131,11 @@ const App = () => (
             <Route path="/bundle/:id" element={<BundleDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/furniture-shop-wayanad" element={<FurnitureShopWayanad />} />
+            <Route path="/sofas-kalpetta" element={<FurnitureCategoryLanding />} />
+            <Route path="/dining-furniture-kalpetta" element={<FurnitureCategoryLanding />} />
+            <Route path="/office-furniture-kalpetta" element={<FurnitureCategoryLanding />} />
+            <Route path="/modular-kitchens-wayanad" element={<FurnitureCategoryLanding />} />
+            <Route path="/home-interiors-wayanad" element={<FurnitureCategoryLanding />} />
             <Route path="/faq" element={<Faq />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enquiry" element={<EnquiryLink />} />
