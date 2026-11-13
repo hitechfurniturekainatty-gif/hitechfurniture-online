@@ -306,7 +306,7 @@ const Index = () => {
                     </div>
                   </div>
                   {settings?.contact_phone && (
-                    <a href={`tel:${settings.contact_phone}`} className="flex items-start gap-3 transition hover:opacity-80">
+                    <a href={`tel:${settings.contact_phone.replace(/[^\d+]/g, "")}`} className="flex items-start gap-3 transition hover:opacity-80">
                       <Phone className="mt-0.5 h-5 w-5 shrink-0" />
                       <div>
                         <p className="text-sm font-bold">{settings.contact_phone}</p>
