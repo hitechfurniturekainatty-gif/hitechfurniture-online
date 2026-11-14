@@ -22,13 +22,16 @@ import {
   Truck,
   HelpCircle,
   ChevronLeft,
-  ChevronRight,
   Upload,
   X,
   Phone,
   MapPin,
   User,
+  Clock,
 } from "lucide-react";
+import { buildWhatsAppUrl, WHATSAPP_BUTTON_CLASS, WHATSAPP_NUMBER } from "@/lib/brand";
+import { DEFAULT_MAPS_URL } from "@/lib/socialLinks";
+import { SocialIcon } from "@/components/SocialLinks";
 import {
   registerEnquiryOpener,
   type EnquiryOpenOpts,
@@ -48,7 +51,7 @@ type EnquiryType =
   | "delivery_installation"
   | "general_inquiry";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 type Status = "idle" | "submitting" | "success";
 
 interface CategoryDef {
@@ -208,22 +211,14 @@ export const EnquiryForm = () => {
     }
   };
 
-  const goNext = () => {
-    if (step === 1) {
-      if (!category) {
-        toast.error("Please choose what you need help with");
-        return;
-      }
-      setStep(2);
-    } else if (step === 2) {
-      if (validateStep2()) setStep(3);
-    }
+  // Two steps only: tapping a type moves straight on to the details, and the
+  // details screen submits directly (no separate "Continue" or review screen).
+  const chooseCategory = (v: EnquiryType) => {
+    setCategory(v);
+    setStep(2);
   };
 
-  const goBack = () => {
-    if (step === 2) setStep(1);
-    else if (step === 3) setStep(2);
-  };
+  const goBack = () => setStep(1);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -323,6 +318,7 @@ export const EnquiryForm = () => {
             name={name}
             category={activeCategory?.label || "Enquiry"}
             code={resultCode}
+            detail={message.trim() || itemDescription.trim()}
             onClose={() => handleOpenChange(false)}
           />
         ) : (
@@ -349,15 +345,13 @@ export const EnquiryForm = () => {
             {/* Body */}
             <div className="space-y-5 px-6 pb-6 pt-5 sm:px-8 sm:pb-8">
               {step === 1 && (
-                <StepOne
-                  selected={category}
-                  onSelect={(v) => setCategory(v)}
-                />
+                <StepOne selected={category} onSelect={chooseCategory} />
               )}
 
               {step === 2 && category && (
                 <StepTwo
                   category={category}
+                  categoryLabel={activeCategory ? `${activeCategory.label} · ${activeCategory.ml}` : undefined}
                   name={name}
                   setName={setName}
                   phone={phone}
@@ -379,60 +373,41 @@ export const EnquiryForm = () => {
                 />
               )}
 
-              {step === 3 && category && (
-                <StepThree
-                  category={category}
-                  categoryLabel={activeCategory?.label || ""}
-                  name={name}
-                  phone={phone}
-                  place={place}
-                  message={message}
-                  billNumber={billNumber}
-                  itemDescription={itemDescription}
-                  workNeeded={workNeeded}
-                  hasPhoto={!!photo}
-                />
+              {/* Nav — only on the details step; step 1 advances on tap */}
+              {step === 2 && (
+                <div className="space-y-3 border-t border-slate-200 pt-4">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      onClick={goBack}
+                      disabled={status === "submitting"}
+                      className="h-12 shrink-0 px-3 text-slate-600"
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" /> Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={status === "submitting"}
+                      className="h-12 flex-1 text-base font-semibold text-white"
+                      style={{ background: TEAL }}
+                    >
+                      {status === "submitting" ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending…
+                        </>
+                      ) : (
+                        "Send enquiry"
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    By sending you agree to be contacted by our team about this enquiry.
+                  </p>
+                </div>
               )}
-
-              {/* Nav */}
-              <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={goBack}
-                  disabled={step === 1 || status === "submitting"}
-                  className="text-slate-600"
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" /> Back
-                </Button>
-                {step < 3 ? (
-                  <Button
-                    type="button"
-                    onClick={goNext}
-                    className="text-white"
-                    style={{ background: TEAL }}
-                  >
-                    Continue <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={status === "submitting"}
-                    className="min-w-[140px] text-white"
-                    style={{ background: TEAL }}
-                  >
-                    {status === "submitting" ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending…
-                      </>
-                    ) : (
-                      "Submit Enquiry"
-                    )}
-                  </Button>
-                )}
-              </div>
             </div>
           </>
         )}
@@ -447,8 +422,8 @@ export const EnquiryForm = () => {
 
 const StepIndicator = ({ step }: { step: Step }) => (
   <div className="mt-5 flex items-center gap-2">
-    {[1, 2, 3].map((n) => (
-      <div key={n} className="flex flex-1 items-center gap-2">
+    {[1, 2].map((n) => (
+      <div key={n} className={cn("flex items-center gap-2", n < 2 && "flex-1")}>
         <div
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition",
@@ -459,7 +434,7 @@ const StepIndicator = ({ step }: { step: Step }) => (
         >
           {step > n ? <Check className="h-3.5 w-3.5" /> : n}
         </div>
-        {n < 3 && (
+        {n < 2 && (
           <div
             className={cn(
               "h-px flex-1 transition",
@@ -480,9 +455,12 @@ const StepOne = ({
   onSelect: (v: EnquiryType) => void;
 }) => (
   <div className="space-y-3">
-    <h3 className="text-base font-semibold text-slate-800">
-      What do you need help with?
-    </h3>
+    <div>
+      <h3 className="text-base font-semibold text-slate-800">
+        What do you need help with?
+      </h3>
+      <p className="mt-0.5 text-xs text-slate-500">ഒന്ന് തിരഞ്ഞെടുക്കൂ · Tap one to continue</p>
+    </div>
     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
       {CATEGORIES.map(({ value, label, ml, Icon, accent }) => {
         const sel = selected === value;
@@ -521,6 +499,7 @@ const StepOne = ({
 
 interface StepTwoProps {
   category: EnquiryType;
+  categoryLabel?: string;
   name: string; setName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
   place: string; setPlace: (v: string) => void;
@@ -539,7 +518,14 @@ const StepTwo = (p: StepTwoProps) => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-base font-semibold text-slate-800">Your details</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-base font-semibold text-slate-800">Your details</h3>
+        {p.categoryLabel && (
+          <span className="rounded-full bg-[#0E5C66]/10 px-3 py-1 text-xs font-semibold text-[#0E5C66]">
+            {p.categoryLabel}
+          </span>
+        )}
+      </div>
 
       <Field label="Name" required icon={<User className="h-3.5 w-3.5" />}>
         <Input
@@ -645,60 +631,6 @@ const StepTwo = (p: StepTwoProps) => {
   );
 };
 
-const StepThree = (p: {
-  category: EnquiryType;
-  categoryLabel: string;
-  name: string;
-  phone: string;
-  place: string;
-  message: string;
-  billNumber: string;
-  itemDescription: string;
-  workNeeded: string;
-  hasPhoto: boolean;
-}) => {
-  const rows: Array<[string, string]> = [
-    ["Type", p.categoryLabel],
-    ["Name", p.name],
-    ["Phone", p.phone],
-    ["Place", p.place],
-  ];
-  if (p.category === "complaint_replacement") {
-    if (p.billNumber) rows.push(["Bill / Quotation #", p.billNumber]);
-    rows.push(["Issue", p.message]);
-    rows.push(["Photo attached", p.hasPhoto ? "Yes" : "No"]);
-  } else if (p.category === "service_repair") {
-    rows.push(["Item", p.itemDescription]);
-    if (p.workNeeded) rows.push(["Work needed", p.workNeeded]);
-  } else if (p.message) {
-    rows.push(["Message", p.message]);
-    rows.push(["Photo attached", p.hasPhoto ? "Yes" : "No"]);
-  }
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-base font-semibold text-slate-800">
-        Review &amp; submit
-      </h3>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50">
-        <dl className="divide-y divide-slate-200 text-sm">
-          {rows.map(([k, v]) => (
-            <div key={k} className="grid grid-cols-3 gap-3 px-4 py-2.5">
-              <dt className="text-slate-500">{k}</dt>
-              <dd className="col-span-2 whitespace-pre-wrap break-words font-medium text-slate-800">
-                {v || "—"}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <p className="text-xs text-slate-500">
-        By submitting you agree to be contacted by our team about this enquiry.
-      </p>
-    </div>
-  );
-};
-
 const Field = ({
   label,
   required,
@@ -777,38 +709,75 @@ const SuccessView = ({
   name,
   category,
   code,
+  detail,
   onClose,
 }: {
   name: string;
   category: string;
   code: string | null;
+  detail?: string;
   onClose: () => void;
-}) => (
-  <div className="px-6 py-10 text-center sm:px-10 sm:py-12">
-    <div
-      className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
-      style={{ background: `${TEAL}15` }}
-    >
-      <Check className="h-8 w-8" style={{ color: TEAL }} />
-    </div>
-    <h2 className="mt-5 font-display text-2xl font-semibold text-slate-900">
-      Thank you{name ? `, ${name.split(" ")[0]}` : ""}!
-    </h2>
-    <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
-      Your {category.toLowerCase()} request has been received. We&apos;ll contact
-      you within <span className="font-semibold text-slate-800">24 hours</span>.
-    </p>
-    {code && (
-      <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-        Reference: <span className="font-mono font-semibold text-slate-800">{code}</span>
+}) => {
+  // Lets the customer carry on the conversation straight away instead of
+  // waiting for a call back.
+  const waUrl = buildWhatsAppUrl(
+    [
+      `Hello Hitech Furniture, I just sent an enquiry on your website${code ? ` (Ref ${code})` : ""}.`,
+      name ? `Name: ${name.trim()}` : "",
+      detail ? detail.slice(0, 300) : "",
+    ].filter(Boolean).join("\n"),
+  );
+  return (
+    <div className="px-6 py-9 text-center sm:px-10 sm:py-11">
+      <div
+        className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
+        style={{ background: `${TEAL}15` }}
+      >
+        <Check className="h-8 w-8" style={{ color: TEAL }} />
+      </div>
+      <h2 className="mt-5 font-display text-2xl font-semibold text-slate-900">
+        Thank you{name ? `, ${name.trim().split(" ")[0]}` : ""}!
+      </h2>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
+        Your {category.toLowerCase()} request has been received. We&apos;ll contact
+        you within <span className="font-semibold text-slate-800">24 hours</span>.
       </p>
-    )}
-    <Button
-      onClick={onClose}
-      className="mt-7 w-full text-white sm:w-auto sm:px-10"
-      style={{ background: TEAL }}
-    >
-      Done
-    </Button>
-  </div>
-);
+      {code && (
+        <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+          Reference: <span className="font-mono font-semibold text-slate-800">{code}</span>
+        </p>
+      )}
+
+      <div className="mx-auto mt-6 max-w-sm space-y-3">
+        <p className="text-sm font-medium text-slate-700">
+          വേഗം മറുപടി വേണോ? WhatsApp-ൽ തുടരാം
+        </p>
+        <Button asChild size="lg" className={cn("h-12 w-full text-base font-semibold", WHATSAPP_BUTTON_CLASS)}>
+          <a href={waUrl} target="_blank" rel="noopener noreferrer">
+            <SocialIcon k="whatsapp" className="mr-2 h-5 w-5" /> Continue on WhatsApp
+          </a>
+        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button asChild variant="outline" className="h-11 w-full">
+            <a href={`tel:+${WHATSAPP_NUMBER}`}>
+              <Phone className="mr-2 h-4 w-4" /> Call us
+            </a>
+          </Button>
+          <Button asChild variant="outline" className="h-11 w-full">
+            <a href={DEFAULT_MAPS_URL} target="_blank" rel="noopener noreferrer">
+              <MapPin className="mr-2 h-4 w-4" /> Showroom map
+            </a>
+          </Button>
+        </div>
+        <p className="flex items-start justify-center gap-1.5 text-xs leading-5 text-slate-500">
+          <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Edapetty, Kalpetta · Mon–Sat 9:30 AM – 8:30 PM · Sunday closed</span>
+        </p>
+      </div>
+
+      <Button onClick={onClose} variant="ghost" className="mt-4 h-11 w-full text-slate-600 sm:w-auto sm:px-10">
+        Close
+      </Button>
+    </div>
+  );
+};

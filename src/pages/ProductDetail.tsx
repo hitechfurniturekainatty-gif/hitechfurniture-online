@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, ClipboardList, ShieldCheck, MapPin, Sparkles } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
-import { formatINR } from "@/lib/brand";
+import { formatINR, buildProductWhatsAppMessage, buildWhatsAppUrlFor, WHATSAPP_BUTTON_CLASS } from "@/lib/brand";
+import { SocialIcon } from "@/components/SocialLinks";
+import { cn } from "@/lib/utils";
 import { openEnquiryForm } from "@/lib/enquiryForm";
 import { toTitleCase } from "@/lib/textCase";
 import { useHomepageSettings } from "@/hooks/useHomepageSettings";
@@ -113,6 +115,11 @@ const ProductDetail = () => {
   const onOffer = !!product.offer_price && product.offer_price < product.mrp;
   const inStock = product.stock_quantity > 0;
   const productUrl = `${window.location.origin}/product/${product.id}`;
+  // WhatsApp opens with this product's name, code and link already typed in.
+  const productWaUrl = buildWhatsAppUrlFor(
+    homepage?.whatsapp_number,
+    buildProductWhatsAppMessage({ name: toTitleCase(product.product_name), code: product.product_code, url: productUrl }),
+  );
   const openProductEnquiry = () => openEnquiryForm({
     productName: product.product_name,
     productId: product.id,
@@ -125,7 +132,7 @@ const ProductDetail = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0">
       <Seo
         title={`${product.product_name} — ${product.main_categories?.name ?? "Furniture"} | Hitech Furniture`}
         description={(product.description?.slice(0, 155)) || `${product.product_name} (Code ${product.product_code}) by Hitech Furniture & Interiors, Wayanad. Enquire for availability and delivery.`}
@@ -232,14 +239,29 @@ const ProductDetail = () => {
 
             <div className="mt-7 rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg sm:p-6">
               <p className="text-sm font-bold">Interested in this product?</p>
-              <p className="mt-1 text-xs leading-5 text-primary-foreground/75">Send the product directly with your enquiry and our team can assist with availability, options and delivery details.</p>
-              <Button size="lg" variant="secondary" className="mt-5 w-full font-bold" onClick={openProductEnquiry}><ClipboardList className="mr-2 h-5 w-5" /> Enquire about this product</Button>
+              <p className="mt-1 text-xs leading-5 text-primary-foreground/75">Message us on WhatsApp or send an enquiry — this product is attached automatically, so our team can help with availability, options and delivery.</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <Button asChild size="lg" className={cn("h-12 w-full px-3 font-bold", WHATSAPP_BUTTON_CLASS)}>
+                  <a href={productWaUrl} target="_blank" rel="noopener noreferrer"><SocialIcon k="whatsapp" className="mr-2 h-5 w-5" /> WhatsApp</a>
+                </Button>
+                <Button size="lg" variant="secondary" className="h-12 w-full px-3 font-bold" onClick={openProductEnquiry}><ClipboardList className="mr-2 h-5 w-5" /> Enquire</Button>
+              </div>
             </div>
           </div>
         </div>
       </main>
 
       <SiteFooter />
+
+      {/* Mobile: the two actions stay within thumb reach while the customer scrolls */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-xl grid-cols-2 gap-3">
+          <Button asChild size="lg" className={cn("h-12 w-full px-3 font-bold", WHATSAPP_BUTTON_CLASS)}>
+            <a href={productWaUrl} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp us about ${product.product_name}`}><SocialIcon k="whatsapp" className="mr-2 h-5 w-5" /> WhatsApp</a>
+          </Button>
+          <Button size="lg" className="h-12 w-full px-3 font-bold" onClick={openProductEnquiry} aria-label={`Enquire about ${product.product_name}`}><ClipboardList className="mr-2 h-5 w-5" /> Enquire</Button>
+        </div>
+      </div>
     </div>
   );
 };

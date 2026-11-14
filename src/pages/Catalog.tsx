@@ -360,7 +360,7 @@ const Catalog = () => {
 
       {isStaff && <div className="mx-auto w-full max-w-7xl px-4 pb-6"><a href="/admin/staff-catalog" className="inline-flex min-h-11 items-center rounded-xl border border-amber-200 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-200">Staff Catalog →</a></div>}
       <SiteFooter />
-      <WhatsAppFab />
+      <WhatsAppFab message={activeCat ? `Hello Hitech Furniture, I'd like to know more about your ${toTitleCase(activeSubObj?.name ?? activeCat.name)} collection.` : undefined} />
     </div>
   );
 };

@@ -7,10 +7,13 @@ import { SocialIcon } from "@/components/SocialLinks";
  * too, but three stacked buttons covered page content — they now live in
  * the home page "Scan & connect" QR and the /connect links page.
  */
-export const WhatsAppFab = () => {
+export const WhatsAppFab = ({ message: contextMessage }: { message?: string }) => {
   const settings = useHomepageSettings();
   const number = settings?.whatsapp_number || WHATSAPP_NUMBER;
+  // A page can pass its own message (e.g. the category being browsed) so
+  // staff know what the customer was looking at.
   const message =
+    contextMessage ||
     settings?.whatsapp_default_message ||
     "Hello Hitech Furniture, I'd like to know more about your collection.";
   const waUrl = buildWhatsAppUrl(message).replace(WHATSAPP_NUMBER, number);

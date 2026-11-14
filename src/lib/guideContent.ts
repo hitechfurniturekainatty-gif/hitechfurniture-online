@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.4";
-export const GUIDE_LAST_UPDATED = "2026-10-11";
+export const APP_VERSION = "1.5";
+export const GUIDE_LAST_UPDATED = "2026-11-14";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -651,6 +651,18 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-5",
+        title: "v1.5 — 2026-11-14",
+        audience: ["everyone"],
+        bullets: [
+          "Website product page (mobile): a bar with WhatsApp and Enquire buttons now stays at the bottom of the screen while the customer scrolls.",
+          "WhatsApp from a product page opens with the product name, code and link already typed, so staff can see which item the customer means. On a catalog category the message names that category.",
+          "Product cards in the catalog now show a clear \"Enquire\" button instead of a small unlabelled icon.",
+          "Website enquiry form is now 2 steps instead of 3: tapping the enquiry type moves straight to the details, and \"Send enquiry\" submits directly (the separate review screen is removed).",
+          "After sending an enquiry the customer sees Continue on WhatsApp, Call us and Showroom map buttons with showroom hours. A WhatsApp message starting \"I just sent an enquiry on your website (Ref LD-…)\" is the same customer as that lead — reply there, do not create a second lead.",
+        ],
+      },
       {
         id: "v1-4",
         title: "v1.4 — 2026-10-11",

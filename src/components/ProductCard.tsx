@@ -107,15 +107,6 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
         {totalStock <= 0 && (
           <Badge variant="secondary" className="absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-semibold">Enquire availability</Badge>
         )}
-
-        <button
-          type="button"
-          onClick={openEnquiry}
-          aria-label={`Enquire about ${product.product_name}`}
-          className="absolute bottom-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-900 shadow-lg backdrop-blur transition hover:scale-105 hover:bg-primary hover:text-primary-foreground"
-        >
-          <ClipboardList className="h-4 w-4" />
-        </button>
       </div>
 
       {variants.length > 0 && (
@@ -175,6 +166,16 @@ const ProductCardInner = ({ product, hidePrice = false, linkPrefix = "product" }
           </span>
           <span className="text-[11px] font-semibold text-muted-foreground transition group-hover:text-primary">View details</span>
         </div>
+
+        <button
+          type="button"
+          onClick={openEnquiry}
+          aria-label={`Enquire about ${product.product_name}`}
+          className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition duration-200 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]"
+        >
+          <ClipboardList className="h-4 w-4" aria-hidden="true" />
+          Enquire
+        </button>
       </div>
     </Link>
   );
