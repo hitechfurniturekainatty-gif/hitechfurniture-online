@@ -1,4 +1,5 @@
 import { trackPageView, installContactTracking } from "@/lib/track";
+import { captureAttribution } from "@/lib/attribution";
 import { pageLoaders } from "@/lib/routePreload";
 import { RouteIntentPreloader } from "@/components/RouteIntentPreloader";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -105,6 +106,7 @@ const ScrollToTopOnRoute = () => {
   useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   useEffect(() => { trackPageView(pathname); }, [pathname]);
   useEffect(() => installContactTracking(), []);
+  useEffect(() => captureAttribution(), []);
   return null;
 };
 

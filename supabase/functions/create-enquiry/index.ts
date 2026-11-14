@@ -1,4 +1,4 @@
-// Public 3-step enquiry router. Routes by `type` to the right table.
+// Public enquiry router. Routes by `type` to the right table.
 // - new_purchase / custom_design / delivery_installation / general_inquiry
 //     → sales_leads (pre-quotation funnel)
 // - complaint_replacement → customer_complaints
@@ -27,6 +27,9 @@ const LEAD_TYPES: EnquiryType[] = [
   "general_inquiry",
 ];
 
+// How the visitor reached the site, sent by the website form (see src/lib/attribution.ts).
+const AD_SOURCES = ["meta_ad", "google_ad", "organic"];
+
 const isPhone = (s: string) => /^[0-9+\-\s()]{7,20}$/.test(s);
 
 Deno.serve(async (req) => {
@@ -46,6 +49,11 @@ Deno.serve(async (req) => {
     const photoBase64: string | null = body.photoBase64 || null;
     const photoName: string | null = body.photoName || null;
     const suggestedAmount: number | null = typeof body.suggestedAmount === "number" && !isNaN(body.suggestedAmount) ? body.suggestedAmount : null;
+
+    const adSource: string | null = AD_SOURCES.includes(body.adSource) ? body.adSource : null;
+    const adCampaign: string | null = typeof body.adCampaign === "string" && body.adCampaign.trim()
+      ? body.adCampaign.trim().slice(0, 120)
+      : null;
 
     if (!type || !name || !phone || !place) {
       return new Response(
@@ -134,6 +142,8 @@ Deno.serve(async (req) => {
       status: "pending",
       item_image_url: itemImageUrl,
       suggested_amount: suggestedAmount ?? 0,
+      ad_source: adSource,
+      ad_campaign: adCampaign,
     });
     if (leadErr) throw leadErr;
 

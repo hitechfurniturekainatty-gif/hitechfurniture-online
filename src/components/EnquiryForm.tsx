@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { getAttribution } from "@/lib/attribution";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -52,6 +53,9 @@ type EnquiryType =
   | "general_inquiry";
 
 type Step = 1 | 2;
+type FieldErrors = Record<string, string | undefined>;
+// Order the fields appear on screen — used to focus the first one with a problem.
+const FIELD_ORDER = ["name", "place", "phone", "billNumber", "itemDescription", "message", "workNeeded"];
 type Status = "idle" | "submitting" | "success";
 
 interface CategoryDef {
@@ -77,12 +81,13 @@ const TEAL = "#0E5C66";
 // Validation
 // ────────────────────────────────────────────────────────────────────────────
 const baseSchema = z.object({
-  name: z.string().trim().min(2, "Name is required").max(100),
+  name: z.string().trim().min(2, "പേര് എഴുതുക · Enter your name").max(100),
   phone: z
     .string()
     .trim()
-    .regex(/^[0-9+\-\s()]{7,20}$/, "Enter a valid phone number"),
-  place: z.string().trim().min(2, "Place is required").max(120),
+    .regex(/^[0-9+\-\s()]{7,20}$/, "ശരിയായ ഫോൺ നമ്പർ എഴുതുക · Enter a valid phone number")
+    .refine((v) => { const d = v.replace(/\D/g, "").length; return d >= 8 && d <= 15; }, "ശരിയായ ഫോൺ നമ്പർ എഴുതുക · Enter a valid phone number"),
+  place: z.string().trim().min(2, "സ്ഥലം എഴുതുക · Enter your place").max(120),
 });
 
 const messageSchema = baseSchema.extend({
@@ -91,11 +96,11 @@ const messageSchema = baseSchema.extend({
 
 const complaintSchema = baseSchema.extend({
   billNumber: z.string().trim().max(60).optional().default(""),
-  message: z.string().trim().min(5, "Please describe the issue").max(1000),
+  message: z.string().trim().min(5, "പ്രശ്നം എന്താണെന്ന് എഴുതുക · Please describe the issue").max(1000),
 });
 
 const serviceSchema = baseSchema.extend({
-  itemDescription: z.string().trim().min(2, "Item description is required").max(300),
+  itemDescription: z.string().trim().min(2, "ഏത് സാധനമാണെന്ന് എഴുതുക · Tell us which item").max(300),
   workNeeded: z.string().trim().max(1000).optional().default(""),
 });
 
@@ -129,6 +134,11 @@ export const EnquiryForm = () => {
   const [resultCode, setResultCode] = useState<string | null>(null);
   const [leadSource, setLeadSource] = useState<"website" | "manual">("website");
 
+  // field name → message shown right under that field
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const clearError = (field: string) =>
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
   const reset = () => {
     setStep(1);
     setStatus("idle");
@@ -144,6 +154,7 @@ export const EnquiryForm = () => {
     setSuggestedAmount("");
     setResultCode(null);
     setLeadSource("website");
+    setErrors({});
   };
 
   // Opener registration. Pre-fill product-related enquiries as New Purchase
@@ -192,23 +203,47 @@ export const EnquiryForm = () => {
   };
 
   // ── Step transitions with validation ──────────────────────────────────────
+  const schemaResult = () => {
+    if (category === "complaint_replacement") {
+      return complaintSchema.safeParse({ name, phone, place, billNumber, message });
+    }
+    if (category === "service_repair") {
+      return serviceSchema.safeParse({ name, phone, place, itemDescription, workNeeded });
+    }
+    return messageSchema.safeParse({ name, phone, place, message });
+  };
+
+  // Shows each problem under its own field and moves the cursor to the first one.
   const validateStep2 = (): boolean => {
     if (!category) return false;
-    try {
-      if (category === "complaint_replacement") {
-        complaintSchema.parse({ name, phone, place, billNumber, message });
-      } else if (category === "service_repair") {
-        serviceSchema.parse({ name, phone, place, itemDescription, workNeeded });
-      } else {
-        messageSchema.parse({ name, phone, place, message });
-      }
+    const result = schemaResult();
+    if (result.success) {
+      setErrors({});
       return true;
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        toast.error(e.issues[0]?.message || "Please check the form");
-      }
-      return false;
     }
+    const next: FieldErrors = {};
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0] ?? "");
+      if (field && !next[field]) next[field] = issue.message;
+    }
+    setErrors(next);
+    const first = FIELD_ORDER.find((f) => next[f]);
+    if (first) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`enq-${first}`);
+        el?.focus();
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    }
+    return false;
+  };
+
+  // Checks one field when the customer leaves it, so mistakes show early.
+  const validateField = (field: string) => {
+    if (!category) return;
+    const result = schemaResult();
+    const issue = result.success ? undefined : result.error.issues.find((i) => i.path[0] === field);
+    setErrors((prev) => ({ ...prev, [field]: issue?.message }));
   };
 
   // Two steps only: tapping a type moves straight on to the details, and the
@@ -240,6 +275,8 @@ export const EnquiryForm = () => {
           photoName: photo?.name ?? null,
           suggestedAmount: (parsedAmount && !isNaN(parsedAmount)) ? parsedAmount : null,
           source: leadSource,
+          // which ad / visit brought this customer (staff-entered leads carry none)
+          ...(leadSource === "website" ? getAttribution() : {}),
         },
       });
       if (error) {
@@ -370,6 +407,9 @@ export const EnquiryForm = () => {
                   setWorkNeeded={setWorkNeeded}
                   suggestedAmount={suggestedAmount}
                   setSuggestedAmount={setSuggestedAmount}
+                  errors={errors}
+                  clearError={clearError}
+                  validateField={validateField}
                 />
               )}
 
@@ -510,11 +550,32 @@ interface StepTwoProps {
   itemDescription: string; setItemDescription: (v: string) => void;
   workNeeded: string; setWorkNeeded: (v: string) => void;
   suggestedAmount: string; setSuggestedAmount: (v: string) => void;
+  errors: FieldErrors;
+  clearError: (field: string) => void;
+  validateField: (field: string) => void;
 }
 
 const StepTwo = (p: StepTwoProps) => {
   const isComplaint = p.category === "complaint_replacement";
   const isService = p.category === "service_repair";
+
+  // Shared wiring for a validated input: id, error styling and screen-reader hints.
+  const bind = (field: string, set: (v: string) => void) => ({
+    id: `enq-${field}`,
+    "aria-invalid": !!p.errors[field],
+    "aria-describedby": p.errors[field] ? `enq-${field}-error` : undefined,
+    className: cn("h-12 text-base", p.errors[field] && "border-rose-500 focus-visible:ring-rose-500"),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => { set(e.target.value); p.clearError(field); },
+    onBlur: () => p.validateField(field),
+  });
+  const bindArea = (field: string, set: (v: string) => void) => ({
+    id: `enq-${field}`,
+    "aria-invalid": !!p.errors[field],
+    "aria-describedby": p.errors[field] ? `enq-${field}-error` : undefined,
+    className: cn("text-base", p.errors[field] && "border-rose-500 focus-visible:ring-rose-500"),
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => { set(e.target.value); p.clearError(field); },
+    onBlur: () => p.validateField(field),
+  });
 
   return (
     <div className="space-y-4">
@@ -527,32 +588,35 @@ const StepTwo = (p: StepTwoProps) => {
         )}
       </div>
 
-      <Field label="Name" required icon={<User className="h-3.5 w-3.5" />}>
+      <Field field="name" label="Name" ml="പേര്" required icon={<User className="h-3.5 w-3.5" />} error={p.errors.name}>
         <Input
+          {...bind("name", p.setName)}
           value={p.name}
-          onChange={(e) => p.setName(e.target.value)}
           placeholder="Your full name"
+          autoComplete="name"
           maxLength={100}
           autoFocus
         />
       </Field>
 
-      <Field label="Place" required icon={<MapPin className="h-3.5 w-3.5" />}>
+      <Field field="place" label="Place" ml="സ്ഥലം" required icon={<MapPin className="h-3.5 w-3.5" />} error={p.errors.place}>
         <Input
+          {...bind("place", p.setPlace)}
           value={p.place}
-          onChange={(e) => p.setPlace(e.target.value)}
           placeholder="City / Town"
+          autoComplete="address-level2"
           maxLength={120}
         />
       </Field>
 
-      <Field label="Phone" required icon={<Phone className="h-3.5 w-3.5" />}>
+      <Field field="phone" label="Phone" ml="ഫോൺ നമ്പർ" required icon={<Phone className="h-3.5 w-3.5" />} error={p.errors.phone} hint="WhatsApp ഉള്ള നമ്പർ തരൂ · A number with WhatsApp is best">
         <Input
+          {...bind("phone", p.setPhone)}
           type="tel"
           inputMode="tel"
+          autoComplete="tel"
           value={p.phone}
-          onChange={(e) => p.setPhone(e.target.value)}
-          placeholder="+91 …"
+          placeholder="98765 43210"
           maxLength={20}
         />
       </Field>
@@ -560,18 +624,20 @@ const StepTwo = (p: StepTwoProps) => {
       {/* Conditional fields */}
       {isComplaint && (
         <>
-          <Field label="Original bill / quotation number (optional)">
+          <Field field="billNumber" label="Original bill / quotation number (optional)" ml="ബിൽ നമ്പർ">
             <Input
+              id="enq-billNumber"
+              className="h-12 text-base"
               value={p.billNumber}
               onChange={(e) => p.setBillNumber(e.target.value)}
               placeholder="e.g. 2026/27-014"
               maxLength={60}
             />
           </Field>
-          <Field label="Issue description" required>
+          <Field field="message" label="Issue description" ml="പ്രശ്നം" required error={p.errors.message}>
             <Textarea
+              {...bindArea("message", p.setMessage)}
               value={p.message}
-              onChange={(e) => p.setMessage(e.target.value)}
               placeholder="What went wrong? Please give us enough detail to help."
               rows={4}
               maxLength={1000}
@@ -583,16 +649,18 @@ const StepTwo = (p: StepTwoProps) => {
 
       {isService && (
         <>
-          <Field label="Item description" required>
+          <Field field="itemDescription" label="Item description" ml="ഏത് സാധനം" required error={p.errors.itemDescription}>
             <Input
+              {...bind("itemDescription", p.setItemDescription)}
               value={p.itemDescription}
-              onChange={(e) => p.setItemDescription(e.target.value)}
               placeholder="e.g. 6-seater dining table — teak"
               maxLength={300}
             />
           </Field>
-          <Field label="Work needed">
+          <Field field="workNeeded" label="Work needed" ml="ചെയ്യേണ്ട പണി">
             <Textarea
+              id="enq-workNeeded"
+              className="text-base"
               value={p.workNeeded}
               onChange={(e) => p.setWorkNeeded(e.target.value)}
               placeholder="What kind of service or repair?"
@@ -605,17 +673,19 @@ const StepTwo = (p: StepTwoProps) => {
 
       {!isComplaint && !isService && (
         <>
-          <Field label="Message / requirement">
+          <Field field="message" label="Message / requirement" ml="നിങ്ങളുടെ ആവശ്യം" error={p.errors.message}>
             <Textarea
+              {...bindArea("message", p.setMessage)}
               value={p.message}
-              onChange={(e) => p.setMessage(e.target.value)}
               placeholder="Tell us a bit about what you're looking for"
               rows={4}
               maxLength={1000}
             />
           </Field>
-          <Field label="Expected price (optional)">
+          <Field field="suggestedAmount" label="Expected price (optional)" ml="പ്രതീക്ഷിക്കുന്ന വില">
             <Input
+              id="enq-suggestedAmount"
+              className="h-12 text-base"
               type="number"
               inputMode="decimal"
               value={p.suggestedAmount}
@@ -632,23 +702,41 @@ const StepTwo = (p: StepTwoProps) => {
 };
 
 const Field = ({
+  field,
   label,
+  ml,
   required,
   icon,
+  error,
+  hint,
   children,
 }: {
+  field: string;
   label: string;
+  /** Malayalam name of the field, shown beside the English one. */
+  ml?: string;
   required?: boolean;
   icon?: React.ReactNode;
+  error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) => (
   <div className="space-y-1.5">
-    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+    <Label htmlFor={`enq-${field}`} className="flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
       {icon}
       {label}
-      {required && <span className="text-rose-500">*</span>}
+      {ml && <span className="text-[13px] font-medium normal-case tracking-normal text-slate-500">· {ml}</span>}
+      {required && <span className="text-rose-600" aria-hidden="true">*</span>}
     </Label>
     {children}
+    {error ? (
+      <p id={`enq-${field}-error`} role="alert" className="flex items-start gap-1.5 text-sm font-medium text-rose-700">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {error}
+      </p>
+    ) : hint ? (
+      <p className="text-xs text-slate-500">{hint}</p>
+    ) : null}
   </div>
 );
 
@@ -662,8 +750,9 @@ const PhotoUpload = ({
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <Label className="flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
         Photo (optional)
+        <span className="text-[13px] font-medium normal-case tracking-normal text-slate-500">· ഫോട്ടോ</span>
       </Label>
       {photo ? (
         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5">

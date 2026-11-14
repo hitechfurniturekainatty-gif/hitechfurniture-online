@@ -295,7 +295,9 @@ const Catalog = () => {
               )}
             </div>
           </div>
-          {!isLandingView && <div className="mt-4 border-t border-border pt-3 text-xs font-medium text-muted-foreground">{filtered.length} {filtered.length === 1 ? "piece" : "pieces"} found</div>}
+          {!isLandingView && (scopeHidden && filtered.length === 0
+            ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><p className="text-sm font-medium text-foreground">ഈ collection showroom-ൽ നേരിട്ട് കാണാം <span className="text-muted-foreground">· Photos WhatsApp-ൽ ചോദിക്കാം</span></p><Button size="sm" className="h-11 rounded-xl" onClick={() => openEnquiryForm({ productName: activeSubObj?.name ?? activeCat?.name })}>Ask for photos</Button></div>
+            : <div className="mt-4 border-t border-border pt-3 text-xs font-medium text-muted-foreground">{filtered.length} {filtered.length === 1 ? "piece" : "pieces"} found</div>)}
         </div>
 
         {isLandingView ? (
