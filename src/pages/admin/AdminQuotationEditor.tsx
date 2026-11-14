@@ -1,3 +1,4 @@
+import { photoGateMessage } from "@/lib/orderPhotoGate";
 import { QuotationOrigin } from "@/components/leads/QuotationOrigin";
 import { MeasurementAssignment } from '@/components/admin/MeasurementAssignment';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -1672,6 +1673,12 @@ const AdminQuotationEditor = () => {
         description: "ഓർഡർ കൺഫേം ചെയ്യുന്നതിന് മുമ്പ് Delivery place / route സെറ്റ് ചെയ്യണം (ഡെലിവറി ഗ്രൂപ്പിങ്ങിന് വേണ്ടി).",
         variant: "destructive",
       });
+      return;
+    }
+
+    const photoProblem = await photoGateMessage(q.id);
+    if (photoProblem) {
+      toast({ title: "Photo ഇല്ലാതെ order confirm ചെയ്യാൻ പറ്റില്ല", description: photoProblem, variant: "destructive" });
       return;
     }
 
