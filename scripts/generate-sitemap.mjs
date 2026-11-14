@@ -37,6 +37,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const STATIC_ROUTES = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/catalog", changefreq: "daily", priority: "0.9" },
+  { path: "/sofas-kalpetta", changefreq: "weekly", priority: "0.8" },
+  { path: "/dining-furniture-kalpetta", changefreq: "weekly", priority: "0.8" },
+  { path: "/office-furniture-kalpetta", changefreq: "weekly", priority: "0.8" },
+  { path: "/modular-kitchens-wayanad", changefreq: "weekly", priority: "0.8" },
+  { path: "/home-interiors-wayanad", changefreq: "weekly", priority: "0.8" },
   { path: "/connect", changefreq: "monthly", priority: "0.4" },
   { path: "/furniture-shop-wayanad", changefreq: "monthly", priority: "0.8" },
   { path: "/about", changefreq: "monthly", priority: "0.5" },

@@ -84,6 +84,13 @@ const FurnitureShopWayanad = () => (
           <Button asChild variant="secondary" className="min-h-11"><Link to="/catalog">Browse catalog</Link></Button>
         </div>
       </section>
+      <nav aria-label="Furniture and interiors" className="mt-10 flex flex-wrap justify-center gap-4">
+        <Link className="underline" to="/sofas-kalpetta">Sofas &amp; Custom Sofa Sets in Kalpetta</Link>
+        <Link className="underline" to="/dining-furniture-kalpetta">Dining Tables &amp; Chairs in Kalpetta</Link>
+        <Link className="underline" to="/office-furniture-kalpetta">Office Furniture in Kalpetta</Link>
+        <Link className="underline" to="/modular-kitchens-wayanad">Modular Kitchens in Wayanad</Link>
+        <Link className="underline" to="/home-interiors-wayanad">Home Interiors in Wayanad</Link>
+      </nav>
     </main>
     <SiteFooter />
   </>

@@ -349,8 +349,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Seo
-        title="Hitech Furniture & Interiors — Custom Sofas, Beds & Wardrobes in Wayanad"
-        description="14+ years of crafting custom furniture and interiors in Kalpetta, Wayanad. Browse our live catalog of sofas, beds, wardrobes and more — enquire on WhatsApp."
+        title="Furniture Showroom in Kalpetta, Wayanad | Hitech Furniture"
+        description="Visit Hitech Furniture & Interiors in Edapetty, Kalpetta. Browse sofas, dining sets, beds and office furniture, or ask about custom furniture and interiors."
         jsonLd={{
           ...LOCAL_BUSINESS_JSONLD,
           telephone: settings?.contact_phone ?? LOCAL_BUSINESS_JSONLD.telephone,

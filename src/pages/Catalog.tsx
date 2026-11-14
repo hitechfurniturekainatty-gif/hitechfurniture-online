@@ -213,8 +213,8 @@ const Catalog = () => {
   return (
     <div className="min-h-screen bg-background">
       <Seo
-        title={activeCat ? `${activeCat.name} — Hitech Furniture Catalog` : "Furniture Catalog — Sofas, Beds, Wardrobes | Hitech Furniture"}
-        description={activeCat ? `Browse ${activeCat.name.toLowerCase()} from Hitech Furniture & Interiors, Wayanad. Filter by price, material and stock. Download PDF or enquire on WhatsApp.` : "Live furniture catalog — sofas, beds, wardrobes, dining and more from Hitech Furniture & Interiors, Wayanad."}
+        title={activeCat ? `${activeCat.name} — Hitech Furniture Catalog` : "Furniture Catalogue in Kalpetta, Wayanad | Hitech Furniture"}
+        description={activeCat ? `Browse ${activeCat.name.toLowerCase()} from Hitech Furniture & Interiors, Wayanad. Filter by price, material and stock. Download PDF or enquire on WhatsApp.` : "Explore sofas, dining tables and chairs, beds, wardrobes, office furniture and outdoor seating from Hitech Furniture & Interiors in Kalpetta, Wayanad."}
         jsonLd={LOCAL_BUSINESS_JSONLD}
       />
       <SiteHeader />
