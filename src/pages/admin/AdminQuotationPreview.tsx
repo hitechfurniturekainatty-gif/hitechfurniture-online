@@ -17,6 +17,7 @@ import quoteHeaderArt from "@/assets/quote-header-art.jpg";
 import quoteFooterWave from "@/assets/quote-footer-wave.png";
 import sealSign from "@/assets/hitech-seal-signed.png";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -110,6 +111,11 @@ const AdminQuotationPreview = () => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorker, setSelectedWorker] = useState("");
   const [jobNotes, setJobNotes] = useState("");
+  // Custom work usually goes to an outside supplier (creditor), not our own
+  // worker. Staff just type the supplier's name; it is saved on first use.
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierOptions, setSupplierOptions] = useState<string[]>([]);
+  const [jobDueDate, setJobDueDate] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [generatingJob, setGeneratingJob] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
@@ -398,6 +404,20 @@ const AdminQuotationPreview = () => {
     setWorkers((data ?? []) as Worker[]);
     setSelectedWorker("");
     setJobNotes("");
+    setSupplierName("");
+    // Suggest "2 days before the customer's delivery date" as the date the item should reach the shop.
+    const promised = q.expected_delivery_date ? new Date(q.expected_delivery_date) : null;
+    if (promised && !isNaN(promised.getTime())) {
+      promised.setDate(promised.getDate() - 2);
+      setJobDueDate(promised.getTime() > Date.now() ? promised.toISOString().slice(0, 10) : "");
+    } else {
+      setJobDueDate("");
+    }
+    // Known creditor names (from Busy) as type-ahead suggestions; fine if it fails.
+    (supabase as any).from("busy_creditors").select("vendor_name").order("vendor_name").limit(500)
+      .then(({ data: creditors }: { data: { vendor_name: string }[] | null }) => {
+        setSupplierOptions(Array.from(new Set((creditors ?? []).map((c) => (c.vendor_name || "").trim()).filter(Boolean))));
+      });
     setSelectedItemIds(new Set(items.map((item) => item.id)));
     setAssignMode("saved");
     setAssignOpen(true);
@@ -430,6 +450,12 @@ const AdminQuotationPreview = () => {
       }
     }
 
+    const typedSupplier = supplierName.trim().replace(/\s+/g, " ");
+    if (isDirect && typedSupplier.length < 2) {
+      toast({ title: "Supplier / worker പേര് എഴുതുക", description: "ആർക്കാണ് ഈ പണി കൊടുക്കുന്നത് എന്ന് എഴുതിയാൽ മാത്രമേ follow-up ചെയ്യാൻ പറ്റൂ.", variant: "destructive" });
+      return;
+    }
+
     const chosenItems = items.filter((item) => selectedItemIds.has(item.id));
     if (chosenItems.length === 0) {
       toast({ title: "Select at least one item", description: "Choose which quotation items to assign.", variant: "destructive" });
@@ -438,8 +464,31 @@ const AdminQuotationPreview = () => {
 
     setGeneratingJob(true);
     try {
-      // Only log a job_work_orders row when assigning to a saved worker.
-      // Direct shares are intentionally not tied to any worker profile.
+      // Direct share: the job is still recorded, against the supplier name typed
+      // by staff. A supplier seen for the first time is saved automatically, so
+      // nobody has to register suppliers in advance.
+      if (isDirect) {
+        const existing = workers.find((w) => w.name.trim().toLowerCase() === typedSupplier.toLowerCase());
+        if (existing) {
+          worker = existing;
+        } else {
+          const { data: found } = await supabase.from("workers").select("id, name, whatsapp_number, trade")
+            .ilike("name", typedSupplier).is("deleted_at", null).limit(1);
+          if (found && found.length > 0) {
+            worker = found[0] as Worker;
+          } else {
+            const { data: created, error: createErr } = await supabase.from("workers")
+              .insert({ name: typedSupplier, whatsapp_number: "", trade: "Supplier", is_active: true, created_by: user?.id ?? null })
+              .select("id, name, whatsapp_number, trade").single();
+            if (createErr || !created) {
+              toast({ title: "Could not save supplier", description: createErr?.message ?? "Please try again.", variant: "destructive" });
+              return;
+            }
+            worker = created as Worker;
+          }
+        }
+      }
+
       if (worker) {
         const { error } = await supabase.from("job_work_orders").insert({
           quotation_id: q.id,
@@ -448,6 +497,7 @@ const AdminQuotationPreview = () => {
           notes: jobNotes.trim() || null,
           status: "assigned",
           created_by: user?.id ?? null,
+          ...(jobDueDate ? { due_at: new Date(`${jobDueDate}T18:00:00+05:30`).toISOString() } : {}),
         });
         if (error) {
           toast({ title: "Failed to create job", description: error.message, variant: "destructive" });
@@ -995,8 +1045,8 @@ const AdminQuotationPreview = () => {
                 <label className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${assignMode === "direct" ? "border-primary bg-primary/5" : "border-border"}`}>
                   <RadioGroupItem value="direct" id="mode-direct" className="mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">Direct WhatsApp Share</p>
-                    <p className="text-xs text-muted-foreground">Send to any contact or WhatsApp group via your phone.</p>
+                    <p className="text-sm font-medium">Supplier · Direct WhatsApp Share</p>
+                    <p className="text-xs text-muted-foreground">Supplier / creditor: type the name, share from your phone. The job is tracked.</p>
                   </div>
                 </label>
               </RadioGroup>
@@ -1044,15 +1094,40 @@ const AdminQuotationPreview = () => {
             )}
 
             {assignMode === "direct" && (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-                <p className="font-medium">Direct WhatsApp / Native Share</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  We'll generate the worker-safe file (no prices, no customer phone)
-                  and open your phone's share sheet so you can pick any contact or
-                  WhatsApp group. No worker profile is needed.
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="job-supplier">Supplier / worker name · ആർക്കാണ് കൊടുക്കുന്നത് <span className="text-destructive" aria-hidden="true">*</span></Label>
+                  <Input
+                    id="job-supplier"
+                    list="job-supplier-options"
+                    value={supplierName}
+                    onChange={(event) => setSupplierName(event.target.value)}
+                    placeholder="Type the supplier's name"
+                    autoComplete="off"
+                    maxLength={120}
+                  />
+                  <datalist id="job-supplier-options">
+                    {Array.from(new Set([...workers.map((w) => w.name), ...supplierOptions])).map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs text-muted-foreground">
+                    പുതിയ supplier ആണെങ്കിൽ പേര് type ചെയ്താൽ മതി — തനിയെ save ആകും. മുമ്പ് ചേർക്കേണ്ട ആവശ്യമില്ല.
+                  </p>
+                </div>
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
+                  We'll generate the worker-safe file (no prices, no customer phone) and open your
+                  phone's share sheet so you can send it to any contact or WhatsApp group. The job
+                  appears on the Production Board so it can be followed up.
+                </div>
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="job-due">Ready date · എന്ന് ഷോപ്പിൽ എത്തണം</Label>
+              <Input id="job-due" type="date" value={jobDueDate} onChange={(event) => setJobDueDate(event.target.value)} className="sm:w-56" />
+              <p className="text-xs text-muted-foreground">ഈ തീയതി കഴിഞ്ഞിട്ടും എത്തിയില്ലെങ്കിൽ Production Board-ൽ Overdue ആയി കാണിക്കും.</p>
+            </div>
 
             <div className="space-y-2">
               <Label>Items to assign</Label>
@@ -1089,7 +1164,7 @@ const AdminQuotationPreview = () => {
             <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={generatingJob} className="w-full sm:w-auto">Cancel</Button>
             <DownloadShareMenu
               busy={generatingJob}
-              disabled={assignMode === "saved" && (workers.length === 0 || !selectedWorker)}
+              disabled={assignMode === "saved" ? (workers.length === 0 || !selectedWorker) : supplierName.trim().length < 2}
               onPdf={() => generateAndAssignJob("pdf")}
               onJpg={() => generateAndAssignJob("jpg")}
               triggerVariant="default"
