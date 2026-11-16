@@ -8,8 +8,8 @@ import { openEnquiryForm } from "@/lib/enquiryForm";
 const FALLBACK_MAPS_URL = "https://maps.app.goo.gl/DQWJCG1xRGEcRzx56";
 const FALLBACK_ADDRESS_LINES = [
   "Edapetty Shopping Centre",
-  "Edapetty, Kalpetta",
-  "Wayanad, PIN 673122",
+  "Edapetty, Kainatty, Kalpetta",
+  "Wayanad, Kerala - 673122, India",
 ];
 const FALLBACK_EMBED_URL =
   "https://www.google.com/maps?q=11.637805,76.094218&z=17&output=embed";

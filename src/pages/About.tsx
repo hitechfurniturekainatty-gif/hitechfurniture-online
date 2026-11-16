@@ -46,7 +46,7 @@ const About = () => (
       <section className="mx-auto mt-10 max-w-4xl rounded-2xl bg-primary p-8 text-primary-foreground">
         <h2 className="font-display text-2xl">Visit our showroom</h2>
         <div className="mt-5 grid gap-4 text-sm sm:grid-cols-3">
-          <p className="flex gap-2"><MapPin className="h-5 w-5 shrink-0" /> Edapetty Shopping Centre, Edapetty, Kalpetta, Wayanad - 673122</p>
+          <p className="flex gap-2"><MapPin className="h-5 w-5 shrink-0" /> Edapetty Shopping Centre, Edapetty, Kainatty, Kalpetta, Wayanad, Kerala - 673122, India</p>
           <a href="tel:+919895134482" className="flex min-h-11 gap-2 hover:opacity-80"><Phone className="h-5 w-5 shrink-0" /> +91 98951 34482<br />+91 95266 10404</a>
           <p className="flex gap-2"><Clock className="h-5 w-5 shrink-0" /> Mon–Sat 9:30 AM – 8:30 PM</p>
         </div>
