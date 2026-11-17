@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Hitech WhatsApp Coexistence</title>
+</head>
+<body>
+  <main>
+    <h1>Hitech WhatsApp Coexistence</h1>
+    <p>For Hitech administrators. Open Meta signup to check whether it offers the option to connect an existing WhatsApp Business app.</p>
+    <p>This page is for checking the signup flow. Close the Meta window before granting access or linking a number.</p>
+    <button id="launch" type="button" disabled>Open Meta signup</button>
+    <p id="status" role="status">Loading Meta signup…</p>
+  </main>
+  <script>
+    const launch = document.getElementById('launch');
+    const status = document.getElementById('status');
+
+    window.fbAsyncInit = function () {
+      FB.init({ appId: '862183436948329', version: 'v27.0' });
+      launch.disabled = false;
+      status.textContent = 'Ready to open Meta signup.';
+    };
+
+    launch.addEventListener('click', function () {
+      status.textContent = 'Check the signup window opened by Meta.';
+      FB.login(function () {
+        status.textContent = 'The Meta window closed. This page does not complete onboarding.';
+      }, {
+        config_id: '1116754584687500',
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: 'whatsapp_business_app_onboarding',
+          sessionInfoVersion: '3'
+        }
+      });
+    });
+
+    const sdk = document.createElement('script');
+    sdk.src = 'https://connect.facebook.net/en_US/sdk.js';
+    sdk.async = true;
+    sdk.onerror = function () {
+      status.textContent = 'Meta signup could not load. Reload the page and try again.';
+    };
+    document.head.appendChild(sdk);
+  </script>
+</body>
+</html>
