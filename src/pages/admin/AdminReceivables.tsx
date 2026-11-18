@@ -14,6 +14,7 @@ import { lockBacklog } from "@/components/admin/BacklogGate";
 import { useNavigate } from "react-router-dom";
 import { BANK_DETAILS, COMPANY } from "@/lib/companyInfo";
 import ReceivableCallLogWindow from "@/components/admin/ReceivableCallLogWindow";
+import BusyExcelRefreshCard from "@/components/admin/BusyExcelRefreshCard";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import jsPDF from "jspdf";
 
@@ -147,14 +148,20 @@ export default function AdminReceivables() {
 
   const load = async () => {
     setLoadingRows(true);
-    const { data, error } = await supabase
-      .from("receivables")
-      .select("id, bill_no, customer_name, place, phone, pending_amount, raw_text, batch, created_at, closed_at")
-      .eq("source", "manual")
-      .order("created_at", { ascending: false })
-      .limit(2000);
-    if (error) toast({ title: "Failed to load", description: error.message, variant: "destructive" });
-    else setRows((data as ServerRow[]) ?? []);
+    // The API returns at most 1000 rows per request, so read in pages.
+    const all: ServerRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("receivables")
+        .select("id, bill_no, customer_name, place, phone, pending_amount, raw_text, batch, created_at, closed_at")
+        .eq("source", "manual")
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, from + 999);
+      if (error) { toast({ title: "Failed to load", description: error.message, variant: "destructive" }); break; }
+      all.push(...((data as ServerRow[]) ?? []));
+      if ((data?.length ?? 0) < 1000) { setRows(all); break; }
+    }
     setLoadingRows(false);
   };
 
@@ -331,6 +338,8 @@ export default function AdminReceivables() {
         </CardContent>
       </Card>
 
+      <BusyExcelRefreshCard onDone={load} />
+
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Paste & parse</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -355,8 +364,8 @@ export default function AdminReceivables() {
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <div><CardTitle className="text-base">Manual customer follow-ups</CardTitle><p className="mt-1 text-xs text-muted-foreground">{visibleRows.length} record{visibleRows.length === 1 ? "" : "s"} · Total: <span className="font-semibold text-foreground">{fmtAmount(total)}</span>{selected.size > 0 && <> · <span className="font-medium text-foreground">{selected.size} selected</span></>}</p><Tabs value={tab} onValueChange={(v) => { setTab(v as "open" | "closed"); setSelected(new Set()); }} className="mt-2"><TabsList className="h-8"><TabsTrigger value="open" className="text-xs h-7">Open ({openCount})</TabsTrigger><TabsTrigger value="closed" className="text-xs h-7">Closed ({closedCount})</TabsTrigger></TabsList></Tabs></div>
           <div className="flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" className="gap-1" onClick={copyAll} disabled={visibleRows.length === 0}><Copy className="h-4 w-4" /> Copy all</Button><Button size="sm" variant="outline" className="gap-1" onClick={exportCSV} disabled={visibleRows.length === 0}><Download className="h-4 w-4" /> CSV</Button><Button size="sm" variant="outline" className="gap-1" onClick={exportPDF} disabled={visibleRows.length === 0}><FileText className="h-4 w-4" /> PDF</Button>
-            {selected.size > 0 && <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="destructive" className="gap-1"><Trash2 className="h-4 w-4" /> Delete selected ({selected.size})</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete selected manual records?</AlertDialogTitle><AlertDialogDescription>This permanently removes {selected.size} manual record(s). Order-linked receivables are not affected.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}
-            {rows.length > 0 && <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="destructive" className="gap-1"><Trash2 className="h-4 w-4" /> Clear Manual</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Clear all manual receivables?</AlertDialogTitle><AlertDialogDescription>This removes all {rows.length} manual records only. Order-linked receivables remain safe.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={deleteAll}>Delete manual records</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}
+            {selected.size > 0 && <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="destructive" className="gap-1"><Trash2 className="h-4 w-4" /> Delete selected ({selected.size})</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete selected manual records?</AlertDialogTitle><AlertDialogDescription>This permanently removes {selected.size} manual record(s) together with their call notes, promise dates and payments. Order-linked receivables are not affected.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}
+            {rows.length > 0 && <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="destructive" className="gap-1"><Trash2 className="h-4 w-4" /> Clear Manual</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Clear all manual receivables?</AlertDialogTitle><AlertDialogDescription>This removes all {rows.length} manual records together with their call notes, promise dates and payments. To update balances use “Refresh balances from Busy Excel” instead, which keeps them. Order-linked receivables remain safe.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={deleteAll}>Delete manual records</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>}
           </div>
         </CardHeader>
         <CardContent className="px-0 sm:px-6">

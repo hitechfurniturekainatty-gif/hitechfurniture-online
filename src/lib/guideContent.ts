@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.5";
-export const GUIDE_LAST_UPDATED = "2026-11-14";
+export const APP_VERSION = "1.6";
+export const GUIDE_LAST_UPDATED = "2026-11-18";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -521,6 +521,21 @@ export const CHAPTERS: GuideChapter[] = [
         tip:
           "Backlog area is locked behind a PIN. Once unlocked it stays open for 15 minutes per session, then re-locks automatically (also clears on sign-out).",
       },
+      {
+        id: "receivables-busy-refresh",
+        title: "Refresh balances from Busy Excel",
+        audience: ["admin"],
+        bullets: [
+          "Backlog → Manual / Busy Receivables Ledger → “Refresh balances from Busy Excel”. Choose the Busy debtors Excel file (columns Account and Balance; Sales Man and Mobile No. are used when present).",
+          "The screen shows a preview first: customers with balance, total balance, new / updated / closed counts, customers without a mobile number or salesman. Nothing changes until you press Apply.",
+          "Balances are replaced with the file. Customers are never deleted, so call notes, promise dates, follow-ups and payments stay. A customer at zero balance, or no longer in the file, is closed; if the balance comes back in a later file the customer reopens.",
+          "The mobile number is taken from the last 10 digits of the Busy account name when the Mobile No. column is empty.",
+          "Customers added by this refresh do not get the automatic 1/3/7/15-day reminders (they would flood the follow-up list). Set a promise date on a customer to get a reminder.",
+          "Upload a fresh file every morning. If the red warning says many open customers are missing, check you chose the full debtors list.",
+          "“Clear Manual” and delete remove the customer together with call notes, promise dates and payments. Use the refresh instead to update balances.",
+        ],
+        tip: "Only Admin users can see or upload receivables.",
+      },
     ],
   },
 
@@ -651,6 +666,16 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-6",
+        title: "v1.6 — 2026-11-18",
+        audience: ["everyone"],
+        bullets: [
+          "Receivables: new “Refresh balances from Busy Excel” upload. It replaces balances from the file and keeps call notes, promise dates and payments (nothing is deleted).",
+          "Receivables lists now load every customer (before, only the first 1000 were read) and the follow-up list has a search box and shows 100 at a time.",
+          "Clear / delete warnings on Manual receivables now say that call notes, promise dates and payments are removed too.",
+        ],
+      },
       {
         id: "v1-5",
         title: "v1.5 — 2026-11-14",
