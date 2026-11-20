@@ -1,0 +1,83 @@
+name: Nightly database backup
+
+# Every night: full dump of the Supabase database, encrypted, uploaded to the
+# private Hostinger backup folder (separate from the accounting backups).
+# Keeps the newest 14 files. The dump never stays on GitHub: this repo is public,
+# so no artifacts are saved and nothing secret is printed to the log.
+#
+# Repository secrets needed (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL      Supabase → Connect → Session pooler URI (with password)
+#   BACKUP_PASSPHRASE    long random passphrase; keep a copy offline — it is needed to restore
+#   HOSTINGER_HOST       145.79.213.128 (hPanel → Files → FTP Accounts)
+#   HOSTINGER_USER       u745511118.crmbackup
+#   HOSTINGER_PASSWORD   FTP password
+# Restore: gpg -d file.dump.gpg > file.dump && pg_restore --no-owner -d "$DB_URL" file.dump
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 India time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The FTP account u745511118.crmbackup is locked to
+      # /home/u745511118/domains/hitechfurniture.online/crm-backups (outside public_html).
+      BACKUP_DIR: db
+      KEEP: "14"
+    steps:
+      - name: Install PostgreSQL 17 client and lftp
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 lftp >/dev/null
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump and encrypt
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          for v in SUPABASE_DB_URL BACKUP_PASSPHRASE; do [ -n "${!v}" ] || { echo "Missing secret $v"; exit 1; }; done
+          umask 077
+          name="hitech-db-$(TZ=Asia/Kolkata date +%Y-%m-%d_%H%M).dump"
+          # Custom format = compressed, restorable table by table. Only our own schemas.
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth --schema=storage --file="$RUNNER_TEMP/$name"
+          size=$(stat -c %s "$RUNNER_TEMP/$name")
+          [ "$size" -gt 100000 ] || { echo "Dump looks too small ($size bytes)"; exit 1; }
+          /usr/lib/postgresql/17/bin/pg_restore --list "$RUNNER_TEMP/$name" >/dev/null
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 \
+            --output "$RUNNER_TEMP/$name.gpg" "$RUNNER_TEMP/$name" 3<<<"$BACKUP_PASSPHRASE"
+          rm -f "$RUNNER_TEMP/$name"
+          echo "FILE=$name.gpg" >> "$GITHUB_ENV"
+          echo "Dump OK: $((size/1024)) KB before encryption"
+
+      - name: Upload to Hostinger and remove old backups
+        env:
+          HOST: ${{ secrets.HOSTINGER_HOST }}
+          USER: ${{ secrets.HOSTINGER_USER }}
+          PASS: ${{ secrets.HOSTINGER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in HOST USER PASS; do [ -n "${!v}" ] || { echo "Missing Hostinger secret $v"; exit 1; }; done
+          export LFTP_PASSWORD="$PASS"
+          lftp_cmd() { lftp -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; $1; bye" --env-password -u "$USER" "ftp://$HOST"; }
+          lftp_cmd "mkdir -pf $BACKUP_DIR; cd $BACKUP_DIR; put $RUNNER_TEMP/$FILE -o $FILE.part; mv $FILE.part $FILE"
+          # Delete everything except the newest $KEEP backups.
+          old=$(lftp_cmd "cls -1 --sort=name $BACKUP_DIR/hitech-db-*.dump.gpg" | sort | head -n -"$KEEP" || true)
+          for f in $old; do lftp_cmd "rm $f"; done
+          echo "Uploaded $FILE; removed $(echo "$old" | grep -c . || true) old file(s)"
+          rm -f "$RUNNER_TEMP/$FILE"
