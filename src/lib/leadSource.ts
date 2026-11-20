@@ -20,6 +20,8 @@ export const LEAD_OUTCOMES = [
 ] as const;
 export type LeadOutcome = (typeof LEAD_OUTCOMES)[number][0];
 export const leadOutcomeLabel = (o?: string | null) => LEAD_OUTCOMES.find(([v]) => v === o)?.[1] ?? "📝 Note";
+/** Why a lead was lost or cancelled (sales_leads.lost_reason). */
+export const LOST_REASONS = ["വില കൂടുതൽ · Price too high","വേറെ കടയിൽ നിന്ന് വാങ്ങി · Bought elsewhere","മറുപടിയില്ല · No response","ഇപ്പോൾ വേണ്ട, പിന്നീട് · Not now / later","Design / size ശരിയായില്ല · Product not suitable","Delivery സമയം · Delivery time","Duplicate / തെറ്റായ enquiry · Duplicate or spam","മറ്റുള്ളവ · Other"] as const;
 /** Quick next-follow-up choices: days from now at 10:30, skipping Sunday. */
 export const followUpInDays = (days: number, from = new Date()) => { const d = new Date(from); d.setDate(d.getDate()+days); if (d.getDay()===0) d.setDate(d.getDate()+1); d.setHours(10,30,0,0); const p=(n:number)=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 /** Next working day 10:30 (local), used as default follow-up. */
