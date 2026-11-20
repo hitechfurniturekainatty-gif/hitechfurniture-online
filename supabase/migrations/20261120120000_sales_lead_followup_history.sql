@@ -109,6 +109,8 @@ ALTER TABLE public.pipeline_notifications ADD CONSTRAINT pipeline_notifications_
   CHECK (source_type = ANY (ARRAY['quotation','lead','complaint','service','job','delivery','lead_reminder',
     'job_stuck','payment_reminder','quotation_expiry','delivery_review','whatsapp_lead','lead_chat','delivery_prep',
     'quotation_followup_due','receivable_followup_due','sales_lead_reminder','customer_approval',
+    -- Added on the live database outside these migrations; keep them.
+    'daily_call_list','job_status_digest','review_request','owner_daily_report','weekly_source_report',
     'sales_lead_followup_due','sales_lead_followup_overdue']::text[]));
 
 CREATE INDEX IF NOT EXISTS pipeline_notifications_source_idx
