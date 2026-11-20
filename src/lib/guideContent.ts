@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.8";
+export const APP_VERSION = "1.9";
 export const GUIDE_LAST_UPDATED = "2026-11-20";
 
 export const ABOUT = {
@@ -668,6 +668,17 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-9",
+        title: "v1.9 — 2026-11-20",
+        audience: ["everyone"],
+        bullets: [
+          "New Sales Board (Operations → Sales Board, or the Sales Board button on the Leads page): every lead is a card in a column — New, Contacted, Showroom visit, Quotation, Order, Lost. Drag a card to the next column.",
+          "Moving to Contacted or Showroom visit asks for the next call date and an optional note, and saves it in the lead's Follow-up history. Moving to Lost asks for the reason. Moving to Quotation creates the quotation.",
+          "Order fills itself when the quotation is confirmed. Quotation and Order cards cannot be dragged. Cards show Overdue (red) and ഇന്ന് (today) tags; today's calls are at the top of each column. Use \"എന്റെ leads\" to see only your own.",
+          "On a phone, press and hold a card for a moment, then drag.",
+        ],
+      },
       {
         id: "v1-8",
         title: "v1.8 — 2026-11-20",
