@@ -33,6 +33,7 @@ const AdminOverview = lazy(pageLoaders.AdminOverview);
 const AdminDiary = lazy(pageLoaders.AdminDiary);
 const AdminMyWork = lazy(pageLoaders.AdminMyWork);
 const AdminLeads = lazy(pageLoaders.AdminLeads);
+const AdminCustomer = lazy(pageLoaders.AdminCustomer);
 const AdminEnquiriesInbox = lazy(pageLoaders.AdminEnquiriesInbox);
 const AdminWhatsAppInbox = lazy(pageLoaders.AdminWhatsAppInbox);
 const AdminTeamPerformance = lazy(pageLoaders.AdminTeamPerformance);
@@ -143,6 +144,7 @@ const App = () => (
             <Route path="/admin/diary" element={<AdminDiary />} />
             <Route path="/admin/my-work" element={<AdminMyWork />} />
             <Route path="/admin/leads" element={<AdminLeads />} />
+            <Route path="/admin/customer" element={<AdminCustomer />} />
             <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
             <Route path="/admin/whatsapp" element={<AdminWhatsAppInbox />} />
             <Route path="/admin/team-performance" element={<AdminTeamPerformance />} />

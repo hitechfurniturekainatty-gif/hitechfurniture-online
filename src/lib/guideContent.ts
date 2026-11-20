@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.7";
+export const APP_VERSION = "1.8";
 export const GUIDE_LAST_UPDATED = "2026-11-20";
 
 export const ABOUT = {
@@ -668,6 +668,17 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-8",
+        title: "v1.8 — 2026-11-20",
+        audience: ["everyone"],
+        bullets: [
+          "Leads: when a lead is marked Lost or Cancelled, a reason must be chosen (price, bought elsewhere, no response, later, product not suitable, delivery time, duplicate, other). The reason shows as a red tag on the lead card.",
+          "Leads: new \"Source report\" (open it above the list) shows, for the chosen month, how many leads came from each source, how many became quotations, how many were lost, the conversion %, and the lost reasons.",
+          "New Customer history page (Operations → Customer history, or the History button on a lead): type a phone number to see that customer's leads, quotations and orders, payments due, complaints and service in one place.",
+          "Security: leads can now be seen and changed only by office staff and admins. Delivery, measurement and other logins no longer have access to the lead list.",
+        ],
+      },
       {
         id: "v1-7",
         title: "v1.7 — 2026-11-20",
