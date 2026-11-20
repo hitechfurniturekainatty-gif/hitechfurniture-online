@@ -1,4 +1,5 @@
 import { photoGateMessage } from "@/lib/orderPhotoGate";
+import { stockShortageMessage } from "@/lib/orderStockCheck";
 import { QuotationOrigin } from "@/components/leads/QuotationOrigin";
 import { MeasurementAssignment } from '@/components/admin/MeasurementAssignment';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -1681,6 +1682,9 @@ const AdminQuotationEditor = () => {
       toast({ title: "Photo ഇല്ലാതെ order confirm ചെയ്യാൻ പറ്റില്ല", description: photoProblem, variant: "destructive" });
       return;
     }
+
+    const shortage = await stockShortageMessage(q.id);
+    if (shortage && !window.confirm(shortage)) return;
 
     const ok = window.confirm(
       "Customer accepted this quotation?\n\nThis will confirm the quotation and move the SAME record to the existing Order / OPS stage."

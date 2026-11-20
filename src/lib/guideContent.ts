@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.9";
+export const APP_VERSION = "2.0";
 export const GUIDE_LAST_UPDATED = "2026-11-20";
 
 export const ABOUT = {
@@ -668,6 +668,19 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-0",
+        title: "v2.0 — 2026-11-20",
+        audience: ["everyone"],
+        bullets: [
+          "Delivery payment: in My Trips each stop has a Payment button. The driver records the amount and how it was paid (Cash / UPI / Cheque / Card), the UPI or cheque reference, or 'കിട്ടിയില്ല' with the date the customer promised. If less than the balance is paid, the promise date for the rest is required.",
+          "Nothing changes the customer's balance until the office verifies it. New page Operations → Delivery Collections shows each driver's total waiting to be handed over (by Cash / UPI). Count the cash or check the UPI, then press Verify: the payment is added to the order's balance like any other payment, and the promise date goes onto the payment follow-up. Reject needs a reason.",
+          "Every entry also raises an alert ('Payment collected' / 'Payment NOT collected').",
+          "Rule: drivers hand over cash to the office the same day.",
+          "Ready-stock check: when an order is confirmed, ready-stock items are compared with free stock (Output Books stock minus what other open orders already hold). If it is short, a warning lists the items and asks before confirming, so the same piece is not sold twice.",
+          "Evening Delivery Pack (n8n, 7:30 PM): tomorrow's deliveries by trip/driver, items ready or not, balance and delivery-slip links. For it to be complete, put the Delivery date on every confirmed order and assign tomorrow's trip before 5 PM.",
+        ],
+      },
       {
         id: "v1-9",
         title: "v1.9 — 2026-11-20",
