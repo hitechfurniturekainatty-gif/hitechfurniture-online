@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "1.6";
-export const GUIDE_LAST_UPDATED = "2026-11-18";
+export const APP_VERSION = "1.7";
+export const GUIDE_LAST_UPDATED = "2026-11-20";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -340,6 +340,8 @@ export const CHAPTERS: GuideChapter[] = [
         steps: [
           "Start in Operations → 1 · Leads & Follow-up. Website enquiries and new WhatsApp chats arrive here automatically; walk-ins and phone calls are added with + Add manual lead.",
           "Assign a salesman and a next call time. A lead not contacted within 4 hours raises a bell alert.",
+          "After every call open the lead → tap the result (Call എടുത്തില്ല / Busy / താല്പര്യമുണ്ട് / Showroom visit / Quotation ചോദിച്ചു / വേണ്ട), write what was said and pick the next call date (ഇന്ന് / നാളെ / 3 ദിവസം / 1 ആഴ്ച). Every call is kept in Follow-up history; old notes are never overwritten.",
+          "When the next call time arrives the bell shows \"Follow-up due · salesman name\". If it is still not done 24 hours later, admins get \"Follow-up overdue 24h\". Use \"എന്റെ ഇന്നത്തെ follow-ups\" to see only your own due calls.",
           "When the customer wants a price → Convert to quotation. Older leads saved as quotations are listed at the bottom of the Leads page (\"പഴയ ലീഡുകൾ\").",
           "Open the quotation → fill items, rates, GST, discount, terms. Set Ready stock / Custom for every item.",
           "Share the live quotation link on WhatsApp. This marks it Quote Sent and schedules a follow-up call 2 days later (10:30 AM).",
@@ -666,6 +668,17 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v1-7",
+        title: "v1.7 — 2026-11-20",
+        audience: ["everyone"],
+        bullets: [
+          "Leads: every call or note is now saved as a separate entry in Follow-up history (who, when, result, next date). Before, the single notes box was overwritten each time. Existing notes were copied in as the first entry.",
+          "Leads: log a call with one tap on the result plus quick next-date buttons. An open lead must always have a next call date, unless the customer said no.",
+          "Bell reminder when a lead's next follow-up time arrives (checked every 15 minutes), named with the salesman. Admins are alerted if it is still not done after 24 hours.",
+          "Leads page: new \"എന്റെ ഇന്നത്തെ follow-ups\" button shows only your own due and overdue calls.",
+        ],
+      },
       {
         id: "v1-6",
         title: "v1.6 — 2026-11-18",
