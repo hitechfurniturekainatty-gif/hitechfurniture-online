@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { formatINR } from "@/lib/brand";
 import { Checkbox } from "@/components/ui/checkbox";
 import { firstUrl } from "@/lib/firstUrl";
+import { DeliveryPaymentDialog } from "@/components/logistics/DeliveryPaymentDialog";
 
 type Trip = {
   id: string;
@@ -58,6 +59,7 @@ const AdminMyTrips = () => {
   const [receivableBalanceByQuote, setReceivableBalanceByQuote] = useState<Record<string, number>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [payFor, setPayFor] = useState<{ quotationId: string; tripId: string | null; partyName: string; balance: number } | null>(null);
   const [activeTrip, setActiveTrip] = useState<string | null>(null);
   const [deliveryStop, setDeliveryStop] = useState<TripQ | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -363,6 +365,9 @@ const AdminMyTrips = () => {
                         {s.q && (
                           <Button asChild size="sm" variant="secondary"><Link to={`/delivery-note/${s.q.id}`}><FileText className="mr-1.5 h-3.5 w-3.5" /> Delivery slip</Link></Button>
                         )}
+                        {s.q && (
+                          <Button size="sm" variant="outline" onClick={() => s.q && setPayFor({ quotationId: s.q.id, tripId: s.trip_id ?? null, partyName: s.q.party_name, balance: balanceToCollect(s.q) })}><IndianRupee className="mr-1.5 h-3.5 w-3.5" /> Payment</Button>
+                        )}
                         {s.q && isOfficeStaff && (
                           <Button size="sm" variant="outline" onClick={() => s.q && openPricing(s.q)}><Eye className="mr-1.5 h-3.5 w-3.5" /> View Full Pricing</Button>
                         )}
@@ -378,6 +383,8 @@ const AdminMyTrips = () => {
           )}
         </div>
       )}
+
+      {payFor && <DeliveryPaymentDialog open={!!payFor} onClose={() => setPayFor(null)} quotationId={payFor.quotationId} tripId={payFor.tripId} partyName={payFor.partyName} balance={payFor.balance} />}
 
       <Dialog open={!!deliveryStop} onOpenChange={(open) => !open && !savingDelivery && setDeliveryStop(null)}>
         <DialogContent className="max-w-lg">
