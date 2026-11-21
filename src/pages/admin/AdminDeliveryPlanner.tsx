@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock3, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { MarkDeliveredButton } from "@/components/admin/MarkDeliveredDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ export default function AdminDeliveryPlanner() {
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [deliveredIds, setDeliveredIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [monthCursor, setMonthCursor] = useState(() => {
     const n = dateFromKey(indiaDateKey());
@@ -90,7 +92,8 @@ export default function AdminDeliveryPlanner() {
     const timer = window.setInterval(refresh, 60_000);
     window.addEventListener("focus", refresh);
     return () => { mounted = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
-  }, []);
+  }, [reloadKey]);
+  const reload = () => setReloadKey((k) => k + 1);
 
   const pendingRows = useMemo(() => rows.filter((r) => !deliveredIds.has(r.id)), [rows, deliveredIds]);
   const undatedRows = useMemo(() => pendingRows.filter((r) => !r.expected_delivery_date), [pendingRows]);
@@ -206,20 +209,23 @@ export default function AdminDeliveryPlanner() {
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h2 className="font-semibold text-red-700 dark:text-red-300">Overdue deliveries</h2>
-                  <p className="text-xs text-muted-foreground">These remain here until delivery is marked complete.</p>
+                  <p className="text-xs text-muted-foreground">These stay here until marked delivered — press Delivered once the items reach the customer.</p>
                 </div>
                 <Badge variant="destructive">{overdueRows.length}</Badge>
               </div>
               <div className="grid gap-2">
                 {overdueRows.slice(0, 8).map((r) => (
-                  <Link key={r.id} to={`/admin/quotations/${r.id}`} className="flex items-center justify-between gap-3 rounded-lg border bg-red-50/40 p-3 hover:bg-red-50 dark:bg-red-950/10">
-                    <div className="min-w-0">
-                      <div className="font-mono text-xs font-bold">{r.quotation_id}</div>
-                      <div className="truncate font-medium">{r.party_name} · {r.party_place}</div>
-                      <div className="text-xs text-red-700 dark:text-red-300">{prettyDate(r.expected_delivery_date!)}</div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 shrink-0" />
-                  </Link>
+                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border bg-red-50/40 p-3 dark:bg-red-950/10">
+                    <Link to={`/admin/quotations/${r.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 hover:underline">
+                      <div className="min-w-0">
+                        <div className="font-mono text-xs font-bold">{r.quotation_id}</div>
+                        <div className="truncate font-medium">{r.party_name} · {r.party_place}</div>
+                        <div className="text-xs text-red-700 dark:text-red-300">{prettyDate(r.expected_delivery_date!)}</div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 shrink-0" />
+                    </Link>
+                    {isOrderConfirmed(r) && <MarkDeliveredButton quotationId={r.id} label="Delivered" onDone={reload} />}
+                  </div>
                 ))}
               </div>
             </CardContent>
@@ -305,7 +311,8 @@ export default function AdminDeliveryPlanner() {
                         <div className="text-sm text-muted-foreground">{r.party_place}{r.party_phone ? ` · ${r.party_phone}` : ""}</div>
                         {typeof r.total === "number" && <div className="mt-1 text-sm font-medium">{formatINR(r.total)}</div>}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {!delivered && isOrderConfirmed(r) && <MarkDeliveredButton quotationId={r.id} onDone={reload} />}
                         <Button asChild size="sm" variant="outline"><Link to={`/admin/quotations/${r.id}/preview`}>Preview</Link></Button>
                         <Button asChild size="sm"><Link to={`/admin/quotations/${r.id}`}>Open</Link></Button>
                       </div>

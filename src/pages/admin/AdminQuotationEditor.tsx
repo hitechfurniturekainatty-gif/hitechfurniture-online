@@ -27,6 +27,8 @@ import { ContactPicker } from "@/components/admin/ContactPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
+import { MarkDeliveredButton } from "@/components/admin/MarkDeliveredDialog";
+import { isOrderConfirmed } from "@/lib/deliveryPlanning";
 import { useRealtimeQuotation } from "@/hooks/useRealtimeQuotations";
 import { DeliveryRoutePicker } from "@/components/logistics/DeliveryRoutePicker";
 import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
@@ -1789,10 +1791,13 @@ const AdminQuotationEditor = () => {
             );
           })()}
           {canEditPrice && <div className="sm:hidden"><AttachedNotesButton quotationId={q.id} /></div>}
-          {!isAdmin && canEditPrice && normalizeStatus(q.status) === "finalized" && (
-            <div className="hidden gap-1 sm:flex">
-              <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => setStatus("delivered")}>Mark delivered</Button>
+          {(isAdmin || canEditPrice) && q.status !== "delivered" && q.status !== "rejected" && isOrderConfirmed({ status: q.status ?? null, commercial_status: (q as { commercial_status?: string | null }).commercial_status ?? null }) && (
+            <div className="shrink-0">
+              <MarkDeliveredButton quotationId={q.id} onDone={() => void load({ silent: true })} />
             </div>
+          )}
+          {q.status === "delivered" && (
+            <Badge className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-600">✓ Delivered{(q as { delivered_at?: string | null }).delivered_at ? ` · ${new Date((q as { delivered_at?: string | null }).delivered_at!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}</Badge>
           )}
         </div>
 
