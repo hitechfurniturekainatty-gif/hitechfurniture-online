@@ -81,9 +81,13 @@ jobs:
           create extension if not exists pgcrypto;
           create extension if not exists "uuid-ossp";
           SQL
-          /usr/lib/postgresql/17/bin/pg_restore -d postgres --no-owner --no-privileges "$RUNNER_TEMP/backup.dump" 2> "$RUNNER_TEMP/restore.err"
-          echo "Restore finished. Non-fatal warnings: $(grep -c 'error' "$RUNNER_TEMP/restore.err" || true)"
-          grep -o 'ERROR: .*' "$RUNNER_TEMP/restore.err" | cut -c1-140 | sort | uniq -c | sort -rn | head -15 || true
+          # pg_restore exits non-zero for harmless Supabase-only items (missing platform roles,
+          # extensions, "schema public already exists"). The data check in the next step decides
+          # pass/fail, so do not stop here; just show a summary of what it complained about.
+          rc=0
+          /usr/lib/postgresql/17/bin/pg_restore -d postgres --no-owner --no-privileges "$RUNNER_TEMP/backup.dump" 2> "$RUNNER_TEMP/restore.err" || rc=$?
+          echo "pg_restore finished (exit $rc). Warnings: $(grep -c 'ERROR' "$RUNNER_TEMP/restore.err" || true)"
+          grep -o 'ERROR: .*' "$RUNNER_TEMP/restore.err" | cut -c1-140 | sort | uniq -c | sort -rn | head -20 || true
 
       - name: Check restored data (counts only)
         run: |
