@@ -98,7 +98,10 @@ export default function AdminDeliveryPlanner() {
   const pendingRows = useMemo(() => rows.filter((r) => !deliveredIds.has(r.id)), [rows, deliveredIds]);
   const undatedRows = useMemo(() => pendingRows.filter((r) => !r.expected_delivery_date), [pendingRows]);
   const datedPendingRows = useMemo(() => pendingRows.filter((r) => !!r.expected_delivery_date), [pendingRows]);
-  const overdueRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date! < todayKey), [datedPendingRows, todayKey]);
+  // Confirmed orders first (they can be marked delivered), oldest date first within each group.
+  const overdueRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date! < todayKey)
+    .sort((a, b) => Number(isOrderConfirmed(b)) - Number(isOrderConfirmed(a)) || a.expected_delivery_date!.localeCompare(b.expected_delivery_date!)),
+  [datedPendingRows, todayKey]);
   const todayRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date === todayKey), [datedPendingRows, todayKey]);
   const upcomingRows = useMemo(() => datedPendingRows.filter((r) => r.expected_delivery_date! > todayKey), [datedPendingRows, todayKey]);
 
@@ -213,8 +216,8 @@ export default function AdminDeliveryPlanner() {
                 </div>
                 <Badge variant="destructive">{overdueRows.length}</Badge>
               </div>
-              <div className="grid gap-2">
-                {overdueRows.slice(0, 8).map((r) => (
+              <div className="grid max-h-[560px] gap-2 overflow-y-auto pr-1">
+                {overdueRows.map((r) => (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border bg-red-50/40 p-3 dark:bg-red-950/10">
                     <Link to={`/admin/quotations/${r.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 hover:underline">
                       <div className="min-w-0">
@@ -224,7 +227,9 @@ export default function AdminDeliveryPlanner() {
                       </div>
                       <ArrowRight className="h-4 w-4 shrink-0" />
                     </Link>
-                    {isOrderConfirmed(r) && <MarkDeliveredButton quotationId={r.id} label="Delivered" onDone={reload} />}
+                    {isOrderConfirmed(r)
+                      ? <MarkDeliveredButton quotationId={r.id} label="Delivered" onDone={reload} />
+                      : <Link to={`/admin/quotations/${r.id}`} className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100" title="Confirm the order (or mark it lost) first">Not confirmed</Link>}
                   </div>
                 ))}
               </div>
