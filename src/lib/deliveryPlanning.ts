@@ -7,7 +7,7 @@ export type PlannedQuotation = {
   salesperson_name?: string | null;
 };
 
-export const isOrderConfirmed = (q: PlannedQuotation) =>
+export const isOrderConfirmed = (q: Pick<PlannedQuotation, "status" | "commercial_status">) =>
   ["confirmed", "delivered", "payment_pending", "closed"].includes(q.commercial_status ?? "") ||
   ["finalized", "delivered", "completed"].includes(q.status ?? "");
 

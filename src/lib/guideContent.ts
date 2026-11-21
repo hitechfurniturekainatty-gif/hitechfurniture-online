@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "2.1";
+export const APP_VERSION = "2.2";
 export const GUIDE_LAST_UPDATED = "2026-11-21";
 
 export const ABOUT = {
@@ -463,6 +463,27 @@ export const CHAPTERS: GuideChapter[] = [
     audience: ["delivery"],
     sections: [
       {
+        id: "mark-delivered",
+        title: "Mark an order Delivered (with or without a trip)",
+        audience: ["admin", "office", "delivery"],
+        intro: "The last step of every order. Until it is done the order stays in the overdue lists and no payment balance is created.",
+        steps: [
+          "Open Operations → 6 · Delivery (or the order itself). Confirmed orders show a green Mark delivered / Delivered button — also on each row of Overdue deliveries.",
+          "Tick the items that reached the customer (all are ticked). Untick anything still to go — the order becomes Part delivered and stays on the list for the rest.",
+          "Pick the date (today by default; past dates allowed for old deliveries) and who delivered.",
+          "Payment at delivery (optional): choose Cash / UPI / Cheque / Card and the amount, or 'Payment കിട്ടിയില്ല' with the date the customer promised.",
+          "Press Mark order delivered.",
+        ],
+        bullets: [
+          "The order shows ✓ Delivered with the date, moves to stage 6, and leaves the overdue lists.",
+          "The office gets an 'Order delivered' alert and a 'Request Google review' reminder.",
+          "The remaining balance appears in Payments automatically (Payment pending), or the order closes when fully paid.",
+          "A payment entered here waits in Operations → Delivery Collections until the office counts the cash / checks the UPI and presses Verify.",
+          "Trips (My Trips) still work the same way; use whichever is easier.",
+        ],
+        tip: "Old orders that were already delivered but never marked: open each one from Overdue deliveries, set the real delivery date and press Mark order delivered.",
+      },
+      {
         id: "delivery-flow",
         title: "Daily trips",
         audience: ["delivery"],
@@ -471,7 +492,7 @@ export const CHAPTERS: GuideChapter[] = [
           "Open today's trip — see ordered stops, route map and items per customer.",
           "Use Open Route to navigate via Maps.",
           "At each stop, mark items delivered and capture proof if required.",
-          "Mark Trip Completed at end of day — orders on this trip move to Delivered (Stage 5).",
+          "At each stop record what was delivered — the order moves to ✓ Delivered when its last item is delivered.",
         ],
       },
       {
@@ -688,6 +709,17 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-2",
+        title: "v2.2 — 2026-11-21",
+        audience: ["everyone"],
+        bullets: [
+          "New Mark delivered button on the Delivery page (day list and Overdue deliveries) and on every confirmed order, for admin, office and delivery staff — no trip needed. Tick the items, date, who delivered and any payment collected. The order becomes ✓ Delivered, the balance goes to Payments, and the office gets the delivered + Google review alerts.",
+          "Part deliveries: untick items not yet sent; the order stays on the list until the rest is delivered.",
+          "Home dashboard pipeline shows ✓ Delivered this month.",
+          "Orders marked delivered earlier now all sit at stage 6.",
+        ],
+      },
       {
         id: "v2-1",
         title: "v2.1 — 2026-11-21",

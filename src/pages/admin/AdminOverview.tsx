@@ -24,11 +24,12 @@ type Data = {
   pendingAmount: number; overdueAccounts: number;
   deliveries7: number; deliveriesOverdue: number;
   lowStock: number; outStock: number; openServices: number;
+  deliveredMonth: number; deliveredMonthValue: number;
   work: WorkItem[]; hot: Hot[]; stages: StageRow[]; recent: Recent[];
 };
 
 type LeadRow = { id: string; lead_code: string | null; customer_name: string | null; customer_place: string | null; requirement: string | null; status: string; next_follow_up_at: string | null; created_at: string };
-type QuoteRow = { id: string; quotation_id: string | null; party_name: string | null; party_place: string | null; total: number | null; status: string; commercial_status: string | null; pipeline_stage: number | null; next_follow_up_at: string | null; expected_delivery_date: string | null; confirmed_at: string | null; created_at: string };
+type QuoteRow = { id: string; quotation_id: string | null; party_name: string | null; party_place: string | null; total: number | null; status: string; commercial_status: string | null; pipeline_stage: number | null; next_follow_up_at: string | null; expected_delivery_date: string | null; confirmed_at: string | null; delivered_at: string | null; created_at: string };
 type RecvRow = { id: string; customer_name: string | null; place: string | null; pending_amount: number | null; next_follow_up_at: string | null };
 type TaskRow = { id: string; title: string | null; due_date: string | null; priority: string | null };
 type CollRow = { id: string; amount: number | null; method: string; collected_at: string; quotations: { party_name: string | null; party_place: string | null } | null };
@@ -73,7 +74,7 @@ const AdminOverview = () => {
       const [prof, leads, quotes, recv, tasks, colls, prods, servs] = await Promise.all([
         db.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
         office ? db.from("sales_leads").select("id,lead_code,customer_name,customer_place,requirement,status,next_follow_up_at,created_at").is("deleted_at", null) : { data: [] },
-        office ? db.from("quotations").select("id,quotation_id,party_name,party_place,total,status,commercial_status,pipeline_stage,next_follow_up_at,expected_delivery_date,confirmed_at,created_at").is("deleted_at", null) : { data: [] },
+        office ? db.from("quotations").select("id,quotation_id,party_name,party_place,total,status,commercial_status,pipeline_stage,next_follow_up_at,expected_delivery_date,confirmed_at,delivered_at,created_at").is("deleted_at", null) : { data: [] },
         office ? db.from("receivables").select("id,customer_name,place,pending_amount,next_follow_up_at,closed_at").is("closed_at", null) : { data: [] },
         db.from("staff_diary_notes").select("id,title,due_date,status,owner_id,priority").is("deleted_at", null).eq("status", "pending").eq("owner_id", user.id),
         office ? db.from("delivery_collections").select("id,amount,method,collected_at,quotations(party_name,party_place)").eq("status", "pending") : { data: [] },
@@ -91,6 +92,7 @@ const AdminOverview = () => {
       const confirmedAt = (q: QuoteRow) => q.confirmed_at ? new Date(q.confirmed_at) : null;
       const monthOrders = Q.filter(q => { const d = confirmedAt(q); return d && d >= monthStart; });
       const lastMonthOrders = Q.filter(q => { const d = confirmedAt(q); return d && d >= lastMonthStart && d < monthStart; });
+      const deliveredMonth = Q.filter(q => q.status === "delivered" && q.delivered_at && new Date(q.delivered_at) >= monthStart);
       const deliv = liveQ.filter(q => q.expected_delivery_date && (q.commercial_status === "confirmed" || Number(q.pipeline_stage ?? 0) >= 3));
 
       const work: WorkItem[] = [
@@ -126,6 +128,8 @@ const AdminOverview = () => {
         deliveriesOverdue: deliv.filter(q => dayKey(q.expected_delivery_date) < today).length,
         lowStock: P.filter(p => Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= Number(p.reorder_level ?? 0)).length,
         outStock: P.filter(p => Number(p.stock_quantity ?? 0) <= 0).length,
+        deliveredMonth: deliveredMonth.length,
+        deliveredMonthValue: deliveredMonth.reduce((a, q) => a + Number(q.total ?? 0), 0),
         openServices: S.filter(s => !["resolved", "closed", "completed"].includes(s.status)).length,
         work,
         hot: followQ.slice().sort((a, b) => Number(b.total ?? 0) - Number(a.total ?? 0)).slice(0, 6)
@@ -222,6 +226,12 @@ const AdminOverview = () => {
                     </li>
                   ))}
                 </ul>
+              )}
+              {data && (
+                <Link to="/admin/delivery" className="mt-3 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 hover:bg-emerald-100">
+                  <span className="font-medium">✓ Delivered this month</span>
+                  <span><b>{data.deliveredMonth}</b>{data.deliveredMonthValue ? ` · ${shortInr(data.deliveredMonthValue)}` : ""}</span>
+                </Link>
               )}
               {data && (data.openServices > 0 || data.outStock > 0) && (
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
