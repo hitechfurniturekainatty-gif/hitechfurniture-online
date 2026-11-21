@@ -716,7 +716,8 @@ export const CHAPTERS: GuideChapter[] = [
         bullets: [
           "New Mark delivered button on the Delivery page (day list and Overdue deliveries) and on every confirmed order, for admin, office and delivery staff — no trip needed. Tick the items, date, who delivered and any payment collected. The order becomes ✓ Delivered, the balance goes to Payments, and the office gets the delivered + Google review alerts.",
           "Part deliveries: untick items not yet sent; the order stays on the list until the rest is delivered.",
-          "Home dashboard pipeline shows ✓ Delivered this month.",
+          "Home dashboard pipeline shows ✓ Delivered this month (tap it for the list).",
+          "Delivery history: Quotations & Orders → filter '✓ Delivered (history)'. Fully paid parties: filter 'Closed — fully paid'. Manual / Busy bills that are settled: Backlog & Receivables → Closed tab.",
           "Orders marked delivered earlier now all sit at stage 6.",
         ],
       },
