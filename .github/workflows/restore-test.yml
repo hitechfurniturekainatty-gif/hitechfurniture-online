@@ -80,6 +80,7 @@ jobs:
           end $$;
           create extension if not exists pgcrypto;
           create extension if not exists "uuid-ossp";
+          create extension if not exists pg_trgm with schema public;
           SQL
           # pg_restore exits non-zero for harmless Supabase-only items (missing platform roles,
           # extensions, "schema public already exists"). The data check in the next step decides
@@ -93,16 +94,16 @@ jobs:
         run: |
           set -euo pipefail
           psql -d postgres -At -F ' | ' <<'SQL' | tee "$RUNNER_TEMP/counts.txt"
-          select 'sales_leads', count(*) from public.sales_leads
-          union all select 'sales_lead_followups', count(*) from public.sales_lead_followups
-          union all select 'quotations', count(*) from public.quotations
-          union all select 'quotation_items', count(*) from public.quotation_items
-          union all select 'products', count(*) from public.products
-          union all select 'main_categories', count(*) from public.main_categories
-          union all select 'customer_complaints', count(*) from public.customer_complaints
-          union all select 'receivables', count(*) from public.receivables
-          union all select 'profiles (staff)', count(*) from public.profiles
-          union all select 'auth.users (logins)', count(*) from auth.users
+          select 'sales_leads', count(*)::text from public.sales_leads
+          union all select 'sales_lead_followups', count(*)::text from public.sales_lead_followups
+          union all select 'quotations', count(*)::text from public.quotations
+          union all select 'quotation_items', count(*)::text from public.quotation_items
+          union all select 'products', count(*)::text from public.products
+          union all select 'main_categories', count(*)::text from public.main_categories
+          union all select 'customer_complaints', count(*)::text from public.customer_complaints
+          union all select 'receivables', count(*)::text from public.receivables
+          union all select 'profiles (staff)', count(*)::text from public.profiles
+          union all select 'auth.users (logins)', count(*)::text from auth.users
           union all select 'newest lead', coalesce(max(created_at)::text,'-') from public.sales_leads
           union all select 'newest quotation', coalesce(max(created_at)::text,'-') from public.quotations;
           SQL

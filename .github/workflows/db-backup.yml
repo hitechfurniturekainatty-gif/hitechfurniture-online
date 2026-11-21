@@ -55,7 +55,7 @@ jobs:
           name="hitech-db-$(TZ=Asia/Kolkata date +%Y-%m-%d_%H%M).dump"
           # Custom format = compressed, restorable table by table. Only our own schemas.
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges \
-            --schema=public --schema=auth --schema=storage --file="$RUNNER_TEMP/$name"
+            --schema=public --schema=auth --schema=storage --schema=private --schema=diary_private --file="$RUNNER_TEMP/$name"
           size=$(stat -c %s "$RUNNER_TEMP/$name")
           [ "$size" -gt 100000 ] || { echo "Dump looks too small ($size bytes)"; exit 1; }
           /usr/lib/postgresql/17/bin/pg_restore --list "$RUNNER_TEMP/$name" >/dev/null
