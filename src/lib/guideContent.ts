@@ -30,8 +30,8 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "2.0";
-export const GUIDE_LAST_UPDATED = "2026-11-20";
+export const APP_VERSION = "2.1";
+export const GUIDE_LAST_UPDATED = "2026-11-21";
 
 export const ABOUT = {
   appName: "My Hitech",
@@ -96,15 +96,19 @@ export const CHAPTERS: GuideChapter[] = [
     sections: [
       {
         id: "admin-overview",
-        title: "Overview screen",
+        title: "Home dashboard (Overview)",
         audience: ["admin"],
-        intro: "First screen after admin login. Snapshot of the whole business today.",
+        intro: "First screen after login (menu: Overview). Shows what needs doing today and how the business is running, and every number opens the page where you can act on it.",
         bullets: [
-          "Today's quotations count and total value.",
-          "Pipeline counts per stage (Pricing → Delivered).",
-          "Receivables summary (open balance, batches).",
-          "Quick links to My Work, Pipeline Monitor and Staff Monitor.",
+          "Top: greeting with today's date and how many things are due today / overdue. Buttons + Enquiry, + Quotation, + Task and + Complaint open a new one straight away.",
+          "Six tiles — tap any tile to open that page: Open enquiries (new today), Quotations to follow (total ₹ in play), Orders this month (₹ confirmed, with ▲/▼ % against last month), Payments pending (follow-ups overdue in red), Deliveries in the next 7 days (past-due in red), Out of stock (items at or below reorder level).",
+          "My work — one list of everything to act on, in three tabs: Overdue, Today, Next 7 days. It mixes enquiry calls, quotation follow-ups, payment collection, your own tasks (My Diary) and delivery payments waiting to be verified. Tap a row to open it. When nothing is due today but older work is waiting, it opens on Overdue.",
+          "Order pipeline — how many orders sit at each of the 6 stages (Enquiry → Measurement → Order (OPS) → Production → Warehouse → Delivery) with their ₹ value. Below it: open complaints and out-of-stock alerts.",
+          "Biggest quotations to close — the largest quotations still in follow-up, with the follow-up date (red when it has passed).",
+          "Recently added — the newest enquiries and quotations.",
+          "Colours: each box has a coloured top bar (green My work, navy pipeline, orange quotations, teal recent) so you can find it quickly. Red text always means overdue or needs attention.",
         ],
+        tip: "To clear the Overdue tab: open each row and either set a new follow-up date, mark it done, or mark the enquiry / quotation lost. Deliveries shown as past-due are often already delivered but not marked — update them in Delivery so the numbers stay correct.",
       },
       {
         id: "admin-staff-monitor",
@@ -322,6 +326,22 @@ export const CHAPTERS: GuideChapter[] = [
     title: "Office Staff guide",
     audience: ["office"],
     sections: [
+      {
+        id: "office-home",
+        title: "Home dashboard (Overview)",
+        audience: ["office"],
+        intro: "First screen after login. Start the day here: clear the Overdue tab, then Today.",
+        bullets: [
+          "Top: greeting with today's date and how many things are due today / overdue. Buttons + Enquiry, + Quotation, + Task and + Complaint open a new one straight away.",
+          "Six tiles — tap any tile to open that page: Open enquiries (new today), Quotations to follow (total ₹ in play), Orders this month (₹ confirmed, with ▲/▼ % against last month), Payments pending (follow-ups overdue in red), Deliveries in the next 7 days (past-due in red), Out of stock (items at or below reorder level).",
+          "My work — one list of everything to act on, in three tabs: Overdue, Today, Next 7 days. It mixes enquiry calls, quotation follow-ups, payment collection, your own tasks (My Diary) and delivery payments waiting to be verified. Tap a row to open it. When nothing is due today but older work is waiting, it opens on Overdue.",
+          "Order pipeline — how many orders sit at each of the 6 stages (Enquiry → Measurement → Order (OPS) → Production → Warehouse → Delivery) with their ₹ value. Below it: open complaints and out-of-stock alerts.",
+          "Biggest quotations to close — the largest quotations still in follow-up, with the follow-up date (red when it has passed).",
+          "Recently added — the newest enquiries and quotations.",
+          "Colours: each box has a coloured top bar (green My work, navy pipeline, orange quotations, teal recent) so you can find it quickly. Red text always means overdue or needs attention.",
+        ],
+        tip: "To clear the Overdue tab: open each row and either set a new follow-up date, mark it done, or mark the enquiry / quotation lost. Deliveries shown as past-due are often already delivered but not marked — update them in Delivery so the numbers stay correct.",
+      },
       {
         id: "office-mywork",
         title: "My Work screen",
@@ -668,6 +688,16 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-1",
+        title: "v2.1 — 2026-11-21",
+        audience: ["everyone"],
+        bullets: [
+          "New home dashboard after login (Overview): greeting with quick-add buttons (Enquiry, Quotation, Task, Complaint), six clickable tiles, a My work list (Overdue / Today / Next 7 days), the 6-stage order pipeline with ₹ value, biggest quotations to close and recently added. See Admin guide / Office Staff guide → Home dashboard.",
+          "Dashboard boxes now have coloured headings and top bars; the rest of the site keeps the Hitech brown theme.",
+          "Backups: website data, Output Books data and photos, and n8n automations are now copied every day to Hostinger and Google Drive, and a monthly test proves the website backup can be restored.",
+        ],
+      },
       {
         id: "v2-0",
         title: "v2.0 — 2026-11-20",
