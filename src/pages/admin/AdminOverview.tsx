@@ -1,399 +1,338 @@
-import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { Link, Navigate } from "react-router-dom";
 import {
-  ClipboardList,
-  FileText,
-  ShoppingCart,
-  Boxes,
-  PackageSearch,
-  Hammer,
-  Truck,
-  WalletCards,
-  Wrench,
-  Users,
-  ListTodo,
-  BarChart3,
-  ArrowRight,
-  Loader2,
-  Plus,
+  AlertTriangle, ArrowRight, Boxes, CalendarClock, ClipboardList, FileText, IndianRupee,
+  ListTodo, Loader2, PhoneCall, Plus, Truck, Wallet, Wrench,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-type Detail = { label: string; value: number | string; tone: "green" | "orange" | "red" | "blue" | "muted" };
-type Snapshot = {
-  enquiries: number;
-  demandItems: number;
-  quotations: number;
-  orders: number;
-  inventory: number;
-  purchase: number;
-  production: number;
-  delivery: number;
-  paymentAmount: number;
-  services: number;
-  customers: number;
-  tasks: number;
-  details: Record<string, Detail[]>;
+// Home dashboard: what needs doing today, how the pipeline looks, and quick ways in.
+// Every number links to the page where it can be acted on.
+
+type Kind = "lead" | "quote" | "payment" | "task" | "collection";
+type WorkItem = { id: string; kind: Kind; when: string | null; title: string; sub: string; amount?: number; href: string };
+type Recent = { id: string; kind: "lead" | "quote"; at: string; title: string; sub: string; href: string };
+type Hot = { id: string; code: string; name: string; place: string; total: number; next: string | null; status: string };
+type StageRow = { stage: number; count: number; value: number };
+type Data = {
+  name: string;
+  newLeadsToday: number; openLeads: number;
+  followQuotes: number; followValue: number;
+  ordersMonth: number; ordersMonthValue: number; ordersLastMonthValue: number;
+  pendingAmount: number; overdueAccounts: number;
+  deliveries7: number; deliveriesOverdue: number;
+  lowStock: number; outStock: number; openServices: number;
+  work: WorkItem[]; hot: Hot[]; stages: StageRow[]; recent: Recent[];
 };
 
-const EMPTY: Snapshot = {
-  enquiries: 0, demandItems: 0, quotations: 0, orders: 0, inventory: 0, purchase: 0,
-  production: 0, delivery: 0, paymentAmount: 0, services: 0, customers: 0, tasks: 0,
-  details: {},
-};
+type LeadRow = { id: string; lead_code: string | null; customer_name: string | null; customer_place: string | null; requirement: string | null; status: string; next_follow_up_at: string | null; created_at: string };
+type QuoteRow = { id: string; quotation_id: string | null; party_name: string | null; party_place: string | null; total: number | null; status: string; commercial_status: string | null; pipeline_stage: number | null; next_follow_up_at: string | null; expected_delivery_date: string | null; confirmed_at: string | null; created_at: string };
+type RecvRow = { id: string; customer_name: string | null; place: string | null; pending_amount: number | null; next_follow_up_at: string | null };
+type TaskRow = { id: string; title: string | null; due_date: string | null; priority: string | null };
+type CollRow = { id: string; amount: number | null; method: string; collected_at: string; quotations: { party_name: string | null; party_place: string | null } | null };
+type ProdRow = { stock_quantity: number | null; reorder_level: number | null };
+type ServRow = { status: string };
+// Untyped client: some of these tables/columns are newer than the generated types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 
-const day = (iso?: string | null) => {
-  if (!iso) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-  const d = new Date(iso);
+const STAGES: Record<number, string> = { 1: "Enquiry", 2: "Measurement", 3: "Order (OPS)", 4: "Production", 5: "Warehouse", 6: "Delivery" };
+const FOLLOW_STATUSES = ["follow_up", "quote_preparation", "payment_pending"];
+
+const dayKey = (v?: string | null) => {
+  if (!v) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-};
-const formatINR = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+const keyOffset = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); return dayKey(d.toISOString()); };
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+const shortInr = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(n >= 1000000 ? 1 : 2)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : inr(n);
+const shortDate = (v?: string | null) => v ? new Date(v).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "";
+const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
 
 const AdminOverview = () => {
-  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, isWarehouse, isWorker, user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY);
-  const [loading, setLoading] = useState(true);
-
-  const showAdmin = isAdmin;
-  const showOffice = isOfficeStaff;
-  const showProduction = isOfficeStaff;
-  const showWarehouse = isOfficeStaff || isWarehouse;
-  const showDelivery = isOfficeStaff || isDelivery;
-
-  const canCreateEnquiry = isAdmin || isOfficeStaff;
-  const canCreateQuotation = isAdmin || isOfficeStaff;
-  const canReceiveStock = isAdmin || isOfficeStaff;
-  const canCreateService = isAdmin || isOfficeStaff;
-  const canCreatePersonalTask =
-    isAdmin || isOfficeStaff || isMeasurementStaff || isWarehouse || isDelivery || isWorker;
+  const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
+  const [data, setData] = useState<Data | null>(null);
+  const [tab, setTab] = useState<"overdue" | "today" | "upcoming">("today");
+  const office = isAdmin || isOfficeStaff;
 
   useEffect(() => {
     if (authLoading || !user) return;
     let cancelled = false;
-
     (async () => {
-      setLoading(true);
-      const [
-        qRes,
-        itemRes,
-        productRes,
-        jobRes,
-        serviceRes,
-        recvRes,
-        taskRes,
-        followRes,
-        stockMoveRes,
-        leadRes,
-      ] = await Promise.all([
-        supabase.from("quotations").select("id,status,pipeline_stage,commercial_status,lead_type,enquiry_contacted_at,next_follow_up_at,created_at,party_phone,expected_delivery_date").is("deleted_at", null),
-        supabase.from("quotation_items").select("id,quotation_id,quantity"),
-        supabase.from("products").select("id,stock_quantity,reorder_level,created_at").is("deleted_at", null),
-        supabase.from("job_work_orders").select("id,status,warehouse_status,job_type,due_at").is("deleted_at", null),
-        supabase.from("customer_services").select("id,status,created_at").is("deleted_at", null),
-        supabase.from("receivables").select("id,pending_amount,next_follow_up_at,closed_at"),
-        supabase.from("staff_diary_notes").select("id,status,due_date,created_at").is("deleted_at", null),
-        supabase.from("quotation_followups").select("id,quotation_id,status,scheduled_for"),
-        supabase.from("stock_movements").select("id,reason,created_at").eq("reason", "inbound_receive"),
-        (supabase as any).from("sales_leads").select("id,status,source,contacted_at,created_at").is("deleted_at", null),
+      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+      const lastMonthStart = new Date(monthStart); lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+      const [prof, leads, quotes, recv, tasks, colls, prods, servs] = await Promise.all([
+        db.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
+        office ? db.from("sales_leads").select("id,lead_code,customer_name,customer_place,requirement,status,next_follow_up_at,created_at").is("deleted_at", null) : { data: [] },
+        office ? db.from("quotations").select("id,quotation_id,party_name,party_place,total,status,commercial_status,pipeline_stage,next_follow_up_at,expected_delivery_date,confirmed_at,created_at").is("deleted_at", null) : { data: [] },
+        office ? db.from("receivables").select("id,customer_name,place,pending_amount,next_follow_up_at,closed_at").is("closed_at", null) : { data: [] },
+        db.from("staff_diary_notes").select("id,title,due_date,status,owner_id,priority").is("deleted_at", null).eq("status", "pending").eq("owner_id", user.id),
+        office ? db.from("delivery_collections").select("id,amount,method,collected_at,quotations(party_name,party_place)").eq("status", "pending") : { data: [] },
+        office ? db.from("products").select("id,stock_quantity,reorder_level").is("deleted_at", null) : { data: [] },
+        office ? db.from("customer_services").select("id,status").is("deleted_at", null) : { data: [] },
       ]);
-
       if (cancelled) return;
+      const today = keyOffset(0), in7 = keyOffset(7);
+      const L = (leads.data ?? []) as LeadRow[], Q = (quotes.data ?? []) as QuoteRow[], R = (recv.data ?? []) as RecvRow[];
+      const T = (tasks.data ?? []) as TaskRow[], C = (colls.data ?? []) as CollRow[], P = (prods.data ?? []) as ProdRow[], S = (servs.data ?? []) as ServRow[];
 
-      const today = todayKey();
-      const qs = (qRes.data ?? []) as any[];
-      const items = (itemRes.data ?? []) as any[];
-      const products = (productRes.data ?? []) as any[];
-      const jobs = (jobRes.data ?? []) as any[];
-      const services = (serviceRes.data ?? []) as any[];
-      const receivables = (recvRes.data ?? []) as any[];
-      const tasks = (taskRes.data ?? []) as any[];
-      const followups = (followRes.data ?? []) as any[];
-      const stockMoves = (stockMoveRes.data ?? []) as any[];
-      const leadRows = (leadRes.data ?? []) as any[];
-      const openLeads = leadRows.filter(q => ["pending","contacted"].includes(q.status));
-      const convertedLeads = leadRows.filter(q => q.status === "converted");
-      const cancelledLeads = leadRows.filter(q => ["lost","cancelled"].includes(q.status));
-      const onlineLeads = leadRows.filter(q => q.source === "website");
-      const manualLeads = leadRows.filter(q => q.source === "manual");
-      const demandItems: any[] = [];
-      const followDue = followups.filter(f => f.status !== "completed" && day(f.scheduled_for) <= today).length;
-      const quoteRows = qs.filter(q => Number(q.pipeline_stage ?? 1) >= 2 && Number(q.pipeline_stage ?? 1) < 3 && !["rejected","delivered"].includes(q.status));
-      const confirmed = qs.filter(q => q.commercial_status === "confirmed").length;
-      const orders = qs.filter(q => (q.commercial_status === "confirmed" || q.status === "finalized" || Number(q.pipeline_stage ?? 0) >= 3) && !["rejected","delivered"].includes(q.status));
-      const deliveryPendingRows = orders.filter(q => !!q.expected_delivery_date);
-      const lowStock = products.filter(p => Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= Number(p.reorder_level ?? 0)).length;
-      const outStock = products.filter(p => Number(p.stock_quantity ?? 0) <= 0).length;
-      const openJobs = jobs.filter(j => !["ready","delivered","completed","cancelled"].includes(j.status) && j.warehouse_status !== "dispatched");
-      const pendingReceivables = receivables.filter(r => !r.closed_at);
-      const paymentAmount = pendingReceivables.reduce((sum, r) => sum + Number(r.pending_amount ?? 0), 0);
-      const openServices = services.filter(s => !["resolved","closed","completed"].includes(s.status));
-      const pendingTasks = tasks.filter(t => t.status === "pending");
+      const openLeads = L.filter(l => ["pending", "contacted"].includes(l.status));
+      const liveQ = Q.filter(q => !["rejected", "delivered"].includes(q.status) && !["lost", "closed"].includes(q.commercial_status));
+      const followQ = liveQ.filter(q => FOLLOW_STATUSES.includes(q.commercial_status));
+      const confirmedAt = (q: QuoteRow) => q.confirmed_at ? new Date(q.confirmed_at) : null;
+      const monthOrders = Q.filter(q => { const d = confirmedAt(q); return d && d >= monthStart; });
+      const lastMonthOrders = Q.filter(q => { const d = confirmedAt(q); return d && d >= lastMonthStart && d < monthStart; });
+      const deliv = liveQ.filter(q => q.expected_delivery_date && (q.commercial_status === "confirmed" || Number(q.pipeline_stage ?? 0) >= 3));
 
-      const phones = qs.map(q => String(q.party_phone ?? "").replace(/\D/g, "")).filter(Boolean);
-      const uniquePhones = new Set(phones);
-      const phoneCounts = phones.reduce<Record<string, number>>((acc, p) => { acc[p] = (acc[p] ?? 0) + 1; return acc; }, {});
-      const repeatCustomers = Object.values(phoneCounts).filter(n => n > 1).length;
+      const work: WorkItem[] = [
+        ...openLeads.filter(l => l.next_follow_up_at).map(l => ({ id: `l${l.id}`, kind: "lead" as const, when: l.next_follow_up_at, title: `Call ${l.customer_name || "customer"}`, sub: [l.customer_place, l.requirement].filter(Boolean).join(" · ").slice(0, 80), href: `/admin/leads?open=${l.id}` })),
+        ...followQ.filter(q => q.next_follow_up_at).map(q => ({ id: `q${q.id}`, kind: "quote" as const, when: q.next_follow_up_at, title: `Follow up quotation · ${q.party_name || "customer"}`, sub: [q.quotation_id, q.party_place].filter(Boolean).join(" · "), amount: Number(q.total ?? 0), href: `/admin/quotations/${q.id}` })),
+        ...R.filter(r => r.next_follow_up_at && Number(r.pending_amount) > 0).map(r => ({ id: `r${r.id}`, kind: "payment" as const, when: r.next_follow_up_at, title: `Collect payment · ${r.customer_name || "customer"}`, sub: r.place ?? "", amount: Number(r.pending_amount ?? 0), href: "/admin/backlog" })),
+        ...T.map(t => ({ id: `t${t.id}`, kind: "task" as const, when: t.due_date, title: t.title || "Task", sub: t.priority === "high" ? "High priority" : "My task", href: `/admin/diary?note=${t.id}` })),
+        ...C.map(c => ({ id: `c${c.id}`, kind: "collection" as const, when: c.collected_at, title: `Verify ${c.method === "none" ? "unpaid delivery" : "delivery payment"} · ${c.quotations?.party_name ?? "customer"}`, sub: c.quotations?.party_place ?? "", amount: Number(c.amount ?? 0), href: "/admin/collections" })),
+      ];
 
-      const details: Record<string, Detail[]> = {
-        enquiries: [
-          { label: "Pending", value: openLeads.length, tone: "orange" },
-          { label: "Converted", value: convertedLeads.length, tone: "green" },
-          { label: "Cancelled / Lost", value: cancelledLeads.length, tone: "red" },
-          { label: "Online / Manual", value: `${onlineLeads.length} / ${manualLeads.length}`, tone: "blue" },
-        ],
-        demand: [
-          { label: "Open Enquiry Items", value: demandItems.length, tone: "orange" },
-          { label: "Customers Waiting", value: openLeads.length, tone: "red" },
-          { label: "Follow-up Due", value: followDue, tone: "blue" },
-        ],
-        quotations: [
-          { label: "Draft", value: quoteRows.length, tone: "orange" },
-          { label: "In Follow-up", value: followups.filter(f => f.status === "pending").length, tone: "blue" },
-          { label: "Confirmed", value: confirmed, tone: "green" },
-        ],
-        orders: [
-          { label: "OPS", value: orders.filter(q => Number(q.pipeline_stage) === 3).length, tone: "blue" },
-          { label: "Production", value: orders.filter(q => Number(q.pipeline_stage) === 4).length, tone: "orange" },
-          { label: "Warehouse", value: orders.filter(q => Number(q.pipeline_stage) === 5).length, tone: "green" },
-        ],
-        inventory: [
-          { label: "Low Stock", value: lowStock, tone: "orange" },
-          { label: "Out of Stock", value: outStock, tone: "red" },
-          { label: "Inward Today", value: stockMoves.filter(m => day(m.created_at) === today).length, tone: "green" },
-        ],
-        purchase: [
-          { label: "Low Stock", value: lowStock, tone: "orange" },
-          { label: "Out of Stock", value: outStock, tone: "red" },
-          { label: "Needs Review", value: lowStock + outStock, tone: "blue" },
-        ],
-        production: [
-          { label: "Assigned", value: jobs.filter(j => j.status === "assigned").length, tone: "orange" },
-          { label: "In Production", value: jobs.filter(j => ["started","in_progress"].includes(j.status)).length, tone: "blue" },
-          { label: "Ready", value: jobs.filter(j => j.status === "ready").length, tone: "green" },
-        ],
-        delivery: [
-          { label: "Due Today", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) === today).length, tone: "orange" },
-          { label: "Overdue", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) && day(q.expected_delivery_date) < today).length, tone: "red" },
-          { label: "Upcoming", value: deliveryPendingRows.filter(q => day(q.expected_delivery_date) > today).length, tone: "green" },
-        ],
-        payments: [
-          { label: "Due Today", value: formatINR(pendingReceivables.filter(r => day(r.next_follow_up_at) === today).reduce((s,r) => s + Number(r.pending_amount ?? 0),0)), tone: "orange" },
-          { label: "Overdue", value: formatINR(pendingReceivables.filter(r => r.next_follow_up_at && day(r.next_follow_up_at) < today).reduce((s,r) => s + Number(r.pending_amount ?? 0),0)), tone: "red" },
-          { label: "Open Accounts", value: pendingReceivables.length, tone: "blue" },
-        ],
-        services: [
-          { label: "New", value: openServices.filter(s => ["new","pending"].includes(s.status)).length, tone: "green" },
-          { label: "Assigned", value: openServices.filter(s => s.status === "assigned").length, tone: "blue" },
-          { label: "In Progress", value: openServices.filter(s => ["in_progress","converted"].includes(s.status)).length, tone: "orange" },
-        ],
-        customers: [
-          { label: "Unique Customers", value: uniquePhones.size, tone: "green" },
-          { label: "Repeat Customers", value: repeatCustomers, tone: "blue" },
-          { label: "Follow-up Pending", value: followDue, tone: "red" },
-        ],
-        tasks: [
-          { label: "Today", value: pendingTasks.filter(t => t.due_date === today).length, tone: "green" },
-          { label: "Overdue", value: pendingTasks.filter(t => t.due_date && t.due_date < today).length, tone: "red" },
-          { label: "Upcoming", value: pendingTasks.filter(t => t.due_date && t.due_date > today).length, tone: "orange" },
-        ],
-      };
-
-      setSnapshot({
-        enquiries: openLeads.length,
-        demandItems: demandItems.length,
-        quotations: quoteRows.length,
-        orders: orders.length,
-        inventory: products.length,
-        purchase: lowStock + outStock,
-        production: openJobs.length,
-        delivery: deliveryPendingRows.length,
-        paymentAmount,
-        services: openServices.length,
-        customers: uniquePhones.size,
-        tasks: pendingTasks.length,
-        details,
+      const stages: StageRow[] = [1, 2, 3, 4, 5, 6].map(s => {
+        const rows = liveQ.filter(q => Number(q.pipeline_stage ?? 1) === s);
+        return { stage: s, count: rows.length, value: rows.reduce((a, q) => a + Number(q.total ?? 0), 0) };
       });
-      setLoading(false);
-    })();
 
+      const recent: Recent[] = [
+        ...L.map(l => ({ id: `l${l.id}`, kind: "lead" as const, at: l.created_at, title: `New enquiry · ${l.customer_name || "customer"}`, sub: [l.lead_code, l.customer_place].filter(Boolean).join(" · "), href: `/admin/leads?open=${l.id}` })),
+        ...Q.map(q => ({ id: `q${q.id}`, kind: "quote" as const, at: q.created_at, title: `Quotation · ${q.party_name || "customer"}`, sub: [q.quotation_id, Number(q.total) ? inr(Number(q.total)) : ""].filter(Boolean).join(" · "), href: `/admin/quotations/${q.id}` })),
+      ].sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")).slice(0, 8);
+
+      setData({
+        name: prof.data?.display_name || (user.email ?? "").split("@")[0],
+        newLeadsToday: L.filter(l => dayKey(l.created_at) === today).length,
+        openLeads: openLeads.length,
+        followQuotes: followQ.length,
+        followValue: followQ.reduce((a, q) => a + Number(q.total ?? 0), 0),
+        ordersMonth: monthOrders.length,
+        ordersMonthValue: monthOrders.reduce((a, q) => a + Number(q.total ?? 0), 0),
+        ordersLastMonthValue: lastMonthOrders.reduce((a, q) => a + Number(q.total ?? 0), 0),
+        pendingAmount: R.reduce((a, r) => a + Number(r.pending_amount ?? 0), 0),
+        overdueAccounts: R.filter(r => r.next_follow_up_at && dayKey(r.next_follow_up_at) < today).length,
+        deliveries7: deliv.filter(q => { const d = dayKey(q.expected_delivery_date); return d >= today && d <= in7; }).length,
+        deliveriesOverdue: deliv.filter(q => dayKey(q.expected_delivery_date) < today).length,
+        lowStock: P.filter(p => Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity ?? 0) <= Number(p.reorder_level ?? 0)).length,
+        outStock: P.filter(p => Number(p.stock_quantity ?? 0) <= 0).length,
+        openServices: S.filter(s => !["resolved", "closed", "completed"].includes(s.status)).length,
+        work,
+        hot: followQ.slice().sort((a, b) => Number(b.total ?? 0) - Number(a.total ?? 0)).slice(0, 6)
+          .map(q => ({ id: q.id, code: q.quotation_id ?? "", name: q.party_name ?? "Customer", place: q.party_place ?? "", total: Number(q.total ?? 0), next: q.next_follow_up_at, status: q.commercial_status })),
+        stages, recent,
+      });
+    })();
     return () => { cancelled = true; };
-  }, [authLoading, user]);
+  }, [authLoading, user, office]);
+
+  const buckets = useMemo(() => {
+    const today = keyOffset(0), in7 = keyOffset(7);
+    const w = (data?.work ?? []).slice().sort((a, b) => (a.when ?? "").localeCompare(b.when ?? ""));
+    return {
+      overdue: w.filter(x => x.when && dayKey(x.when) < today && x.kind !== "collection"),
+      today: w.filter(x => x.kind === "collection" || (x.when && dayKey(x.when) === today)),
+      upcoming: w.filter(x => x.when && dayKey(x.when) > today && dayKey(x.when) <= in7),
+    };
+  }, [data]);
 
   if (!authLoading && user && isMeasurementStaff && !isOfficeStaff && !isDelivery) return <Navigate to="/admin/my-work" replace />;
 
-  const cards = useMemo(() => [
-    {
-      key: "enquiries", title: "Enquiries", count: snapshot.enquiries, href: "/admin/enquiries",
-      action: "Open Enquiries", icon: ClipboardList,
-      quickAction: canCreateEnquiry ? { label: "New Enquiry", kind: "enquiry" } : undefined,
-      show: showOffice || showAdmin,
-    },
-    {
-      key: "quotations", title: "Quotations", count: snapshot.quotations, href: "/admin/quotations",
-      action: "Open Quotations", icon: FileText,
-      quickAction: canCreateQuotation ? { label: "New Quotation", href: "/admin/quotations?new=1" } : undefined,
-      show: showOffice || showAdmin,
-    },
-    {
-      key: "delivery", title: "Delivery", count: snapshot.delivery, href: "/admin/delivery",
-      action: "Open Delivery Planner", icon: Truck, show: showDelivery || showOffice || showAdmin,
-    },
-    {
-      key: "payments", title: "Payments", count: formatINR(snapshot.paymentAmount), href: "/admin/backlog",
-      action: "View Payments", icon: WalletCards, show: showOffice || showAdmin,
-    },
-    {
-      key: "sales", title: "Sales Analysis", count: snapshot.orders, href: "/admin/salesman-reports",
-      action: "Salesman-wise Report", icon: BarChart3,
-      customDetails: [
-        { label: "Confirmed / Orders", value: snapshot.orders, tone: "green" as const },
-        { label: "Pending Payments", value: formatINR(snapshot.paymentAmount), tone: "red" as const },
-        { label: "Delivery Pending", value: snapshot.delivery, tone: "orange" as const },
-      ],
-      show: showOffice || showAdmin,
-    },
-    {
-      key: "production", title: "Work Progress", count: snapshot.production, href: "/admin/worker-reports",
-      action: "Open Work Reports", icon: Hammer, show: showProduction || showAdmin,
-    },
-    {
-      key: "tasks", title: "Tasks / Follow-ups", count: snapshot.tasks, href: "/admin/diary",
-      action: "View Tasks", icon: ListTodo,
-      quickAction: canCreatePersonalTask ? { label: "New Task", href: "/admin/diary?new=1" } : undefined,
-      show: true,
-    },
-  ].filter(c => c.show), [
-    snapshot, showOffice, showAdmin, showProduction, showDelivery,
-    canCreateEnquiry, canCreateQuotation, canCreatePersonalTask,
-  ]);
-
-  const roleTitle = isAdmin ? "Home Dashboard" : isOfficeStaff ? "Sales & Office Dashboard" : isWarehouse ? "Warehouse Dashboard" : isDelivery ? "Delivery Dashboard" : "Work Dashboard";
+  const loading = !data;
+  const growth = data && data.ordersLastMonthValue > 0 ? Math.round(((data.ordersMonthValue - data.ordersLastMonthValue) / data.ordersLastMonthValue) * 100) : null;
+  const maxStage = Math.max(1, ...(data?.stages ?? []).map(s => s.count));
+  const list = buckets[tab];
 
   return (
     <AdminShell>
-      <div className="mb-5">
-        <h1 className="font-display text-2xl font-semibold text-[#2f2925] sm:text-3xl">{roleTitle}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Today's business overview</p>
+      <div className="space-y-5">
+        {/* Greeting + quick create */}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-[#2f2925] sm:text-3xl">{greeting()}{data?.name ? `, ${data.name}` : ""}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}{data ? ` · ${buckets.today.length} things for today, ${buckets.overdue.length} overdue` : ""}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {office && <QuickBtn to="/admin/leads?new=1" label="Enquiry" />}
+            {office && <QuickBtn to="/admin/quotations?new=1" label="Quotation" />}
+            <QuickBtn to="/admin/diary?new=1" label="Task" />
+            {office && <QuickBtn to="/admin/services" label="Complaint" />}
+          </div>
+        </div>
+
+        {/* KPI tiles */}
+        {office && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+            <Kpi to="/admin/leads" icon={ClipboardList} label="Open enquiries" value={data?.openLeads} note={data ? `${data.newLeadsToday} new today` : ""} loading={loading} />
+            <Kpi to="/admin/quotations" icon={FileText} label="Quotations to follow" value={data?.followQuotes} note={data ? `${shortInr(data.followValue)} in play` : ""} loading={loading} />
+            <Kpi to="/admin/salesman-reports" icon={IndianRupee} label="Orders this month" value={data ? shortInr(data.ordersMonthValue) : undefined}
+              note={data ? `${data.ordersMonth} orders${growth === null ? "" : ` · ${growth >= 0 ? "▲" : "▼"} ${Math.abs(growth)}% vs last month`}` : ""} tone={growth !== null && growth < 0 ? "bad" : "good"} loading={loading} />
+            <Kpi to="/admin/backlog" icon={Wallet} label="Payments pending" value={data ? shortInr(data.pendingAmount) : undefined} note={data ? `${data.overdueAccounts} follow-ups overdue` : ""} tone={data && data.overdueAccounts > 0 ? "bad" : undefined} loading={loading} />
+            <Kpi to="/admin/delivery" icon={Truck} label="Deliveries · 7 days" value={data?.deliveries7} note={data ? `${data.deliveriesOverdue} past due date` : ""} tone={data && data.deliveriesOverdue > 0 ? "bad" : undefined} loading={loading} />
+            <Kpi to="/admin/inventory/reorder" icon={Boxes} label="Stock alerts" value={data ? data.lowStock : undefined} note={data ? `low · ${data.outStock} out of stock` : ""} loading={loading} />
+          </div>
+        )}
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          {/* Today's work */}
+          <Panel title="My work" icon={CalendarClock} action={<Link to="/admin/diary" className="text-xs font-medium text-[#76563f] hover:underline">All tasks</Link>}>
+            <div className="mb-3 flex gap-1 rounded-lg bg-[#FBEFE4]/60 p-1 text-sm">
+              {(["overdue", "today", "upcoming"] as const).map(k => (
+                <button key={k} type="button" onClick={() => setTab(k)}
+                  className={`flex-1 rounded-md px-2 py-1.5 font-medium capitalize transition-colors ${tab === k ? "bg-white text-[#2f2925] shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  {k === "upcoming" ? "Next 7 days" : k} <span className={k === "overdue" && buckets.overdue.length ? "text-red-600" : ""}>({buckets[k].length})</span>
+                </button>
+              ))}
+            </div>
+            {loading ? <Spinner /> : !list.length
+              ? <p className="py-8 text-center text-sm text-muted-foreground">{tab === "overdue" ? "Nothing overdue. 👍" : "Nothing here."}</p>
+              : <ul className="max-h-[420px] divide-y divide-[#8b6b4f]/10 overflow-y-auto">
+                  {list.slice(0, 40).map(x => <WorkRow key={x.id} item={x} overdue={tab === "overdue"} />)}
+                </ul>}
+          </Panel>
+
+          {/* Pipeline */}
+          {office && (
+            <Panel title="Order pipeline" icon={FileText} action={<Link to="/admin/quotations" className="text-xs font-medium text-[#76563f] hover:underline">Open</Link>}>
+              {loading ? <Spinner /> : (
+                <ul className="space-y-2.5">
+                  {data!.stages.map(s => (
+                    <li key={s.stage}>
+                      <Link to="/admin/quotations" className="block rounded-lg px-1 py-0.5 hover:bg-[#FBEFE4]/50">
+                        <div className="flex items-baseline justify-between text-sm">
+                          <span className="font-medium text-foreground">{s.stage} · {STAGES[s.stage]}</span>
+                          <span className="text-muted-foreground"><b className="text-foreground">{s.count}</b>{s.value ? ` · ${shortInr(s.value)}` : ""}</span>
+                        </div>
+                        <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#8b6b4f]/10">
+                          <div className="h-full rounded-full bg-[#76563f]" style={{ width: `${Math.max(s.count ? 4 : 0, (s.count / maxStage) * 100)}%` }} />
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {data && (data.openServices > 0 || data.outStock > 0) && (
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  {data.openServices > 0 && <Link to="/admin/services" className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 hover:bg-amber-100"><Wrench className="h-3 w-3" />{data.openServices} open complaints</Link>}
+                  {data.outStock > 0 && <Link to="/admin/inventory/reorder" className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-red-700 hover:bg-red-100"><AlertTriangle className="h-3 w-3" />{data.outStock} items out of stock</Link>}
+                </div>
+              )}
+            </Panel>
+          )}
+        </div>
+
+        {office && (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {/* Biggest quotations waiting for a decision */}
+            <Panel title="Biggest quotations to close" icon={IndianRupee}>
+              {loading ? <Spinner /> : !data!.hot.length ? <p className="py-6 text-center text-sm text-muted-foreground">No quotations in follow-up.</p> : (
+                <ul className="divide-y divide-[#8b6b4f]/10">
+                  {data!.hot.map(h => {
+                    const late = h.next && dayKey(h.next) < keyOffset(0);
+                    return (
+                      <li key={h.id}>
+                        <Link to={`/admin/quotations/${h.id}`} className="flex items-center gap-3 py-2.5 hover:bg-[#FBEFE4]/40">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">{h.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">{[h.code, h.place, h.status.replace(/_/g, " ")].filter(Boolean).join(" · ")}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-[#2f2925]">{inr(h.total)}</p>
+                            <p className={`text-[11px] ${late ? "font-medium text-red-600" : "text-muted-foreground"}`}>{h.next ? `${late ? "was due" : "follow-up"} ${shortDate(h.next)}` : "no follow-up date"}</p>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Panel>
+
+            {/* Recent activity */}
+            <Panel title="Recently added" icon={ListTodo}>
+              {loading ? <Spinner /> : (
+                <ul className="divide-y divide-[#8b6b4f]/10">
+                  {data!.recent.map(r => (
+                    <li key={r.id}>
+                      <Link to={r.href} className="flex items-center gap-3 py-2.5 hover:bg-[#FBEFE4]/40">
+                        <KindIcon kind={r.kind} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{r.title}</p>
+                          <p className="truncate text-xs text-muted-foreground">{r.sub}</p>
+                        </div>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">{shortDate(r.at)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </div>
+        )}
       </div>
-
-      <div className="mb-5 grid overflow-hidden rounded-2xl border border-[#8b6b4f]/15 bg-white shadow-sm sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryStat label="Today Enquiries" value={snapshot.details.enquiries?.[0]?.value ?? 0} loading={loading} />
-        <SummaryStat label="Orders" value={snapshot.orders} loading={loading} />
-        <SummaryStat label="Deliveries" value={snapshot.delivery} loading={loading} />
-        <SummaryStat label="Pending Payments" value={formatINR(snapshot.paymentAmount)} loading={loading} />
-      </div>
-
-
     </AdminShell>
   );
 };
 
-type OverviewCard = {
-  key: string; title: string; count: number | string; href: string; action: string;
-  icon: React.ComponentType<{ className?: string }>;
-  quickAction?: { label: string; href?: string; kind?: string };
-  customDetails?: Detail[];
-};
-
-/** Master-detail list: compact rows on the left, details of the selected row on the right.
- *  On phones a row opens its page directly. */
-const OverviewList = ({ cards, snapshot, loading, navigate }: { cards: any[]; snapshot: Snapshot; loading: boolean; navigate: (to: string) => void }) => {
-  const [sel, setSel] = useState<string | null>(null);
-  const list = cards as OverviewCard[];
-  const active = list.find((c) => c.key === sel) ?? list[0];
-  if (!active) return null;
-  const details = active.customDetails ?? snapshot.details[active.key] ?? [];
-  const pick = (c: OverviewCard) => {
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) { navigate(c.href); return; }
-    setSel(c.key);
-  };
-  const runQuick = () => {
-    const qa = active.quickAction;
-    if (!qa) return;
-    if (qa.kind === "enquiry") return navigate("/admin/leads");
-    if (qa.href) navigate(qa.href);
-  };
-  const ActiveIcon = active.icon;
-  return (
-    <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-      <nav aria-label="Business overview" className="overflow-hidden rounded-2xl border border-[#8b6b4f]/15 bg-white shadow-sm">
-        <ul className="divide-y divide-[#8b6b4f]/10">
-          {list.map((c) => {
-            const Icon = c.icon;
-            const on = c.key === active.key;
-            return (
-              <li key={c.key}>
-                <button
-                  type="button"
-                  aria-current={on ? "true" : undefined}
-                  onClick={() => pick(c)}
-                  className={`flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FBEFE4]/60 ${on ? "bg-[#FBEFE4] md:border-l-4 md:border-l-[#76563f]" : "md:border-l-4 md:border-l-transparent"}`}
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]"><Icon className="h-4 w-4" aria-hidden="true" /></span>
-                  <span className="flex-1 truncate text-sm font-medium text-foreground">{c.title}</span>
-                  <span className="font-display text-base font-semibold text-[#2f2925]">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : c.count}</span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground md:hidden" aria-hidden="true" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <section aria-live="polite" className="hidden rounded-2xl border border-[#8b6b4f]/15 bg-white p-6 shadow-sm md:block">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#8b6b4f]/10 text-[#76563f]"><ActiveIcon className="h-5 w-5" aria-hidden="true" /></span>
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{active.title}</h2>
-            <p className="text-xs text-muted-foreground">{loading ? "Loading…" : `${active.count} total`}</p>
-          </div>
-        </div>
-        <ul className="mt-5 divide-y divide-[#8b6b4f]/10">
-          {details.length === 0 && <li className="py-3 text-sm text-muted-foreground">No breakdown available.</li>}
-          {details.map((d) => (
-            <li key={d.label} className="flex items-center justify-between gap-3 py-3 text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground"><StatusDot tone={d.tone} />{d.label}</span>
-              <span className="font-semibold text-foreground">{loading ? "—" : d.value}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button type="button" className="h-10 bg-[#76563f] hover:bg-[#654936]" onClick={() => navigate(active.href)}>{active.action}<ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>
-          {active.quickAction && <Button type="button" variant="outline" className="h-10 border-[#8b6b4f]/25 text-[#76563f]" onClick={runQuick}><Plus className="mr-1 h-4 w-4" aria-hidden="true" />{active.quickAction.label}</Button>}
-        </div>
-      </section>
-    </div>
-  );
-};
-
-const StatusDot = ({ tone }: { tone: Detail["tone"] }) => {
-  const cls = tone === "green" ? "bg-emerald-500"
-    : tone === "orange" ? "bg-amber-500"
-      : tone === "red" ? "bg-red-500"
-        : tone === "blue" ? "bg-sky-500"
-          : "bg-stone-400";
-  return <span className={`h-2 w-2 shrink-0 rounded-full ${cls}`} />;
-};
-
-const SummaryStat = ({ label, value, loading }: { label: string; value: number | string; loading: boolean }) => (
-  <div className="border-b border-[#8b6b4f]/10 px-5 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-    <div className="mt-1 font-display text-2xl font-semibold text-[#2f2925]">
-      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : value}
-    </div>
-  </div>
+const QuickBtn = ({ to, label }: { to: string; label: string }) => (
+  <Link to={to} className="inline-flex h-9 items-center gap-1 rounded-full border border-[#8b6b4f]/25 bg-white px-3 text-sm font-medium text-[#76563f] shadow-sm hover:bg-[#FBEFE4]">
+    <Plus className="h-4 w-4" aria-hidden="true" />{label}
+  </Link>
 );
+
+const Kpi = ({ to, icon: Icon, label, value, note, tone, loading }: { to: string; icon: ComponentType<{ className?: string }>; label: string; value?: number | string; note: string; tone?: "good" | "bad"; loading: boolean }) => (
+  <Link to={to} className="group rounded-2xl border border-[#8b6b4f]/15 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className="flex items-center justify-between">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <Icon className="h-4 w-4 text-[#8b6b4f]" aria-hidden="true" />
+    </div>
+    <div className="mt-1.5 font-display text-2xl font-semibold text-[#2f2925]">{loading ? <Loader2 className="h-5 w-5 animate-spin" /> : value}</div>
+    <p className={`mt-0.5 truncate text-xs ${tone === "bad" ? "text-red-600" : tone === "good" ? "text-emerald-700" : "text-muted-foreground"}`}>{note}</p>
+  </Link>
+);
+
+const Panel = ({ title, icon: Icon, action, children }: { title: string; icon: ComponentType<{ className?: string }>; action?: ReactNode; children: ReactNode }) => (
+  <section className="rounded-2xl border border-[#8b6b4f]/15 bg-white p-4 shadow-sm sm:p-5">
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Icon className="h-4 w-4 text-[#8b6b4f]" />{title}</h2>
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
+const KIND: Record<Kind, { icon: ComponentType<{ className?: string }>; cls: string }> = {
+  lead: { icon: PhoneCall, cls: "bg-sky-50 text-sky-700" },
+  quote: { icon: FileText, cls: "bg-violet-50 text-violet-700" },
+  payment: { icon: Wallet, cls: "bg-amber-50 text-amber-700" },
+  task: { icon: ListTodo, cls: "bg-emerald-50 text-emerald-700" },
+  collection: { icon: IndianRupee, cls: "bg-rose-50 text-rose-700" },
+};
+const KindIcon = ({ kind }: { kind: Kind }) => { const k = KIND[kind]; const I = k.icon; return <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${k.cls}`}><I className="h-4 w-4" /></span>; };
+
+const WorkRow = ({ item, overdue }: { item: WorkItem; overdue: boolean }) => (
+  <li>
+    <Link to={item.href} className="flex items-center gap-3 py-2.5 hover:bg-[#FBEFE4]/40">
+      <KindIcon kind={item.kind} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
+        <p className="truncate text-xs text-muted-foreground">{item.sub}</p>
+      </div>
+      <div className="shrink-0 text-right">
+        {item.amount ? <p className="text-sm font-semibold text-[#2f2925]">{inr(item.amount)}</p> : null}
+        <p className={`text-[11px] ${overdue ? "font-medium text-red-600" : "text-muted-foreground"}`}>{item.kind === "collection" ? "to verify" : shortDate(item.when)}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </Link>
+  </li>
+);
+
+const Spinner = () => <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
 export default AdminOverview;
