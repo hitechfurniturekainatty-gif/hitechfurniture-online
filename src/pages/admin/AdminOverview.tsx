@@ -57,7 +57,7 @@ const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good 
 const AdminOverview = () => {
   const { isAdmin, isOfficeStaff, isMeasurementStaff, isDelivery, user, loading: authLoading } = useAuth();
   const [data, setData] = useState<Data | null>(null);
-  const [tab, setTab] = useState<"overdue" | "today" | "upcoming">("today");
+  const [tab, setTab] = useState<"overdue" | "today" | "upcoming" | null>(null);
   const office = isAdmin || isOfficeStaff;
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const AdminOverview = () => {
 
       const work: WorkItem[] = [
         ...openLeads.filter(l => l.next_follow_up_at).map(l => ({ id: `l${l.id}`, kind: "lead" as const, when: l.next_follow_up_at, title: `Call ${l.customer_name || "customer"}`, sub: [l.customer_place, l.requirement].filter(Boolean).join(" · ").slice(0, 80), href: `/admin/leads?open=${l.id}` })),
-        ...followQ.filter(q => q.next_follow_up_at).map(q => ({ id: `q${q.id}`, kind: "quote" as const, when: q.next_follow_up_at, title: `Follow up quotation · ${q.party_name || "customer"}`, sub: [q.quotation_id, q.party_place].filter(Boolean).join(" · "), amount: Number(q.total ?? 0), href: `/admin/quotations/${q.id}` })),
+        ...followQ.filter(q => q.next_follow_up_at).map(q => ({ id: `q${q.id}`, kind: "quote" as const, when: q.next_follow_up_at, title: `Follow up quotation · ${q.party_name || "customer"}`, sub: q.quotation_id || q.party_place || "", amount: Number(q.total ?? 0), href: `/admin/quotations/${q.id}` })),
         ...R.filter(r => r.next_follow_up_at && Number(r.pending_amount) > 0).map(r => ({ id: `r${r.id}`, kind: "payment" as const, when: r.next_follow_up_at, title: `Collect payment · ${r.customer_name || "customer"}`, sub: r.place ?? "", amount: Number(r.pending_amount ?? 0), href: "/admin/backlog" })),
         ...T.map(t => ({ id: `t${t.id}`, kind: "task" as const, when: t.due_date, title: t.title || "Task", sub: t.priority === "high" ? "High priority" : "My task", href: `/admin/diary?note=${t.id}` })),
         ...C.map(c => ({ id: `c${c.id}`, kind: "collection" as const, when: c.collected_at, title: `Verify ${c.method === "none" ? "unpaid delivery" : "delivery payment"} · ${c.quotations?.party_name ?? "customer"}`, sub: c.quotations?.party_place ?? "", amount: Number(c.amount ?? 0), href: "/admin/collections" })),
@@ -147,7 +147,9 @@ const AdminOverview = () => {
   const loading = !data;
   const growth = data && data.ordersLastMonthValue > 0 ? Math.round(((data.ordersMonthValue - data.ordersLastMonthValue) / data.ordersLastMonthValue) * 100) : null;
   const maxStage = Math.max(1, ...(data?.stages ?? []).map(s => s.count));
-  const list = buckets[tab];
+  // Open on Today, or on Overdue when today is empty but older work is waiting.
+  const activeTab = tab ?? (buckets.today.length === 0 && buckets.overdue.length > 0 ? "overdue" : "today");
+  const list = buckets[activeTab];
 
   return (
     <AdminShell>
@@ -172,10 +174,10 @@ const AdminOverview = () => {
             <Kpi to="/admin/leads" icon={ClipboardList} label="Open enquiries" value={data?.openLeads} note={data ? `${data.newLeadsToday} new today` : ""} loading={loading} />
             <Kpi to="/admin/quotations" icon={FileText} label="Quotations to follow" value={data?.followQuotes} note={data ? `${shortInr(data.followValue)} in play` : ""} loading={loading} />
             <Kpi to="/admin/salesman-reports" icon={IndianRupee} label="Orders this month" value={data ? shortInr(data.ordersMonthValue) : undefined}
-              note={data ? `${data.ordersMonth} orders${growth === null ? "" : ` · ${growth >= 0 ? "▲" : "▼"} ${Math.abs(growth)}% vs last month`}` : ""} tone={growth !== null && growth < 0 ? "bad" : "good"} loading={loading} />
+              note={data ? `${data.ordersMonth} order${data.ordersMonth === 1 ? "" : "s"}${growth === null ? "" : ` · ${growth >= 0 ? "▲" : "▼"} ${Math.abs(growth)}% vs last month`}` : ""} tone={growth !== null && growth < 0 ? "bad" : "good"} loading={loading} />
             <Kpi to="/admin/backlog" icon={Wallet} label="Payments pending" value={data ? shortInr(data.pendingAmount) : undefined} note={data ? `${data.overdueAccounts} follow-ups overdue` : ""} tone={data && data.overdueAccounts > 0 ? "bad" : undefined} loading={loading} />
             <Kpi to="/admin/delivery" icon={Truck} label="Deliveries · 7 days" value={data?.deliveries7} note={data ? `${data.deliveriesOverdue} past due date` : ""} tone={data && data.deliveriesOverdue > 0 ? "bad" : undefined} loading={loading} />
-            <Kpi to="/admin/inventory/reorder" icon={Boxes} label="Stock alerts" value={data ? data.lowStock : undefined} note={data ? `low · ${data.outStock} out of stock` : ""} loading={loading} />
+            <Kpi to="/admin/inventory/reorder" icon={Boxes} label="Out of stock" value={data ? data.outStock : undefined} note={data ? `${data.lowStock} at or below reorder level` : ""} tone={data && data.outStock > 0 ? "bad" : undefined} loading={loading} />
           </div>
         )}
 
@@ -185,15 +187,15 @@ const AdminOverview = () => {
             <div className="mb-3 flex gap-1 rounded-lg bg-[#FBEFE4]/60 p-1 text-sm">
               {(["overdue", "today", "upcoming"] as const).map(k => (
                 <button key={k} type="button" onClick={() => setTab(k)}
-                  className={`flex-1 rounded-md px-2 py-1.5 font-medium capitalize transition-colors ${tab === k ? "bg-white text-[#2f2925] shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  className={`flex-1 rounded-md px-2 py-1.5 font-medium capitalize transition-colors ${activeTab === k ? "bg-white text-[#2f2925] shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
                   {k === "upcoming" ? "Next 7 days" : k} <span className={k === "overdue" && buckets.overdue.length ? "text-red-600" : ""}>({buckets[k].length})</span>
                 </button>
               ))}
             </div>
             {loading ? <Spinner /> : !list.length
-              ? <p className="py-8 text-center text-sm text-muted-foreground">{tab === "overdue" ? "Nothing overdue. 👍" : "Nothing here."}</p>
+              ? <p className="py-8 text-center text-sm text-muted-foreground">{activeTab === "overdue" ? "Nothing overdue. 👍" : "Nothing here."}</p>
               : <ul className="max-h-[420px] divide-y divide-[#8b6b4f]/10 overflow-y-auto">
-                  {list.slice(0, 40).map(x => <WorkRow key={x.id} item={x} overdue={tab === "overdue"} />)}
+                  {list.slice(0, 40).map(x => <WorkRow key={x.id} item={x} overdue={activeTab === "overdue"} />)}
                 </ul>}
           </Panel>
 
@@ -240,7 +242,7 @@ const AdminOverview = () => {
                         <Link to={`/admin/quotations/${h.id}`} className="flex items-center gap-3 py-2.5 hover:bg-[#FBEFE4]/40">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-foreground">{h.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">{[h.code, h.place, h.status.replace(/_/g, " ")].filter(Boolean).join(" · ")}</p>
+                            <p className="truncate text-xs text-muted-foreground">{[h.code || h.place, h.status.replace(/_/g, " ")].filter(Boolean).join(" · ")}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-semibold text-[#2f2925]">{inr(h.total)}</p>
