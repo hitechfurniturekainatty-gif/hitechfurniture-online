@@ -719,6 +719,7 @@ export const CHAPTERS: GuideChapter[] = [
           "Home dashboard pipeline shows ✓ Delivered this month (tap it for the list).",
           "Delivery history: Quotations & Orders → filter '✓ Delivered (history)'. Fully paid parties: filter 'Closed — fully paid'. Manual / Busy bills that are settled: Backlog & Receivables → Closed tab.",
           "Orders marked delivered earlier now all sit at stage 6.",
+          "Menu tidied: 4 · Production Board, Work Progress Reports, Stock Ledger, Inbound Receiving, Stock-take and Transfers are hidden (little use; stock comes from Output Books). Nothing was deleted — admin can bring them back.",
         ],
       },
       {
