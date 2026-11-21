@@ -58,12 +58,16 @@ type Q = {
   source_task_id?: string | null;
   lead_type?: string | null;
   pipeline_stage?: number | null;
+  commercial_status?: string | null;
+  delivered_at?: string | null;
 };
 
 type StageFilterKey =
   | "all"
   | "active"
   | "confirmed"
+  | "delivered"
+  | "closed"
   | "stage1"
   | "stage2"
   | "stage3"
@@ -75,6 +79,8 @@ type StageFilterKey =
 const STAGE_FILTER_KEYS: StageFilterKey[] = [
   "active",
   "confirmed",
+  "delivered",
+  "closed",
   "all",
   "stage1",
   "stage2",
@@ -89,6 +95,8 @@ const stageFilterLabel = (k: StageFilterKey) => {
   if (k === "all") return "All";
   if (k === "active") return "Active";
   if (k === "confirmed") return "Confirmed Orders";
+  if (k === "delivered") return "✓ Delivered (history)";
+  if (k === "closed") return "Closed — fully paid";
   if (k === "rejected") return "Rejected";
   const num = Number(k.replace("stage", "")) as PipelineStage;
   return STAGE_DEFS[num].label;
@@ -227,7 +235,7 @@ const AdminQuotations = () => {
     const [{ data, error }, jRes, tqRes, itRes, leadRes] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage")
+        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage, commercial_status, delivered_at")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
@@ -275,7 +283,7 @@ const AdminQuotations = () => {
     setItemAgg(itemAggMap);
     if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
     else {
-      const list = (data ?? []) as Q[];
+      const list = (data ?? []) as unknown as Q[]; // delivered_at is newer than the generated types
       // Strict creation-date ordering: editing an older quotation must NOT
       // bubble it to the top. The query already orders by created_at desc.
       setRows(list);
@@ -684,6 +692,8 @@ const AdminQuotations = () => {
         // Hide rejected from every other tab.
         if (s === "rejected") return false;
         if (statusFilter === "active") return s !== "delivered";
+        if (statusFilter === "delivered") return s === "delivered";
+        if (statusFilter === "closed") return r.commercial_status === "closed";
         if (statusFilter === "confirmed") {
           return (s === "finalized" || s === "delivered");
         }
@@ -706,6 +716,8 @@ const AdminQuotations = () => {
         return (s === "finalized" || s === "delivered");
       }).length,
       rejected: docFiltered.filter((r) => normalizeStatus(r.status) === "rejected").length,
+      delivered: nonRejected.filter((r) => normalizeStatus(r.status) === "delivered").length,
+      closed: nonRejected.filter((r) => r.commercial_status === "closed").length,
       stage1: 0, stage2: 0, stage3: 0, stage4: 0, stage5: 0, stage6: 0,
     };
     nonRejected.forEach((r) => {

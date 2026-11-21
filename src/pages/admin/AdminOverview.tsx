@@ -228,7 +228,7 @@ const AdminOverview = () => {
                 </ul>
               )}
               {data && (
-                <Link to="/admin/delivery" className="mt-3 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 hover:bg-emerald-100">
+                <Link to="/admin/quotations?status=delivered" className="mt-3 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 hover:bg-emerald-100">
                   <span className="font-medium">✓ Delivered this month</span>
                   <span><b>{data.deliveredMonth}</b>{data.deliveredMonthValue ? ` · ${shortInr(data.deliveredMonthValue)}` : ""}</span>
                 </Link>
