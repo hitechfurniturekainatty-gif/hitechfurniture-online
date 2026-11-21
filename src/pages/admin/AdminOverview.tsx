@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   AlertTriangle, ArrowRight, Boxes, CalendarClock, ClipboardList, FileText, IndianRupee,
@@ -37,6 +37,10 @@ type ServRow = { status: string };
 // Untyped client: some of these tables/columns are newer than the generated types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
+
+// Dashboard headings use Bigin-style colours; buttons, menu and page keep the Hitech brown theme.
+const HEAD = "#052A49"; // navy, 14.7:1 on white
+const BAR = { green: "#0B9651", navy: "#052A49", orange: "#F28C28", teal: "#0E8A9C" } as const;
 
 const STAGES: Record<number, string> = { 1: "Enquiry", 2: "Measurement", 3: "Order (OPS)", 4: "Production", 5: "Warehouse", 6: "Delivery" };
 const FOLLOW_STATUSES = ["follow_up", "quote_preparation", "payment_pending"];
@@ -157,7 +161,7 @@ const AdminOverview = () => {
         {/* Greeting + quick create */}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-2xl font-semibold text-[#2f2925] sm:text-3xl">{greeting()}{data?.name ? `, ${data.name}` : ""}</h1>
+            <h1 className="font-display text-2xl font-semibold sm:text-3xl" style={{ color: HEAD }}>{greeting()}{data?.name ? `, ${data.name}` : ""}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}{data ? ` · ${buckets.today.length} things for today, ${buckets.overdue.length} overdue` : ""}</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -183,7 +187,7 @@ const AdminOverview = () => {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Today's work */}
-          <Panel title="My work" icon={CalendarClock} action={<Link to="/admin/diary" className="text-xs font-medium text-[#76563f] hover:underline">All tasks</Link>}>
+          <Panel title="My work" icon={CalendarClock} accent="green" action={<Link to="/admin/diary" className="text-xs font-medium text-[#76563f] hover:underline">All tasks</Link>}>
             <div className="mb-3 flex gap-1 rounded-lg bg-[#FBEFE4]/60 p-1 text-sm">
               {(["overdue", "today", "upcoming"] as const).map(k => (
                 <button key={k} type="button" onClick={() => setTab(k)}
@@ -201,7 +205,7 @@ const AdminOverview = () => {
 
           {/* Pipeline */}
           {office && (
-            <Panel title="Order pipeline" icon={FileText} action={<Link to="/admin/quotations" className="text-xs font-medium text-[#76563f] hover:underline">Open</Link>}>
+            <Panel title="Order pipeline" icon={FileText} accent="navy" action={<Link to="/admin/quotations" className="text-xs font-medium text-[#76563f] hover:underline">Open</Link>}>
               {loading ? <Spinner /> : (
                 <ul className="space-y-2.5">
                   {data!.stages.map(s => (
@@ -232,7 +236,7 @@ const AdminOverview = () => {
         {office && (
           <div className="grid gap-5 lg:grid-cols-2">
             {/* Biggest quotations waiting for a decision */}
-            <Panel title="Biggest quotations to close" icon={IndianRupee}>
+            <Panel title="Biggest quotations to close" icon={IndianRupee} accent="orange">
               {loading ? <Spinner /> : !data!.hot.length ? <p className="py-6 text-center text-sm text-muted-foreground">No quotations in follow-up.</p> : (
                 <ul className="divide-y divide-[#8b6b4f]/10">
                   {data!.hot.map(h => {
@@ -257,7 +261,7 @@ const AdminOverview = () => {
             </Panel>
 
             {/* Recent activity */}
-            <Panel title="Recently added" icon={ListTodo}>
+            <Panel title="Recently added" icon={ListTodo} accent="teal">
               {loading ? <Spinner /> : (
                 <ul className="divide-y divide-[#8b6b4f]/10">
                   {data!.recent.map(r => (
@@ -288,24 +292,26 @@ const QuickBtn = ({ to, label }: { to: string; label: string }) => (
   </Link>
 );
 
-const Kpi = ({ to, icon: Icon, label, value, note, tone, loading }: { to: string; icon: ComponentType<{ className?: string }>; label: string; value?: number | string; note: string; tone?: "good" | "bad"; loading: boolean }) => (
+const Kpi = ({ to, icon: Icon, label, value, note, tone, loading }: { to: string; icon: ComponentType<{ className?: string; style?: CSSProperties }>; label: string; value?: number | string; note: string; tone?: "good" | "bad"; loading: boolean }) => (
   <Link to={to} className="group rounded-2xl border border-[#8b6b4f]/15 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
     <div className="flex items-center justify-between">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <Icon className="h-4 w-4 text-[#8b6b4f]" aria-hidden="true" />
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: HEAD }}>{label}</p>
+      <Icon className="h-4 w-4" style={{ color: BAR.green }} aria-hidden="true" />
     </div>
     <div className="mt-1.5 font-display text-2xl font-semibold text-[#2f2925]">{loading ? <Loader2 className="h-5 w-5 animate-spin" /> : value}</div>
     <p className={`mt-0.5 truncate text-xs ${tone === "bad" ? "text-red-600" : tone === "good" ? "text-emerald-700" : "text-muted-foreground"}`}>{note}</p>
   </Link>
 );
 
-const Panel = ({ title, icon: Icon, action, children }: { title: string; icon: ComponentType<{ className?: string }>; action?: ReactNode; children: ReactNode }) => (
-  <section className="rounded-2xl border border-[#8b6b4f]/15 bg-white p-4 shadow-sm sm:p-5">
+const Panel = ({ title, icon: Icon, accent, action, children }: { title: string; icon: ComponentType<{ className?: string; style?: CSSProperties }>; accent: keyof typeof BAR; action?: ReactNode; children: ReactNode }) => (
+  <section className="overflow-hidden rounded-2xl border border-[#8b6b4f]/15 bg-white shadow-sm" style={{ borderTop: `4px solid ${BAR[accent]}` }}>
+    <div className="p-4 sm:p-5">
     <div className="mb-3 flex items-center justify-between gap-2">
-      <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Icon className="h-4 w-4 text-[#8b6b4f]" />{title}</h2>
+      <h2 className="flex items-center gap-2 text-base font-semibold" style={{ color: HEAD }}><Icon className="h-4 w-4" style={{ color: BAR[accent] }} />{title}</h2>
       {action}
     </div>
     {children}
+    </div>
   </section>
 );
 
