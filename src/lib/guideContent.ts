@@ -399,6 +399,19 @@ export const CHAPTERS: GuideChapter[] = [
         ],
       },
       {
+        id: "cleanup",
+        title: "Clean-up: clear old records",
+        audience: ["admin", "office"],
+        intro: "One page for the three old piles: draft quotations older than 30 days, open leads with no next call, and confirmed orders past their delivery date. Nothing is deleted.",
+        steps: [
+          "Open Operations → Clean-up.",
+          "Old quotations: tick the ones the customer will not buy and press Lost ആക്കുക. Open any that still has a chance and follow up.",
+          "Leads without next call: tick and choose നാളെ വിളിക്കുക / 3 ദിവസം / 1 ആഴ്ച, or pick a reason and press Lost ആക്കുക.",
+          "Orders past date: if it was delivered press Mark delivered; if not, pick a new date and press New date.",
+        ],
+        tip: "Do this once a week. When the lists are empty, My work and the bell show only real work.",
+      },
+      {
         id: "rate-card",
         title: "Rate Card & price estimate",
         audience: ["admin", "office", "measurement"],
@@ -751,6 +764,7 @@ export const CHAPTERS: GuideChapter[] = [
           "Bell alerts cleaned up: 2,634 old alerts were marked read, and every night alerts older than 7 days are marked read automatically. The bell now shows only recent, useful alerts.",
           "\"Quotation expiring soon\" is now sent once per quotation (15–60 days old), not every week for ever. \"Balance payment due\" is sent from 3 days before to 7 days after the delivery date, at most once a week; older balances are followed up in Payments.",
           "AI features (Snap Search, bulk extract, AI image) now use Hitech's own Google Gemini key instead of Lovable.",
+          "New Operations → Clean-up: clear old draft quotations (Lost), leads with no next call (set a date or Lost with reason) and confirmed orders past their delivery date (Mark delivered or new date) in bulk.",
         ],
       },
       {

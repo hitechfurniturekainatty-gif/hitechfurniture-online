@@ -38,6 +38,7 @@ const AdminSalesBoard = lazy(pageLoaders.AdminSalesBoard);
 const AdminCollections = lazy(pageLoaders.AdminCollections);
 const AdminSupplierOrders = lazy(pageLoaders.AdminSupplierOrders);
 const AdminRateCard = lazy(pageLoaders.AdminRateCard);
+const AdminCleanup = lazy(pageLoaders.AdminCleanup);
 const AdminEnquiriesInbox = lazy(pageLoaders.AdminEnquiriesInbox);
 const AdminWhatsAppInbox = lazy(pageLoaders.AdminWhatsAppInbox);
 const AdminTeamPerformance = lazy(pageLoaders.AdminTeamPerformance);
@@ -153,6 +154,7 @@ const App = () => (
             <Route path="/admin/collections" element={<AdminCollections />} />
             <Route path="/admin/supplier-orders" element={<OfficeStaffOnly><AdminSupplierOrders /></OfficeStaffOnly>} />
             <Route path="/admin/rate-card" element={<AdminRateCard />} />
+            <Route path="/admin/cleanup" element={<OfficeStaffOnly><AdminCleanup /></OfficeStaffOnly>} />
             <Route path="/admin/enquiries" element={<AdminEnquiriesInbox />} />
             <Route path="/admin/whatsapp" element={<AdminWhatsAppInbox />} />
             <Route path="/admin/team-performance" element={<AdminTeamPerformance />} />
