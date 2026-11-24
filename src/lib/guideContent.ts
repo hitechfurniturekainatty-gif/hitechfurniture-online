@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "2.2";
+export const APP_VERSION = "2.3";
 export const GUIDE_LAST_UPDATED = "2026-11-21";
 
 export const ABOUT = {
@@ -381,6 +381,40 @@ export const CHAPTERS: GuideChapter[] = [
           "Maintain customer contacts via the contact picker.",
         ],
       },
+      {
+        id: "supplier-orders",
+        title: "Supplier Orders: custom items and stock purchases",
+        audience: ["admin", "office"],
+        intro: "Every custom piece we get made by a supplier, and every stock purchase, is written here with the date the supplier promised. Nothing is forgotten and nothing is bought twice.",
+        steps: [
+          "Open Operations → Supplier Orders. The 'Not ordered yet' tab lists custom items on confirmed orders that nobody has ordered.",
+          "When you order an item, press 'Ordered from…', type the supplier, the order date and the date the supplier promised (+7 / +15 / +30 buttons help), and Save.",
+          "The item moves to 'Waiting'. Late ones turn red with the number of days late.",
+          "When the piece arrives, press Received, then plan the customer's delivery. If the supplier gives a new date, pick it and press New date. A wrong entry: Cancel.",
+          "For a stock purchase (no customer), use New supplier order, or the Order button on Inventory → Reorder Report.",
+        ],
+        bullets: [
+          "Every morning at 10 AM the office gets an alert for each late supplier order (repeats every 2 days while late) and one alert listing confirmed custom items not yet ordered.",
+          "On a confirmed order with custom items, the order page shows a Supplier orders button for just that order.",
+        ],
+      },
+      {
+        id: "rate-card",
+        title: "Rate Card & price estimate",
+        audience: ["admin", "office", "measurement"],
+        intro: "Give a customer an approximate price for a custom piece on the spot, from the rates our suppliers charge.",
+        steps: [
+          "Open Finance → Rate Card & Estimate.",
+          "Tap the item type (e.g. Wardrobe) and, if shown, the material.",
+          "Enter width and height in feet (or length for running-foot items, or how many for per-piece items).",
+          "The approximate price shows as a range across suppliers. 'Copy for customer' copies a ready WhatsApp message.",
+        ],
+        bullets: [
+          "Admins add and edit rates at the bottom of the page: supplier, item type, material, unit (sq ft, running ft, piece, seat, set), cost rate, selling rate, days to make.",
+          "Only admins see cost rates and margin. Staff see selling rates only.",
+          "The estimate is approximate. The final price is given after measurement and design.",
+        ],
+      },
     ],
   },
 
@@ -709,6 +743,17 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-3",
+        title: "v2.3 — 2026-11-24",
+        audience: ["everyone"],
+        bullets: [
+          "New Operations → Supplier Orders: record who each custom item was ordered from and the promised date. 'Not ordered yet' lists confirmed custom items nobody ordered. Late orders turn red, and the office gets a 10 AM alert.",
+          "New Finance → Rate Card & Estimate: approximate price for custom furniture from supplier rates (sq ft, running ft, piece). Staff see selling rates; admins manage rates and see cost and margin.",
+          "Reorder Report now shows what sold in the last 90 days and what is already on order from a supplier, so stock is not bought twice. Each row has an Order button.",
+          "Confirmed orders with custom items show a Supplier orders button on the order page.",
+        ],
+      },
       {
         id: "v2-2",
         title: "v2.2 — 2026-11-21",
