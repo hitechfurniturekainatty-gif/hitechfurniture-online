@@ -644,11 +644,11 @@ const AdminHomePage = () => {
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <Label className="text-xs">Primary phone</Label>
-                  <Input value={settings.contact_phone ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })} placeholder="+91 98951 34482" />
+                  <Input inputMode="tel" value={settings.contact_phone ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })} placeholder="+91 98951 34482" />
                 </div>
                 <div>
                   <Label className="text-xs">Secondary phone</Label>
-                  <Input value={settings.contact_phone_secondary ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone_secondary: e.target.value })} />
+                  <Input inputMode="tel" value={settings.contact_phone_secondary ?? ""} onChange={(e) => setSettings({ ...settings, contact_phone_secondary: e.target.value })} />
                 </div>
                 <div>
                   <Label className="text-xs">Email</Label>

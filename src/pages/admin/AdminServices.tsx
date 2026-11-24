@@ -557,7 +557,7 @@ const AdminServices = () => {
                     </div>
                     <div>
                       <Label>Phone</Label>
-                      <Input value={svcForm.customer_phone} onChange={(e) => setSvcForm({ ...svcForm, customer_phone: e.target.value })} />
+                      <Input inputMode="tel" autoComplete="tel" value={svcForm.customer_phone} onChange={(e) => setSvcForm({ ...svcForm, customer_phone: e.target.value })} />
                     </div>
                   </div>
                   <DeliveryRoutePicker
@@ -647,7 +647,7 @@ const AdminServices = () => {
                     </div>
                     <div>
                       <Label>Phone</Label>
-                      <Input value={cpForm.customer_phone} onChange={(e) => setCpForm({ ...cpForm, customer_phone: e.target.value })} />
+                      <Input inputMode="tel" autoComplete="tel" value={cpForm.customer_phone} onChange={(e) => setCpForm({ ...cpForm, customer_phone: e.target.value })} />
                     </div>
                   </div>
                   <DeliveryRoutePicker
