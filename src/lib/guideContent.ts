@@ -399,6 +399,24 @@ export const CHAPTERS: GuideChapter[] = [
         ],
       },
       {
+        id: "ob-quotations",
+        title: "Quotations made in Output Books",
+        audience: ["admin", "office"],
+        intro: "Quotations can be typed in Output Books (QTE…), where each line picks a product with its photo. Every 5 minutes they appear on the website under Quotations & Orders, with the same customer, items, rates and photos.",
+        steps: [
+          "Make or edit the quotation in Output Books (customer, items, quantity, rate, discount).",
+          "Within 5 minutes it appears in Operations → 3 · Quotations & Orders, marked \"Output Books QTE… · edit items there\".",
+          "For a custom item with no product photo, open the quotation on the website and add the photo, sketch or measurement on that item.",
+          "Follow-up, share link, advance, Confirm Order, supplier orders, delivery and payment are all done on the website.",
+        ],
+        bullets: [
+          "Items, quantity and rate: change them only in Output Books. A change made on the website is replaced at the next sync.",
+          "Photos, sketch, measurement, notes, Ready stock / Custom, advance, delivery date and follow-ups are website-only; the sync never changes them.",
+          "A line deleted in Output Books disappears on the website; if staff had added a photo to it, it stays at ₹0 marked \"[Removed in Output Books]\".",
+          "After Confirm Order on the website, the sync stops for that quotation.",
+        ],
+      },
+      {
         id: "cleanup",
         title: "Clean-up: clear old records",
         audience: ["admin", "office"],
@@ -764,6 +782,7 @@ export const CHAPTERS: GuideChapter[] = [
           "Bell alerts cleaned up: 2,634 old alerts were marked read, and every night alerts older than 7 days are marked read automatically. The bell now shows only recent, useful alerts.",
           "\"Quotation expiring soon\" is now sent once per quotation (15–60 days old), not every week for ever. \"Balance payment due\" is sent from 3 days before to 7 days after the delivery date, at most once a week; older balances are followed up in Payments.",
           "AI features (Snap Search, bulk extract, AI image) now use Hitech's own Google Gemini key instead of Lovable.",
+          "Quotations made in Output Books now appear on the website every 5 minutes with the same customer, items, rates and product photos. Edit items in Output Books; photos, follow-up, confirm, delivery and payment stay on the website.",
           "New Operations → Clean-up: clear old draft quotations (Lost), leads with no next call (set a date or Lost with reason) and confirmed orders past their delivery date (Mark delivered or new date) in bulk.",
         ],
       },
