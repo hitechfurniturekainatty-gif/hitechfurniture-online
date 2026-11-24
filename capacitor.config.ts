@@ -1,12 +1,16 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Mobile app wrapper (Capacitor). It opens the live website, so every website update
+// reaches the app without a new app release. Until 2026-11-24 this pointed at the old
+// Lovable preview address (now dead); it now uses our own domain.
+// No android/ios project has been built from this repo yet: run `npx cap add android`
+// (or ios) the first time an app is needed.
 const config: CapacitorConfig = {
-  appId: 'app.lovable.62d268eded094fa5bebdcb351acdde4a',
-  appName: 'cushy-catalog',
+  appId: 'online.hitechfurniture.app',
+  appName: 'Hitech Furniture',
   webDir: 'dist',
   server: {
-    url: 'https://62d268ed-ed09-4fa5-bebd-cb351acdde4a.lovableproject.com?forceHideBadge=true',
-    cleartext: true,
+    url: 'https://hitechfurniture.online',
   },
   plugins: {
     Contacts: {
