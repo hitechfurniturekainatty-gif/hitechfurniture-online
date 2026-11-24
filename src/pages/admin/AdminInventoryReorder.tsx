@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { suggestedOrder } from "@/lib/supplierOrders";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OfficeStaffOnly } from "@/components/admin/OfficeStaffOnly";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, RefreshCw, AlertTriangle, Boxes, PackageCheck } from "lucide-react";
+import { Loader2, Download, RefreshCw, AlertTriangle, Boxes, PackageCheck, Truck } from "lucide-react";
 
 type Product = {
   id: string;
@@ -28,17 +30,20 @@ const AdminInventoryReorder = () => {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [reservedMap, setReservedMap] = useState<Record<string, number>>({});
+  const [signals, setSignals] = useState<Record<string, { sold: number; onOrder: number }>>({});
   const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
-    const [pr, rs] = await Promise.all([
+    const [pr, rs, sg] = await Promise.all([
       supabase
         .from("products")
         .select("id, product_name, product_code, stock_quantity, reorder_level, material, dimensions")
         .is("deleted_at", null)
         .order("product_name"),
       (supabase as any).rpc("get_reserved_stock"),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- function is newer than the generated types
+      (supabase as any).rpc("reorder_signals"),
     ]);
     setProducts((pr.data ?? []) as Product[]);
     const m: Record<string, number> = {};
@@ -46,6 +51,11 @@ const AdminInventoryReorder = () => {
       m[r.product_id] = Number(r.reserved) || 0;
     });
     setReservedMap(m);
+    const sm: Record<string, { sold: number; onOrder: number }> = {};
+    ((sg.data ?? []) as { product_id: string; sold_90d: number; on_order: number }[]).forEach((r) => {
+      sm[r.product_id] = { sold: Number(r.sold_90d) || 0, onOrder: Number(r.on_order) || 0 };
+    });
+    setSignals(sm);
     setLoading(false);
   };
 
@@ -55,24 +65,27 @@ const AdminInventoryReorder = () => {
     const list = products.map((p) => {
       const reserved = reservedMap[p.id] ?? 0;
       const available = Math.max(0, (p.stock_quantity || 0) - reserved);
-      const suggested = Math.max(0, (p.reorder_level ?? 5) - available);
-      return { ...p, reserved, available, suggested };
-    }).filter((r) => r.available <= (r.reorder_level ?? 5));
+      const sold = signals[p.id]?.sold ?? 0;
+      const onOrder = signals[p.id]?.onOrder ?? 0;
+      // Target is the reorder level or a month of recent sales; stock already on order counts.
+      const suggested = suggestedOrder(available, p.reorder_level ?? 5, sold, onOrder);
+      return { ...p, reserved, available, sold, onOrder, suggested };
+    }).filter((r) => r.suggested > 0 || r.available <= (r.reorder_level ?? 5));
     if (!search) return list.sort((a, b) => a.available - b.available);
     const q = search.toLowerCase();
     return list
       .filter((r) => r.product_name.toLowerCase().includes(q) || r.product_code.toLowerCase().includes(q))
       .sort((a, b) => a.available - b.available);
-  }, [products, reservedMap, search]);
+  }, [products, reservedMap, signals, search]);
 
   const outOfStock = rows.filter((r) => r.available === 0).length;
   const suggestedTotal = rows.reduce((sum, r) => sum + r.suggested, 0);
 
   const exportCsv = () => {
-    const header = ["Product", "Code", "Material", "Dimensions", "On hand", "Reserved", "Available", "Reorder level", "Suggested order qty"];
+    const header = ["Product", "Code", "Material", "Dimensions", "On hand", "Reserved", "Available", "Sold 90 days", "On order", "Reorder level", "Suggested order qty"];
     const lines = [header.join(",")];
     rows.forEach((r) => {
-      lines.push([r.product_name, r.product_code, r.material ?? "", r.dimensions ?? "", r.stock_quantity, r.reserved, r.available, r.reorder_level, r.suggested].map(csvEscape).join(","));
+      lines.push([r.product_name, r.product_code, r.material ?? "", r.dimensions ?? "", r.stock_quantity, r.reserved, r.available, r.sold, r.onOrder, r.reorder_level, r.suggested].map(csvEscape).join(","));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -95,7 +108,7 @@ const AdminInventoryReorder = () => {
               <div>
                 <h1 className="font-display text-2xl sm:text-3xl">Reorder Report</h1>
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Items where available stock is at or below the reorder level. Reserved stock is already deducted.
+                  Items to buy. Reserved stock is deducted, and anything already ordered from a supplier (Supplier Orders) is counted, so nothing is bought twice. Target = reorder level, or one month of sales if higher.
                 </p>
               </div>
             </div>
@@ -128,15 +141,18 @@ const AdminInventoryReorder = () => {
               <CardContent className="p-0">
                 <div className="flex items-center gap-2 border-b px-4 py-3 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4" />{rows.length} item{rows.length === 1 ? "" : "s"} need purchasing attention</div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-sm">
+                  <table className="w-full min-w-[900px] text-sm">
                     <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2 text-left">Product</th>
                         <th className="px-3 py-2 text-right">On hand</th>
                         <th className="px-3 py-2 text-right">Reserved</th>
                         <th className="px-3 py-2 text-right">Available</th>
+                        <th className="px-3 py-2 text-right">Sold 90d</th>
+                        <th className="px-3 py-2 text-right">On order</th>
                         <th className="px-3 py-2 text-right">Reorder level</th>
                         <th className="px-3 py-2 text-right">Suggested order</th>
+                        <th className="px-3 py-2" />
                       </tr>
                     </thead>
                     <tbody>
@@ -149,8 +165,17 @@ const AdminInventoryReorder = () => {
                           <td className="px-3 py-3 text-right font-display">{r.stock_quantity}</td>
                           <td className="px-3 py-3 text-right font-display">{r.reserved}</td>
                           <td className="px-3 py-3 text-right font-display"><Badge variant={r.available === 0 ? "destructive" : "secondary"}>{r.available}</Badge></td>
+                          <td className="px-3 py-3 text-right font-display">{r.sold}</td>
+                          <td className="px-3 py-3 text-right font-display">{r.onOrder > 0 ? <Badge variant="secondary">{r.onOrder}</Badge> : 0}</td>
                           <td className="px-3 py-3 text-right font-display">{r.reorder_level}</td>
                           <td className="px-3 py-3 text-right font-display font-semibold">{r.suggested}</td>
+                          <td className="px-3 py-3 text-right">
+                            {r.suggested > 0 && (
+                              <Button asChild size="sm" variant="outline">
+                                <Link to={`/admin/supplier-orders?product=${r.id}&qty=${r.suggested}`}><Truck className="mr-1 h-4 w-4" />Order</Link>
+                              </Button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

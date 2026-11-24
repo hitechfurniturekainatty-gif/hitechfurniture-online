@@ -35,7 +35,7 @@ import { titleCaseTrim, toTitleCase } from "@/lib/textCase";
 import {
   Loader2, ArrowLeft, Plus, Trash2, Save, Download, MessageCircle, Image as ImageIcon,
   Package, HardHat, Send, FileText, Search, ShoppingCart, CheckCircle2, Columns2,
-  Ruler, ChevronDown,
+  Ruler, ChevronDown, Truck,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, useDroppable,
@@ -1795,6 +1795,11 @@ const AdminQuotationEditor = () => {
             <div className="shrink-0">
               <MarkDeliveredButton quotationId={q.id} onDone={() => void load({ silent: true })} />
             </div>
+          )}
+          {isOfficeStaff && q.status !== "delivered" && q.status !== "rejected" && items.some((i) => i.fulfillment_route === "custom" || (i as { stock_decision?: string | null }).stock_decision === "custom") && isOrderConfirmed({ status: q.status ?? null, commercial_status: (q as { commercial_status?: string | null }).commercial_status ?? null }) && (
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to={`/admin/supplier-orders?q=${q.id}`}><Truck className="mr-1 h-4 w-4" aria-hidden="true" />Supplier orders</Link>
+            </Button>
           )}
           {q.status === "delivered" && (
             <Badge className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-600">✓ Delivered{(q as { delivered_at?: string | null }).delivered_at ? ` · ${new Date((q as { delivered_at?: string | null }).delivered_at!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}</Badge>
