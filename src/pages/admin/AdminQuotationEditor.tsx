@@ -1175,6 +1175,8 @@ const AdminQuotationEditor = () => {
         measurement_image_url: it.measurement_image_url,
         catalog_text: it.catalog_text,
         catalog_image_url: it.catalog_image_url,
+        fulfillment_route: (it as any).fulfillment_route ?? null,
+        stock_decision: (it as any).stock_decision ?? null,
         sketch_url: it.sketch_url,
         site_photos: it.site_photos,
         quantity: it.quantity,
@@ -1495,6 +1497,8 @@ const AdminQuotationEditor = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          fulfillment_route: (it as any).fulfillment_route ?? null,
+          stock_decision: (it as any).stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: Math.max(

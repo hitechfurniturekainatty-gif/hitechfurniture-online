@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "2.4";
+export const APP_VERSION = "2.5";
 export const GUIDE_LAST_UPDATED = "2026-11-21";
 
 export const ABOUT = {
@@ -406,7 +406,8 @@ export const CHAPTERS: GuideChapter[] = [
         steps: [
           "Make or edit the quotation in Output Books (customer, items, quantity, rate, discount).",
           "Within 5 minutes it appears in Operations → 3 · Quotations & Orders, marked \"Output Books QTE… · edit items there\".",
-          "For a custom item with no product photo, open the quotation on the website and add the photo, sketch or measurement on that item.",
+          "Made-to-order (custom) piece: in Output Books pick the item \"CUSTOM – Sofa\" (or Wardrobe, Dining, Bed, Kitchen, Other) and write the size, material and colour in the description. Never pick a real model as a stand-in.",
+          "For a custom item, open the quotation on the website, mark the item Custom and add the sketch, measurement or site photo.",
           "Follow-up, share link, advance, Confirm Order, supplier orders, delivery and payment are all done on the website.",
         ],
         bullets: [
@@ -419,6 +420,25 @@ export const CHAPTERS: GuideChapter[] = [
           "Customer says no → mark the lead Lost with a reason. Its draft quotation is rejected by itself.",
           "Quotations & Orders has a source filter: 🏬 Shop / Output Books or 🌐 Online enquiries (website, WhatsApp, Instagram, Facebook, Google).",
         ],
+      },
+      {
+        id: "custom-items-photos",
+        title: "CUSTOM items and which photo shows where",
+        audience: ["admin", "office", "measurement"],
+        intro: "A photo from Output Books shows a model we stock. For a made-to-order piece that photo is NOT what the customer will get, so the website shows it only as a labelled reference.",
+        steps: [
+          "Output Books has six quotation-only items: CUSTOM – Sofa, CUSTOM – Wardrobe, CUSTOM – Dining, CUSTOM – Bed, CUSTOM – Kitchen, CUSTOM – Other (type Service / Non-inventory, no stock, no photo).",
+          "Use one of them for every made-to-order piece. Write size, material, colour and design in the line description.",
+          "On the website, mark that line Custom and add the sketch, measurement and site photos.",
+        ],
+        bullets: [
+          "Items whose name starts with \"CUSTOM\" never appear in the website catalog.",
+          "Ready-stock item with no staff photo: the Output Books photo is shown in the Image column (it is the real product).",
+          "Staff photo or sketch added: the staff photo goes in the Image column; the Output Books photo is shown small, labelled \"Reference only – not final model\".",
+          "Custom item: the Output Books photo is never shown as the product. The quotation shows it only as \"Reference only – not final model\"; the delivery note, worker job, warehouse and supplier order do not show it at all.",
+          "No photo is deleted or changed — only where it is shown.",
+        ],
+        tip: "If a customer likes a stock model but wants changes (size, colour), make it a CUSTOM line and write the changes. Do not sell it under the stock model's name.",
       },
       {
         id: "cleanup",
@@ -778,6 +798,16 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-5",
+        title: "v2.5 — 2026-11-25",
+        audience: ["everyone"],
+        bullets: [
+          "Output Books \"CUSTOM – …\" items (Sofa, Wardrobe, Dining, Bed, Kitchen, Other) are for made-to-order quotations only and never show in the website catalog.",
+          "Quotation photos: a ready-stock item with only the Output Books photo now shows it in the Image column. When a staff photo or sketch exists, or the item is Custom, the Output Books photo is shown small as \"Reference only – not final model\".",
+          "Custom items: the reference photo is no longer shown on the delivery note, worker job (app, link and PDF), warehouse or supplier orders.",
+        ],
+      },
       {
         id: "v2-4",
         title: "v2.4 — 2026-11-24",

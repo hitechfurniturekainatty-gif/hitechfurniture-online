@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Calendar, Download, IndianRupee, Loader2, MapPin, Phone, Printer, Route, Share2, Truck } from "lucide-react";
 import { COMPANY } from "@/lib/companyInfo";
 import { firstUrl } from "@/lib/firstUrl";
+import { workPhotoCatalog } from "@/lib/itemPhotos";
 import { formatINR } from "@/lib/brand";
 import { downloadBlob } from "@/lib/downloadBlob";
 import { shareFilesNative } from "@/lib/nativeShare";
@@ -18,7 +19,7 @@ import { createDeliveryHandoffPdf } from "@/lib/deliveryHandoffPdf";
 type Item = {
   delivered_at: string | null; ordered_qty?: number | null; cancelled_qty?: number | null;
   id: string; description: string; quantity: number; measurement: string | null; catalog_text: string | null;
-  item_image_url: string | null; catalog_image_url: string | null; measurement_image_url: string | null; display_order: number;
+  item_image_url: string | null; catalog_image_url: string | null; measurement_image_url: string | null; display_order: number; fulfillment_route?: string | null; stock_decision?: string | null;
 };
 type Quote = {
   id: string; quotation_id: string; party_name: string; party_place: string; party_phone: string | null; party_address: string | null;
@@ -56,7 +57,7 @@ const DeliveryNote = () => {
     setLoading(true);
     const [{ data: quote, error: e1 }, { data: lines, error: e2 }, ledger, readiness] = await Promise.all([
       (supabase as any).from("quotations").select("id,quotation_id,party_name,party_place,party_phone,party_address,delivery_place,expected_delivery_date,notes,status,commercial_status,document_type,deleted_at,delivery_route_id,advance_amount,total,dispatch_vehicle,dispatch_vehicle_number,dispatch_driver_name,dispatch_driver_phone").eq("id", quoteId).maybeSingle(),
-      (supabase as any).from("quotation_items").select("id,description,quantity,measurement,catalog_text,item_image_url,catalog_image_url,measurement_image_url,display_order,delivered_at,ordered_qty,cancelled_qty").eq("quotation_id", quoteId).order("display_order", { ascending: true }),
+      (supabase as any).from("quotation_items").select("id,description,quantity,measurement,catalog_text,item_image_url,catalog_image_url,measurement_image_url,display_order,fulfillment_route,stock_decision,delivered_at,ordered_qty,cancelled_qty").eq("quotation_id", quoteId).order("display_order", { ascending: true }),
       supabase.from("receivables").select("pending_amount").eq("quotation_id", quoteId).eq("source", "quotation").maybeSingle(),
       supabase.from("warehouse_order_items").select("id,warehouse_ready,order_confirmed,delivered_at").eq("quotation_id",quoteId),
     ]);
@@ -139,7 +140,7 @@ const DeliveryNote = () => {
         <div className="p-4">
           <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-base">Load checklist</h2><span className="text-xs text-muted-foreground">{selectedItems.length} selected lines · Total qty {totalQty}</span></div>
           {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No items on this order.</p> : <ol className="space-y-3">{items.map((it, idx) => {
-            const img = firstUrl(it.item_image_url) || firstUrl(it.catalog_image_url) || firstUrl(it.measurement_image_url);
+            const img = firstUrl(it.item_image_url) || workPhotoCatalog(it) || firstUrl(it.measurement_image_url);
             return <li key={it.id} className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${!selectedIds.includes(it.id) ? "print:hidden" : ""}`}><div className="flex items-center gap-3 p-3"><Checkbox className="print:hidden" aria-label={`Include ${it.description}`} disabled={!eligibleIds.includes(it.id)} checked={selectedIds.includes(it.id)} onCheckedChange={checked=>setSelectedIds(ids=>checked?[...ids,it.id]:ids.filter(id=>id!==it.id))}/><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eef4ea] text-xs font-bold text-[#53634b]">{idx+1}</span>{img && <button type="button" onClick={() => setZoomImage(img)} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 print:h-16 print:w-16"><img src={img} alt={it.description} loading="lazy" className="h-full w-full object-contain p-1" /></button>}<div className="min-w-0 flex-1"><p className="font-medium">{it.description}</p><p className="text-xs text-muted-foreground print:hidden">{it.delivered_at ? "Already delivered" : eligibleIds.includes(it.id) ? "Ready for delivery" : "Not ready / confirmation pending"}</p>{it.catalog_text && <p className="font-mono text-[11px] text-muted-foreground">{it.catalog_text}</p>}{it.measurement && <p className="mt-1 whitespace-pre-line rounded-md bg-slate-50 px-2 py-1 text-xs"><b>Size:</b> {it.measurement}</p>}</div><div className="shrink-0 text-right"><p className="text-[10px] uppercase text-muted-foreground">Qty</p><p className="font-display text-2xl font-semibold">{Number(it.quantity)||0}</p></div></div></li>;
           })}</ol>}
           {q.notes && <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-line">{q.notes}</p></div>}

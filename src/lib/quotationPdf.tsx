@@ -5,6 +5,8 @@ import headerArt from "@/assets/quote-header-art.jpg?inline";
 import footerWave from "@/assets/quote-footer-wave.png";
 import { BANK_DETAILS, COMPANY } from "./companyInfo";
 import { firstUrl } from "./firstUrl";
+import { itemPhotoRoles, REFERENCE_LABEL } from "./itemPhotos";
+import { isCustomItem } from "./orderPhotoGate";
 
 // PDF-safe INR formatters.
 // Helvetica doesn't include the ₹ glyph (renders as a blank box), so we use
@@ -91,6 +93,10 @@ export type QuotationItemPdf = {
   catalog_image_url: string | null;
   sketch_url?: string | null;
   site_photos?: string | null;
+  fulfillment_route?: string | null;
+  stock_decision?: string | null;
+  /** Set internally: the catalog photos are a reference only (not the product). */
+  catalog_is_reference?: boolean;
   /** Set internally during PDF generation: list of data-URI images to render. */
   measurement_images?: string[];
   catalog_images?: string[];
@@ -298,6 +304,9 @@ export const QuotationDoc = ({ q, assets }: { q: QuotationPdfData; assets?: Part
                   ))}
                 </View>
               )}
+              {it.catalog_is_reference && (it.catalog_images ?? []).length > 0 ? (
+                <Text style={{ marginTop: 2, fontSize: 7.5, fontStyle: "italic", color: "#B45309" }}>{REFERENCE_LABEL}</Text>
+              ) : null}
             </View>
             <Text style={[styles.td, { width: cols.qty, textAlign: "right" }]}>{it.quantity}</Text>
             {!q.is_po && (
@@ -579,7 +588,9 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
   const items = await Promise.all(
     q.items.map(async (it) => {
       const measUrls = splitUrls(it.measurement_image_url);
-      const catUrls = splitUrls(it.catalog_image_url);
+      const photos = itemPhotoRoles(it);
+      // Catalog photo used as the product in the Image column: do not repeat it.
+      const catUrls = photos.reference ? splitUrls(it.catalog_image_url) : [];
       const siteUrls = splitUrls(it.site_photos ?? null);
       const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
         Promise.all(measUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
@@ -591,7 +602,7 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
         Promise.all(siteUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>
           arr.filter((u): u is string => !!u)
         ),
-        toDataUri(firstUrl(it.item_image_url), imageOptions),
+        toDataUri(photos.main, imageOptions),
         toDataUri(it.sketch_url ?? null, imageOptions),
       ]);
       return {
@@ -601,6 +612,7 @@ export async function generateQuotationPdf(q: QuotationPdfData, options: PdfRend
         measurement_images: measDataUris,
         catalog_image_url: catDataUris[0] ?? null,
         catalog_images: catDataUris,
+        catalog_is_reference: !!photos.reference,
         sketch_data_uri: sketchUri,
         site_photos_data: siteDataUris,
       };
@@ -685,6 +697,8 @@ export type JobWorkPdfData = {
     catalog_image_url: string | null;
     sketch_url?: string | null;
     site_photos?: string | null;
+    fulfillment_route?: string | null;
+    stock_decision?: string | null;
     /** Set internally during PDF generation: list of data-URI sketches/cloth refs. */
     measurement_images?: string[];
     catalog_images?: string[];
@@ -852,7 +866,8 @@ export async function generateJobWorkPdf(d: JobWorkPdfData, options: PdfRenderOp
   const items = await Promise.all(
     d.items.map(async (it) => {
       const measUrls = splitUrls(it.measurement_image_url);
-      const catUrls = splitUrls(it.catalog_image_url);
+      // Custom (made-to-order) item: the catalog photo is not the piece — keep it off the job card.
+      const catUrls = isCustomItem(it) ? [] : splitUrls(it.catalog_image_url);
       const siteUrls = splitUrls(it.site_photos ?? null);
       const [measDataUris, catDataUris, siteDataUris, itemUri, sketchUri] = await Promise.all([
         Promise.all(measUrls.map((u) => toDataUri(u, imageOptions))).then((arr) =>

@@ -35,7 +35,7 @@ import { AttachedNotesButton } from "@/components/admin/AttachedNotesButton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shareFilesNative } from "@/lib/nativeShare";
 import { Share2 } from "lucide-react";
-import { firstUrl } from "@/lib/firstUrl";
+import { itemPhotoRoles, REFERENCE_LABEL } from "@/lib/itemPhotos";
 import { lazyImport } from "@/lib/lazyImport";
 
 type QItem = {
@@ -52,6 +52,8 @@ type QItem = {
   quantity: number;
   unit_price: number;
   display_order: number;
+  fulfillment_route?: string | null;
+  stock_decision?: string | null;
 };
 
 type Quotation = {
@@ -277,6 +279,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          fulfillment_route: (it as any).fulfillment_route ?? null,
+          stock_decision: (it as any).stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: it.quantity,
@@ -355,6 +359,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          fulfillment_route: (it as any).fulfillment_route ?? null,
+          stock_decision: (it as any).stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: it.quantity,
@@ -521,6 +527,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: item.measurement_image_url,
           catalog_text: item.catalog_text,
           catalog_image_url: item.catalog_image_url,
+          fulfillment_route: (item as any).fulfillment_route ?? null,
+          stock_decision: (item as any).stock_decision ?? null,
           sketch_url: item.sketch_url,
           site_photos: item.site_photos,
           quantity: item.quantity,
@@ -674,7 +682,8 @@ const AdminQuotationPreview = () => {
           <div className="space-y-3 sm:hidden">
             {items.map((it, idx) => {
               const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
-              const hero = firstUrl(it.item_image_url);
+              const photos = itemPhotoRoles(it);
+              const hero = photos.main;
               const sitePics = (it.site_photos ?? "")
                 .split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
               return (
@@ -717,16 +726,19 @@ const AdminQuotationPreview = () => {
                       </div>
                     )}
 
-                    {(it.catalog_text || it.catalog_image_url) && (
+                    {(it.catalog_text || photos.reference) && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                         <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                           <FileText className="h-3 w-3" /> Catalog reference
                         </p>
                         {it.catalog_text && <p className="whitespace-pre-line text-sm text-slate-700">{it.catalog_text}</p>}
-                        {it.catalog_image_url && (
-                          <button type="button" onClick={() => setZoomImage(it.catalog_image_url!)} className="mt-2 block w-full overflow-hidden rounded border border-slate-200 bg-white">
-                            <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-auto w-full object-contain" />
-                          </button>
+                        {photos.reference && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <button type="button" onClick={() => setZoomImage(photos.reference!)} className="h-16 w-16 shrink-0 overflow-hidden rounded border border-slate-200 bg-white">
+                              <img src={photos.reference} alt="Reference" loading="lazy" className="h-full w-full object-contain" />
+                            </button>
+                            <span className="text-xs italic text-amber-700">{REFERENCE_LABEL}</span>
+                          </div>
                         )}
                       </div>
                     )}
@@ -786,6 +798,7 @@ const AdminQuotationPreview = () => {
               <tbody>
                 {items.map((it, idx) => {
                   const amt = (Number(it.quantity) || 0) * (Number(it.unit_price) || 0);
+                  const photos = itemPhotoRoles(it);
                   return (
                     <tr key={it.id} className="border-t border-[#E6CDB5] align-top odd:bg-white even:bg-[#FDF6EE]">
                       <td className="px-3 py-3 text-left text-slate-500 tabular-nums">{idx + 1}</td>
@@ -793,25 +806,28 @@ const AdminQuotationPreview = () => {
                         <p className="font-medium text-slate-900">{it.description}</p>
                         {it.item_notes?.trim() && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{it.item_notes}</p>}
                         {it.catalog_text && <p className="mt-0.5 text-xs text-slate-500">Ref: {it.catalog_text}</p>}
-                        {(it.measurement_image_url || it.catalog_image_url) && (
-                          <div className="mt-2 flex gap-2">
+                        {(it.measurement_image_url || photos.reference) && (
+                          <div className="mt-2 flex items-end gap-2">
                             {it.measurement_image_url && (
                               <div className="h-12 w-12 overflow-hidden rounded border border-slate-200 bg-slate-50">
                                 <img src={it.measurement_image_url} alt="Measurement" loading="lazy" className="h-full w-full object-contain" />
                               </div>
                             )}
-                            {it.catalog_image_url && (
-                              <div className="h-12 w-12 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                                <img src={it.catalog_image_url} alt="Catalog" loading="lazy" className="h-full w-full object-contain" />
+                            {photos.reference && (
+                              <div className="flex items-center gap-1.5">
+                                <div className="h-12 w-12 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                                  <img src={photos.reference} alt="Reference" loading="lazy" className="h-full w-full object-contain" />
+                                </div>
+                                <span className="max-w-[7rem] text-[10px] italic leading-tight text-amber-700">{REFERENCE_LABEL}</span>
                               </div>
                             )}
                           </div>
                         )}
                       </td>
                       <td className="px-3 py-3">
-                        {it.item_image_url ? (
+                        {photos.main ? (
                           <div className="h-16 w-16 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                            <img src={firstUrl(it.item_image_url) ?? ""} alt="" loading="lazy" className="h-full w-full object-contain" />
+                            <img src={photos.main} alt="" loading="lazy" className="h-full w-full object-contain" />
                           </div>
                         ) : (
                           <div className="h-16 w-16 rounded border border-dashed border-slate-200 bg-slate-50" />
