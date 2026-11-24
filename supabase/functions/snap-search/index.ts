@@ -1,6 +1,6 @@
 import { authorizeStaff } from '../_shared/authorize.ts';
 import { geminiChat, geminiError, geminiKey, toDataUrl } from '../_shared/gemini.ts';
-// SnapSearch — identify catalog products from a photo with Gemini 2.5 Flash vision
+// SnapSearch — identify catalog products from a photo with Gemini 3.5 Flash vision
 // (our own GEMINI_API_KEY; no longer uses the Lovable AI Gateway).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

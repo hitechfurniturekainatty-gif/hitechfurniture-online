@@ -4,7 +4,8 @@
 // Replaced the Lovable AI Gateway on 2026-11-24; Lovable is no longer needed.
 
 export const GEMINI_CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-export const GEMINI_TEXT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash returns 404 for this key (retired for new projects); 3.5 Flash tested OK on 2026-11-24.
+export const GEMINI_TEXT_MODEL = "gemini-3.5-flash";
 
 export const geminiKey = () => Deno.env.get("GEMINI_API_KEY") ?? null;
 

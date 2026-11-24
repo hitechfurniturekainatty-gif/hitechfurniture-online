@@ -86,14 +86,14 @@ async function askModel(chat: string): Promise<Extract | null> {
   }
   if (GEMINI_API_KEY) {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0, thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { responseMimeType: "application/json", temperature: 0 },
         }),
       },
     );
@@ -144,16 +144,32 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   if (body?.ping === true) {
     if (!GEMINI_API_KEY) return json({ gemini_key_set: false });
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
+    // Try each model with a one-word prompt; report the HTTP status per model.
+    const list: string[] = Array.isArray(body.models) ? body.models.slice(0, 6) : ["gemini-flash-latest"];
+    const tested: Record<string, number> = {};
+    for (const model of list) {
+      const t = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Reply with the word OK." }] }] }),
+        },
+      );
+      tested[model] = t.status;
+    }
+    // Also check the OpenAI-compatible endpoint the other AI functions use (JSON mode).
+    let compat: number | string = "skipped";
+    if (body.compat === true) {
+      const c = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Reply with the word OK." }] }],
-          generationConfig: { maxOutputTokens: 5, thinkingConfig: { thinkingBudget: 0 } } }),
-      },
-    );
-    return json({ gemini_key_set: true, gemini_status: r.status, gemini_ok: r.ok });
+        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "gemini-3.5-flash", response_format: { type: "json_object" },
+          messages: [{ role: "user", content: 'Return {"ok":true} as JSON.' }] }),
+      });
+      compat = c.ok ? `${c.status} ${((await c.json())?.choices?.[0]?.message?.content ?? "").slice(0, 40)}` : `${c.status} ${(await c.text()).slice(0, 120)}`;
+    }
+    return json({ gemini_key_set: true, tested, compat });
   }
   const { data: leads, error } = await supabase.rpc("whatsapp_leads_needing_enrichment", { p_limit: MAX_LEADS_PER_RUN });
   if (error) return json({ error: error.message }, 500);

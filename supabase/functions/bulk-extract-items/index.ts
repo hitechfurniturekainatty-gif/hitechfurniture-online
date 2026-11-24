@@ -1,7 +1,7 @@
 import { authorizeStaff } from '../_shared/authorize.ts';
 import { geminiChat, geminiError, geminiKey } from '../_shared/gemini.ts';
 // Edge function that turns free-form text (from a PDF/Word doc or pasted
-// content) into a clean JSON array of quotation line items using Gemini 2.5 Flash
+// content) into a clean JSON array of quotation line items using Gemini 3.5 Flash
 // (our own GEMINI_API_KEY). The client extracts the text first; this function only does the
 // structured-extraction step so we don't ship a huge PDF/DOCX parser to Deno.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
