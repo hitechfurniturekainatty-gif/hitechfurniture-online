@@ -60,7 +60,14 @@ type Q = {
   pipeline_stage?: number | null;
   commercial_status?: string | null;
   delivered_at?: string | null;
+  ob_trans_id?: number | null;
+  ob_quote_no?: string | null;
 };
+
+// Where a quotation came from: the shop (Output Books, walk-in, phone, staff-made) or an
+// online enquiry (website form, WhatsApp, Instagram, Facebook, Google).
+type Channel = "all" | "shop" | "online";
+const ONLINE_SOURCES = new Set(["website", "whatsapp", "instagram", "facebook", "google"]);
 
 type StageFilterKey =
   | "all"
@@ -119,6 +126,8 @@ const AdminQuotations = () => {
   const [tripAgg, setTripAgg] = useState<Record<string, { has: boolean; completed: boolean }>>({});
   const [itemAgg, setItemAgg] = useState<Record<string, { total: number; ready: number; custom: number }>>({});
   const [sourceMap, setSourceMap] = useState<Record<string,string> | null>(null);
+  const [rawSource, setRawSource] = useState<Record<string, string>>({});
+  const [channel, setChannel] = useState<Channel>("all");
   const [creatorMap, setCreatorMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -235,7 +244,7 @@ const AdminQuotations = () => {
     const [{ data, error }, jRes, tqRes, itRes, leadRes] = await Promise.all([
       supabase
         .from("quotations")
-        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage, commercial_status, delivered_at")
+        .select("id, quotation_id, party_name, party_place, party_phone, quotation_date, status, total, created_at, created_by, updated_at, updated_by, document_type, service_type, salesperson_name, advance_amount, submitted_for_pricing_at, is_direct_order, source_task_id, lead_type, pipeline_stage, commercial_status, delivered_at, ob_trans_id, ob_quote_no")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase.from("job_work_orders").select("quotation_id, status, warehouse_status").is("deleted_at", null),
@@ -244,6 +253,7 @@ const AdminQuotations = () => {
       (async()=>{ const data: any[]=[]; for(let offset=0;;offset+=500){ const r=await (supabase as any).from("sales_leads").select("id,converted_quotation_id,source").not("converted_quotation_id", "is", null).order("id").range(offset,offset+499); if(r.error)return {data:null,error:r.error};data.push(...r.data);if(r.data.length<500)return {data,error:null}; } })(),
     ]);
     setSourceMap(leadRes.error ? null : Object.fromEntries((leadRes.data ?? []).map((lead: any) => [lead.converted_quotation_id, leadSourceLabel(lead.source)])));
+    setRawSource(leadRes.error ? {} : Object.fromEntries((leadRes.data ?? []).map((lead: any) => [lead.converted_quotation_id, String(lead.source ?? "")])));
     // Aggregate jobs per quotation
     const jobs: Record<string, { total: number; done: number; in_warehouse: number; dispatched: number }> = {};
     ((jRes.data ?? []) as any[]).forEach((j) => {
@@ -686,6 +696,10 @@ const AdminQuotations = () => {
   const filtered = useMemo(
     () =>
       docFiltered.filter((r) => {
+        if (channel !== "all") {
+          const online = !r.ob_trans_id && ONLINE_SOURCES.has(rawSource[r.id] ?? "");
+          if ((channel === "online") !== online) return false;
+        }
         const s = normalizeStatus(r.status);
         if (statusFilter === "all") return true;
         if (statusFilter === "rejected") return s === "rejected";
@@ -703,7 +717,7 @@ const AdminQuotations = () => {
         }
         return true;
       }),
-    [docFiltered, statusFilter, jobAgg, tripAgg],
+    [docFiltered, statusFilter, jobAgg, tripAgg, channel, rawSource],
   );
 
   const counts = useMemo(() => {
@@ -821,7 +835,7 @@ const AdminQuotations = () => {
 
             {!po && (
               <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
-                Source: {sourceMap === null ? "unavailable" : sourceMap[q.id] || "Direct quotation · no linked lead"}
+                {q.ob_trans_id || !ONLINE_SOURCES.has(rawSource[q.id] ?? "") ? "🏬 Shop" : "🌐 Online"} · Source: {q.ob_quote_no ? `Output Books ${q.ob_quote_no}${sourceMap?.[q.id] ? ` · ${sourceMap[q.id]}` : ""}` : sourceMap === null ? "unavailable" : sourceMap[q.id] || "Direct quotation · no linked lead"}
               </p>
             )}
           </div>
@@ -1122,6 +1136,16 @@ const AdminQuotations = () => {
             className="pl-9"
           />
         </div>
+        <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
+          <SelectTrigger className="sm:w-44" aria-label="Where the customer came from">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All sources</SelectItem>
+            <SelectItem value="shop">🏬 Shop / Output Books</SelectItem>
+            <SelectItem value="online">🌐 Online enquiries</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="sm:w-48">
             <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
