@@ -271,7 +271,7 @@ const WorkerPortal = () => {
       // Need full item details for catalog fields (load list only carries a brief).
       const { data: fullItems, error } = await supabase
         .from("quotation_items")
-        .select("id, description, quantity, measurement, item_image_url, measurement_image_url, sketch_url, catalog_text, catalog_image_url, site_photos")
+        .select("id, description, quantity, measurement, item_image_url, measurement_image_url, sketch_url, catalog_text, catalog_image_url, site_photos, fulfillment_route, stock_decision")
         .in("id", job.item_ids);
       if (error) throw error;
 
@@ -290,6 +290,8 @@ const WorkerPortal = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
+          fulfillment_route: (it as any).fulfillment_route ?? null,
+          stock_decision: (it as any).stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: it.quantity,

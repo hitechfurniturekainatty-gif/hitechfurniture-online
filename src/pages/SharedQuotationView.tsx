@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Image as ImageIcon, Phone, MapPin, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { firstUrl } from "@/lib/firstUrl";
+import { itemPhotoRoles, REFERENCE_LABEL } from "@/lib/itemPhotos";
+import { isCustomItem } from "@/lib/orderPhotoGate";
 import { Logo } from "@/components/Logo";
 import { COMPANY } from "@/lib/companyInfo";
 import quoteHeaderArt from "@/assets/quote-header-art.jpg";
@@ -23,6 +24,7 @@ type Item = {
   unit_price: number | null;
   total_price: number | null;
   fulfillment_route?: string | null;
+  stock_decision?: string | null;
 };
 
 type Quotation = {
@@ -220,7 +222,10 @@ const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } 
         <div className="space-y-4">
           {items.map((it, idx) => {
             const sitePics = (it.site_photos ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-            const main = firstUrl(it.item_image_url);
+            const photos = itemPhotoRoles(it);
+            const main = photos.main;
+            // Delivery note: a custom item's catalog photo is not the piece being delivered.
+            const reference = hideAmounts && isCustomItem(it) ? null : photos.reference;
             return (
               <article key={it.id} className="overflow-hidden rounded-2xl border border-[#E6CDB5] bg-white dark:border-border dark:bg-card">
                 <div className="flex items-start justify-between gap-3 px-4 pt-4">
@@ -264,14 +269,17 @@ const SharedQuotationView = ({ hideAmounts = false }: { hideAmounts?: boolean } 
                     </div>
                   )}
 
-                  {(it.catalog_text || it.catalog_image_url) && (
+                  {(it.catalog_text || reference) && (
                     <div>
                       <p className="text-xs uppercase tracking-wider text-[#8A4B1F]">Catalog reference</p>
                       {it.catalog_text && <p className="mt-1 whitespace-pre-line text-sm text-[#3B2A1C] dark:text-foreground">{it.catalog_text}</p>}
-                      {it.catalog_image_url && (
-                        <button type="button" aria-label="Enlarge catalog image" onClick={() => setZoom(it.catalog_image_url!)} className="mt-2 block w-full overflow-hidden rounded-xl bg-white">
-                          <img src={it.catalog_image_url} alt="Catalog" className="h-auto w-full object-contain" loading="lazy" />
-                        </button>
+                      {reference && (
+                        <div className="mt-2 flex items-center gap-3">
+                          <button type="button" aria-label="Enlarge reference image" onClick={() => setZoom(reference)} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white">
+                            <img src={reference} alt="Reference" className="h-full w-full object-contain" loading="lazy" />
+                          </button>
+                          <span className="text-xs italic text-amber-700">{REFERENCE_LABEL}</span>
+                        </div>
                       )}
                     </div>
                   )}

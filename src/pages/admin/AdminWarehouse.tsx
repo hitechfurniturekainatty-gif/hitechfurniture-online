@@ -94,8 +94,9 @@ type Group = {
   items: WarehouseRow[];
 };
 
+// Custom item: the catalog photo is only a reference model, never the piece in the warehouse.
 const itemImage = (row: WarehouseRow) =>
-  row.item_image_url || row.catalog_image_url || row.measurement_image_url || null;
+  row.item_image_url || (row.fulfillment_route === "custom" ? null : row.catalog_image_url) || row.measurement_image_url || null;
 
 const vehicleDisplay = (kind?: string | null, number?: string | null) => {
   if (kind === "outside") return `Outside${number ? ` · ${number}` : ""}`;

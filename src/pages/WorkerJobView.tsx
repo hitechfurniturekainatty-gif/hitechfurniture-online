@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Image as ImageIcon, Ruler, Hash, FileText, Camera } from "lucide-react";
 import { jobStatusLabel, jobStatusTone } from "@/pages/admin/AdminWorkerDetail";
 import { firstUrl } from "@/lib/firstUrl";
+import { isCustomItem } from "@/lib/orderPhotoGate";
 
 type ItemFull = {
   id: string;
@@ -20,6 +21,8 @@ type ItemFull = {
   catalog_image_url: string | null;
   sketch_url: string | null;
   site_photos: string | null;
+  fulfillment_route?: string | null;
+  stock_decision?: string | null;
 };
 
 type JobFull = {
@@ -88,12 +91,14 @@ const WorkerJobView = () => {
     if (j.item_ids.length) {
       const { data: lines } = await supabase
         .from("quotation_items")
-        .select("id, description, quantity, measurement, item_image_url, measurement_image_url, catalog_text, catalog_image_url, sketch_url, site_photos")
+        .select("id, description, quantity, measurement, item_image_url, measurement_image_url, catalog_text, catalog_image_url, sketch_url, site_photos, fulfillment_route, stock_decision")
         .in("id", j.item_ids);
       // Preserve assignment order
       const byId: Record<string, ItemFull> = {};
-      for (const l of (lines ?? []) as ItemFull[]) byId[l.id] = l;
-      setItems(j.item_ids.map((iid) => byId[iid]).filter(Boolean));
+      for (const l of (lines ?? []) as unknown as ItemFull[]) byId[l.id] = l;
+      // Custom (made-to-order) item: the catalog photo is not the piece to make — hide it.
+      setItems(j.item_ids.map((iid) => byId[iid]).filter(Boolean)
+        .map((l) => (isCustomItem(l) ? { ...l, catalog_image_url: null } : l)));
     }
     setLoading(false);
   };

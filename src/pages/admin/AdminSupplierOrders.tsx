@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { indiaDateKey } from "@/lib/deliveryPlanning";
 import { addDays, lateness, type SupplierOrderStatus } from "@/lib/supplierOrders";
+import { isCustomItem } from "@/lib/orderPhotoGate";
 
 // Supplier Orders: every custom piece (and stock purchase) ordered from a supplier, with the
 // date the supplier promised. "Not ordered yet" lists confirmed custom items nobody has
@@ -29,7 +30,7 @@ type Order = {
   supplier_name: string; item_text: string | null; qty: number; ordered_on: string; expected_on: string;
   status: SupplierOrderStatus; received_on: string | null; note: string | null; created_at: string;
   quotations: { quotation_id: string | null; party_name: string | null; party_place: string | null } | null;
-  quotation_items: { description: string | null; item_image_url: string | null; catalog_image_url: string | null; sketch_url: string | null } | null;
+  quotation_items: { description: string | null; item_image_url: string | null; catalog_image_url: string | null; sketch_url: string | null; fulfillment_route?: string | null; stock_decision?: string | null } | null;
   products: { product_name: string | null; primary_image_url: string | null } | null;
 };
 type Draft = {
@@ -39,7 +40,12 @@ type Draft = {
 
 const fmt = (d: string | null) => d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—";
 const orderWhat = (o: Order) => o.item_text || o.quotation_items?.description || o.products?.product_name || "Item";
-const orderImage = (o: Order) => o.quotation_items?.item_image_url || o.quotation_items?.sketch_url || o.quotation_items?.catalog_image_url || o.products?.primary_image_url || null;
+// Custom item: never send the supplier the catalog reference model as if it were the order.
+const orderImage = (o: Order) => {
+  const qi = o.quotation_items;
+  const catalog = qi && !isCustomItem(qi) ? qi.catalog_image_url : null;
+  return qi?.item_image_url || qi?.sketch_url || catalog || o.products?.primary_image_url || null;
+};
 
 function Thumb({ src }: { src: string | null }) {
   return src
@@ -65,7 +71,7 @@ function SupplierOrdersPage() {
     const [a, b] = await Promise.all([
       db.rpc("custom_items_not_ordered"),
       db.from("supplier_orders")
-        .select("id,quotation_id,quotation_item_id,product_id,supplier_name,item_text,qty,ordered_on,expected_on,status,received_on,note,created_at,quotations(quotation_id,party_name,party_place),quotation_items(description,item_image_url,catalog_image_url,sketch_url),products(product_name,primary_image_url)")
+        .select("id,quotation_id,quotation_item_id,product_id,supplier_name,item_text,qty,ordered_on,expected_on,status,received_on,note,created_at,quotations(quotation_id,party_name,party_place),quotation_items(description,item_image_url,catalog_image_url,sketch_url,fulfillment_route,stock_decision),products(product_name,primary_image_url)")
         .or(`status.eq.ordered,updated_at.gte.${since}`)
         .order("expected_on", { ascending: true }).limit(500),
     ]);
