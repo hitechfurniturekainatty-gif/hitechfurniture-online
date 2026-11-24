@@ -414,6 +414,8 @@ export const CHAPTERS: GuideChapter[] = [
           "Photos, sketch, measurement, notes, Ready stock / Custom, advance, delivery date and follow-ups are website-only; the sync never changes them.",
           "A line deleted in Output Books disappears on the website; if staff had added a photo to it, it stays at ₹0 marked \"[Removed in Output Books]\".",
           "After Confirm Order on the website, the sync stops for that quotation.",
+          "Each Output Books quotation is linked to a lead: an open lead with the same phone (for example someone who asked on Instagram) is marked Converted; otherwise a Walk-in lead is created. Always enter the customer's phone in Output Books so this works.",
+          "Quotations & Orders has a source filter: 🏬 Shop / Output Books or 🌐 Online enquiries (website, WhatsApp, Instagram, Facebook, Google).",
         ],
       },
       {
