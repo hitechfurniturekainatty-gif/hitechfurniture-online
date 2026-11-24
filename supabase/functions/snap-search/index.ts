@@ -1,7 +1,7 @@
 import { authorizeStaff } from '../_shared/authorize.ts';
-// SnapSearch — identify catalog products from a photo using Lovable AI vision.
-// Uses google/gemini-2.5-flash (multimodal) via the Lovable AI Gateway.
-// LOVABLE_API_KEY is auto-provisioned; no user-supplied key needed.
+import { geminiChat, geminiError, geminiKey, toDataUrl } from '../_shared/gemini.ts';
+// SnapSearch — identify catalog products from a photo with Gemini 2.5 Flash vision
+// (our own GEMINI_API_KEY; no longer uses the Lovable AI Gateway).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -39,8 +39,7 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return json({ error: "AI key not configured" }, 500);
+    if (!geminiKey()) return json({ error: "AI key not configured (GEMINI_API_KEY)" }, 500);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -79,33 +78,24 @@ Return up to 5 matches, ordered by confidence. Use product NAME, category, mater
       ).join("\n") +
       `\n\nIdentify the product(s) shown in the attached image. Respond with JSON only.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+    const imageData = await toDataUrl(image);
+    const aiRes = await geminiChat({
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [
               { type: "text", text: userText },
-              { type: "image_url", image_url: { url: image } },
+              { type: "image_url", image_url: { url: imageData } },
             ],
           },
         ],
         response_format: { type: "json_object" },
-      }),
     });
 
     if (!aiRes.ok) {
-      const txt = await aiRes.text();
-      if (aiRes.status === 429) return json({ error: "AI rate limit hit. Try again shortly." }, 429);
-      if (aiRes.status === 402) return json({ error: "AI credits exhausted. Add credits in Settings → Workspace → Usage." }, 402);
-      return json({ error: `AI error: ${txt.slice(0, 300)}` }, 500);
+      const e = await geminiError(aiRes);
+      return json({ error: e.error }, e.status);
     }
     const aiJson = await aiRes.json();
     const content = aiJson?.choices?.[0]?.message?.content ?? "{}";

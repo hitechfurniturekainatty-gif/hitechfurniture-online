@@ -1,4 +1,5 @@
-// Edge function: generates or edits an image using Lovable AI Gateway (Gemini Nano Banana),
+// Edge function: generates or edits an image with Google Gemini (Nano Banana) using our own
+// GEMINI_API_KEY (the Lovable AI Gateway fallback was removed on 2026-11-24),
 // then uploads the resulting PNG to the product-images bucket and returns the public URL.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -23,10 +24,9 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY =
       Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY)
-      return json({ error: "AI not configured" }, 500);
+    if (!GEMINI_API_KEY)
+      return json({ error: "AI not configured (GEMINI_API_KEY)" }, 500);
 
     // Verify caller is staff/admin
     const authHeader = req.headers.get("Authorization");
@@ -121,32 +121,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const userContent: unknown = inlineImageUrl
-      ? [
-          { type: "text", text: finalPrompt },
-          { type: "image_url", image_url: { url: inlineImageUrl } },
-        ]
-      : finalPrompt;
-
     const systemPrompt =
       "You generate high-accuracy product images for catalogs. Follow the provided product description exactly and prioritize item identity over style. Never substitute a different item category, silhouette, material, color, or feature set.";
-
-    const callGateway = () =>
-      fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          modalities: ["image", "text"],
-        }),
-      });
 
     const callGemini = () => {
       const geminiModel = model.startsWith("google/")
@@ -170,34 +146,7 @@ Deno.serve(async (req) => {
       );
     };
 
-    let aiResp: Response;
-    let usingDirectGemini = false;
-    let fellBackFromGeminiQuota = false;
-
-    if (GEMINI_API_KEY) {
-      usingDirectGemini = true;
-      aiResp = await callGemini();
-
-      if (!aiResp.ok && LOVABLE_API_KEY) {
-        const txt = await aiResp.clone().text().catch(() => "");
-        let detail = "";
-        try {
-          const parsed = JSON.parse(txt);
-          detail = parsed?.error?.message ?? parsed?.error?.status ?? "";
-        } catch { /* ignore */ }
-
-        const geminiQuotaBlocked =
-          aiResp.status === 429 && /quota|RESOURCE_EXHAUSTED|free_tier/i.test(detail);
-
-        if (geminiQuotaBlocked) {
-          fellBackFromGeminiQuota = true;
-          usingDirectGemini = false;
-          aiResp = await callGateway();
-        }
-      }
-    } else {
-      aiResp = await callGateway();
-    }
+    const aiResp = await callGemini();
 
     if (!aiResp.ok) {
       const txt = await aiResp.text();
@@ -213,20 +162,12 @@ Deno.serve(async (req) => {
         return json(
           {
             error: isQuota
-              ? fellBackFromGeminiQuota
-                ? "Your Gemini key has no image quota, and the backup AI service is currently rate limited. Please wait a moment and try again."
-                : "Your Google Gemini API key has no image generation quota. Enable billing on your Google AI Studio project to use your own account for image generation."
+              ? "Your Google Gemini API key has no image generation quota. Enable billing on your Google AI Studio project to use your own account for image generation."
               : "Rate limited. Please try again in a moment.",
           },
           429,
         );
       }
-      if (aiResp.status === 402)
-        return json({
-          error: fellBackFromGeminiQuota
-            ? "Your Gemini key has no image quota, and the backup AI credits are exhausted. Enable billing on your Google AI Studio project or add workspace AI credits."
-            : "AI credits exhausted. Add funds in Lovable workspace settings.",
-        }, 402);
       return json(
         { error: detail ? `AI generation failed: ${detail}` : "AI generation failed" },
         500,
@@ -235,18 +176,14 @@ Deno.serve(async (req) => {
 
     const aiData = await aiResp.json();
     let dataUrl: string | undefined;
-    if (usingDirectGemini) {
-      const partsOut = aiData?.candidates?.[0]?.content?.parts ?? [];
-      for (const p of partsOut) {
-        const inline = p?.inline_data ?? p?.inlineData;
-        if (inline?.data) {
-          const mt = inline.mime_type ?? inline.mimeType ?? "image/png";
-          dataUrl = `data:${mt};base64,${inline.data}`;
-          break;
-        }
+    const partsOut = aiData?.candidates?.[0]?.content?.parts ?? [];
+    for (const p of partsOut) {
+      const inline = p?.inline_data ?? p?.inlineData;
+      if (inline?.data) {
+        const mt = inline.mime_type ?? inline.mimeType ?? "image/png";
+        dataUrl = `data:${mt};base64,${inline.data}`;
+        break;
       }
-    } else {
-      dataUrl = aiData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     }
     if (!dataUrl?.startsWith("data:image/")) {
       console.error("No image in response", JSON.stringify(aiData).slice(0, 500));
