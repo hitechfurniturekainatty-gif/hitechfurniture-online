@@ -1,11 +1,11 @@
 import { authorizeStaff } from '../_shared/authorize.ts';
+import { geminiChat, geminiError, geminiKey } from '../_shared/gemini.ts';
 // Edge function that turns free-form text (from a PDF/Word doc or pasted
-// content) into a clean JSON array of quotation line items using the Lovable
-// AI Gateway. The client extracts the text first; this function only does the
+// content) into a clean JSON array of quotation line items using Gemini 3.5 Flash
+// (our own GEMINI_API_KEY). The client extracts the text first; this function only does the
 // structured-extraction step so we don't ship a huge PDF/DOCX parser to Deno.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 const QUOTATION_PROMPT = `You convert raw furniture/quotation text into clean JSON line items.
 Return ONLY a JSON object like:
@@ -63,42 +63,24 @@ Deno.serve(async (req) => {
       bundle: BUNDLE_PROMPT,
     };
     const systemPrompt = promptByKind[String(kind ?? 'quotation')] ?? QUOTATION_PROMPT;
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'AI gateway not configured' }), {
+    if (!geminiKey()) {
+      return new Response(JSON.stringify({ error: 'AI not configured (GEMINI_API_KEY)' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text.slice(0, 60_000) },
-        ],
-        response_format: { type: 'json_object' },
-      }),
+    const resp = await geminiChat({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text.slice(0, 60_000) },
+      ],
+      response_format: { type: 'json_object' },
     });
 
-    if (resp.status === 429) {
-      return new Response(JSON.stringify({ error: 'Rate limit, try again shortly' }), {
-        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (resp.status === 402) {
-      return new Response(JSON.stringify({ error: 'AI credits exhausted — top up Lovable AI' }), {
-        status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
     if (!resp.ok) {
-      const t = await resp.text();
-      return new Response(JSON.stringify({ error: `AI error: ${t.slice(0, 200)}` }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      const e = await geminiError(resp);
+      return new Response(JSON.stringify({ error: e.error }), {
+        status: e.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 

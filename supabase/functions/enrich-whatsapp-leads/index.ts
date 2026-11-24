@@ -12,7 +12,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 const MAX_LEADS_PER_RUN = 15;
@@ -85,34 +84,16 @@ async function askModel(chat: string): Promise<Extract | null> {
     const text = (d?.content ?? []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
     return parseJson(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
   }
-  if (LOVABLE_API_KEY) {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: user },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0,
-      }),
-    });
-    if (!r.ok) throw new Error(`AI gateway ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    const d = await r.json();
-    return parseJson(d?.choices?.[0]?.message?.content);
-  }
   if (GEMINI_API_KEY) {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0, thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { responseMimeType: "application/json", temperature: 0 },
         }),
       },
     );
@@ -120,7 +101,7 @@ async function askModel(chat: string): Promise<Extract | null> {
     const d = await r.json();
     return parseJson(d?.candidates?.[0]?.content?.parts?.[0]?.text);
   }
-  throw new Error("No AI key configured (ANTHROPIC_API_KEY, LOVABLE_API_KEY or GEMINI_API_KEY)");
+  throw new Error("No AI key configured (ANTHROPIC_API_KEY or GEMINI_API_KEY)");
 }
 
 function parseJson(text: unknown): Extract | null {
@@ -158,6 +139,38 @@ Deno.serve(async (req) => {
   const given = req.headers.get("x-enrich-secret");
   const { data: secret } = await supabase.rpc("get_lead_enrich_secret");
   if (!given || !secret || given !== secret) return json({ error: "unauthorized" }, 401);
+
+  // Health check (no lead is touched): POST {"ping":true} → is the Gemini key set and working?
+  const body = await req.json().catch(() => ({}));
+  if (body?.ping === true) {
+    if (!GEMINI_API_KEY) return json({ gemini_key_set: false });
+    // Try each model with a one-word prompt; report the HTTP status per model.
+    const list: string[] = Array.isArray(body.models) ? body.models.slice(0, 6) : ["gemini-flash-latest"];
+    const tested: Record<string, number> = {};
+    for (const model of list) {
+      const t = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Reply with the word OK." }] }] }),
+        },
+      );
+      tested[model] = t.status;
+    }
+    // Also check the OpenAI-compatible endpoint the other AI functions use (JSON mode).
+    let compat: number | string = "skipped";
+    if (body.compat === true) {
+      const c = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "gemini-3.5-flash", response_format: { type: "json_object" },
+          messages: [{ role: "user", content: 'Return {"ok":true} as JSON.' }] }),
+      });
+      compat = c.ok ? `${c.status} ${((await c.json())?.choices?.[0]?.message?.content ?? "").slice(0, 40)}` : `${c.status} ${(await c.text()).slice(0, 120)}`;
+    }
+    return json({ gemini_key_set: true, tested, compat });
+  }
   const { data: leads, error } = await supabase.rpc("whatsapp_leads_needing_enrichment", { p_limit: MAX_LEADS_PER_RUN });
   if (error) return json({ error: error.message }, 500);
 
