@@ -1801,6 +1801,11 @@ const AdminQuotationEditor = () => {
               <Link to={`/admin/supplier-orders?q=${q.id}`}><Truck className="mr-1 h-4 w-4" aria-hidden="true" />Supplier orders</Link>
             </Button>
           )}
+          {(q as { ob_quote_no?: string | null }).ob_quote_no && (
+            <Badge variant="outline" className="shrink-0 border-sky-300 bg-sky-50 text-sky-800" title="Items, quantity and rate come from Output Books. Change them there; photos, measurement and follow-up stay here.">
+              Output Books {(q as { ob_quote_no?: string | null }).ob_quote_no} · edit items there
+            </Badge>
+          )}
           {q.status === "delivered" && (
             <Badge className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-600">✓ Delivered{(q as { delivered_at?: string | null }).delivered_at ? ` · ${new Date((q as { delivered_at?: string | null }).delivered_at!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}</Badge>
           )}
