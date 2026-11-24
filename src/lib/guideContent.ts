@@ -30,7 +30,7 @@ export type GuideChapter = {
   sections: GuideSection[];
 };
 
-export const APP_VERSION = "2.3";
+export const APP_VERSION = "2.4";
 export const GUIDE_LAST_UPDATED = "2026-11-21";
 
 export const ABOUT = {
@@ -743,6 +743,16 @@ export const CHAPTERS: GuideChapter[] = [
     title: "What's new (changelog)",
     audience: ["everyone"],
     sections: [
+      {
+        id: "v2-4",
+        title: "v2.4 — 2026-11-24",
+        audience: ["everyone"],
+        bullets: [
+          "Bell alerts cleaned up: 2,634 old alerts were marked read, and every night alerts older than 7 days are marked read automatically. The bell now shows only recent, useful alerts.",
+          "\"Quotation expiring soon\" is now sent once per quotation (15–60 days old), not every week for ever. \"Balance payment due\" is sent from 3 days before to 7 days after the delivery date, at most once a week; older balances are followed up in Payments.",
+          "AI features (Snap Search, bulk extract, AI image) now use Hitech's own Google Gemini key instead of Lovable.",
+        ],
+      },
       {
         id: "v2-3",
         title: "v2.3 — 2026-11-24",
