@@ -30,11 +30,46 @@ export function canonicalMedia(value: unknown): unknown {
   return mapMedia(value, url => `${backendUrl}/storage/v1/object/public/quotations/${mediaPath(url).split('/').map(encodeURIComponent).join('/')}`);
 }
 
+// Short hash so the session store never holds the raw auth token as a key.
+function scopeHash(scope: string) {
+  let h = 5381;
+  for (let i = 0; i < scope.length; i++) h = ((h << 5) + h + scope.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
 function cacheKey(scope: string, path: string) {
-  return `${scope}\n${path}`;
+  return `${scopeHash(scope)}\n${path}`;
+}
+
+// The same signed URL must be reused after a page reload, otherwise the browser
+// sees a new URL each time and downloads every photo again (photos are stored
+// with a 1-year immutable cache header). Kept in sessionStorage: this tab only,
+// gone when the tab closes, and every entry expires before the link does.
+const STORE_KEY = 'hitech.signedMedia.v1';
+let storeLoaded = false;
+function loadStore() {
+  if (storeLoaded) return;
+  storeLoaded = true;
+  try {
+    const raw = sessionStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const now = Date.now();
+    for (const [k, v] of Object.entries(JSON.parse(raw) as Record<string, { url: string; expiresAt: number }>)) {
+      if (v && typeof v.url === 'string' && v.expiresAt > now) signedCache.set(k, v);
+    }
+  } catch { /* Storage blocked or corrupt: the memory cache still works. */ }
+}
+function saveStore() {
+  try {
+    const now = Date.now();
+    const out: Record<string, { url: string; expiresAt: number }> = {};
+    for (const [k, v] of signedCache) if (v.expiresAt > now) out[k] = v;
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(out));
+  } catch { /* Quota or private mode: ignore. */ }
 }
 
 function cachedSignedUrl(scope: string, path: string): string | undefined {
+  loadStore();
   const key = cacheKey(scope, path);
   const cached = signedCache.get(key);
   if (!cached) return undefined;
@@ -50,6 +85,7 @@ function cacheSignedUrls(scope: string, urls: Record<string, string>) {
   for (const [path, url] of Object.entries(urls)) {
     if (url) signedCache.set(cacheKey(scope, path), { url, expiresAt });
   }
+  saveStore();
 }
 
 /** PostgREST remains the authority for records; the signer independently checks file access. */

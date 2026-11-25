@@ -1,52 +1,57 @@
-import imageCompression from "browser-image-compression";
-
 /**
- * Compress an image file on the client before upload.
+ * Compress an image file on the device before upload.
  *
- * Tuned to preserve furniture detail/texture while keeping files tiny enough
- * for sub-1s loads on 4G:
- *  - Fast path: anything already <= 300KB is uploaded as-is (no decode).
- *  - Cap the longest side at 1920px — 4K-ready, sharp on every device.
- *  - Target ~500KB ceiling at quality 0.85 (visually lossless for furniture).
- *  - Convert to WebP for ~30% smaller files than JPEG at equal quality.
- *    SVG / GIF are passed through untouched (vector / animated).
- *  - Always runs in a Web Worker so the UI stays smooth.
- * Falls back to the original file if compression fails or the result is
- * somehow larger than the source.
+ * Runs on the main thread with the browser's own decoder and <canvas> — no
+ * web worker and no script from a CDN. (The old browser-image-compression
+ * worker loaded its code from a CDN; on shop phones it often timed out and
+ * the original 1.5–2.5 MB PNG/JPEG was uploaded, which made quotation pages
+ * slow on mobile and desktop.)
+ *  - Already small JPEG/WebP (<= 300 KB) is uploaded as it is.
+ *  - Longest side capped at 1600 px — sharp on phones, desktops and PDFs.
+ *  - WebP at quality 0.8 (JPEG 0.82 where the browser cannot write WebP).
+ *    Typical result: 150–350 KB instead of 1.5–2.5 MB.
+ *  - Transparent areas (PNG screenshots) are painted white.
+ *  - SVG / GIF pass through untouched.
+ * Falls back to the original file if the browser cannot decode it (e.g. HEIC
+ * on some Android phones) or if the result would be larger.
  */
+export const UPLOAD_MAX_SIDE = 1600;
+
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
-  // SVGs and GIFs are not re-encoded — they're vector / animated and already small.
   if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
-  // Fast path — already-optimised images skip the decode entirely.
-  if (file.size <= 300 * 1024) return file;
+  const alreadyLight = file.type === "image/jpeg" || file.type === "image/webp";
+  if (alreadyLight && file.size <= 300 * 1024) return file;
 
   try {
-    // The web worker loads its script from a CDN; on some phones / networks it
-    // never resolves and the upload sat on "Uploading…" forever. Cap it at 15s
-    // and fall back to the original file so the photo always gets attached.
-    const compressed = await Promise.race([
-      imageCompression(file, {
-        maxSizeMB: 0.5, // ~500KB ceiling — keeps catalog snappy on 4G
-        maxWidthOrHeight: 1920, // 4K-ready longest side, crisp on any screen
-        useWebWorker: true,
-        initialQuality: 0.85, // visually lossless for furniture textures
-        fileType: "image/webp", // ~30% smaller than JPEG at the same quality
-      }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("compression timeout")), 15000)),
-    ]);
-    const blob = compressed as Blob;
-    // Never ship a "compressed" file that ended up bigger than the original.
-    if (blob.size >= file.size) return file;
-    const webpName = file.name.replace(/\.(png|jpe?g|gif|bmp|tiff?)$/i, ".webp");
-    if (blob instanceof File) {
-      // Ensure the filename ends in .webp so the storage path matches the type.
-      return new File([blob], webpName, { type: "image/webp", lastModified: Date.now() });
-    }
-    return new File([blob], webpName, {
-      type: blob.type || "image/webp",
-      lastModified: Date.now(),
-    });
+    const bitmap = await loadBitmap(file);
+    if (!bitmap) return file;
+    const w = bitmap.width;
+    const h = bitmap.height;
+    if (!w || !h) return file;
+    const scale = Math.min(1, UPLOAD_MAX_SIDE / Math.max(w, h));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (typeof (bitmap as ImageBitmap).close === "function") (bitmap as ImageBitmap).close();
+
+    const encode = (type: string, quality: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+    let blob = await encode("image/webp", 0.8);
+    // Browsers that cannot write WebP silently return PNG — use JPEG then.
+    if (!blob || blob.type !== "image/webp") blob = await encode("image/jpeg", 0.82);
+    if (!blob || blob.size >= file.size) return file;
+
+    const ext = blob.type === "image/webp" ? "webp" : "jpg";
+    const baseName = file.name.replace(/\.[a-z0-9]+$/i, "") || "photo";
+    return new File([blob], `${baseName}.${ext}`, { type: blob.type, lastModified: Date.now() });
   } catch (err) {
     console.warn("[imageCompression] failed, using original", err);
     return file;
