@@ -430,7 +430,48 @@ function withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
 }
 const isImageBlob = (b: Blob | null | undefined): b is Blob =>
   !!b && b.size > 0 && (b.type.startsWith("image/") || b.type === "application/octet-stream" || b.type === "");
-async function fetchImageBlob(url: string): Promise<Blob | null> {
+// At most 4 photo downloads at once. Firing 20–40 storage downloads together
+// made each one wait up to 60 s and slowed the whole site for everyone.
+const MAX_PARALLEL_IMAGE_FETCHES = 4;
+let activeImageFetches = 0;
+const imageFetchQueue: (() => void)[] = [];
+async function withImageSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeImageFetches >= MAX_PARALLEL_IMAGE_FETCHES) {
+    await new Promise<void>((resolve) => imageFetchQueue.push(resolve));
+  }
+  activeImageFetches++;
+  try {
+    return await task();
+  } finally {
+    activeImageFetches--;
+    imageFetchQueue.shift()?.();
+  }
+}
+
+async function plainFetch(url: string, ms = 12000): Promise<Blob | null> {
+  try {
+    const res = await withTimeout(fetch(url, { mode: "cors", credentials: "omit" }), ms);
+    if (res.ok) {
+      const b = await res.blob();
+      if (isImageBlob(b)) return b;
+    }
+  } catch {
+    /* CORS / network / timeout */
+  }
+  return null;
+}
+
+function fetchImageBlob(url: string): Promise<Blob | null> {
+  return withImageSlot(() => fetchImageBlobNow(url));
+}
+
+async function fetchImageBlobNow(url: string): Promise<Blob | null> {
+  // Fast path: the page already holds a short-lived signed link for private
+  // photos (and the browser usually has the file cached). Use it first.
+  if (/\/storage\/v1\/object\/sign\//.test(url) && /[?&]token=/.test(url)) {
+    const b = await plainFetch(url, 10000);
+    if (b) return b;
+  }
   const { supabase } = await import("@/integrations/supabase/client");
   const m = url.match(QUOTATIONS_RE);
   if (m) {

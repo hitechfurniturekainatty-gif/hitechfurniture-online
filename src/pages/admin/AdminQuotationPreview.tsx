@@ -108,6 +108,22 @@ const AdminQuotationPreview = () => {
   const [items, setItems] = useState<QItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+
+  // The PDF/JPG tools are a large download (~8 s on a slow line). Fetch them
+  // in the background once the page is idle so Share / Export starts at once.
+  useEffect(() => {
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const run = () => { void import("@/lib/quotationPdf").catch(() => undefined); };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(run, { timeout: 4000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(run, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
   const [createdByName, setCreatedByName] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -279,8 +295,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
-          fulfillment_route: (it as any).fulfillment_route ?? null,
-          stock_decision: (it as any).stock_decision ?? null,
+          fulfillment_route: it.fulfillment_route ?? null,
+          stock_decision: it.stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: it.quantity,
@@ -359,8 +375,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: it.measurement_image_url,
           catalog_text: it.catalog_text,
           catalog_image_url: it.catalog_image_url,
-          fulfillment_route: (it as any).fulfillment_route ?? null,
-          stock_decision: (it as any).stock_decision ?? null,
+          fulfillment_route: it.fulfillment_route ?? null,
+          stock_decision: it.stock_decision ?? null,
           sketch_url: it.sketch_url,
           site_photos: it.site_photos,
           quantity: it.quantity,
@@ -527,8 +543,8 @@ const AdminQuotationPreview = () => {
           measurement_image_url: item.measurement_image_url,
           catalog_text: item.catalog_text,
           catalog_image_url: item.catalog_image_url,
-          fulfillment_route: (item as any).fulfillment_route ?? null,
-          stock_decision: (item as any).stock_decision ?? null,
+          fulfillment_route: item.fulfillment_route ?? null,
+          stock_decision: item.stock_decision ?? null,
           sketch_url: item.sketch_url,
           site_photos: item.site_photos,
           quantity: item.quantity,
